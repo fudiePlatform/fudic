@@ -7,6 +7,8 @@ export const meta = {
     { name: 'slot', type: 'token' },
   ],
   describe: ({ target, slot }) => `${target} is in the ${slot} slot`,
+  // «In no slot» holds by what is not there: read once, on the quiet page.
+  negative: ({ slot }) => String(slot) === 'none',
 };
 
 // Runs in the page, so it travels as source text: the slot the element is assigned to.

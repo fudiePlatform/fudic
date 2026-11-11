@@ -70,17 +70,27 @@ export interface Bench {
 /** The hooks installed in this process, if any. */
 export const benchHooks = (): BenchHooks | undefined => (globalThis as { [BENCH_KEY]?: BenchHooks })[BENCH_KEY];
 
-/** The bench of `request`, in dev, when hooks are installed and the request carries a criterion. */
-export function benchOf(request: Request | undefined, dev: boolean): Bench | undefined {
-  const hooks = dev ? benchHooks() : undefined;
+/**
+ * Whether a server may read the bench at all: in dev, or in the workbench's own build — the one
+ * it makes for its criteria without network (SDD-82 §4.7), which never leaves the bench's folder.
+ */
+export const benchAllowed = (options: { readonly dev?: boolean; readonly bench?: boolean }): boolean =>
+  options.dev === true || options.bench === true;
+
+/**
+ * The bench of `request` when the server may read it (`allowed`), hooks are installed and the
+ * request carries a criterion.
+ */
+export function benchOf(request: Request | undefined, allowed: boolean): Bench | undefined {
+  const hooks = allowed ? benchHooks() : undefined;
   if (hooks === undefined || request === undefined) return undefined;
   const criterion = hooks.criterionOf(request);
   return criterion === undefined ? undefined : { hooks, criterion };
 }
 
 /** `root` with the criterion's services in it: what a request of the criterion resolves from. */
-export function benchRoot<C extends Container>(root: C, request: Request | undefined, dev = true): C {
-  const bench = benchOf(request, dev);
+export function benchRoot<C extends Container>(root: C, request: Request | undefined, allowed = true): C {
+  const bench = benchOf(request, allowed);
   if (bench !== undefined) for (const { provide, use } of bench.hooks.services(bench.criterion)) provideIn(root, provide, use);
   return root;
 }

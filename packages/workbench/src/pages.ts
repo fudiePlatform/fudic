@@ -58,6 +58,8 @@ export interface AppCriterion {
   readonly run: string;
   readonly setup: CriterionSetup;
   readonly names: CriterionNames;
+  /** A page's: what its real `paths()` lists, each entry as `path <value>` writes it (SDD-82 §3.7). */
+  readonly paths?: () => Promise<readonly string[] | null>;
 }
 
 export interface BenchPlan {

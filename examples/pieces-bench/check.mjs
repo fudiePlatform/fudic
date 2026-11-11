@@ -118,8 +118,8 @@ const EXCEPTIONS = {
       why: 'The six block ids and the cell-marker predicate: the exception §4.3 names, constants the emit consumes. They are inside `core/hydrate` already, but naming them as exports keeps their identifiers from the minifier and costs 167 bytes on the one piece every hydrating page downloads. If a component ever imports one, the linker has no URL and says so in the build.',
     },
     {
-      match: /^@fudic\/http:src\/(server\/|contract\/server\.ts|csrf-server\.ts|wire\/signature\.ts)/,
-      why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF and the signature a backend computes. None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
+      match: /^@fudic\/http:src\/(server\/|contract\/(server|bench)\.ts|csrf-server\.ts|wire\/signature\.ts)/,
+      why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF, the signature a backend computes, and the workbench hooks the server reads (SDD-82). None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
     },
     {
       match: /^@fudic\/forms:src\/contract\/rule\.ts:(remoteRule|runRulesWith)$/,

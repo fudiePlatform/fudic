@@ -19,7 +19,7 @@ import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
 import type { Wire } from '../wire/wire.js';
-import { benchOf, benchRoot, isNetworkFailure, settleVerdict, type Bench } from './bench.js';
+import { benchAllowed, benchOf, benchRoot, isNetworkFailure, settleVerdict, type Bench } from './bench.js';
 import { SIG_HEADER } from './fn.js';
 import { compose, type Level } from './middleware.js';
 import { conform, conformAll, type Ty } from './wire.js';
@@ -67,7 +67,7 @@ const stale = (): HttpError =>
 
 /** Answers one question to `rule`. */
 export async function serveRule(request: Request, rule: RemoteRule, options: DispatchOptions = {}): Promise<Response> {
-  const bench = benchOf(request, options.dev === true);
+  const bench = benchOf(request, benchAllowed(options));
   if (bench === undefined) return question(request, rule, options);
   const log = { args: {} as Readonly<Record<string, unknown>>, faked: false };
   const out = await question(request, rule, options, bench, log);
@@ -109,7 +109,7 @@ async function question(
       if (!rule.implemented()) throw notFound(rule.missing());
     }
     ruleChains();
-    const code = await withRequest(benchRoot((options.container ?? createRoot)(), request, options.dev === true), () => rule.ask(value, params, ctx));
+    const code = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () => rule.ask(value, params, ctx));
     return verdictResponse(code, ctx, wire);
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);

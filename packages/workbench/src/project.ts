@@ -70,7 +70,7 @@ export async function startProject(input: ProjectInput): Promise<Project | Workb
 
   let app: Promise<App> | undefined;
   const appOf = (): Promise<App> =>
-    (app ??= (input.startApp ?? startApp)(root).then((started) => {
+    (app ??= (input.startApp ?? ((at: string) => startApp(at, `${dir}/app/dist`)))(root).then((started) => {
       server.serveCriteria(started.bench);
       return started;
     }));

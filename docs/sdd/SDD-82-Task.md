@@ -5,37 +5,25 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 15 / 36 — `En curso`. La tarea 16 espera la decisión de SDD §8.3.1 (criterio 22).
+> **Progreso:** 20 / 36 — `En curso`. Fases 1–5 hechas; sigue la fase 6 (grabar).
 
-## Relevo (2026-11-10, al cerrar las fases 3 y 4)
+## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
-**Dónde estamos.** Fases 1–4 commiteadas en la rama (sin push): `2c2636d6` (fase 3, hooks del banco
-en servidor y plugin) y `d1ef21af` (fase 4, el banco ejecuta páginas y flujos). `typecheck` en verde;
-`workbench`, `http`, `server`, `ssr` y `api` al 100 %; `vite` por encima de su suelo y
-`bench-hooks.ts` al 100 %.
-
-**Lo único abierto: tarea 16, criterio 22 (SDD §8.3.1). Espera decisión de Pedro.** En dev todas las
-rutas son `ssr` y el SW no pinta ninguna página: sin red, una página **ya visitada** no se abre desde
-el SW. Lo que sí está probado: el SW se instala en el banco (modo preview forzado) y una página
-**nunca vista** falla como en el navegador (`test/browser/app-offline.test.ts`; el caso de la
-visitada está como `it.todo`). Dos caminos:
-
-- **(a)** El SW guarda las navegaciones que sirvió por red y las da sin red. Cambia el SW también en
-  producción.
-- **(b)** Los criterios con `offline` corren contra un build con `vite preview`. Más lento, uno por
-  ejecución. **Recomendado.**
-
-Decidido el camino: implementarlo, quitar el `it.todo`, marcar la tarea 16, pasar §8.3.1 a §8.2 en
-la spec y seguir con la fase 5.
+**Dónde estamos.** Fases 1–5 commiteadas en la rama (sin push). La tarea 16 quedó cerrada con el
+camino (b) de Pedro: los criterios con `offline` corren contra el build del banco servido con
+`vite preview` (SDD §8.2.24–25); el criterio 22 pasa entero. El vocabulario de §3.7 está en
+`@fudic/terms`, con sus tests contra Chrome (criterio 24) y extremo a extremo sobre el banco
+(`test/browser/app-vocabulary.test.ts`, criterios 25–28). Decisiones de la fase en SDD §8.2.24–34.
 
 **Para quien siga.**
 
-- Las decisiones tomadas al implementar están en SDD §8.2.13–23 (forma final de `BenchHooks`,
+- Las decisiones tomadas al implementar están en SDD §8.2.13–34 (forma final de `BenchHooks`,
   `codes` en el módulo de servidor, `benchRoot` en `@fudic/ssr`, `fails(0)` como `Response.error()`,
   id de criterio, `as` abre la URL del criterio, `meta.negative`, etc.).
-- Los términos de §3.7 (fase 5) aún no existen: las pruebas de la fase 4 traen los suyos en el
-  `fudic/terms/` del proyecto temporal. Al escribir `count`, `hidden` y demás negativos, declarar
-  `meta.negative` (o una función de los argumentos, p. ej. `count … 0`).
+- El `dist` de `@fudic/terms` es lo que el banco carga: tras tocar `src/` o los términos, `pnpm
+  --filter @fudic/terms build` antes de las pruebas del workbench, o el `ctx` llega viejo.
+- Para el ejemplo (fase 9): `abre-sin-red` y `de-verdad-con-cookie` ya están ajustados en §4.9
+  (SDD §8.2.32).
 - Una página de la app solo carga el runtime y el SW si su `<head>` lleva
   `<script type="module" src="fudic:runtime">`.
 - **Entorno Windows:** lanzar las pruebas desde la ruta con `C:` mayúscula
@@ -172,28 +160,28 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Depende de:* 14.
   - *Paquete:* `workbench`.
   - *Fichero:* `src/bench-server.ts`.
-- [ ] **16. Los tests de la fase.** Criterios 19–22, 29–31 y 34, con Playwright.
-  - Hechos 19–21, 29–31 y 34, y la mitad de 22 (una página nunca vista falla sin red). La otra
-    mitad —una visitada se abre desde el SW— espera SDD §8.3.1.
+- [x] **16. Los tests de la fase.** Criterios 19–22, 29–31 y 34, con Playwright.
+  - El 22 contra el build del banco (SDD §8.2.24–25): una página visitada se abre sin red desde el
+    SW, al principio o tras cortar; una nunca vista falla como el navegador.
   - *Depende de:* 12–15.
   - *Paquetes:* `workbench`.
   - *Ficheros:* `test/**`.
 
 ## Fase 5 — el vocabulario
 
-- [ ] **17. `given`.**
+- [x] **17. `given`.**
   - `cookie`, `locale`, `media`, `viewport`, `clock`, `offline`.
   - El reloj llega también al servidor por `now`.
   - *Depende de:* 12, 14.
   - *Paquete:* `terms`.
   - *Ficheros:* `terms/given/*.js`, `src/stock.ts`.
-- [ ] **18. `when`.**
+- [x] **18. `when`.**
   - `go`, `back`, `forward`, `reload`, `check`, `uncheck`, `select`, `hover`, `upload`, `wait`,
     `offline`, `online`.
   - *Depende de:* 12.
   - *Paquete:* `terms`.
   - *Ficheros:* `terms/when/*.js`.
-- [ ] **19. `then`.**
+- [x] **19. `then`.**
   - `title`, `url`, `status`, `count`, `value`, `checked`, `unchecked`, `enabled`, `disabled`,
     `called`, `sent`, `lists`, `not-reloaded`, `requests`, `header`, `downloaded`.
   - El `ctx` gana lo que necesitan: el registro de llamadas, la última respuesta de documento, las
@@ -202,7 +190,8 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquetes:* `terms`, `workbench`.
   - *Ficheros:* `terms/then/*.js`, `terms/src/types.ts`, `terms/src/stock.ts`,
     `workbench/src/extension.ts`.
-- [ ] **20. Los tests de la fase.** Criterios 24–28: cada término con un caso que pasa y otro que falla.
+- [x] **20. Los tests de la fase.** Criterios 24–28: cada término con un caso que pasa y otro que falla.
+  - Contra Chrome en `terms`, y los 25–28 también extremo a extremo sobre el banco en `workbench`.
   - *Depende de:* 17–19.
   - *Paquete:* `terms`.
   - *Ficheros:* `test/**`.

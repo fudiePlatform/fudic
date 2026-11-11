@@ -64,7 +64,7 @@ const compilerRoot = fileURLToPath(new URL('../../compiler', import.meta.url));
 
 function setup(projectRoot: string, routesDir: string): AnyHook {
   const plugin = fudic({ routesDir }) as AnyHook;
-  plugin.config({});
+  plugin.config({}, { command: 'serve', mode: 'development' });
   plugin.configResolved({
     root: projectRoot,
     base: '/',

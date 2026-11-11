@@ -450,13 +450,18 @@ quieta.
 ### 4.6. El reloj
 
 `clock` instala el reloj falso de Playwright en el navegador y pone la hora de `now(criterio)` en el
-servidor; los `later` de la fixture cuentan con ese reloj. `wait <ms>` avanza los dos.
+servidor; los `later` de la fixture cuentan con ese reloj. `wait <ms>` avanza los dos. Los dos están
+parados entre un `wait` y otro, y la página quieta no espera a lo que solo el reloj puede mover
+(§8.2.27–28).
 
 ### 4.7. Sin red
 
 `when offline` pone el contexto sin red (`context.setOffline(true)`); las peticiones que el SW sirve
 de su caché siguen funcionando, las demás fallan como en un navegador. `given offline` hace primero
 una visita con red para instalar el SW y después corta.
+
+Un criterio con `offline` corre contra la app construida y servida con `vite preview` (en dev el SW
+no pinta ninguna ruta): el build del banco, que respeta las fixtures como dev (§8.2.24–25).
 
 ### 4.8. Componentes
 
@@ -552,7 +557,7 @@ criterion de-verdad-con-cookie
     cookie fudic-session ana
   then
     text body "Sesión: ana"
-    header cache-control "private, no-cache"
+    header cache-control "private, no-store"
 ```
 
 **`routes/blog/[slug].fudspec`**
@@ -657,10 +662,8 @@ criterion luis-no-ve-lo-de-ana
 criterion abre-sin-red
   given
     services dos-personas
-    url /blog
-  when
+    url /about
     offline
-    go /about
   then
     status 200
 ```
@@ -886,12 +889,62 @@ Nada.
     argumentos (`count … 0`). Los demás se reintentan hasta el tiempo límite.
 23. **El Vite de la app escucha en su propio puerto**; `/__bench/criterion/<id>` lo sirven los dos
     servidores. Una página que responde un 4xx/5xx no corta el criterio: lo lee `then status`.
+24. **Los criterios sin red corren contra un build** (era §8.3.1, decidido por Pedro el
+    2026-11-11, camino b). En dev todas las rutas son `ssr` y el SW no pinta ninguna, así que un
+    criterio con `offline` (en `given` o en `when`) se ejecuta contra la app construida y servida
+    con `vite preview`, en su propio puerto. Solo esos: los demás criterios, del mismo fichero y de
+    la misma ejecución, siguen en dev. El build se hace la primera vez que un criterio sin red lo
+    pide, en `node_modules/.fudic-bench/<pid>/app/dist`, y se rehace en la siguiente petición si
+    cambió algún fichero de la app. Un build que falla deja en error esos criterios, diciendo por
+    qué (`FUD1207`); los demás corren.
+25. **El build del banco respeta las fixtures; ningún otro.** Es el que se hace o se sirve con el
+    banco ya instalado en el proceso (la regla de §8.2.18). Sus wrappers leen el banco como los de
+    dev, su `server.mjs` exporta `bench = true`, y `createServer` recibe `bench: true` (con sus
+    funciones y sus reglas): una petición con criterio recibe la `data`, las respuestas, los
+    servicios y el reloj de la fixture, y se pinta a demanda, nunca con el fichero prerenderizado.
+    Su `edge` va junto a su `outDir`, no donde lee la vista previa de la app. Un `vite build` de
+    cualquier otro nunca tiene el banco instalado, y un build sin `bench` ignora la cookie aunque
+    lo sirva un proceso con el banco. `@fudic/server` lee los hooks por su símbolo, como
+    `@fudic/ssr`: importarlos traería `async_hooks` a un servidor que corre en cualquier sitio.
+26. **`given` corre antes de abrir.** Sus términos (`cookie`, `locale`, `media`, `viewport`,
+    `clock`, `offline`) preparan el navegador; después, cada persona nombrada hasta ese momento
+    abre la URL del criterio, `main` primero. Un `as` en `given` crea la persona sin abrirla.
+27. **El reloj se para.** `clock` instala el de Playwright y lo pausa en el instante, como el del
+    servidor del criterio: los dos solo avanzan con `wait`. Una persona que llega después empieza
+    donde está el del servidor. Sin `clock`, `wait` espera de verdad.
+28. **Con reloj, la página quieta no espera al tiempo.** Los temporizadores y los frames de la
+    página no cuentan (solo avanzan con `wait`), y un `later` de la fixture que espera al reloj
+    cuenta como retenido, igual que `later.never()` (`held` suma los dos). Por lo mismo, con reloj
+    la página se abre al llegar la respuesta del documento y se lee cuando está quieta: un `later`
+    del `load` deja el documento abierto hasta el `wait`.
+29. **Los términos de navegación vuelven al llegar la respuesta** (`go`, `back`, `forward`,
+    `reload`): el banco ya espera a la página quieta tras cada `when`. `go` a una página que el
+    navegador no puede abrir (sin red) no es un error del paso: lo dice su evidencia, y `then
+    status` lee «no response».
+30. **El `ctx` de un término sabe del criterio** (`CriterionRecord` en `@fudic/terms`): `url`,
+    `resolve(path)` (relativo a la `.fudspec`), `quiet()`, `clock()` y `advance()`, `calls()`,
+    `response()` (la última respuesta de documento), `lastWhen()` (peticiones y descargas del
+    último bloque `when`), `reloaded()` y `paths()` (el `paths()` de verdad, cada entrada como la
+    escribe `path`). En un componente, `calls()` está vacío y `paths()` es null.
+31. **«El último `when»` es el último bloque `when`**, no el último paso: `requests`, `downloaded`
+    y `not-reloaded` cuentan desde que empezó. `check`/`uncheck` hacen clic, como una persona, y
+    no pelean con una página que vuelve a marcar la casilla: eso lo lee el `then`. `upload` usa el
+    `<input type="file">` o el selector que abre el clic. `checked`, `unchecked` y `value` sobre un
+    elemento sin ese estado fallan diciéndolo («not a checkbox», «not a control»).
+32. **Los ejemplos de §4.9 se ajustan a lo que hace el framework.** `abre-sin-red` visita con red
+    la página que abre después sin ella (`given offline` sobre su URL): una página nunca vista no
+    se abre desde el SW, que es el criterio 22. `de-verdad-con-cookie` lee `private, no-store`, la
+    cabecera que fudic pone a una página que lee la sesión (SDD-69), salvo que la ruta escriba la
+    suya; el criterio 28 se prueba con una ruta que escribe `private, no-cache`.
+
+33. **Un `then` que choca con una navegación lee otra vez.** Si el documento se va mientras el
+    término lee (una recarga o una navegación que la página empezó sola, después de parecer
+    quieta), el banco espera a la página quieta y lee una vez más; si vuelve a pasar, es un error
+    del paso. Otro error del término no se reintenta.
+34. **El banco del servidor no es una pieza del navegador.** Los hooks de `@fudic/http`
+    (`contract/bench.ts`) entran en la excepción de la mitad de servidor de la comprobación de
+    piezas, con `contract/server.ts`.
 
 ### 8.3. Pendiente de decidir
 
-1. **§4.7 y criterio 22, «una página visitada se abre desde el SW sin red».** En dev todas las
-   rutas son `ssr` (el manifiesto de dev no tiene chunks enlazables) y el SW no pinta ninguna: sin
-   red, toda navegación falla. Lo que sí funciona: el SW se instala, y una página nunca vista
-   falla como en el navegador. Caminos: (a) el SW guarda las navegaciones servidas por red y las
-   da sin red (cambia el SW también en producción), o (b) el criterio con `offline` corre contra
-   un build con `vite preview` (lento, uno por ejecución).
+Nada.

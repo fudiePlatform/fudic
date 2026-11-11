@@ -102,7 +102,7 @@ describe('the render wrapper', () => {
     // `load` and the components have to inject the same instances, or a root service would
     // be built twice for one response. `load` runs inside the request of that container
     // (SDD-56 §4.6), so a bare `inject()` finds it: its ctx carries none.
-    expect(code).toContain('withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false)))');
+    expect(code).toContain('withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false, false)))');
     expect(code).toContain('yield* flushHead(page(data, io(ctx), $root, layout));');
   });
 
@@ -168,7 +168,7 @@ describe('the dev server', () => {
     const asked: string[] = [];
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const plugin = fudic({ routesDir: 'routes' }) as any;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
     let handler!: (req: { url: string }, r: Res, next: () => void) => void;
     await plugin.configureServer({
@@ -198,7 +198,7 @@ describe('the dev server', () => {
     const root = project({ 'x-owner.fud': OWNER, 'x-plain.fud': PLAIN });
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const plugin = fudic({ routesDir: '.' }) as any;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
 
     const owner = await plugin.transform('', `${join(root, 'x-owner.fud')}?ioc`);

@@ -28,6 +28,11 @@ export interface ServerModuleInput {
   /** The file that exports the server root's `handler`, when the app has functions. */
   readonly functions?: string;
   readonly config: ServeConfig;
+  /**
+   * The workbench's own build (SDD-82 §4.7): the module says so, and the preview that serves it
+   * with the bench installed answers the bench's criteria.
+   */
+  readonly bench?: boolean;
 }
 
 const relative = (file: string): string => JSON.stringify(`./${file}`);
@@ -75,6 +80,7 @@ export function emitServerModule(input: ServerModuleInput): string {
     "/** fudic.json's `serve`: what the server is told, unless whoever mounts it says otherwise. */",
     `export const config = ${JSON.stringify(input.config)};`,
     '',
+    ...(input.bench === true ? ["/** Built by the workbench for its criteria: never deployed. */", 'export const bench = true;', ''] : []),
     '/** The app, given where its prerendered pages are. */',
     'export function createApp(io) {',
     '  const table = ROUTES.map((r) => ({ pattern: r.pattern, renders: r.load !== undefined, hints: async () => r.hints }));',

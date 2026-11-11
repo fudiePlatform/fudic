@@ -189,7 +189,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     }
   }
   lines.push('');
-  const loadCall = `$ready.then(() => $runLoad($load, $ctx, ${String(api?.dev === true)}))`;
+  const loadCall = `$ready.then(() => $runLoad($load, $ctx, ${String(api?.dev === true)}, ${String(options.bench === true)}))`;
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   // The two main-thread entries, by URL (BUG-31 §T1).

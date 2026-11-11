@@ -93,11 +93,17 @@ export interface Bench extends BenchHooks {
   calls(criterion: string): readonly BenchCall[];
   /** Move its clock `ms` forward, firing what falls due. */
   advance(criterion: string, ms: number): void;
+  /**
+   * Stand its clock at `at` (ms since the epoch), as `clock <label>` of its `given` says: from now
+   * on the server's `Date` and its `later` read it, and a backend asking learns its name.
+   */
+  setClock(criterion: string, at: number, label: string): void;
   /** The names it runs with, or `undefined` for a criterion that is not running. */
   names(criterion: string): CriterionNames | undefined;
   /**
-   * How many answers it has handed out that never arrive (`later.never()`), each one a request
-   * the page will wait on forever: the quiet page does not wait for them (SDD-82 §4.5).
+   * How many answers it holds that will not arrive on their own, each one a request the page
+   * waits on: those that never arrive (`later.never()`), and those that wait for its clock to be
+   * moved (`later` under `clock`). The quiet page does not wait for them (SDD-82 §4.5, §4.6).
    */
   held(criterion: string): number;
 }
@@ -110,7 +116,7 @@ interface Timer {
 
 interface Running {
   readonly setup: CriterionSetup;
-  readonly names: CriterionNames;
+  names: CriterionNames;
   readonly services: readonly ServiceOverride[];
   readonly calls: BenchCall[];
   /** Data requests so far, by route. */
@@ -223,8 +229,18 @@ export function createBench(): Bench {
       state.now += ms;
       fire(state);
     },
+    setClock: (criterion, at, label) => {
+      const state = of(criterion);
+      if (state === undefined) return;
+      state.now = at;
+      state.names = { ...state.names, clock: label };
+      fire(state);
+    },
     names: (criterion) => of(criterion)?.names,
-    held: (criterion) => of(criterion)?.held ?? 0,
+    held: (criterion) => {
+      const state = of(criterion);
+      return state === undefined ? 0 : state.held + state.timers.length;
+    },
   };
 }
 

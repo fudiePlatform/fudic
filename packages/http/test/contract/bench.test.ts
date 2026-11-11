@@ -112,6 +112,23 @@ describe('a function of a criterion (criteria 13, 23)', () => {
     ]);
   });
 
+  it('the workbench’s own build answers the bench’s criteria as dev does (SDD-82 §4.7)', async () => {
+    const calls = install({ answers: { search: ['luis'] }, services: () => [{ provide: Clock, use: () => 'del banco' }] });
+    const search = contract('search', () => ['real'], { returns: { list: 'str' } });
+    const now = contract('now', () => inject(Clock), { returns: 'str' });
+    const built = (c: ReturnType<typeof contract>) =>
+      serve(
+        { request: new Request(`https://app.test/_fudic/fn/routes/usuarios/${c.spec.name}`, { method: 'PUT', body: '{}', headers: { 'content-type': 'application/json', ...COOKIE } }), contract: c, page: {}, route: {} },
+        { bench: true },
+      );
+    expect(await (await built(search)).json()).toEqual(['luis']);
+    expect(await (await built(now)).json()).toBe('del banco');
+    expect(calls.map((x) => [x.name, x.faked])).toEqual([
+      ['search', true],
+      ['now', false],
+    ]);
+  });
+
   it('a request without the criterion, or outside dev, is not the bench’s', async () => {
     const calls = install({ answers: { search: ['luis'] } });
     const search = contract('search', () => ['real'], { returns: { list: 'str' } });
@@ -253,8 +270,16 @@ describe('a remote rule of a criterion (criterion 15)', () => {
       { dev: true },
     );
     expect(await asked.json()).toEqual({ ok: false, fails: 'real' });
+    // The workbench's own build asks the bench as dev does (SDD-82 §4.7).
+    const built = await serveRule(
+      new Request('https://app.test/_fudic/rule/rules/people/real', { method: 'POST', body: JSON.stringify({ value: 'ana', params: {} }), headers: { 'content-type': 'application/json', ...COOKIE } }),
+      remoteRule('rules/people', 'real') as never,
+      { bench: true },
+    );
+    expect(await built.json()).toEqual({ ok: true });
     expect((await ask('nadie', 'x')).status).toBe(404);
     expect(calls.map((x) => [x.name, x.faked, x.status])).toEqual([
+      ['real', false, 200],
       ['real', false, 200],
       ['nadie', false, 404],
     ]);
@@ -274,6 +299,8 @@ describe('load of a criterion (criteria 10–12, 14)', () => {
     expect(await runLoad(plain as never, ctx(), true)).toEqual({ users: ['ana', 'luis'] });
     expect(await runLoad(plain as never, ctx({}), true)).toEqual({ users: ['real'] });
     expect(await runLoad(plain as never, ctx(), false)).toEqual({ users: ['real'] });
+    // The workbench's own build: not dev, but the bench's (SDD-82 §4.7).
+    expect(await runLoad(plain as never, ctx(), false, true)).toEqual({ users: ['ana', 'luis'] });
   });
 
   it('criterion 11: each data request takes the next; the last repeats', async () => {

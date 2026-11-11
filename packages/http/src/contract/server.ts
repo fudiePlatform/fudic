@@ -25,7 +25,7 @@ import { contractIds, contractsOf, SIG_HEADER, SIG_PARAM, type ServerContract } 
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
 import { rulesHandler } from './rule-route.js';
-import { benchOf, benchRoot, isNetworkFailure, settleAnswer, settleData, type Bench } from './bench.js';
+import { benchAllowed, benchOf, benchRoot, isNetworkFailure, settleAnswer, settleData, type Bench } from './bench.js';
 import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
@@ -89,7 +89,7 @@ async function benchAnswer(
 }
 
 export async function serve(input: ServeInput, options: DispatchOptions = {}): Promise<Response> {
-  const bench = benchOf(input.request, options.dev === true);
+  const bench = benchOf(input.request, benchAllowed(options));
   if (bench === undefined) return dispatch(input, options);
   const log: { args: Readonly<Record<string, unknown>>; faked: boolean; mismatch: boolean } = { args: {}, faked: false, mismatch: false };
   const out = await dispatch(input, options, bench, log);
@@ -160,7 +160,7 @@ async function dispatch(
     await checkRules(spec.rules, all);
 
     const { steps } = compose(spec.chain, 'server');
-    const value = await withRequest(benchRoot((options.container ?? createRoot)(), request, options.dev === true), () =>
+    const value = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () =>
       run(steps as never, ctx, async (inner: ServerContext) => {
         const done = await withForm(spec.form, inner);
         return (handler as (c: ServerContext) => unknown)(done);
@@ -251,13 +251,14 @@ export function implementation<F>(piece: PagePiece<F>): F {
  * `load` through the server halves of its chain. Without an implementation the page is a 404,
  * with what is missing in `detail` only in dev.
  */
-export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerContext, dev = false): Promise<unknown> {
+export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerContext, dev = false, bench = dev): Promise<unknown> {
   const later = load.spec.later ?? [];
-  // The workbench's `data` takes its place, `later` fields and all (SDD-82 §4.2).
-  const bench = benchOf((ctx as { readonly request?: Request }).request, dev);
-  const held = bench?.hooks.data(bench.criterion, load.spec.id);
+  // The workbench's `data` takes its place, `later` fields and all (SDD-82 §4.2): in dev, and
+  // in the workbench's own build (§4.7).
+  const benched = benchOf((ctx as { readonly request?: Request }).request, bench);
+  const held = benched?.hooks.data(benched.criterion, load.spec.id);
   if (held !== undefined) {
-    return settleData(bench!, held.value, later).then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
+    return settleData(benched!, held.value, later).then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
   }
   const handler = load.slot.get();
   if (handler === undefined) return Promise.reject(missing(load.slot.missing(), dev));

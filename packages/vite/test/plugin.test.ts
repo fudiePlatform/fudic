@@ -103,7 +103,7 @@ function setup(
   projectRoot = root,
 ): AnyHook {
   const plugin = fudic({ routesDir: 'fixtures', ...userOptions }) as AnyHook;
-  plugin.config({});
+  plugin.config({}, { command: 'serve', mode: 'development' });
   plugin.configResolved({ root: projectRoot, base: '/', command, build: { outDir: 'dist' } });
   return plugin;
 }
@@ -125,7 +125,7 @@ const emittedNames = (ctx: { emitFile: ReturnType<typeof vi.fn> }): string[] =>
 describe('config / configResolved', () => {
   it('config declares the custom shell entry', () => {
     const plugin = fudic() as AnyHook;
-    expect(plugin.config({})).toMatchObject({ appType: 'custom' });
+    expect(plugin.config({}, { command: 'serve', mode: 'development' })).toMatchObject({ appType: 'custom' });
   });
 
   it('accepts a manifestUrl that does not sit under base (fallback file name)', () => {
@@ -241,7 +241,7 @@ describe('buildStart', () => {
     const errors: string[] = [];
     const warnings: string[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({
       root,
       base: '/',
@@ -630,7 +630,7 @@ describe('configurePreviewServer middleware', () => {
   function withPreview(outDir: string, previewRoot: string, https = false): Preview {
     const used: Middleware[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({ root: previewRoot, base: '/', command: 'build', build: { outDir } });
     const after = plugin.configurePreviewServer({
       config: { preview: { https } },

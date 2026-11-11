@@ -26,7 +26,33 @@ import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 const TERMS_PACKAGE = toPosix(fileURLToPath(new URL('../../../terms', import.meta.url)));
 
 /** The stock `then` vocabulary of SDD-59 §3.5. */
-const STOCK_THEN = ['attribute', 'focused', 'hidden', 'min-height', 'min-width', 'present', 'slotted', 'text', 'visible'];
+const STOCK_THEN = [
+  'attribute',
+  'called',
+  'checked',
+  'count',
+  'disabled',
+  'downloaded',
+  'enabled',
+  'focused',
+  'header',
+  'hidden',
+  'lists',
+  'min-height',
+  'min-width',
+  'not-reloaded',
+  'present',
+  'requests',
+  'sent',
+  'slotted',
+  'status',
+  'text',
+  'title',
+  'unchecked',
+  'url',
+  'value',
+  'visible',
+];
 
 const SPEC = 'component ui-button\n\ncriterion renders\n  then\n    visible ui-button\n';
 

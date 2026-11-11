@@ -27,6 +27,9 @@ function fakeBrowser(failing: (n: number) => boolean = () => false) {
         },
         newPage: async () => ({
           context: () => context,
+          // What a page reports of its documents and downloads (SDD-82 §3.7): nothing here.
+          on: () => undefined,
+          mainFrame: () => undefined,
           setDefaultTimeout: (ms: number) => void record.timeouts.push(ms),
           setDefaultNavigationTimeout: (ms: number) => void record.timeouts.push(ms),
         }),

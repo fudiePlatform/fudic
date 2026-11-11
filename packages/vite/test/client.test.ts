@@ -182,7 +182,7 @@ type AnyHook = any;
 describe("the plugin's ?client branch", () => {
   const plugin = ((): AnyHook => {
     const p = fudic({ routesDir: 'routes' }) as AnyHook;
-    p.config({});
+    p.config({}, { command: 'serve', mode: 'development' });
     p.configResolved({ root, base: '/', command: 'build', build: { outDir: 'dist' } });
     return p;
   })();
@@ -211,7 +211,7 @@ describe("the plugin's ?client branch", () => {
 describe('in dev, a route chunk is served at the same stable prefix (SDD-39 §4.12)', () => {
   const plugin = ((): AnyHook => {
     const p = fudic({ routesDir: 'routes' }) as AnyHook;
-    p.config({});
+    p.config({}, { command: 'serve', mode: 'development' });
     p.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
     p.buildStart.call({ warn: vi.fn(), emitFile: vi.fn() });
     return p;

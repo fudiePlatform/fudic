@@ -21,12 +21,12 @@ import {
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
 import type { App } from './app.js';
-import { planApp, type AppFixtures } from './app-plan.js';
+import { needsOffline, planApp, type AppFixtures } from './app-plan.js';
 import { firstLine } from './browser.js';
 import { MissingTermError, namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import type { LoadedExtension } from './extension.js';
 import { loadProjectExtension, missingRuntime, resolveRuntime, type TermsRuntime } from './runtime.js';
-import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
+import { planBench, readCriterion, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
 import {
   problemOf,
   toWire,
@@ -139,7 +139,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
     fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
   } else {
-    fixtureOk = appCriteria(target, spec, executed, app, context);
+    fixtureOk = await appCriteria(target, spec, executed, app, context);
   }
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
   const criteria =
@@ -201,23 +201,38 @@ async function executeFixture(
  * The criteria of a page or a flow: each one on the app's Vite, with what its fixture lines
  * name. Without the app, or with a fixture that threw, every one ends in error saying why.
  */
-function appCriteria(
+async function appCriteria(
   target: BenchTarget,
   spec: SpecFile,
   executed: { fixtures: ExecutedFixtures; error?: FudDiagnostic },
   app: App | undefined,
   context: SpecContext,
-): readonly PlannedCriterion[] {
+): Promise<readonly PlannedCriterion[]> {
   const pattern = target.route === undefined ? undefined : context.page(target.route)?.pattern;
+  // The criteria without network run on the app built (§4.7): built only when one of them is here.
+  const offline = app !== undefined && spec.criteria.some((c) => needsOffline(readCriterion(c).steps)) ? await previewOf(app) : undefined;
   const planned = planApp({
     target,
     spec,
     fixtures: executed.fixtures as AppFixtures,
-    app: app ?? { origin: '', bench: undefined as never, run: '' },
+    app: app ?? { origin: '', bench: undefined as never, run: '', paths: undefined as never },
     ...(pattern !== undefined ? { pattern } : {}),
+    ...(typeof offline === 'string' ? { offline } : {}),
   });
   const problem = executed.error ?? (app === undefined ? FUD1207({ reason: "the app's Vite is not running" }) : undefined);
-  return problem === undefined ? planned : planned.map((c) => ({ ...c, error: problem.message, problem }));
+  if (problem !== undefined) return planned.map((c) => ({ ...c, error: problem.message, problem }));
+  // A build that failed leaves the criteria without network in error, saying why; the rest run.
+  if (offline === undefined || typeof offline === 'string') return planned;
+  return planned.map((c) => (needsOffline(c.steps) ? { ...c, error: offline.message, problem: offline } : c));
+}
+
+/** The origin of the app built, or why it could not be built. */
+async function previewOf(app: App): Promise<string | FudDiagnostic> {
+  try {
+    return (await app.offline()).origin;
+  } catch (error) {
+    return FUD1207({ reason: `the app does not build for the criteria without network: ${firstLine(error)}` });
+  }
 }
 
 /** A fixture that threw leaves the criteria that mount with props in error; the rest still run. */

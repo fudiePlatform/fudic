@@ -56,6 +56,9 @@ async function session(
   return loadSession({ target, vite, dir, ...extra });
 }
 
+/** The keys of the stock ctx: the page, its four tools, and what it knows of the criterion (SDD-82 §3.7). */
+const STOCK_CTX = ['act', 'advance', 'calls', 'clock', 'lastWhen', 'locate', 'page', 'paths', 'quiet', 'reloaded', 'resolve', 'response', 'text', 'url'];
+
 describe('loadSession', () => {
   it('finds the terms in the framework layer when the project has none', async () => {
     project = tempProject('framework');
@@ -207,7 +210,7 @@ describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
     project.write('src/components/app-tabs.fudspec', SPEC);
     const loaded = await session(project, 'app-tabs', {}, { fixture: null });
     expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`]);
-    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'page', 'text']);
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual(STOCK_CTX);
     expect(loaded.criteria.map((c) => c.error)).toEqual([undefined, undefined]);
   }, 60_000);
 
@@ -242,7 +245,7 @@ describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
     const loaded = await session(project, 'app-tabs', {}, { fixture: null });
     expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`, project.path(BENCH_FILE)]);
     expect(typeof loaded.extensions[1]!.extension.setup).toBe('function');
-    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'openMenu', 'page', 'text']);
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual([...STOCK_CTX, 'openMenu'].sort());
     expect(loaded.criteria.map((c) => c.error)).toEqual([undefined, undefined]);
   }, 60_000);
 
@@ -252,7 +255,7 @@ describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
     project.write(BENCH_FILE, 'export const unused = 1;\n');
     const loaded = await session(project, 'app-tabs', {}, { fixture: null });
     expect(loaded.extensions[1]).toEqual({ file: project.path(BENCH_FILE), extension: {} });
-    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'page', 'text']);
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual(STOCK_CTX);
   }, 60_000);
 
   it('a fudic/bench.js that throws while loading leaves every criterion in error, with the message and its path', async () => {
@@ -305,8 +308,40 @@ describe('loadSession — a page or a flow (SDD-82 §4.2, §4.3)', () => {
     };
     http = createServer();
     vite = await startVite({ root: project.root, routesDir: benchRoutesDir(), http });
-    const app = { vite, origin: 'http://127.0.0.1:9', bench: {} as never, run: 'r', close: async () => undefined };
+    const app = { vite, origin: 'http://127.0.0.1:9', bench: {} as never, run: 'r', offline: () => Promise.reject(new Error('unused')), paths: async () => null, close: async () => undefined };
     const loaded = await loadSession({ target, vite, dir: benchDir(project.root), app: async () => app });
     expect(loaded.criteria).toMatchObject([{ id: 'entra', problem: { code: 'FUD0973' } }]);
+  });
+});
+
+describe('loadSession — the criteria without network (SDD-82 §4.7)', () => {
+  /** A flow with a criterion that cuts the network and one that does not, on an app whose build is `offline`. */
+  async function offlineSession(p: TempProject, offline: () => Promise<{ origin: string; close(): Promise<void> }>) {
+    const text = 'flow alta\n\ncriterion sin-red\n  given\n    url /\n  when\n    offline\n  then\n    title "x"\n\ncriterion con-red\n  given\n    url /\n  then\n    title "x"\n';
+    p.write('src/flows/alta.fudspec', text);
+    const target: BenchTarget = { kind: 'flow', tag: 'flow-alta', component: p.path('src/flows/alta.fudspec'), spec: p.path('src/flows/alta.fudspec'), fixture: null, projectRoot: p.root };
+    http = createServer();
+    vite = await startVite({ root: p.root, routesDir: benchRoutesDir(), http });
+    const app = { vite, origin: 'http://127.0.0.1:9', bench: {} as never, run: 'r', offline, paths: async () => null, close: async () => undefined };
+    return loadSession({ target, vite, dir: benchDir(p.root), app: async () => app });
+  }
+
+  it('the one without network opens on the app built; the other on dev', async () => {
+    project = tempProject('session-offline');
+    const loaded = await offlineSession(project, async () => ({ origin: 'http://127.0.0.1:7', close: async () => undefined }));
+    expect(loaded.criteria.map((c) => [c.id, c.app?.origin, c.error])).toEqual([
+      ['sin-red', 'http://127.0.0.1:7', undefined],
+      ['con-red', 'http://127.0.0.1:9', undefined],
+    ]);
+  });
+
+  it('a build that fails leaves the one without network in error, saying why; the other runs', async () => {
+    project = tempProject('session-offline-broken');
+    const loaded = await offlineSession(project, () => Promise.reject(new Error('the build broke\nat line 2')));
+    expect(loaded.criteria).toMatchObject([
+      { id: 'sin-red', error: 'could not run: the app does not build for the criteria without network: the build broke', problem: { code: 'FUD1207' } },
+      { id: 'con-red' },
+    ]);
+    expect(loaded.criteria[1]!.error).toBeUndefined();
   });
 });

@@ -21,6 +21,18 @@ const flatText = new Function('element', `return (${FLAT_TEXT})(element);`) as (
 export function stockContext(host: TermHost): TermContext {
   return {
     page: host.page,
+    get url() {
+      return host.url;
+    },
+    resolve: (path) => host.resolve(path),
+    quiet: () => host.quiet(),
+    clock: (at, label) => host.clock(at, label),
+    advance: (ms) => host.advance(ms),
+    calls: () => host.calls(),
+    response: () => host.response(),
+    lastWhen: () => host.lastWhen(),
+    reloaded: () => host.reloaded(),
+    paths: () => host.paths(),
     locate: (ref) => guardedLocator(host.page, ref, (located, box, source) => host.onLocate(located, box, source)),
     act: (target, gesture) => host.settle(unguarded(target), gesture),
     text: (target: Locator) => target.evaluate(flatText),

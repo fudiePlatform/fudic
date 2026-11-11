@@ -100,7 +100,7 @@ function context(): ReportContext & {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function plugin(): any {
   const p = fudic({ routesDir: 'routes' }) as any;
-  p.config({});
+  p.config({}, { command: 'serve', mode: 'development' });
   p.configResolved({ root, base: '/', command: 'build', build: { outDir: 'dist' } });
   return p;
 }

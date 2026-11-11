@@ -287,7 +287,7 @@ describe('the wrapper of a route with a .fudapi (§4.4)', () => {
     const text = emitRenderChunk({ pageModule: '/p.fud', withLoad: true, api });
     expect(text).toContain(`import { ready as $ready } from "${SERVER_ROOT_ID}";`);
     expect(text).toContain('import { load as $load, layout as $layout, paths as $paths } from "fudic:routes/blog/[slug]";');
-    expect(text).toContain('$ready.then(() => $runLoad($load, $ctx, true))');
+    expect(text).toContain('$ready.then(() => $runLoad($load, $ctx, true, false))');
     expect(text).toContain('return $impl($layout)(ctx, data);');
     expect(text).toContain('return $impl($paths)();');
     expect(text).not.toContain('?server');

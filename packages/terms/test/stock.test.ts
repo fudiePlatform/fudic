@@ -8,7 +8,7 @@ import { isAbsolute, join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { defineExtension, stock, termsDir, type BenchExtension, type TermContext } from '../src/index.js';
-import { fakeHost, launch, type FakeHost } from './browser.js';
+import { fakeHost, launch, SPEC_DIR, type FakeHost } from './browser.js';
 
 let browser: Browser;
 let page: Page;
@@ -38,15 +38,35 @@ describe('stock', () => {
     expect(ctx.page).toBe(host.page);
   });
 
+  it('hands over what the host knows of the criterion (SDD-82 §3.7), as the host answers it', async () => {
+    host.record.url = 'http://127.0.0.1:1/usuarios';
+    host.record.calls = [{ name: 'save', args: { id: 1 }, faked: true, status: 200 }];
+    host.record.response = { status: 201, headers: { 'x-a': 'b' } };
+    host.record.lastWhen = { requests: 3, downloads: ['a.csv'] };
+    host.record.reloaded = true;
+    host.record.paths = ['hola'];
+    expect(ctx.url).toBe('http://127.0.0.1:1/usuarios');
+    expect(ctx.resolve('hola.txt')).toBe(`${SPEC_DIR}/hola.txt`);
+    expect(ctx.calls()).toBe(host.record.calls);
+    expect(ctx.response()).toBe(host.record.response);
+    expect(ctx.lastWhen()).toBe(host.record.lastWhen);
+    expect(await ctx.reloaded()).toBe(true);
+    expect(await ctx.paths()).toEqual(['hola']);
+    await ctx.quiet();
+    await ctx.clock(5, 'then');
+    await ctx.advance(10);
+    expect(host.told).toEqual(['quiet', 'clock 5 then', 'advance 10']);
+  });
+
   it('ignores the ctx it receives: the base ctx is built from the host alone', async () => {
-    const other: TermContext = {
+    const other = {
       page,
       locate: () => {
         throw new Error('not this one');
       },
       act: () => Promise.reject(new Error('not this one')),
       text: () => Promise.reject(new Error('not this one')),
-    };
+    } as unknown as TermContext;
     const built = stock.context!(other, host);
     expect(built).not.toBe(other);
     await page.setContent('<ui-a>hi</ui-a>');

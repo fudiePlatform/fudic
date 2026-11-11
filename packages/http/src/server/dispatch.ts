@@ -21,6 +21,11 @@ import { hasFiles, splitValue, VALUE_PART } from '../wire/files.js';
 export interface DispatchOptions {
   /** Dev: a 500 carries its message in `detail`. Never in a build. */
   readonly dev?: boolean;
+  /**
+   * The workbench's own build (SDD-82 §4.7): a request of one of its criteria is answered by the
+   * bench, as in dev. Never in a build made for anything else.
+   */
+  readonly bench?: boolean;
   /** Told about every error that is not an `HttpError`: in dev, the overlay. */
   readonly onError?: (error: unknown) => void;
   /**

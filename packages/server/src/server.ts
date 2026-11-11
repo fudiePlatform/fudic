@@ -59,6 +59,16 @@ export function matchRoute(routes: readonly AppRoute[], pathname: string): AppRo
   return routes.find((route) => matchesPattern(route.pattern, pathname)) ?? null;
 }
 
+/**
+ * The workbench's criterion a request belongs to (SDD-82 §3.8), when its hooks are installed in
+ * this process. Read by shape off their registered symbol, as `@fudic/ssr` reads them: importing
+ * them would bring Node's `async_hooks` into a server that runs anywhere.
+ */
+function benchCriterionOf(request: Request): string | undefined {
+  const hooks = (globalThis as { [key: symbol]: { criterionOf(request: Request): string | undefined } | undefined })[Symbol.for('fudic.bench')];
+  return hooks?.criterionOf(request);
+}
+
 /** `base` + `path`, a double slash collapsed: `/app/` + `/en` → `/app/en`. */
 const underBase = (base: string, path: string): string => `${base}${path}`.replace(/\/{2,}/gu, '/');
 
@@ -97,6 +107,7 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
   const functions: Handler | undefined = app.functions?.({
     base: app.base,
     dev,
+    ...(options.bench === true ? { bench: true } : {}),
     secureCookies: settings.secureCookies,
     ...(secret !== undefined ? { secret } : {}),
     ...(options.onError !== undefined ? { onError: options.onError } : {}),
@@ -194,7 +205,10 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
   };
 
   const page = async (route: AppRoute, pathname: string, url: string, request: Request, hooks: FetchHooks | undefined): Promise<Response | null> => {
-    const served = await prerenderedPage(route, pathname, hooks);
+    // A criterion of the workbench's own build is painted on demand, with its fixture: never the
+    // prerendered file, which is the page without it (SDD-82 §4.2).
+    const benched = options.bench === true && route.renders && benchCriterionOf(request) !== undefined;
+    const served = benched ? null : await prerenderedPage(route, pathname, hooks);
     if (served !== null) return served;
     // No prerendered file and nothing to render it with: this route produced nothing to serve.
     if (!route.renders) return null;

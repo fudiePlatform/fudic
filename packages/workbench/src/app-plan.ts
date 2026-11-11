@@ -9,7 +9,7 @@ import { FUD1207 } from '@fudic/diagnostics';
 import type { SpecFile } from '@fudic/spec';
 import type { CriterionNames, CriterionSetup, ServiceOverride } from '@fudic/vite';
 import type { App } from './app.js';
-import { readCriterion, type FixtureLines, type PlannedCriterion } from './pages.js';
+import { readCriterion, type FixtureLines, type PlannedCriterion, type PlannedStep } from './pages.js';
 import type { BenchTarget } from './target.js';
 
 /** A page's or a flow's fixture, executed: groups by name. */
@@ -24,9 +24,19 @@ export interface AppPlanInput {
   readonly target: BenchTarget;
   readonly spec: SpecFile;
   readonly fixtures: AppFixtures;
-  readonly app: Pick<App, 'origin' | 'bench' | 'run'>;
+  readonly app: Pick<App, 'origin' | 'bench' | 'run' | 'paths'>;
   /** A page's URL pattern: `/blog/:slug`. */
   readonly pattern?: string;
+  /** Where the app built is served: the origin of every criterion without network (§4.7). */
+  readonly offline?: string;
+}
+
+/** The term that cuts the network, in `given` or in `when`. */
+const OFFLINE = 'offline';
+
+/** Whether a criterion goes without network: it runs on the app built (SDD-82 §4.7). */
+export function needsOffline(steps: readonly PlannedStep[]): boolean {
+  return steps.some((step) => step.term === OFFLINE && step.block !== 'then');
 }
 
 /** `/blog/:slug` with `dsd-in-depth`: each param takes its segment of the value, in order. */
@@ -34,6 +44,22 @@ export function fillPattern(pattern: string, value: string): string {
   const parts = value.split('/');
   let at = 0;
   return pattern.replace(/:[^/]+/gu, () => encodeURIComponent(parts[at++] ?? ''));
+}
+
+/**
+ * One entry of a real `paths()` as `path <value>` writes it: a string or a number as it is, an
+ * object by the params of `pattern` in order (`{ year: 2026, slug: 'hola' }` → `2026/hola`).
+ */
+export function entryValue(pattern: string, entry: unknown): string {
+  if (typeof entry !== 'object' || entry === null) return String(entry);
+  const names = [...pattern.matchAll(/:([^/]+)/gu)].map((match) => match[1]!);
+  return names.map((name) => String((entry as Record<string, unknown>)[name] ?? '')).join('/');
+}
+
+/** What the page's real `paths()` lists, as values; null when it has no `paths`. */
+async function listed(app: Pick<App, 'paths'>, pattern: string): Promise<readonly string[] | null> {
+  const entries = await app.paths(pattern);
+  return entries === null ? null : entries.map((entry) => entryValue(pattern, entry));
 }
 
 /** `<root>/src/routes/usuarios.fud` → `routes/usuarios`: the `<id>` of the route's `.fudapi`. */
@@ -91,7 +117,9 @@ export function planApp(input: AppPlanInput): PlannedCriterion[] {
       planned.push({ ...plan, error, problem: FUD1207({ reason: error }) });
       continue;
     }
-    planned.push({ ...plan, app: { origin: app.origin, bench: app.bench, run: app.run, setup, names } });
+    const origin = needsOffline(steps) ? (input.offline ?? app.origin) : app.origin;
+    const paths = target.kind === 'page' ? { paths: () => listed(app, input.pattern ?? '/') } : {};
+    planned.push({ ...plan, app: { origin, bench: app.bench, run: app.run, setup, names, ...paths } });
   }
   return planned;
 }

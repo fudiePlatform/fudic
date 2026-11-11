@@ -1,16 +1,17 @@
 /**
  * SDD-82 §3.6, §4.2, §4.3: the plan of a page's and a flow's `.fudspec` — the URL each criterion
- * opens, and what the bench begins it with, read off its fixture lines and the executed fixture.
+ * opens, and what the bench begins it with, read off its fixture lines and the executed fixture;
+ * where a criterion without network opens (§4.7), and what the real `paths()` lists (§3.7).
  */
 
 import { describe, expect, it } from 'vitest';
 import { parseSpec } from '@fudic/spec';
 import type { Bench } from '@fudic/vite';
-import { fillPattern, planApp, routeId, type AppFixtures } from '../src/app-plan.js';
+import { entryValue, fillPattern, needsOffline, planApp, routeId, type AppFixtures } from '../src/app-plan.js';
 import { readCriterion } from '../src/pages.js';
 import type { BenchTarget } from '../src/target.js';
 
-const APP = { origin: 'http://127.0.0.1:9', bench: {} as Bench, run: 'r' };
+const APP = { origin: 'http://127.0.0.1:9', bench: {} as Bench, run: 'r', paths: async (pattern: string) => (pattern === '/blog/:slug' ? ['hola', { slug: 'dsd' }] : null) };
 const PAGE: BenchTarget = {
   kind: 'page',
   tag: 'page-blog-slug',
@@ -86,5 +87,44 @@ describe('planApp', () => {
 
   it('skips a criterion without a slug', () => {
     expect(plan('page /x\n\ncriterion\n  then\n    x\n')).toEqual([]);
+  });
+});
+
+describe('the criteria without network (SDD-82 §4.7)', () => {
+  it('a criterion that cuts the network, in given or in when, needs the app built; one that names it in then does not', () => {
+    const steps = (block: 'given' | 'when' | 'then') => [{ block, term: 'offline', args: [], offset: 0 }];
+    expect(needsOffline(steps('given'))).toBe(true);
+    expect(needsOffline(steps('when'))).toBe(true);
+    expect(needsOffline(steps('then'))).toBe(false);
+    expect(needsOffline([])).toBe(false);
+  });
+
+  it('opens on the app built when it is there, and on dev otherwise; the rest always on dev', () => {
+    const text = 'page /x\n\ncriterion sin-red\n  when\n    offline\n  then\n    x\n\ncriterion con-red\n  then\n    x\n';
+    const built = planApp({ target: PAGE, spec: parseSpec(text).value, fixtures: {}, app: APP, offline: 'http://127.0.0.1:7' });
+    expect(built.map((c) => c.app!.origin)).toEqual(['http://127.0.0.1:7', APP.origin]);
+    const unbuilt = planApp({ target: PAGE, spec: parseSpec(text).value, fixtures: {}, app: APP });
+    expect(unbuilt.map((c) => c.app!.origin)).toEqual([APP.origin, APP.origin]);
+  });
+});
+
+describe('the real paths() (SDD-82 §3.7)', () => {
+  it('an entry as path writes it: as it is, or the params of the pattern in order', () => {
+    expect(entryValue('/blog/:slug', 'hola')).toBe('hola');
+    expect(entryValue('/n/:id', 7)).toBe('7');
+    expect(entryValue('/blog/:year/:slug', { slug: 'hola', year: 2026 })).toBe('2026/hola');
+    expect(entryValue('/blog/:year/:slug', { slug: 'hola' })).toBe('/hola');
+    expect(entryValue('/a', null)).toBe('null');
+  });
+
+  it('a page lists what its paths() gives, or null without one; a flow has none', async () => {
+    const [page] = plan('page /x\n\ncriterion c\n  then\n    x\n');
+    expect(await page!.app!.paths!()).toEqual(['hola', 'dsd']);
+    const [other] = plan('page /x\n\ncriterion c\n  then\n    x\n', PAGE, FIXTURES, '/about');
+    expect(await other!.app!.paths!()).toBeNull();
+    const [none] = plan('page /x\n\ncriterion c\n  then\n    x\n', PAGE, FIXTURES, null);
+    expect(await none!.app!.paths!()).toBeNull();
+    const [flow] = plan('flow alta\n\ncriterion c\n  then\n    x\n', FLOW, {}, null);
+    expect(flow!.app!.paths).toBeUndefined();
   });
 });

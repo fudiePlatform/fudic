@@ -151,6 +151,25 @@ describe('the clock of a criterion (§4.6)', () => {
     expect(fired).toEqual([100, 200, 20, 50]);
   });
 
+  it('clock stands it at an instant, by name, firing what falls due; a criterion that is not running has none', async () => {
+    const bench = createBench();
+    bench.begin('c', {}, { services: 's' });
+    bench.setClock('c', 5000, '1970-01-01T00:00:05Z');
+    expect([bench.now('c'), bench.names('c')]).toEqual([5000, { services: 's', clock: '1970-01-01T00:00:05Z' }]);
+    const fired: number[] = [];
+    void bench.after('c', 100).then(() => fired.push(100));
+    bench.advance('c', 100);
+    await Promise.resolve();
+    expect(fired).toEqual([100]);
+    // A later waiting for the clock is held: it will not arrive until the clock moves.
+    void bench.after('c', 50);
+    expect(bench.held('c')).toBe(1);
+    bench.advance('c', 50);
+    expect(bench.held('c')).toBe(0);
+    bench.setClock('nadie', 1, 'x');
+    expect(bench.now('nadie')).toBeUndefined();
+  });
+
   it('without one, a later waits for real and advance does nothing', async () => {
     const bench = createBench();
     bench.begin('c', {});
