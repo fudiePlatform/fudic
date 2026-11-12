@@ -81,7 +81,7 @@ export class RequestStats {
    * say the opposite of what happened.
    */
   run<T>(kind: RequestKind, token: CancellationToken, work: () => T, cancelled: T): T {
-    if (token.isCancellationRequested) return this.#count(kind, 'cancelled', cancelled);
+    if (token.isCancellationRequested || this.#closed) return this.#count(kind, 'cancelled', cancelled);
 
     const answer = work();
     if (token.isCancellationRequested) return this.#count(kind, 'cancelled', cancelled);
@@ -95,6 +95,22 @@ export class RequestStats {
     this.#cancelled = 0;
     this.#byKind.clear();
   }
+
+  /**
+   * The server shut down: every request from here on is cancelled without working. A validation
+   * Volar scheduled 250 ms before the shutdown still runs after it, and the TypeScript project it
+   * would ask has already been disposed.
+   */
+  close(): void {
+    this.#closed = true;
+  }
+
+  /** Whether the server shut down. */
+  get closed(): boolean {
+    return this.#closed;
+  }
+
+  #closed = false;
 
   /** Add one to a total and to its kind, and hand back the answer that goes with it. */
   #count<T>(kind: RequestKind, field: keyof RequestCounts, answer: T): T {

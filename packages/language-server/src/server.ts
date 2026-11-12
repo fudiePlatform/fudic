@@ -25,6 +25,7 @@ import { commentSyntaxOf } from '@fudic/compiler';
 import { CONFIG_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { silenceLibraryFiles } from './services/read-only.js';
+import { quietAfterShutdown } from './services/shutdown.js';
 import { create as createHtmlService } from 'volar-service-html';
 import { create as createCssService } from 'volar-service-css';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -326,7 +327,12 @@ export function createFudicServer(
     }
 
     // And no definition previews: every name already has a hover that says what it is (SDD-75).
-    const result = server.initialize(params, project, definitionsWithoutPreview(readOnly(plugins)));
+    // And nothing validated after the shutdown, when the projects are gone.
+    const result = server.initialize(
+      params,
+      project,
+      quietAfterShutdown(definitionsWithoutPreview(readOnly(plugins)), () => stats.closed),
+    );
     // §3.2 is a contract with the client, so it is declared rather than inferred from whichever
     // plugins happened to load: with no TypeScript the list must still say what a `.fud` supports.
     //
@@ -350,6 +356,7 @@ export function createFudicServer(
     // §4.6: no state survives a restart, and there is none on disk to survive.
     cache.clear();
     stats.reset();
+    stats.close();
     server.shutdown();
   });
 

@@ -25,6 +25,22 @@ describe('RequestStats', () => {
     expect([stats.completed, stats.cancelled]).toEqual([1, 0]);
   });
 
+  it('once closed by the shutdown, does no work: a late validation finds the project gone', () => {
+    const stats = new RequestStats();
+    stats.close();
+    let ran = false;
+    const answer = stats.run(
+      'diagnostics',
+      TOKEN,
+      () => {
+        ran = true;
+        return 'answer';
+      },
+      undefined,
+    );
+    expect([answer, ran, stats.cancelled]).toEqual([undefined, false, 1]);
+  });
+
   it('does not even start work for a request already cancelled', () => {
     const stats = new RequestStats();
     let ran = false;
