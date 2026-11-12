@@ -109,12 +109,25 @@ function writable(res: ServerResponse): Promise<void> {
   });
 }
 
+/** What a network failure writes before it closes the connection: not HTTP, so no response. */
+export const NOT_HTTP = 'fudic: no response\r\n\r\n';
+
 /**
  * A `Response`, written to a Node response as its body comes: never gathered. When the client
  * goes away the body is cancelled, and whoever produces it is told (a render stops, a spool is
  * released). A body that fails half-way cuts the connection: its status is already out.
  */
 export async function sendResponse(res: ServerResponse, response: Response): Promise<void> {
+  // `Response.error()`: no response at all, as a network failure looks to the client (SDD-82 §3.5).
+  // A bare cut is not enough: on a keep-alive connection already used, a browser takes a cut with
+  // nothing received for a stale connection and sends the request again (Chrome, once per idle
+  // connection it holds), and the server would see one call several times. Bytes that are not
+  // HTTP fail it at once, with no response and nothing sent again. An HTTP/2 stream is reset.
+  if (response.type === 'error') {
+    if ('stream' in res || res.socket === null) res.destroy();
+    else res.socket.end(NOT_HTTP);
+    return;
+  }
   res.statusCode = response.status;
   writeHeaders(res, response.headers);
   if (response.body === null) {

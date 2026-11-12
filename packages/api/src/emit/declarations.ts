@@ -7,8 +7,9 @@
  * contract entries, and only the names it uses.
  */
 
-import type { Decl, EnumDecl, FailsClause, FnDecl, FormDecl, LayoutDecl, LoadDecl, MiddlewareDecl, PathsDecl, PatternDecl, PipeDecl, RuleDecl, TypeDecl } from '../ast.js';
+import type { Decl, EnumDecl, FailsClause, FnDecl, FormDecl, LayoutDecl, LoadDecl, MiddlewareDecl, PathsDecl, PatternDecl, PipeDecl, RuleDecl, TypeDecl, TypeExpr } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
+import { routeCallables } from '../reach.js';
 import type { ApiContext } from '../validate.js';
 import { schemaType, valueType } from './form.js';
 import { borrowedForms, effective, fieldsType, jsdoc, middlewaresOf, pageParams, pascal, camel, projectRef, str, tsType, type EmitCtx } from './shared.js';
@@ -36,6 +37,7 @@ export function emitDeclarations(source: ApiSource, index: ApiIndex, api: ApiCon
     core: new Set(),
   };
   const body = source.file.declarations.map((d) => declaration(d, c)).filter((s) => s !== '');
+  if (api.route !== undefined && api.route.error !== true) body.push(fixturesDecl(c));
   for (const [other, names] of borrowedForms(c)) {
     const all = names.flatMap((n) => [n, `${pascal(n)}Value`]);
     body.push(`${I}export { ${all.join(', ')} } from ${str(`fudic:${other.id}`)};`);
@@ -212,6 +214,49 @@ function layoutDecl(_d: LayoutDecl, c: DeclCtx): string {
   const data = c.source.file.declarations.some((d) => d.kind === 'load') ? 'LoadData' : 'undefined';
   const props = c.api.route?.layoutProps ?? 'Readonly<Record<string, unknown>>';
   return `${I}export type LayoutHandler = (ctx: PageContext<${params(c)}>, data: ${data}) => ${props} | Promise<${props}>;\n${I}export const layout: PagePiece<LayoutHandler>;`;
+}
+
+/**
+ * What a criterion of the route's `.fudspec` can answer in place of the real thing: its `load`
+ * by name, its `paths`, each function in its reach and the services. `Calls` holds one entry per
+ * function of the route and of the components it links, and per `runs remote` rule of the
+ * project; the first of two with the same name wins. Its value types are the contract's.
+ */
+function fixturesDecl(c: DeclCtx): string {
+  const decls = c.source.file.declarations;
+  const load = decls.some((d) => d.kind === 'load');
+  for (const name of ['ServiceOverride', ...(load ? ['FixtureOf', 'Failed', 'Redirected'] : [])]) c.http.add(name);
+  const members = [
+    ...(load ? [`/** What load returns, by name. */`, `readonly data?: Readonly<Record<string, FixtureOf<LoadData> | Failed | Redirected>>;`] : []),
+    ...(decls.some((d) => d.kind === 'paths') ? [`/** What paths gives. */`, `readonly paths?: readonly string[];`] : []),
+    `/** What each function or remote rule answers, by name of the group. A function that is not here runs for real. */`,
+    `readonly calls?: Readonly<Record<string, Calls>>;`,
+    `/** The services each criterion puts in place of the real ones, by name. */`,
+    `readonly services?: Readonly<Record<string, readonly ServiceOverride[]>>;`,
+  ];
+  const calls = callsOf(c).map(([name, answer]) => `${I}${I}readonly ${str(name)}?: ${answer};`);
+  return [
+    `${I}export interface Calls ${calls.length === 0 ? '{}' : `{\n${calls.join('\n')}\n${I}}`}`,
+    `${I}export interface Fixtures {\n${members.map((m) => `${I}${I}${m}`).join('\n')}\n${I}}`,
+  ].join('\n');
+}
+
+/** Every function and rule the route reaches, with the type of the answer a fixture gives it. */
+function callsOf(c: DeclCtx): readonly (readonly [string, string])[] {
+  // Only a route has fixtures: `route` is there.
+  const route = c.api.route!;
+  const reach = routeCallables(c.index, { source: c.source, components: route.components ?? [], params: route.params });
+  return reach.map(({ name, decl }) => [name, answerType(decl.kind === 'fn' ? decl.returns?.type : undefined, decl.fails, c)]);
+}
+
+/** `Answer<R, 'code' | …>`: what returns `R` and fails with those codes; a file is answered with `file(…)`. */
+function answerType(returns: TypeExpr | undefined, fails: readonly { readonly code: { readonly text: string } }[], c: DeclCtx): string {
+  c.http.add('Answer');
+  const file = returns?.kind === 'named' && returns.name.text === 'file';
+  if (file) c.http.add('FileAnswer');
+  const value = returns === undefined ? 'void' : file ? 'FileAnswer' : tsType(returns, c);
+  const codes = [...new Set(fails.map((f) => `'${f.code.text}'`))];
+  return `Answer<${value}${codes.length === 0 ? '' : `, ${codes.join(' | ')}`}>`;
 }
 
 /** The type of a form a function names, and its validated value. */

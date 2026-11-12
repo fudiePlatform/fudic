@@ -13,7 +13,66 @@ export interface Box {
   readonly height: number;
 }
 
-export interface TermContext {
+/** A call of the criterion, as the bench logged it (SDD-82 §4.4). */
+export interface Call {
+  /** The function's or the remote rule's name. */
+  readonly name: string;
+  /** Its arguments, decoded; a file by its name. */
+  readonly args: Readonly<Record<string, unknown>>;
+  /** Answered by the fixture, without running it. */
+  readonly faked: boolean;
+  /** The status it answered with; `0` for a network failure. */
+  readonly status: number;
+}
+
+/** The last response of a document: its status, and its headers with their names in lower case. */
+export interface DocumentResponse {
+  readonly status: number;
+  readonly headers: Readonly<Record<string, string>>;
+}
+
+/** What the last `when` block did, beyond the page it left. */
+export interface LastWhen {
+  /** The requests that went out during it: documents, data, functions, rules, resources. */
+  readonly requests: number;
+  /** The names of the files it downloaded, in order. */
+  readonly downloads: readonly string[];
+}
+
+/**
+ * What the workbench knows of a criterion beyond its page (SDD-82 §3.7): where it opens, its
+ * clocks, what it called, what the last `when` did. The host gives it and the ctx passes it on.
+ */
+export interface CriterionRecord {
+  /** Where the criterion opens, absolute: its page, or the component's. */
+  readonly url: string;
+  /** A path as the `.fudspec` writes it, absolute: relative to the `.fudspec`'s folder. */
+  resolve(path: string): string;
+  /** Resolves once the page is quiet: nothing in flight, no short timer, no frame (§4.5). */
+  quiet(): Promise<void>;
+  /**
+   * Stands the clock at `at` (ms since the epoch) in every browser of the criterion and in its
+   * server; `label` is how the `.fudspec` wrote it.
+   */
+  clock(at: number, label: string): Promise<void>;
+  /** Moves both clocks `ms` forward; without `clock`, waits `ms` for real. */
+  advance(ms: number): Promise<void>;
+  /** The calls of the criterion so far, in order: none for a component. */
+  calls(): readonly Call[];
+  /** The last response of a document in this browser; null when the last one got none. */
+  response(): DocumentResponse | null;
+  /** What the last `when` block did in this browser. */
+  lastWhen(): LastWhen;
+  /** Whether the document is another than before the last `when` block. */
+  reloaded(): Promise<boolean>;
+  /**
+   * What the page's real `paths()` lists, each entry as `path <value>` writes it (`2026/hola`
+   * for `/blog/:year/:slug`); null when the page has no `paths`, or the criterion is no page's.
+   */
+  paths(): Promise<readonly string[] | null>;
+}
+
+export interface TermContext extends CriterionRecord {
   /** The Playwright page the component is mounted in: keyboard, mouse, evaluate… */
   readonly page: Page;
   /**
@@ -47,6 +106,11 @@ export interface TermMeta<P extends string = string> {
   readonly block: 'given' | 'when' | 'then';
   readonly params: readonly { readonly name: P; readonly type: 'element' | 'number' | 'string' | 'token' }[];
   readonly describe?: (args: Readonly<Record<P, string | number>>) => string;
+  /**
+   * A `then` that holds by what is NOT there (`hidden`, `count … 0`): read once, on the quiet
+   * page, never retried. `true`, or a function of the arguments (SDD-82 §4.5).
+   */
+  readonly negative?: boolean | ((args: Readonly<Record<P, string | number>>) => boolean);
 }
 
 /**
@@ -58,8 +122,8 @@ export interface Term<P extends string = string, C extends TermContext = TermCon
   run(ctx: C, args: Readonly<Record<P, string | number>>): Promise<TermOutcome>;
 }
 
-/** What the workbench gives the runtime: the page and where to report. */
-export interface TermHost {
+/** What the workbench gives the runtime: the page, where to report, and what it knows of the criterion. */
+export interface TermHost extends CriterionRecord {
   readonly page: Page;
   /** Runs a gesture and waits for the page to serve it. */
   settle<T>(target: Locator, gesture: () => Promise<T>): Promise<T>;

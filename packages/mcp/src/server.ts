@@ -26,6 +26,7 @@ import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
 import { respond } from './respond.js';
+import type { RouteFixture } from './route-fixture.js';
 import { Session } from './session.js';
 import { statusOf } from './status.js';
 import { VERSION } from './version.js';
@@ -72,6 +73,22 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
 
 /** The most diagnostics an answer lists unless asked: the summary counts them all. */
 const CHECK_LIMIT = 20;
+
+/** What a route's fixture is asked for, by name (SDD-82 §3.10). */
+const ROUTE_FIXTURE = z.object({
+  data: z.union([z.string(), z.array(z.string())]).optional().describe('What load returns; several: one per data request, in order'),
+  answers: z.array(z.string()).optional().describe('Groups of its calls: those functions answer without running'),
+  services: z.string().optional().describe('The group of its services in place of the real ones'),
+});
+
+/** The same without the keys that came empty: a field of it is there or absent, never `undefined`. */
+function routeFixture(raw: z.infer<typeof ROUTE_FIXTURE>): RouteFixture {
+  return {
+    ...(raw.data !== undefined ? { data: raw.data } : {}),
+    ...(raw.answers !== undefined ? { answers: raw.answers } : {}),
+    ...(raw.services !== undefined ? { services: raw.services } : {}),
+  };
+}
 
 export function createServer(options: ServerOptions): McpServer {
   const { project, entry } = options;
@@ -263,18 +280,27 @@ export function createServer(options: ServerOptions): McpServer {
       description:
         "Runs the acceptance criteria of the fudic project's .fudspec files in a browser, and writes the run in each piece's " +
         'history. For what did not pass: the step in red with what was expected and what came out, the element in its .fud, ' +
-        'and a screenshot.',
+        'and a screenshot. A page or a flow answers every call it made, by criterion, and whether its fixture answered it.',
       inputSchema: {
-        spec: z.string().optional().describe('A component tag, a route, or a .fudspec; without it, every piece'),
+        spec: z.string().optional().describe('A component tag, a route (/usuarios, /blog/[slug]), a flow by its name, or a .fudspec; without it, every one'),
         criteria: z.array(z.string()).optional().describe('Only the criteria with these ids'),
         failing: z.boolean().default(false).describe('Only what did not pass in the last run'),
+        record: z
+          .boolean()
+          .default(false)
+          .describe('Pages and flows only: run against the real server and write what it answered into their fixtures'),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ spec, criteria, failing }) =>
+    async ({ spec, criteria, failing, record }) =>
       respond(
         project,
-        await runSpecsTool(project, checks, queue, { failing, ...(spec !== undefined ? { spec } : {}), ...(criteria !== undefined ? { criteria } : {}) }),
+        await runSpecsTool(project, checks, queue, {
+          failing,
+          ...(spec !== undefined ? { spec } : {}),
+          ...(criteria !== undefined ? { criteria } : {}),
+          ...(record ? { record: true } : {}),
+        }),
       ),
   );
 
@@ -289,12 +315,16 @@ export function createServer(options: ServerOptions): McpServer {
         'Paints one fudic piece at once, with no server started, and answers what it reads: its outline (roles, names and ' +
         'states, the words a .fudspec finds it by) or its HTML with the declarative shadow DOM; in a chat that draws it, ' +
         'the piece itself. A component is painted with a case of its fixture — prefer "fixture", a state someone ' +
-        'approved, to "props" —, a route by a concrete URL. "engine": "browser" paints it in a real browser, for when ' +
-        'CSS or layout matter. Seeing is not approving.',
+        'approved, to "props" —, a route by a concrete URL, with what its fixture holds if asked: "fixture": { "data": ' +
+        '"nadie", "answers": ["busca-luis"] } paints it as its .fudspec does. "engine": "browser" paints it in a real ' +
+        'browser, for when CSS or layout matter. Seeing is not approving.',
       inputSchema: {
         component: z.string().optional().describe('A component tag: acme-button'),
         route: z.string().optional().describe('A concrete URL of a route: /products/42'),
-        fixture: z.string().optional().describe('A case of the component\'s fixture'),
+        fixture: z
+          .union([z.string(), ROUTE_FIXTURE])
+          .optional()
+          .describe('A component: a case of its fixture. A route: what its fixture is asked for; a name alone is its data'),
         props: z.record(z.string(), z.unknown()).optional().describe('Props, as JSON, on top of the case'),
         as: z.enum(RENDER_AS).default('outline'),
         select: z.string().optional().describe('A CSS selector, through shadow roots, that narrows what is answered'),
@@ -311,7 +341,7 @@ export function createServer(options: ServerOptions): McpServer {
           engine,
           ...(component !== undefined ? { component } : {}),
           ...(route !== undefined ? { route } : {}),
-          ...(fixture !== undefined ? { fixture } : {}),
+          ...(fixture !== undefined ? { fixture: typeof fixture === 'string' ? fixture : routeFixture(fixture) } : {}),
           ...(props !== undefined ? { props } : {}),
           ...(select !== undefined ? { select } : {}),
         })),
@@ -345,10 +375,17 @@ export function createServer(options: ServerOptions): McpServer {
         'The whole fudic app, running, at a URL a person opens — from a phone too, through the tunnel. Starts the dev ' +
         'server the first time and keeps it: what you write is seen without calling again. Answers the URL and the ' +
         'concrete routes that can be opened. Opening it is seeing, not approving.',
-      inputSchema: { route: z.string().optional().describe('A concrete URL to open at: /products/42') },
+      inputSchema: {
+        route: z.string().optional().describe('A concrete URL to open at: /products/42'),
+        fixture: ROUTE_FIXTURE.optional().describe("What the route's fixture is asked for: the app opens with it, as its .fudspec does"),
+      },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ route }) => respond(project, await previewTool(project, checks, site, route !== undefined ? { route } : {})),
+    async ({ route, fixture }) =>
+      respond(
+        project,
+        await previewTool(project, checks, site, { ...(route !== undefined ? { route } : {}), ...(fixture !== undefined ? { fixture: routeFixture(fixture) } : {}) }),
+      ),
   );
 
   registerAppTool(

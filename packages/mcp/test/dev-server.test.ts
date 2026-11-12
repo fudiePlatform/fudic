@@ -11,7 +11,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appOf, DevServer, missingOf, PREVIEW_PORT, START_WAIT_MS } from '../src/dev-server.js';
+import { appOf, BENCH_COOKIE, DevServer, FIXTURE_PATH, fixtureDoor, missingOf, PREVIEW_PORT, START_WAIT_MS } from '../src/dev-server.js';
 import { tempDir } from './helpers.js';
 
 let dir: ReturnType<typeof tempDir> | undefined;
@@ -143,7 +143,7 @@ describe('DevServer', () => {
     expect(dev.app).toBe(root);
     expect(await dev.ready()).toBe('ready');
     expect(mod.urls).toEqual([expect.stringMatching(/node_modules\/vite\/dist\/index\.js$/u)]);
-    expect(mod.configs).toEqual([{ root, logLevel: 'error', server: { host: '127.0.0.1', port: 4318, strictPort: false }, clearScreen: false }]);
+    expect(mod.configs).toEqual([{ root, logLevel: 'error', server: { host: '127.0.0.1', port: 4318, strictPort: false }, clearScreen: false, plugins: [expect.objectContaining({ name: 'fudic-mcp-fixture', enforce: 'pre' })] }]);
     expect(vite.listened).toBe(true);
     expect(dev.local).toBe('http://127.0.0.1:4319');
     // Asked again: the same server.
@@ -243,5 +243,71 @@ describe('DevServer', () => {
     await dev.close();
     expect(vite.closed).toBe(true);
     await new DevServer(write(SERVABLE), { kind: 'middleware' }, viteModule(new FakeVite()).load).close();
+  });
+});
+
+describe('a route opened with its fixture (SDD-82 §3.10)', () => {
+  /** A middleware server, as much of it as the door touches. */
+  function door(): (url: string | undefined) => { next: boolean; status?: number; headers?: Record<string, string> } {
+    let middleware: ((req: IncomingMessage, res: ServerResponse, next: () => void) => void) | undefined;
+    const plugin = fixtureDoor();
+    (plugin.configureServer as (server: unknown) => void)({ middlewares: { use: (fn: typeof middleware) => (middleware = fn) } });
+    return (url) => {
+      const out: { next: boolean; status?: number; headers?: Record<string, string> } = { next: false };
+      const res = {
+        writeHead(status: number, headers: Record<string, string>) {
+          out.status = status;
+          out.headers = headers;
+          return res;
+        },
+        end() {
+          return res;
+        },
+      };
+      middleware!({ url } as IncomingMessage, res as unknown as ServerResponse, () => (out.next = true));
+      return out;
+    };
+  }
+
+  it('the door sets the criterion\'s cookie and sends to the page; anything else goes on to the app', () => {
+    const open = door();
+    expect(FIXTURE_PATH).toBe('/_fudic/preview-fixture/');
+    expect(open('/_fudic/preview-fixture/preview-1?to=%2Fgente%3Fq%3D1')).toEqual({
+      next: false,
+      status: 303,
+      headers: { location: '/gente?q=1', 'set-cookie': `${BENCH_COOKIE}=preview-1; Path=/; HttpOnly; SameSite=Lax` },
+    });
+    expect(open('/_fudic/preview-fixture/a;b?to=https://elsewhere')).toMatchObject({ headers: { location: '/', 'set-cookie': expect.stringMatching(/^fudic-bench=a%3Bb;/u) } });
+    expect(open('/gente')).toEqual({ next: true });
+    expect(open(undefined)).toEqual({ next: true });
+  });
+
+  it('a criterion of the project\'s bench, installed once, with the lines of the fixture; the one before ends', async () => {
+    const root = write({ ...SERVABLE, 'node_modules/@fudic/vite/package.json': JSON.stringify({ name: '@fudic/vite', exports: { '.': { import: './dist/index.js' } } }) });
+    const vite = Object.assign(new FakeVite(), { modules: [] as unknown[], ssrLoadModule: async () => vite.modules.shift() });
+    const begun: [string, unknown][] = [];
+    const ended: string[] = [];
+    let installs = 0;
+    const bench = { begin: (c: string, setup: unknown) => begun.push([c, setup]), end: (c: string) => ended.push(c) };
+    const mod = viteModule(vite);
+    const load = async (url: string): Promise<unknown> => (url.includes('@fudic') ? { createBench: () => bench, installBench: () => ((installs += 1), () => undefined) } : mod.load(url));
+    const dev = new DevServer(root, { kind: 'listen', port: 4318 }, load);
+    dev.endFixtures();
+    await dev.ready();
+    const page = join(root, 'src', 'routes', 'gente.fud');
+    const memoria = [{ provide: 'users', use: () => 'memory' }];
+    vite.modules.push({ default: { data: { nadie: { users: [] } }, calls: { busca: { search: ['x'], save: 1 }, otra: { search: ['y'] } }, services: { memoria } } });
+
+    expect(await dev.openWithFixture(page, { fixture: ['nadie'], answers: ['busca', 'otra'], services: 'memoria' })).toBe('preview-1');
+    expect(begun).toEqual([['preview-1', { route: 'routes/gente', data: [{ users: [] }], answers: { search: ['y'], save: 1 }, services: memoria, dir: dirname(page) }]]);
+
+    vite.modules.push({});
+    expect(await dev.openWithFixture(page, {})).toBe('preview-2');
+    expect(ended).toEqual(['preview-1']);
+    expect(begun[1]).toEqual(['preview-2', { route: 'routes/gente', data: [], answers: {}, dir: dirname(page) }]);
+    expect(installs).toBe(1);
+
+    dev.endFixtures();
+    expect(ended).toEqual(['preview-1', 'preview-2']);
   });
 });

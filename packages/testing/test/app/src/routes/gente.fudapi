@@ -1,0 +1,11 @@
+# The route a visit applies its fixture to (SDD-82 §3.10): beside it, gente.fixture.ts.
+load
+  title  str
+  names  str[]
+
+post rename
+  invalidates /gente
+  -> str
+
+get clock
+  -> str

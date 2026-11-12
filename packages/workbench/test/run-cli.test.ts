@@ -6,7 +6,7 @@ import type { RunOptions, RunSummary } from '../src/run.js';
 const runSpecs = vi.hoisted(() => vi.fn());
 vi.mock('../src/run.js', () => ({ runSpecs }));
 
-const { parseRunArgs, runMain, RUN_USAGE } = await import('../src/run-cli.js');
+const { parseRecordArgs, parseRunArgs, recordMain, runMain, RECORD_USAGE, RUN_USAGE } = await import('../src/run-cli.js');
 
 afterEach(() => {
   runSpecs.mockReset();
@@ -147,6 +147,90 @@ describe('runMain --pass-with-no-specs — BUG-50 §4.2', () => {
     const t = io();
     await runMain(['--pass-with-no-specs'], t.io);
     expect(t.lines.at(-1)).toBe('2 criteria · 1 pass · 1 fail · 0 error · 1.5 s · msedge');
+    expect(t.exits).toEqual([1]);
+  });
+});
+
+describe('record — SDD-82 §3.9', () => {
+  it('parseRecordArgs reads paths, criteria, a browser and --json; refuses the rest', () => {
+    expect(parseRecordArgs([])).toEqual({ paths: [], criteria: [], json: false });
+    expect(parseRecordArgs(['a.fudspec', '--criterion', 'x', '--json', '--criterion', 'y', '--browser', 'firefox'])).toEqual({
+      paths: ['a.fudspec'],
+      criteria: ['x', 'y'],
+      json: true,
+      browser: 'firefox',
+    });
+    for (const argv of [['--criterion'], ['--criterion', '--json'], ['--browser', 'opera'], ['--workers', '2']]) expect(parseRecordArgs(argv)).toBeUndefined();
+  });
+
+  it('a wrong argument prints the usage and exits 1', async () => {
+    const t = io();
+    await recordMain(['--nope'], t.io);
+    expect(t.lines).toEqual([RECORD_USAGE]);
+    expect(t.exits).toEqual([1]);
+  });
+
+  const RECORDING = {
+    recorded: [{ spec: 'C:/p/src/routes/usuarios.fudspec', id: 'a', data: ['a', 'a-2'], calls: ['login'] }],
+    skipped: [{ spec: 'C:/p/src/routes/usuarios.fudspec', id: 'b', reason: 'it did not pass (fail)' }],
+    diagnostics: [],
+  };
+
+  it('runs with record, only the criteria named, and says what it wrote for a person', async () => {
+    runSpecs.mockImplementation(async (_paths: readonly string[], options: RunOptions) => {
+      options.onDiagnostic?.(FUD0975({ tried: [], reason: 'x', install: 'y' }));
+      return { pass: 1, fail: 1, error: 0, ms: 1, browser: 'msedge', results: [], reports: [], recording: RECORDING };
+    });
+    const t = io();
+    await recordMain(['src/routes/usuarios.fudspec', '--criterion', 'a', '--browser', 'chromium'], t.io);
+    expect(runSpecs).toHaveBeenCalledWith(['src/routes/usuarios.fudspec'], expect.objectContaining({ root: 'C:/p', record: true, criteria: ['a'], browser: 'chromium' }));
+    expect(t.lines.slice(-3)).toEqual([
+      'recorded src/routes/usuarios.fudspec a: data [a, a-2] · calls [login]',
+      'not recorded src/routes/usuarios.fudspec b: it did not pass (fail)',
+      '1 recorded, 1 not recorded',
+    ]);
+    expect(t.exits).toEqual([1]);
+  });
+
+  it('in JSON, one line each; everything recorded exits 0', async () => {
+    runSpecs.mockImplementation(async (_paths: readonly string[], options: RunOptions) => {
+      options.onDiagnostic?.(FUD0975({ tried: [], reason: 'x', install: 'y' }));
+      return { pass: 1, fail: 0, error: 0, ms: 1, browser: 'msedge', results: [], reports: [], recording: { ...RECORDING, skipped: [] } };
+    });
+    const t = io();
+    await recordMain(['--json'], t.io);
+    expect(t.lines.map((l) => JSON.parse(l) as { type: string })).toEqual([
+      expect.objectContaining({ type: 'diagnostic', code: 'FUD0975' }),
+      { v: 2, type: 'recorded', spec: 'src/routes/usuarios.fudspec', id: 'a', data: ['a', 'a-2'], calls: ['login'] },
+      { v: 2, type: 'summary', recorded: 1, skipped: 0, error: 0 },
+    ]);
+    expect(t.exits).toEqual([0]);
+  });
+
+  it('a skipped one in JSON; nothing recorded exits 1', async () => {
+    runSpecs.mockResolvedValue({ pass: 0, fail: 1, error: 0, ms: 1, browser: 'msedge', results: [], reports: [], recording: { ...RECORDING, recorded: [] } });
+    const t = io();
+    await recordMain(['--json'], t.io);
+    expect(JSON.parse(t.lines[0]!)).toEqual({ v: 2, type: 'skipped', spec: 'src/routes/usuarios.fudspec', id: 'b', reason: 'it did not pass (fail)' });
+    expect(t.exits).toEqual([1]);
+  });
+
+  it('a run that cannot start says why, in either form, and exits 1', async () => {
+    runSpecs.mockResolvedValue({ diagnostic: FUD0976({ where: 'C:/p' }) });
+    const human = io();
+    await recordMain([], human.io);
+    expect(human.lines.join('\n')).toContain('FUD0976');
+    const json = io();
+    await recordMain(['--json'], json.io);
+    expect(JSON.parse(json.lines[0]!)).toMatchObject({ type: 'diagnostic', code: 'FUD0976' });
+    expect([human.exits, json.exits]).toEqual([[1], [1]]);
+  });
+
+  it('a run that throws is one line and exit 1', async () => {
+    runSpecs.mockRejectedValue(new Error('boom'));
+    const t = io();
+    await recordMain([], t.io);
+    expect(t.lines).toEqual(['error boom']);
     expect(t.exits).toEqual([1]);
   });
 });

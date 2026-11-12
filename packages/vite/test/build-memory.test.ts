@@ -195,7 +195,7 @@ describe('graphOf over a plain io (dev)', () => {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function plugin(root: string, routesDir: string, command: 'build' | 'serve'): any {
   const p = fudic({ routesDir }) as any;
-  p.config({});
+  p.config({}, { command: 'serve', mode: 'development' });
   p.configResolved({ root, base: '/', command, build: { outDir: 'dist' } });
   return p;
 }

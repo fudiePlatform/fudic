@@ -28,6 +28,11 @@ export interface RenderChunkOptions {
    * `null` when it resolves only `layout` (SDD-70 §3.7). Absent when it resolves nothing.
    */
   readonly frames?: FramesShape | null;
+  /**
+   * Dev's edge: the request's root container gets the services of the workbench's criterion,
+   * when the request carries one (SDD-82 §4.2).
+   */
+  readonly bench?: boolean;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
   /**
@@ -153,6 +158,11 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
+  // The request's root, with the services of a criterion of the workbench in it (SDD-82 §4.2).
+  // `@fudic/ssr`'s, which every page already imports: a page without `.fudapi` reaches no `@fudic/http`.
+  const bench = options.bench === true && (hasDi || http);
+  if (bench) lines.push('import { benchRoot as $benchRoot } from "@fudic/ssr";');
+  const root = (request: string): string => (bench ? `$benchRoot(iocRoot(), ${request})` : 'iocRoot()');
   if (http) lines.push('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
   // The frames of the data endpoint (SDD-70 §3.7), written on the edge.
   if (http) lines.push('import { writeFrames } from "@fudic/http/wire/frames";');
@@ -179,7 +189,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     }
   }
   lines.push('');
-  const loadCall = `$ready.then(() => $runLoad($load, $ctx, ${String(api?.dev === true)}))`;
+  const loadCall = `$ready.then(() => $runLoad($load, $ctx, ${String(api?.dev === true)}, ${String(options.bench === true)}))`;
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   // The two main-thread entries, by URL (BUG-31 §T1).
@@ -203,7 +213,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // `later` field as it settles.
   if (http) {
     lines.push('export async function data(ctx) {');
-    lines.push('  const $root = iocRoot();');
+    lines.push(`  const $root = ${root('ctx.request')};`);
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
     lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
@@ -227,7 +237,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // injects and what the components inject have to be the same instances, or a `@Service`
   // would be built twice for one response.
   if (hasDi || http) {
-    lines.push('    const $root = iocRoot();');
+    lines.push(`    const $root = ${root('ctx.request')};`);
   }
   if (http) {
     lines.push('    const $ctx = pageContext(ctx);');

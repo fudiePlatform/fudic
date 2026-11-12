@@ -8,9 +8,11 @@
 
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { parseSpec, specContextOf, validateSpec, type ComponentInfo, type SpecFs } from '@fudic/spec';
+import type { ApiProjectFiles } from './api-project.js';
 import { contractOf } from './contract.js';
 import type { CheckFs } from './files.js';
 import { parseFud } from './parse.js';
+import { specReach } from './spec-reach.js';
 
 /** What the parser and the validator say about one `.fudspec`. */
 export interface SpecFileDiagnostics {
@@ -34,6 +36,7 @@ export function specDiagnostics(
   root: string,
   fs: CheckFs,
   index: ComponentList,
+  api: Pick<ApiProjectFiles, 'index' | 'byPath'>,
   components: Components = new Map(),
 ): { readonly files: readonly SpecFileDiagnostics[]; readonly read: readonly string[] } {
   if (fs.specFiles === undefined || fs.readDirectory === undefined) return { files: [], read: [] };
@@ -46,7 +49,9 @@ export function specDiagnostics(
       return text;
     },
   };
-  const context = specContextOf(root, { fs: specFs, component: (tag) => componentOf(tag, fs, index, components) });
+  // What a page or a flow can call, read off the project's `.fudapi` as the editor reads it (SDD-82 §8.2.9).
+  const reach = specReach({ root, index: api.index, source: (path) => api.byPath.get(path), read: specFs.readFile });
+  const context = specContextOf(root, { fs: specFs, component: (tag) => componentOf(tag, fs, index, components), ...reach });
 
   const files: SpecFileDiagnostics[] = [];
   for (const file of [...fs.specFiles(root)].sort()) {

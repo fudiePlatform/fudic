@@ -577,3 +577,54 @@ describe('BUG-42 — a view that reads through an imported form (§4.3)', () => 
     expect(client).not.toContain('$sub(() => ((f.$valid()))');
   });
 });
+
+describe('a value handed to a child through a form or a store moves (SDD-82, the summary that never painted)', () => {
+  /** `m-el` hands `x-issues`, a component with nothing of its own, what `template` reads. */
+  function handing(template: string, code = ''): { client: string; hydratable: ReadonlySet<string> } {
+    const io = memoryIo({
+      '/home.fud':
+        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body><m-el></m-el></body></html>',
+      '/m.fud':
+        '<link rel="component" href="./x-issues.fud">\n' +
+        `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
+      '/x-issues.fud':
+        '@code {\n  const { issues = [] } = props<{ issues?: readonly unknown[] }>();\n}\n' +
+        '<x-issues>\n  <template shadowrootmode="open"><p>@issues.length</p></template>\n</x-issues>\n',
+    });
+    const graph = resolveComponents('/home.fud', io);
+    return { client: emitComponentClientModule(graph, graph.components.get('m-el')!), hydratable: hydratableTags(graph) };
+  }
+
+  it('a form the owner binds: the child hydrates, and the pass hands it the value again when the form moves', () => {
+    const { client, hydratable } = handing(
+      '<form control="@f"><input control="@f.name"><x-issues .issues="@f.$issues()"></x-issues></form>',
+    );
+    expect(hydratable.has('x-issues')).toBe(true);
+    expect(client).toContain('$d.push($sub(() => ((f.$issues())), $u));');
+    expect(client).toMatch(/const \$u = \(\) => \{ \$a\(\); \$n\d+\.u\(\[, , \(f\.\$issues\(\)\)\]\); \};/u);
+  });
+
+  it('a store the owner imports, read by member: the same', () => {
+    // An owner that hydrates on its own: the rule is what it hands, not whether it hydrates.
+    const { client, hydratable } = handing(
+      '<p>@(n())</p><x-issues .issues="@store.list()"></x-issues>',
+      "  import { signal } from '@fudic/core';\n  import { store } from './store.js';\n  const n = signal(0);",
+    );
+    expect(hydratable.has('x-issues')).toBe(true);
+    expect(client).toContain('$d.push($sub(() => ((store.list())), $u));');
+  });
+
+  it('a `control` that does not open with a name binds no form by name: what it hands stays as painted', () => {
+    const { hydratable } = handing('<form control="@((f))"><x-issues .issues="@f.$issues()"></x-issues></form>');
+    expect(hydratable.has('x-issues')).toBe(false);
+  });
+
+  it('a member of a local constant moves nothing: the child stays as it was painted', () => {
+    const { client, hydratable } = handing(
+      '<x-issues .issues="@local.list"></x-issues>',
+      "  import { signal } from '@fudic/core';\n  const n = signal(0);\n  const local = { list: [] };",
+    );
+    expect(hydratable.has('x-issues')).toBe(false);
+    expect(client).not.toContain('local.list())');
+  });
+});

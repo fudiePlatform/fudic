@@ -33,6 +33,7 @@ export {
   type IocMap,
   type IocNode,
 } from './ioc.js';
+export { benchRoot } from './bench.js';
 export { publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
 export { renderToStream, htmlToByteStream, flushHead, FLUSH, type HtmlPiece, type StreamOptions } from './stream.js';
 export { partSerializer, type PartSerializer } from './parts.js';

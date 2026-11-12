@@ -6,7 +6,7 @@
 
 import type { LanguageServiceContext } from '@volar/language-service';
 import type { SourceDiagnostic, Span } from '@fudic/diagnostics';
-import { parseSpec, type BlockKind, type SpecFile, type TermLine, type TermModule } from '@fudic/spec';
+import { AS_LINE, parseSpec, type BlockKind, type SpecFile, type TermLine, type TermModule } from '@fudic/spec';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Range } from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
@@ -47,6 +47,18 @@ export function termLines(file: SpecFile): readonly PlacedTerm[] {
   return file.criteria.flatMap((criterion) =>
     criterion.blocks.flatMap((block) => block.terms.map((term) => ({ block: block.block, term }))),
   );
+}
+
+/** The person every criterion starts as. */
+const MAIN = 'main';
+
+/** Every person the file names with `as`, after `main`, the one every criterion starts as; once each. */
+export function peopleOf(spec: SpecDocument): readonly string[] {
+  const named = termLines(spec.file).flatMap(({ term }) => {
+    const [who] = term.args;
+    return term.name.text === AS_LINE && who?.kind === 'bare' ? [who.text] : [];
+  });
+  return [...new Set([MAIN, ...named])];
 }
 
 /** Whether `offset` touches `span`, its end included: the cursor right after a word is on it. */

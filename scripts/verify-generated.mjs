@@ -40,6 +40,8 @@ export const STEPS = [
   { in: 'acme', argv: ['g', 'api', 'src/components/web-cart', '--project', 'web'], covers: 'api' },
   { in: 'acme', argv: ['g', 'layout', 'docs', '--project', 'web'], covers: 'layout' },
   { in: 'acme', argv: ['g', 'spec', 'acme-badge', '--project', 'ui'], covers: 'spec' },
+  { in: 'acme', argv: ['g', 'spec', '/about', '--project', 'web'] },
+  { in: 'acme', argv: ['g', 'flow', 'sign-up', '--project', 'web'], covers: 'flow' },
   { in: 'acme', argv: ['g', 'snippet', 'ui', 'productCard', '--project', 'ui'], covers: 'snippet' },
   { in: 'acme', argv: ['g', 'service', 'cart', '--project', 'web'], covers: 'service' },
   { in: 'acme', argv: ['g', 'form', 'person', '--project', 'web'], covers: 'form' },

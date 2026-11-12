@@ -3,16 +3,18 @@
   "name": "Fudic spec",
   "scopeName": "source.fudspec",
   "patterns": [
-    { "include": "#component" },
+    { "include": "#header" },
     { "include": "#criterion" },
     { "include": "#block" },
-    { "include": "#props-line" },
+    { "include": "#as-line" },
+    { "include": "#fixture-line" },
     { "include": "#term-line" },
     { "include": "#comment" }
   ],
   "repository": {
-    "component": {
-      "match": "^(component)(?=\\s|$)(?:[ ]+([^\\s#\"][^\\s\"]*))?",
+    "header": {
+      "comment": "`component <tag>`, `page <route>` (as on disk: `/blog/[slug]`) or `flow <name>` (SDD-82 §3.1).",
+      "match": "^(component|page|flow)(?=\\s|$)(?:[ ]+([^\\s#\"][^\\s\"]*))?",
       "captures": {
         "1": { "name": "keyword.control.fudspec" },
         "2": { "name": "entity.name.type.fudspec" }
@@ -34,8 +36,18 @@
       }
     },
 
-    "props-line": {
-      "begin": "^[ ]{4}(props)(?=\\s|$)",
+    "as-line": {
+      "comment": "`as <who>`: the person what follows is done by, in any block (SDD-82 §3.7).",
+      "match": "^[ ]{4}(as)(?=\\s|$)(?:[ ]+([^\\s#\"]+))?",
+      "captures": {
+        "1": { "name": "keyword.other.as.fudspec" },
+        "2": { "name": "variable.other.person.fudspec" }
+      }
+    },
+
+    "fixture-line": {
+      "comment": "The lines of the validator, not terms (SDD-82 §3.6). `url` is also a term of `then`: the semantic tokens paint that one as a function.",
+      "begin": "^[ ]{4}(props|data|answers|services|path|url)(?=\\s|$)",
       "beginCaptures": {
         "1": { "name": "support.function.fudspec" }
       },
@@ -55,8 +67,11 @@
     "argument": {
       "patterns": [
         { "include": "#comment" },
+        { "include": "#contains" },
         { "include": "#string" },
         { "include": "#role" },
+        { "include": "#step" },
+        { "include": "#tag-step" },
         { "include": "#number" }
       ]
     },
@@ -83,12 +98,30 @@
     },
 
     "role": {
-      "comment": "`role:button` and `role:button/\"Name\"`: the quoted name is an ordinary string.",
-      "match": "(?<=\\s)(role:)([^\\s/\"#]*)",
+      "comment": "`role:button`, `role:button/\"Name\"`, and the same as a step after `>`: the quoted name is an ordinary string.",
+      "match": "(?<=[\\s>])(role:)([^\\s/\"#>~]*)",
       "captures": {
         "1": { "name": "keyword.operator.role.fudspec" },
         "2": { "name": "entity.name.tag.fudspec" }
       }
+    },
+
+    "contains": {
+      "comment": "`~\"text\"`: the accessible name contains the text (SDD-82 §3.3).",
+      "name": "keyword.operator.contains.fudspec",
+      "match": "(?<=/)~(?=\")"
+    },
+
+    "step": {
+      "comment": "`>` joins the steps of a reference, each searched inside the one before (SDD-82 §3.3).",
+      "name": "keyword.operator.step.fudspec",
+      "match": "(?<=\\S)>(?=\\S)"
+    },
+
+    "tag-step": {
+      "comment": "A component tag that is a step of a reference: right before or right after a `>`.",
+      "name": "entity.name.tag.fudspec",
+      "match": "(?<=[\\s>])[a-z][a-z0-9]*(?:-[a-z0-9]+)+(?=>)|(?<=>)[a-z][a-z0-9]*(?:-[a-z0-9]+)+(?=[\\s>]|$)"
     },
 
     "number": {

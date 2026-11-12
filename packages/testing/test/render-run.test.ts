@@ -33,11 +33,16 @@ describe('the test file that paints', () => {
         "import { renderJob } from '@fudic/testing/render';",
         '',
         "test('fudic render', async () => {",
-        '  writeFileSync("C:/p/.fudic/render/1.json", JSON.stringify(await renderJob({ target: { route: "/a?b" } })));',
+        '  writeFileSync("C:/p/.fudic/render/1.json", JSON.stringify(await renderJob({ target: {"route":"/a?b"} })));',
         '}, 60_000);',
         '',
       ].join('\n'),
     );
+  });
+
+  test('a route with the lines of its fixture, as JSON', () => {
+    const source = renderSource({ root: '/p', target: { route: '/u', fixture: { fixture: ['a', 'b'], answers: ['c'], services: 'd' } } }, '/p/1.json');
+    expect(source).toContain('renderJob({ target: {"route":"/u","fixture":{"fixture":["a","b"],"answers":["c"],"services":"d"}} })');
   });
 
   test('a component with its fixture, a case, props and a selector, imported relative to the test file', () => {

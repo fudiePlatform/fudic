@@ -64,6 +64,7 @@ export type ParsedCommand =
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'spec'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'flow'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'api'; readonly piece: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'showcase'; readonly opts: ShowcaseOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
@@ -79,7 +80,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'guide' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api' | 'showcase';
+export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'guide' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'flow' | 'term' | 'api' | 'showcase';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -95,6 +96,7 @@ export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   guide: 'guide',
   spec: 'spec',
   s: 'spec',
+  flow: 'flow',
   service: 'service',
   form: 'form',
   pipe: 'pipe',
@@ -115,6 +117,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   lib: 'ui',
   guide: 'guide',
   spec: 'button',
+  flow: 'alta-de-usuario',
   service: 'cart',
   form: 'person',
   pipe: 'truncate',
@@ -591,6 +594,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
       if (unknown !== null) return unknown;
       return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
+    }
+
+    case 'flow': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'flow', name, opts: { ...base, ...target(tokens) }, flags };
     }
 
     case 'api': {

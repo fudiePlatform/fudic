@@ -114,8 +114,11 @@ describe('criterion 11 — the first click is served (bug A)', () => {
 
   it('is red without the wait for the gesture', async () => {
     // The action returns as soon as the click does: no wait for `fud:hydrated`, no frame.
-    const careless = patched(() => ({ waitFor: async () => undefined, evaluate: async <R>() => undefined as R }));
-    bench.slow = CHUNK;
+    // Nor the quiet page of SDD-82: it sees no request on its way. And the chunk is held past the
+    // time a positive `then` keeps trying (§4.5), so only the careless run can see it red.
+    const LONG = { ...CHUNK, ms: 7000 };
+    const careless = patched(() => ({ waitFor: async () => undefined, evaluate: async <R>() => undefined as R, pending: () => [] }));
+    bench.slow = LONG;
     try {
       const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0), extensions);
       expect(result.verdict).toBe('fail');
@@ -155,7 +158,11 @@ describe('criterion 14 — the measuring page does not listen to Vite', () => {
   it('and it would, if its WebSockets were not silenced', async () => {
     const listening = patched(() => ({ silenceWebSockets: async () => undefined }));
     const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0), extensions);
-    expect(result.verdict).toBe('fail');
-    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
+    // The reload breaks it: the `then` reads the page reloaded (a fail), or, on a loaded machine,
+    // the reload lands on an earlier step and destroys what it was doing (an error). Never green.
+    expect(result.verdict).not.toBe('pass');
+    if (result.verdict === 'fail') {
+      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
+    }
   }, 60_000);
 });

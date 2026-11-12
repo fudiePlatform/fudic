@@ -15,7 +15,7 @@ export interface Name {
   readonly span: Span;
 }
 
-/** The three blocks of a criterion, in the only order they may appear. */
+/** The three blocks of a criterion: `given` at most once and first, then `when` and `then` in turns. */
 export type BlockKind = 'given' | 'when' | 'then';
 
 /** An unquoted token: a number, a tag, a path, an identifier. Its type is decided later. */
@@ -34,15 +34,39 @@ export interface StringArg {
   readonly contentSpan: Span;
 }
 
-/** `role:<role>` or `role:<role>/"<name>"`: an element by its role and accessible name. */
-export interface RoleArg {
+/** A step of a reference that is a tag: `fud-list`. */
+export interface TagStep {
+  readonly kind: 'tag';
+  readonly tag: Name;
+  readonly span: Span;
+}
+
+/** An accessible name, unescaped; its span includes the `~` and the quotes. */
+export interface AccessibleName extends Name {
+  /** `exact` for `"…"`, `contains` for `~"…"`. */
+  readonly match: 'exact' | 'contains';
+}
+
+/** A step of a reference that is a role: `role:<role>`, `role:<role>/"<name>"`, `role:<role>/~"<text>"`. */
+export interface RoleStep {
   readonly kind: 'role';
   readonly role: Name;
-  /**
-   * The accessible name, unescaped; its span includes the quotes. Absent when the reference
-   * names only the role.
-   */
-  readonly name?: Name;
+  /** Absent when the step names only the role. */
+  readonly name?: AccessibleName;
+  readonly span: Span;
+}
+
+export type RefStep = TagStep | RoleStep;
+
+/**
+ * A reference that is more than a tag: one `role:` step, or steps joined by `>`, each searched
+ * inside the one before it — `role:row/~"Luis">role:button/"Delete"`. A lone tag is a bare
+ * argument.
+ */
+export interface RoleArg {
+  readonly kind: 'role';
+  /** In order, outermost first; never empty. */
+  readonly steps: readonly RefStep[];
   readonly span: Span;
 }
 
@@ -75,18 +99,23 @@ export interface Criterion {
   readonly span: Span;
 }
 
-export interface ComponentDecl {
-  readonly kind: 'component';
+/** What a `.fudspec` specifies: a component alone, a page by its route, or a flow between pages. */
+export type HeaderKind = 'component' | 'page' | 'flow';
+
+/** `component <tag>`, `page <route>` or `flow <name>`. */
+export interface HeaderDecl {
+  readonly kind: 'header';
+  readonly header: HeaderKind;
   readonly keyword: Span;
-  /** Absent when the line is a bare `component`. */
-  readonly tag?: Name;
+  /** The tag, the route as on disk (`/blog/[slug]`) or the flow's name; absent when the line is the keyword alone. */
+  readonly name?: Name;
   readonly span: Span;
 }
 
 export interface SpecFile {
   readonly kind: 'spec';
-  /** The first declaration. Absent when the file has none. */
-  readonly component?: ComponentDecl;
+  /** The first header. Absent when the file has none. */
+  readonly header?: HeaderDecl;
   readonly criteria: readonly Criterion[];
   /** Every `#` comment, from the `#` to the end of its line. */
   readonly comments: readonly Span[];

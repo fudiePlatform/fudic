@@ -1,0 +1,24 @@
+page /espera
+
+criterion el-titulo-llega-con-el-primer-byte
+  given
+    clock 2026-11-08T10:00:00Z
+    data a-su-tiempo
+  then
+    text h1 "Lo que tarda, llega después"
+    count role:button 0
+
+criterion cada-bloque-llega-a-su-tiempo
+  given
+    clock 2026-11-08T10:00:00Z
+    data a-su-tiempo
+  when
+    wait 2000
+  then
+    text main "El contador arranca en 10"
+    count role:button 1
+  when
+    wait 3000
+  then
+    text main "1 de 2 personas están activas."
+    text main "No se pudo cargar (404 el servicio de avisos no responde)."

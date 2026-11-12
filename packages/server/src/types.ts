@@ -27,6 +27,8 @@ export interface ErrorPage {
 export interface FunctionsOptions {
   readonly base: string;
   readonly dev: boolean;
+  /** The workbench's own build: its criteria's calls are the bench's (SDD-82 §4.7). */
+  readonly bench?: boolean;
   readonly onError?: (error: unknown) => void;
   /** The default `Secure` of the cookies a function sets (SDD-81 §3.11). */
   readonly secureCookies: boolean;
@@ -68,6 +70,12 @@ export interface ServerApp {
 export interface ServerOptions {
   /** A 500 carries its message, and the CSRF secret may be random. Never in production. */
   readonly dev?: boolean;
+  /**
+   * The workbench's own build (SDD-82 §4.7): a request that carries one of its criteria is
+   * answered by the bench, as in dev, and painted on demand. Never in a build made for anything
+   * else; without the bench installed in the process it changes nothing.
+   */
+  readonly bench?: boolean;
   /** Read `Forwarded` / `X-Forwarded-*` to know the public URL (SDD-81 §3.12). Default false. */
   readonly trustProxy?: boolean;
   /** The default `Secure` of every cookie fudic or the app sets (SDD-81 §3.11). Default true. */

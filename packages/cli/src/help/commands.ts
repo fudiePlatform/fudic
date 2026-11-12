@@ -19,6 +19,7 @@ export type Topic =
   | 'generate pipe'
   | 'generate style'
   | 'generate spec'
+  | 'generate flow'
   | 'generate term'
   | 'generate snippet'
   | 'generate api'
@@ -94,7 +95,8 @@ libs/guide, and the app and the libraries you name.`,
       ['pipe', 'a pipe: its contract, its implementation and its unit test'],
       ['style', 'a global stylesheet of the project'],
       ['snippet', 'a snippet in a file of snippets, and its unit test'],
-      ['spec', 'the .fudspec criteria of a component   (s)'],
+      ['spec', 'the .fudspec criteria of a component or a page   (s)'],
+      ['flow', 'the .fudspec criteria of a flow between pages'],
       ['term', 'a step you can use in .fudspec criteria   (t)'],
       ['api', 'the server of a route or a component: its .fudapi, its handler and its link'],
       ['showcase', 'a page per component that shows each case of its fixture'],
@@ -265,13 +267,28 @@ every component of the project adopts it, after the sheets of its libraries.`,
     examples: ['fudic g style ui --project ui', 'fudic g style theme'],
   },
   'generate spec': {
-    usage: 'fudic generate spec <component>',
+    usage: 'fudic generate spec <component | route>',
     alias: 'fudic g s',
-    about: `Writes the .fudspec criteria of a component next to it, and the fixture with
-the props they mount it with. A component that does not exist is created too.`,
-    args: [['<component>', 'its tag, or its name without the prefix: "button" or "ui-button"']],
+    about: `Writes the .fudspec criteria of a component or a page next to it, and its
+fixture. A component's holds the props they mount it with, and a component that
+does not exist is created too. A page's holds a sample of what its load returns,
+its paths if it has them, and no calls yet: what the fixture does not name runs
+for real.`,
+    args: [
+      ['<component>', 'its tag, or its name without the prefix: "button" or "ui-button"'],
+      ['<route>', 'a page, as it sits under src/routes: "/usuarios", "/blog/[slug]", "/"'],
+    ],
     options: [IN_PROJECT, DRY_RUN, FORCE],
-    examples: ['fudic g spec button --project ui', 'fudic g s ui-button'],
+    examples: ['fudic g spec button --project ui', 'fudic g s /usuarios'],
+  },
+  'generate flow': {
+    usage: 'fudic generate flow <name>',
+    about: `Writes the .fudspec criteria of a flow between pages in src/flows/<name>.fudspec,
+and its fixture with no services yet: every criterion runs against the real server,
+and a group of services puts in-memory ones in place of the real ones.`,
+    args: [['<name>', 'lowercase words joined by hyphens: "alta-de-usuario"']],
+    options: [IN_APP, DRY_RUN, FORCE],
+    examples: ['fudic g flow alta-de-usuario', 'fudic g flow checkout --project web'],
   },
   'generate snippet': {
     usage: 'fudic generate snippet <file> <name>',
@@ -374,8 +391,9 @@ project from the root of the workspace.`,
   },
   spec: {
     usage: 'fudic spec',
-    about: `Runs the .fudspec criteria of the project you are in in a browser, or those of
-every project from the root of the workspace.`,
+    about: `Runs the .fudspec criteria of the project you are in in a browser — of its
+components, its pages and its flows — or those of every project from the root of
+the workspace.`,
     args: [],
     options: [['--project <name>', 'only that app or library']],
     examples: ['fudic spec', 'fudic spec --project ui'],

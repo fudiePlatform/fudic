@@ -287,7 +287,12 @@ export async function planOf(
     case 'snippet':
       return (await import('./plans/snippet.js')).planSnippet(command.name, command.opts, io);
     case 'spec':
-      return (await import('./plans/spec.js')).planSpec(command.name, command.opts, io);
+      // `/usuarios`: a page, by its route; anything else names a component.
+      return command.name.startsWith('/')
+        ? (await import('./plans/page-spec.js')).planPageSpec(command.name, command.opts, io)
+        : (await import('./plans/spec.js')).planSpec(command.name, command.opts, io);
+    case 'flow':
+      return (await import('./plans/flow.js')).planFlow(command.name, command.opts, io);
     case 'term':
       return (await import('./plans/term.js')).planTerm(command.name, command.opts, io);
     case 'api':

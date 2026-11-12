@@ -1,6 +1,6 @@
 # SDD-82 — Specs de página y de flujo: la `.fudspec` sale del componente
 
-> **Estado:** `Listo` (2026-11-08) — [tareas](./SDD-82-Task.md).
+> **Estado:** `Hecho` (2026-11-12), probada por Pedro (§6.1) y mergeada a `main` — [tareas](./SDD-82-Task.md).
 > **Paquetes:** `@fudic/spec` · `@fudic/terms` · `@fudic/workbench` · `@fudic/vite` · `@fudic/http` · `@fudic/api` ·
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
@@ -292,19 +292,27 @@ Lo de hoy sigue. Lo nuevo, cada uno un módulo `.js` con su `meta`, como los de 
 ### 3.8. El banco
 
 ```ts
-// @fudic/vite — lo que el plugin lee del banco, si está (§4.3)
+// @fudic/http/contract/server — lo que el servidor lee del banco, si está (§4.3, §8.2.13)
 export interface BenchHooks {
   /** The criterion a request belongs to: from its cookie. */
   criterionOf(request: Request): string | undefined;
-  /** The data of the nth data request of the criterion for this route; undefined runs load. */
-  data(criterion: string, route: string, nth: number): unknown;
-  /** The answer of a call or a remote rule; undefined runs it. Every call is logged, answered or not. */
-  answer(criterion: string, name: string, args: unknown): Answer | undefined;
+  /** The data of the next data request of the criterion for the route `<id>`; absent runs load. */
+  data(criterion: string, route: string): Held | undefined;
+  /** The answer of a call or a remote rule by its name; absent runs it. */
+  answer(criterion: string, name: string, args: Readonly<Record<string, unknown>>): Held | undefined;
+  /** A call is done, answered or not: the log of §4.4. */
+  called(criterion: string, call: BenchCall): void;
   /** The criterion's services, put into the request's root container. */
-  services(criterion: string): readonly ProviderOverride[];
+  services(criterion: string): readonly ServiceOverride[];
   /** The criterion's clock, for the server's Date. */
   now(criterion: string): number | undefined;
+  /** Resolves `ms` later on the criterion's clock: what a `later` of the fixture waits on. */
+  after(criterion: string, ms: number): Promise<void>;
+  /** What the real server answered, for `record` (§3.9, §8.2.35). */
+  record?(criterion: string, entry: Recorded): void;
 }
+/** Present even when it holds `undefined`: the answer of a `void` function. */
+export interface Held { readonly value: unknown }
 ```
 
 - **Dos Vite por proyecto**: el de hoy para los componentes y otro, el de la app, para páginas y
@@ -380,6 +388,8 @@ nombre se sustituye. El MCP lo hace con `fudic_spec_run { record: true }`.
 | `FUD1513` | error | No paths to list | `lists` en una ruta sin `paths` |
 | `FUD1514` | error | A fixture answer of the wrong kind | El banco: `answers` responde con un fichero una función sin `-> file`, o al revés |
 | `FUD1515` | warning | A value that cannot be recorded | `record` con un valor que no se escribe como literal |
+| `FUD1516` | error | A name the route's fixture does not have | `fudic_render`/`fudic_preview` con un nombre que la fixture de la ruta no tiene (§8.2.46) |
+| `FUD1517` | error | The route has no fixture | `fudic_render`/`fudic_preview` con `fixture` y sin `<ruta>.fixture.ts` (§8.2.46) |
 
 `FUD0922`, `FUD0930`, `FUD0933`, `FUD0950`, `FUD0952` y `FUD0953` cambian de texto (§3.1, §3.2,
 §3.6).
@@ -444,13 +454,18 @@ quieta.
 ### 4.6. El reloj
 
 `clock` instala el reloj falso de Playwright en el navegador y pone la hora de `now(criterio)` en el
-servidor; los `later` de la fixture cuentan con ese reloj. `wait <ms>` avanza los dos.
+servidor; los `later` de la fixture cuentan con ese reloj. `wait <ms>` avanza los dos. Los dos están
+parados entre un `wait` y otro, y la página quieta no espera a lo que solo el reloj puede mover
+(§8.2.27–28).
 
 ### 4.7. Sin red
 
 `when offline` pone el contexto sin red (`context.setOffline(true)`); las peticiones que el SW sirve
 de su caché siguen funcionando, las demás fallan como en un navegador. `given offline` hace primero
 una visita con red para instalar el SW y después corta.
+
+Un criterio con `offline` corre contra la app construida y servida con `vite preview` (en dev el SW
+no pinta ninguna ruta): el build del banco, que respeta las fixtures como dev (§8.2.24–25).
 
 ### 4.8. Componentes
 
@@ -459,6 +474,8 @@ nuevas y el vocabulario nuevo que tenga sentido sin servidor (`check`, `select`,
 `value`, `count`, `media`, `viewport`, `clock`, `wait`…).
 
 ### 4.9. Los ejemplos
+
+Lo que corre en `examples/basic` se ajusta en lo que dice §8.2.51; sus ficheros mandan.
 
 En `examples/basic`, que gana `/entrar` con un formulario que lleva a `/` («Hola, Ana»),
 `/usuarios/nuevo` (el alta en su propia página) y `MemoryUsers`.
@@ -546,7 +563,7 @@ criterion de-verdad-con-cookie
     cookie fudic-session ana
   then
     text body "Sesión: ana"
-    header cache-control "private, no-cache"
+    header cache-control "private, no-store"
 ```
 
 **`routes/blog/[slug].fudspec`**
@@ -651,10 +668,8 @@ criterion luis-no-ve-lo-de-ana
 criterion abre-sin-red
   given
     services dos-personas
-    url /blog
-  when
+    url /about
     offline
-    go /about
   then
     status 200
 ```
@@ -818,3 +833,250 @@ Nada.
 13. **Grabar sustituye**, no fusiona: un nombre es un caso, y volver a grabarlo lo pone al día.
 14. **El backend que no es TS lee la cookie y pregunta al banco**: el banco no puede inyectar clases
     en otro lenguaje, pero sí decir qué caso toca.
+
+### 8.2. Tomadas al implementar
+
+1. **`FUD0923` también cambia de texto**: con tres cabeceras, «el componente ya está declarado» pasa a
+   «la cabecera ya está escrita».
+2. **`FUD0950`, `FUD0952` y `FUD0953` llevan la línea o el fichero en sus parámetros** (`line`,
+   `fixture`): el mismo código sirve a `props`, `data`, `answers`, `services`, `path` y `url`.
+3. **`FUD1508`, `FUD1514` y `FUD1515` son de fichero** (la `.fudspec` o la fixture, con span si lo
+   hay): los emite el banco, no el validador.
+4. **`FUD0924`, `FUD0925`, `FUD0926` y `FUD0928` también hablan de las tres cabeceras.**
+5. **Los tipos de la fixture viven en `@fudic/http/contract`** (`Answer`, `Failed`, `Later`,
+   `Redirected`, `FileAnswer`, `FixtureOf`, `ServiceOverride`) y `@fudic/spec` los reexporta junto
+   a sus ayudantes. El `.d.ts` de una ruta solo importa del contrato (la regla de SDD-60), y el
+   servidor del banco lee esas mismas marcas.
+6. **El `.d.ts` de una ruta exporta también `Calls`**, el tipo de un grupo de `calls`, que es lo
+   que importa la fixture de un flujo del ejemplo.
+7. **«Los componentes que usa» son los que la ruta enlaza con `<link rel="component">` por una ruta
+   relativa de la app**, leídos del texto de su `.fud`, como ya se lee su `layout`. El componente de
+   un paquete no aporta funciones. Las reglas `remote` que alcanza son todas las del proyecto (su
+   nombre es único en él).
+8. **`page /x` es `routes/x.fud` o `routes/x/index.fud`**; `/x/index` también vale. Un fichero
+   que empieza por `_` no es una página. Las páginas se leen del disco, sin compilarlas: un
+   componente guardado bajo `routes/` cuenta como página.
+9. **Lo que alcanza una página y si declara `paths` lo da el anfitrión** (`SpecIo.reach`,
+   `SpecIo.functions`), que lee el `.fudapi`. Sin él es «desconocido», como hoy los props requeridos
+   de un componente sin tipo, y `FUD1506`, `FUD1507` y `FUD1513` no se comprueban.
+10. **`FUD1510` sale en la línea de la `.fudspec` que nombra el grupo ilegible**, con el sitio en la
+    fixture como relacionado, igual que el error de un módulo de término. El valor de cada entrada
+    no se exige literal: solo el grupo (`data`, `calls`, `services`) y `paths`.
+11. **Una referencia viaja al término en una forma canónica** (`argText`), con `\"` y `\\`
+    escapados; antes un nombre con comillas se rompía al pasar al banco.
+12. **Un `url` fuera de `given` es el término `then url`**: una línea de fixture solo lo es en
+    `given`, o donde no hay un término con su nombre.
+13. **`BenchHooks` queda así** (en `@fudic/http/contract/server`, y por forma en `@fudic/vite`):
+    `data(criterio, ruta)` cuenta él mismo la enésima petición; `answer` devuelve `{ value }` o
+    nada, porque `undefined` es una respuesta válida de una función `void`; `called(criterio,
+    llamada)` registra cada llamada al acabar, con su estado; `after(criterio, ms)` es el reloj
+    del criterio para los `later`; `now` sigue. La implementación es `createBench()` de
+    `@fudic/vite`, que el banco instala con `installBench()`.
+14. **El módulo de servidor de una función lleva `codes`** (`{ ana: [409, 'detalle'] }`): con él
+    `fails('ana')` de la fixture responde con el estado y el código que la función declara.
+15. **Los servicios del render los pone `benchRoot` de `@fudic/ssr`**, no de `@fudic/http`: una
+    ruta con DI y sin `.fudapi` no depende de `@fudic/http`. Las funciones y las reglas usan el de
+    `@fudic/http`. Solo en dev: el wrapper de un build no lo escribe.
+16. **`fails(0, …)` es `Response.error()`**, y el adaptador de Node corta la conexión: el
+    navegador ve un fallo de red, sin respuesta.
+17. **El `Date` del servidor lo cambia `installBench`** con un `AsyncLocalStorage` guardado en
+    `globalThis`: el plugin que abre el ámbito de cada petición puede ser otra copia del paquete.
+18. **Con el banco instalado, el plugin sirve el SW en modo preview** aunque `sw.json` diga
+    `"dev": "off"`. Solo en dev, y solo en el Vite que arranca con el banco ya instalado.
+19. **El id de un criterio es `<ejecución>-<n>.<slug>`**: el mismo criterio ejecutado dos veces
+    no comparte servicios ni registro.
+20. **Una persona nueva (`as`) abre la URL del criterio** en su propio contexto: un `go` relativo
+    necesita una página de la app desde la que resolverse.
+21. **La página quieta cuenta las peticiones desde el contexto del navegador** (documentos y SW),
+    no desde un script; una respuesta `later.never()` que el banco retiene no cuenta; la página de
+    error del navegador (sin red) no cuenta; una navegación en curso bajo la mirada es algo
+    pendiente.
+22. **Un `then` en negativo lo dice su término**: `meta.negative`, `true` o una función de sus
+    argumentos (`count … 0`). Los demás se reintentan hasta el tiempo límite.
+23. **El Vite de la app escucha en su propio puerto**; `/__bench/criterion/<id>` lo sirven los dos
+    servidores. Una página que responde un 4xx/5xx no corta el criterio: lo lee `then status`.
+24. **Los criterios sin red corren contra un build** (era §8.3.1, decidido por Pedro el
+    2026-11-11, camino b). En dev todas las rutas son `ssr` y el SW no pinta ninguna, así que un
+    criterio con `offline` (en `given` o en `when`) se ejecuta contra la app construida y servida
+    con `vite preview`, en su propio puerto. Solo esos: los demás criterios, del mismo fichero y de
+    la misma ejecución, siguen en dev. El build se hace la primera vez que un criterio sin red lo
+    pide, en `node_modules/.fudic-bench/<pid>/app/dist`, y se rehace en la siguiente petición si
+    cambió algún fichero de la app. Un build que falla deja en error esos criterios, diciendo por
+    qué (`FUD1207`); los demás corren.
+25. **El build del banco respeta las fixtures; ningún otro.** Es el que se hace o se sirve con el
+    banco ya instalado en el proceso (la regla de §8.2.18). Sus wrappers leen el banco como los de
+    dev, su `server.mjs` exporta `bench = true`, y `createServer` recibe `bench: true` (con sus
+    funciones y sus reglas): una petición con criterio recibe la `data`, las respuestas, los
+    servicios y el reloj de la fixture, y se pinta a demanda, nunca con el fichero prerenderizado.
+    Su `edge` va junto a su `outDir`, no donde lee la vista previa de la app. Un `vite build` de
+    cualquier otro nunca tiene el banco instalado, y un build sin `bench` ignora la cookie aunque
+    lo sirva un proceso con el banco. `@fudic/server` lee los hooks por su símbolo, como
+    `@fudic/ssr`: importarlos traería `async_hooks` a un servidor que corre en cualquier sitio.
+26. **`given` corre antes de abrir.** Sus términos (`cookie`, `locale`, `media`, `viewport`,
+    `clock`, `offline`) preparan el navegador; después, cada persona nombrada hasta ese momento
+    abre la URL del criterio, `main` primero. Un `as` en `given` crea la persona sin abrirla.
+27. **El reloj se para.** `clock` instala el de Playwright y lo pausa en el instante, como el del
+    servidor del criterio: los dos solo avanzan con `wait`. Una persona que llega después empieza
+    donde está el del servidor. Sin `clock`, `wait` espera de verdad.
+28. **Con reloj, la página quieta no espera al tiempo.** Los temporizadores y los frames de la
+    página no cuentan (solo avanzan con `wait`), y un `later` de la fixture que espera al reloj
+    cuenta como retenido, igual que `later.never()` (`held` suma los dos). Por lo mismo, con reloj
+    la página se abre al llegar la respuesta del documento y se lee cuando está quieta: un `later`
+    del `load` deja el documento abierto hasta el `wait`.
+29. **Los términos de navegación vuelven al llegar la respuesta** (`go`, `back`, `forward`,
+    `reload`): el banco ya espera a la página quieta tras cada `when`. `go` a una página que el
+    navegador no puede abrir (sin red) no es un error del paso: lo dice su evidencia, y `then
+    status` lee «no response».
+30. **El `ctx` de un término sabe del criterio** (`CriterionRecord` en `@fudic/terms`): `url`,
+    `resolve(path)` (relativo a la `.fudspec`), `quiet()`, `clock()` y `advance()`, `calls()`,
+    `response()` (la última respuesta de documento), `lastWhen()` (peticiones y descargas del
+    último bloque `when`), `reloaded()` y `paths()` (el `paths()` de verdad, cada entrada como la
+    escribe `path`). En un componente, `calls()` está vacío y `paths()` es null.
+31. **«El último `when»` es el último bloque `when`**, no el último paso: `requests`, `downloaded`
+    y `not-reloaded` cuentan desde que empezó. `check`/`uncheck` hacen clic, como una persona, y
+    no pelean con una página que vuelve a marcar la casilla: eso lo lee el `then`. `upload` usa el
+    `<input type="file">` o el selector que abre el clic. `checked`, `unchecked` y `value` sobre un
+    elemento sin ese estado fallan diciéndolo («not a checkbox», «not a control»).
+32. **Los ejemplos de §4.9 se ajustan a lo que hace el framework.** `abre-sin-red` visita con red
+    la página que abre después sin ella (`given offline` sobre su URL): una página nunca vista no
+    se abre desde el SW, que es el criterio 22. `de-verdad-con-cookie` lee `private, no-store`, la
+    cabecera que fudic pone a una página que lee la sesión (SDD-69), salvo que la ruta escriba la
+    suya; el criterio 28 se prueba con una ruta que escribe `private, no-cache`.
+
+33. **Un `then` que choca con una navegación lee otra vez.** Si el documento se va mientras el
+    término lee (una recarga o una navegación que la página empezó sola, después de parecer
+    quieta), el banco espera a la página quieta y lee una vez más; si vuelve a pasar, es un error
+    del paso. Otro error del término no se reintenta.
+34. **El banco del servidor no es una pieza del navegador.** Los hooks de `@fudic/http`
+    (`contract/bench.ts`) entran en la excepción de la mitad de servidor de la comprobación de
+    piezas, con `contract/server.ts`.
+
+35. **El servidor le cuenta al banco lo que responde de verdad** con un hook opcional más,
+    `record?(criterio, entrada)` en `BenchHooks`: la `data` de un `load` que corrió (una promesa
+    con sus campos `later` ya resueltos; uno que falló es `later.fails(0, …)`) y lo que respondió
+    una función o una regla `remote` cuyo handler corrió. Un fallo llega como su marca:
+    `redirects(…)`, `fails(código)` si el error lleva código, `fails(estado, título)` si no, y lo
+    que no es un `HttpError` es el 500 que vio el cliente. Una regla que pasa es `undefined`. Lo
+    que respondió la fixture no se graba. `createBench()` solo lo guarda en un criterio empezado
+    con `record: true`, y lo da `recorded(criterio)`.
+36. **Solo se graba un criterio que pasa** contra el servidor de verdad: uno que falla congelaría
+    lo que está mal. El resto se informa como «no grabado» con el motivo, y la orden sale con 1.
+37. **Una función llamada varias veces se graba con su última respuesta**: un grupo de `calls`
+    da un valor por nombre, y la última es como `answers` resuelve dos respuestas a lo mismo.
+38. **Al grabar, la línea que no nombra nada se quita.** Si la ruta no pidió `data`, o ninguna
+    llamada se pudo grabar, la línea `data` o `answers` del criterio desaparece: el criterio se
+    ejecutó así y así seguirá. Una `data` que no se puede escribir corta la lista ahí (las
+    siguientes se nombran en orden); una llamada que no se puede escribir solo se deja fuera.
+    Una respuesta de `load` que no llega en el tiempo de llamada también es `FUD1515`.
+39. **Grabar no exige que existan los nombres de `data` y `answers`** ni la fixture: los
+    `FUD0950`/`FUD0953` de esas dos líneas no paran el criterio, porque es justo lo que se va a
+    escribir. Sin fixture se crea una, tipada con `Fixtures` de la ruta o con `FlowFixtures`.
+    `services`, `path`, `url` y `clock` siguen valiendo.
+40. **La orden es `fudic-workbench record [<ruta>…] [--criterion <id>]… [--browser <b>]
+    [--json]`**, y sin rutas graba todas las páginas y flujos de la carpeta. Una spec de
+    componente no se graba: `FUD1207` y error. `runSpecs({ record: true })` hace lo mismo y
+    devuelve `recording` (grabados, no grabados y diagnósticos), que es lo que usará el MCP.
+41. **El reloj del navegador se instala un minuto antes del instante y se para en él** (corrige
+    §8.2.27). Instalado, el de Playwright corre a velocidad real hasta que se para, y pararlo en
+    un instante que ya pasó es «avanzar al pasado»: en una máquina cargada, `clock` daba error.
+    Instalado antes, la pausa siempre avanza, sobre una página en blanco.
+42. **`fudic g spec /<ruta>` no crea la página**: la busca con las mismas reglas que la cabecera
+    `page` (§8.2.8) y, si no está, `FUD1500` sobre la carpeta de rutas (el código acepta también
+    la forma de fichero, sin span). Qué layout y qué secciones lleva es de `fudic g page`. Una
+    página sin `.fudapi` recibe solo su `.fudspec`: no tiene `Fixtures` con que tipar una fixture
+    ni nada que falsear. El esqueleto comentado abre con `data base` si hay `load`, y con `path
+    <value>` o `url <url>` si la ruta tiene parámetros (según declare `paths` o no).
+43. **El `data` de ejemplo sale del `.fudapi`, no de TypeScript** (`loadFields` de
+    `@fudic/typecheck/api`, que usarán también las bombillas del editor): un campo `later` por lo
+    que resuelve; un `date`, un `html`, un `file` o un tipo no declarado no tienen literal y se
+    dejan fuera, como hace la fixture de un componente con lo que no se puede escribir. Un nombre de
+    flujo es kebab-case (`FUD0448`, variante `flow-name`).
+44. **`visit` aplica la fixture con el banco del workbench**, no con una copia de su significado:
+    cada `visit` con `fixture`, `answers` o `services` es un criterio de un banco instalado en el
+    proceso del test, con su cookie en la jarra de la página. El wrapper de los tests se escribe con
+    `bench: true` (sin banco o sin cookie, nada cambia) y el render recibe la petición. Al acabar
+    cada test, los criterios terminan y el banco se desinstala. `fixture` acepta varios nombres,
+    como `data a b`, y `services` existe también: un grupo de la fixture que el test no pudiera
+    aplicar sería un fleco.
+45. **`fudic_spec_run`** acepta una ruta por su patrón o como la escribe la cabecera
+    (`/blog/:slug`, `/blog/[slug]`) y un flujo por su nombre; devuelve `calls` (por criterio, cada
+    llamada con `fn`, `args`, `faked` y `status`) y, con `record`, `recording`. Una grabación no se
+    escribe en el historial de las piezas: corre sin sus fixtures.
+46. **`fudic_render` y `fudic_preview` de una ruta aceptan `fixture: { data, answers, services }`**
+    (en `fudic_render`, un nombre suelto es `data`). Los nombres se comprueban leyendo la fixture
+    sin ejecutarla: `FUD1516` y `FUD1517`. `fudic_render` lo pasa a `visit`; un `load` falseado no
+    cuenta como llamada. `fudic_preview` abre la fixture como un criterio del banco en el proceso
+    del servidor de desarrollo (la fixture se carga por su grafo de módulos, así sus servicios son
+    las clases que inyecta el servidor), y la URL pasa antes por `/_fudic/preview-fixture/<id>`,
+    que pone la cookie y redirige. Cada vista previa termina las fixtures anteriores: un navegador
+    con la cookie vieja ve la app real.
+47. **Lo que alcanza una página tiene una sola respuesta**: `routeCallables` y `projectCallables`
+    de `@fudic/api`, las mismas que escriben el `Calls` del `.d.ts`. Una función se registra con
+    los parámetros de la ruta, sus argumentos y, si lleva `form`, los campos de primer nivel del
+    formulario; una regla `remote`, con `value` y `params` (lo que `sent` puede leer). El `check`
+    del proyecto y el editor las conectan a `SpecIo.reach`/`functions` (`specReach` de
+    `@fudic/typecheck/api`; en el editor, `ApiHost.specReach`, que lee los `.fudapi` abiertos):
+    hasta ahora ningún anfitrión lo hacía y `FUD1506`, `FUD1507` y `FUD1513` no salían nunca. El
+    banco sigue sin ellos («desconocido»): lo que valida al ejecutar ya lo dijeron el editor y el
+    `check`.
+48. **Los tipos que escribe el editor listan las funciones de los componentes en `Calls`**, como
+    los del build: el `ApiContext` del editor no llevaba `components`.
+49. **En el editor, las líneas de fixture y `as` no son términos**: no se tachan como término
+    desconocido (se tachaban), `as` se ofrece en todos los bloques, y la cabecera que se propone
+    primero sale del sitio del fichero (`page` junto a una ruta, `flow` en `src/flows`). El hover
+    de una línea de fixture va por nombre: sobre el nombre, ese nombre; sobre la palabra de la
+    línea, el primero, con la línea entera como rango.
+50. **«Añadir la entrada que falta» reescribe la fixture con `recordFixture`**, el mismo escritor
+    que `record` (su grupo admite también `services`): una `data` con la muestra del `load`, un
+    `calls` vacío (`{}`) y un `services` sin servicios (`[]`); un grupo que no existe se crea. La
+    bombilla de `FUD1504` solo sale si la fixture trae algún valor en `paths`.
+51. **Los ejemplos de §4.9, tal como corren en `examples/basic`** (fase 9). `/entrar` lleva a
+    `/cuenta`, que ya dice «Hola, Ana.»: el inicio es estático y prerenderizado, y darle un `load`
+    para saludar le quitaba justo lo que enseña. El alta de `/usuarios/nuevo` es el `user-form` de
+    siempre (su botón dice «Dar de alta» y su aviso «Guardado: …»). Marta se da de alta con otro
+    email: la regla `email-taken` lee la tabla del módulo, no `Users`, y `marta@fudic.dev` ya está
+    en ella. Las regiones `role="status"` de `/usuarios` y del formulario llevan nombre
+    («Búsqueda», «Búsqueda lenta», «Alta», «Errores del formulario»): sin él la referencia daba
+    varias. El blog usa sus slugs de verdad. `luis-no-ve-lo-de-ana` lee los textos de `/cuenta`.
+    `routes/espera.fudspec` prueba `later` con el reloj del criterio (un `@await` espera al de
+    arriba: el bloque que falla a los 3 s se pinta a los 5).
+52. **`cookie` es para todo el sitio** (`path=/`): con la URL del criterio de `/usuarios/nuevo`,
+    Playwright la dejaba en `/usuarios` y no viajaba con `/_fudic/fn/…`.
+53. **Un gesto que lleva a otro documento está atendido.** `settled` marca el documento antes del
+    gesto; si al acabar ya no es el mismo (un enlace, la redirección que respondió una función),
+    no espera la hidratación del viejo ni su frame: la página quieta tras el `when` espera la
+    navegación.
+54. **Un documento abandonado a medio cargar no deja peticiones pendientes.** Chrome no avisa del
+    final de lo que pedía (ni `requestfailed`); cuando responde la navegación de un frame, todo lo
+    demás que pidió ese frame se da por acabado.
+55. **`fails(0, …)` escribe bytes que no son HTTP antes de cortar.** Un corte sin nada recibido
+    sobre una conexión ya usada es uno que Chrome reintenta, una vez por conexión libre: el
+    servidor veía la misma llamada hasta siete veces y `called … 1` fallaba. Sobre HTTP/2 se
+    resetea el flujo.
+56. **Fuera de esta spec, del compilador: un valor leído a través de un formulario o de un almacén
+    importado se mueve.** `<form-errores .issues=@personForm.$issues()>` pintaba la lista vacía con
+    la que se montó y ninguna otra: el hijo no se hidrataba y el padre no se la volvía a dar. Los
+    nombres cuyos miembros se mueven (lo que importa el `@code`, los formularios que se enlazan con
+    `control`, y en una ruta los de su `.fudapi`) los da `memberSources`; el nivel de hidratación y
+    el emit del padre preguntan a la misma función.
+57. **`fudic_generate` del MCP genera `flow`**, como `fudic g flow`: faltaba en su lista.
+58. **El 404 intermitente de `preview-e2e` (tarea 36) era el plugin vaciando los contratos.** Su
+    `hotUpdate` invalidaba las implementaciones del servidor con cualquier fichero que cambiara,
+    también uno que el grafo no tiene. `fudic_preview` lista las rutas con un trabajo de
+    `@fudic/testing` que escribe y borra ficheros en `.fudic/render`, dentro de la app: el watcher
+    del servidor de desarrollo los veía y, si el aviso llegaba con una petición en camino, el
+    wrapper leía un contrato vacío y la página respondía el 404 de un `load` sin implementar. Ahora
+    solo invalida con un módulo del grafo SSR, que es lo único que puede volver a evaluarse.
+59. **La salida estándar del banco es solo del protocolo** (la prueba de Pedro, tarea 35). Una
+    página o un flujo corren el servidor de la app dentro del proceso del banco, y el `console.info`
+    de su middleware (`[server] GET load 0 ms`) salía por stdout antes de la primera línea: el
+    editor la tomaba por la respuesta y decía «The workbench stopped.». `processIo` reserva stdout
+    para las líneas del protocolo y desvía cualquier otra escritura a stderr.
+60. **«Live» de una página o un flujo abre la URL de la app**, absoluta: `route` del criterio en el
+    mensaje `session` lleva el origen del Vite de la app (o el de su build, sin red), y no la ruta
+    sola, que el iframe resolvía contra el servidor del banco y daba 404. La página viva se abre sin
+    la cookie del criterio: muestra la app de verdad, no la fixture, que acaba con el criterio.
+
+### 8.3. Pendiente de decidir
+
+Nada.

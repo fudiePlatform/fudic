@@ -7,13 +7,21 @@
  */
 
 import { FUD0970, FUD0971 } from '@fudic/diagnostics';
-import { FIXTURE_EXTENSION, SPEC_EXTENSION } from '@fudic/spec';
+import { FIXTURE_EXTENSION, parseSpec, SPEC_EXTENSION } from '@fudic/spec';
 import type { WorkbenchFailure } from './types.js';
 
 export interface BenchTarget {
+  /**
+   * What the `.fudspec` specifies (SDD-82 §3.1): absent for a component; a page, by its route;
+   * a flow between pages. A page and a flow run on the app's own Vite.
+   */
+  readonly kind?: 'page' | 'flow';
+  /** The component's tag; for a page or a flow, the name its shell goes by: `page-usuarios`, `flow-alta`. */
   readonly tag: string;
-  /** Absolute. */
+  /** Absolute. A page's route `.fud`; a flow's `.fudspec`. */
   readonly component: string;
+  /** A page's route, as its header writes it: `/blog/[slug]`. */
+  readonly route?: string;
   /** Absolute; null without a `.fudspec`. */
   readonly spec: string | null;
   /** Absolute; null without a `.fixture.ts`. */
@@ -44,11 +52,18 @@ export function resolveTarget(file: string, fs: TargetFs): BenchTarget | Workben
   else return notComponent;
 
   const dir = dirOf(component);
+  const projectRoot = nearest(dir, 'fudic.json', fs) ?? nearest(dir, 'package.json', fs);
+  // A page or a flow is told by the header of its `.fudspec` (SDD-82 §3.1).
+  const specPath = component.slice(0, -COMPONENT_EXTENSION.length) + SPEC_EXTENSION;
+  const header = headerOf(fs.readFile(specPath));
+  if (header !== undefined) {
+    if (projectRoot === undefined) return { diagnostic: FUD0971({ file: specPath }) };
+    return routeTarget(header, specPath, component, projectRoot, fs);
+  }
+
   const tag = component.slice(component.lastIndexOf('/') + 1, -COMPONENT_EXTENSION.length);
   const source = fs.readFile(component);
   if (!TAG.test(tag) || source === undefined || !declaresTag(source, tag)) return notComponent;
-
-  const projectRoot = nearest(dir, 'fudic.json', fs) ?? nearest(dir, 'package.json', fs);
   if (projectRoot === undefined) return { diagnostic: FUD0971({ file: component }) };
 
   const spec = join(dir, tag + SPEC_EXTENSION);
@@ -57,6 +72,39 @@ export function resolveTarget(file: string, fs: TargetFs): BenchTarget | Workben
     tag,
     component,
     spec: fs.exists(spec) ? spec : null,
+    fixture: fs.exists(fixture) ? fixture : null,
+    projectRoot,
+  };
+}
+
+/** A `page <route>` or `flow <name>` header, as the first line of a `.fudspec` writes it. */
+interface RouteHeader {
+  readonly kind: 'page' | 'flow';
+  readonly name: string;
+}
+
+/** The header of a `.fudspec` that is a page's or a flow's; undefined for a component's, or none. */
+function headerOf(text: string | undefined): RouteHeader | undefined {
+  const header = text === undefined ? undefined : parseSpec(text).value.header;
+  if (header?.name === undefined || header.header === 'component') return undefined;
+  return { kind: header.header, name: header.name.text };
+}
+
+/** `/blog/[slug]` → `page-blog-slug`, `/` → `page-index`, `alta` → `flow-alta`: a path segment for the shell. */
+export function routeTag(kind: 'page' | 'flow', name: string): string {
+  const words = name.toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '');
+  return `${kind}-${words === '' ? 'index' : words}`;
+}
+
+/** A page's target: its route `.fud`, beside the `.fudspec`; a flow's: the `.fudspec` itself. */
+function routeTarget(header: RouteHeader, spec: string, page: string, projectRoot: string, fs: TargetFs): BenchTarget {
+  const fixture = spec.slice(0, -SPEC_EXTENSION.length) + FIXTURE_EXTENSION;
+  return {
+    kind: header.kind,
+    tag: routeTag(header.kind, header.name),
+    component: header.kind === 'page' ? page : spec,
+    ...(header.kind === 'page' ? { route: header.name } : {}),
+    spec,
     fixture: fs.exists(fixture) ? fixture : null,
     projectRoot,
   };

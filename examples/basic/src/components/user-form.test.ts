@@ -46,6 +46,16 @@ test('a taken email: the server says so, and its slot shows it', async () => {
   expect(t.errorOf('Nombre')).toBeNull();
 });
 
+test('a reserved name: the 409 the function declares stays in the form, in its summary', async () => {
+  const t = await mounted('ana');
+  await t.type(t.getByLabelText('Nombre'), 'admin');
+  await t.type(t.getByLabelText('Email'), 'admin@fudic.dev');
+  await t.type(t.getByLabelText('Edad'), '40');
+  await t.submit();
+  expect(personForm.$issues().map((issue) => issue.message)).toEqual(['Ese nombre está reservado.']);
+  expect(t.query('form-errores')?.shadowRoot?.textContent).toContain('Ese nombre está reservado.');
+});
+
 test('the browser validates first: an empty name never reaches the server', async () => {
   const t = await mounted('ana');
   await t.type(t.getByLabelText('Email'), 'pedro@fudic.dev');

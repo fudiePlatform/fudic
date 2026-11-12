@@ -32,13 +32,32 @@ export function fakeLocator(ref: string): Locator {
 
 export function fakePage(
   elements: (css: string) => FakeElement = () => ({}),
-  options: { status?: number | null; goto?: () => Promise<never> } = {},
+  options: {
+    status?: number | null;
+    goto?: () => Promise<never>;
+    pending?: () => readonly string[];
+    document?: ReturnType<PageLike['document']>;
+    requests?: () => number;
+    downloads?: () => readonly string[];
+    /** False: the page holds no document a token can be left on (the browser's error page). */
+    tokens?: false;
+  } = {},
 ): FakePage {
   const calls: string[] = [];
   let listener: (message: string) => void = () => undefined;
+  /** The token the document holds: none until a `when` block leaves one. */
+  let token: string | undefined;
   const page: FakePage = {
     // What the extensions receive: only its identity matters without a browser.
-    page: { fake: 'playwright page' } as unknown as Page,
+    page: {
+      fake: 'playwright page',
+      // Its clock, as Playwright's: what `clock` and `wait` drive (SDD-82 §4.6).
+      clock: {
+        install: async ({ time }: { time: number }) => void calls.push(`clock install ${time}`),
+        pauseAt: async (time: number) => void calls.push(`clock pause ${time}`),
+        runFor: async (ms: number) => void calls.push(`clock runFor ${ms}`),
+      },
+    } as unknown as Page,
     adopt(locator) {
       calls.push(`adopt ${String(locator)}`);
       return page.locate(String(locator));
@@ -46,10 +65,11 @@ export function fakePage(
     calls,
     closed: false,
     fail: (message) => listener(message),
-    async goto(url) {
+    async goto(url, until) {
       // As Playwright does: a closed page refuses to navigate.
       if (page.closed) throw new Error('page.goto: Target page, context or browser has been closed');
-      calls.push(`goto ${url}`);
+      calls.push(until === 'commit' ? `goto ${url} (commit)` : `goto ${url}`);
+      token = undefined;
       if (options.goto !== undefined) return options.goto();
       return options.status === undefined ? 200 : options.status;
     },
@@ -73,7 +93,18 @@ export function fakePage(
       };
       return locator;
     },
-    async evaluate<R>(script: string): Promise<R> {
+    async evaluate<R>(script: string, arg?: unknown): Promise<R> {
+      // The token of a `when` block (SDD-82 §3.7): kept until a navigation takes it away.
+      if (script.includes('__fudicBenchDocument = ')) {
+        if (options.tokens === false) throw new Error('no document');
+        calls.push('mark');
+        token = arg as string;
+        return undefined as R;
+      }
+      if (script.includes('__fudicBenchDocument ?? null')) {
+        if (options.tokens === false) throw new Error('no document');
+        return (token ?? null) as R;
+      }
       calls.push(script.includes('requestAnimationFrame') ? 'frame' : 'evaluate');
       return undefined as R;
     },
@@ -92,6 +123,13 @@ export function fakePage(
     onPageError(next) {
       listener = next;
     },
+    async addCookie(name, value, url) {
+      calls.push(`cookie ${name}=${value} ${url}`);
+    },
+    pending: () => options.pending?.() ?? [],
+    document: () => options.document ?? null,
+    requests: () => options.requests?.() ?? 0,
+    downloads: () => options.downloads?.() ?? [],
     async close() {
       page.closed = true;
       calls.push('close');

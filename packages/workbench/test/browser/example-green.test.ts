@@ -6,6 +6,7 @@
 
 import { existsSync, readdirSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { runSpecs } from '../../src/run.js';
 import { openWorkbench } from '../../src/open.js';
 import type { ResultMessage } from '../../src/protocol.js';
 import { isFailure, type WorkbenchSession } from '../../src/types.js';
@@ -86,4 +87,47 @@ describe('examples/basic in the workbench — criterion 30', () => {
     shell = await connectShell(opened.url);
     expect((await shell.next(isSession)).criteria.map((c) => c.id)).toEqual(['empieza-en-a', 'cambia-de-pestana']);
   }, 120_000);
+});
+
+describe('examples/basic: Live, from the editor — SDD-82 §8.2.60', () => {
+  it.each(['src/flows/alta-de-usuario.fudspec', 'src/routes/usuarios.fudspec'])(
+    "every criterion of %s opens alive on the app's Vite, not on the shell's server",
+    async (file) => {
+      const opened = await openWorkbench(`${EXAMPLE}/${file}`);
+      if (isFailure(opened)) throw new Error(opened.diagnostic.message);
+      session = opened;
+      shell = await connectShell(opened.url);
+      const shellOrigin = new URL(opened.url).origin;
+
+      const message = await shell.next(isSession, 0, 90_000);
+      expect(message.criteria.length).toBe(opened.criteria);
+      for (const { id, route } of message.criteria) {
+        const live = new URL(route);
+        expect(live.origin, id).not.toBe(shellOrigin);
+        expect((await fetch(live)).status, `${id}: ${route}`).not.toBe(404);
+      }
+    },
+    150_000,
+  );
+});
+
+describe('examples/basic: the pages and the flow of SDD-82 §4.9 — criterion 39', () => {
+  const SPECS = [
+    'src/routes/usuarios.fudspec',
+    'src/routes/blog/[slug].fudspec',
+    'src/routes/espera.fudspec',
+    'src/flows/alta-de-usuario.fudspec',
+  ];
+
+  it('every criterion is green with `fudic-workbench run`, and nothing is left in the example', async () => {
+    const diagnostics: string[] = [];
+    const ran = await runSpecs(SPECS, { root: EXAMPLE, onDiagnostic: (d) => void diagnostics.push(`${d.code} ${d.message}`) });
+    if (isFailure(ran)) throw new Error(ran.diagnostic.message);
+    expect(diagnostics).toEqual([]);
+    const red = ran.results.filter((r) => r.verdict !== 'pass').map((r) => [r.tag, r.id, r.error ?? r.steps.find((s) => 'error' in s || !s.pass)]);
+    expect(red).toEqual([]);
+    expect(ran.results.map((r) => r.tag)).toEqual(expect.arrayContaining(['page-usuarios', 'page-blog-slug', 'page-espera', 'flow-alta-de-usuario']));
+    expect(ran.pass).toBe(ran.results.length);
+    expect(existsSync(`${EXAMPLE}/node_modules/.fudic-bench/${process.pid}`)).toBe(false);
+  }, 300_000);
 });

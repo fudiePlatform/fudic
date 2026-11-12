@@ -67,6 +67,48 @@ describe('ctx.locate: references', () => {
   });
 });
 
+/** A table with one "Delete" per row: what a step reference tells apart (SDD-82 §3.3). */
+const TABLE = `
+  <ui-table>
+    <template shadowrootmode="open">
+      <table>
+        <tr><td>Ana</td><td>ana@fudic.dev</td><td><button data-who="ana">Delete</button></td></tr>
+        <tr><td>Luis Pérez</td><td>luis@fudic.dev</td><td><button data-who="luis">Delete</button></td></tr>
+      </table>
+    </template>
+  </ui-table>`;
+
+describe('ctx.locate: references in steps (SDD-82 criterion 3)', () => {
+  it('each step searches inside the one before it, the row by a name it contains', async () => {
+    await page.setContent(TABLE);
+    const button = ctx.locate('role:row/~"Luis">role:button/"Delete"');
+    expect(await button.getAttribute('data-who')).toBe('luis');
+  });
+
+  it('a contained name is not an exact one', async () => {
+    await page.setContent(TABLE);
+    expect(await ctx.locate('role:row/"Luis"').count()).toBe(0);
+    expect(await ctx.locate('role:row/~"luis"').count()).toBe(1);
+  });
+
+  it('tag steps, and a tag before a role', async () => {
+    await page.setContent(TABLE);
+    expect(await ctx.locate('ui-table>td').count()).toBe(6);
+    expect(await ctx.locate('ui-table>role:button').count()).toBe(2);
+  });
+
+  it('a name with an escaped quote, and a `>` inside the quotes', async () => {
+    await page.setContent('<button>say "hi"</button><button>a&gt;b</button>');
+    expect(await ctx.locate('role:button/"say \\"hi\\""').textContent()).toBe('say "hi"');
+    expect(await ctx.locate('role:button/"a>b"').textContent()).toBe('a>b');
+  });
+
+  it('the rule still holds: a reference that gives two elements fails', async () => {
+    await page.setContent(TABLE);
+    await expect(ctx.locate('role:row>role:button/"Delete"').isVisible()).rejects.toThrow('matches 2 elements');
+  });
+});
+
 describe('ctx.locate: one element', () => {
   it('runs the call and reports the reference with its box', async () => {
     await page.setContent('<ui-box style="display:block;position:absolute;left:10px;top:20px;width:30px;height:40px"></ui-box>');

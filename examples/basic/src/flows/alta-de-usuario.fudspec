@@ -1,0 +1,104 @@
+flow alta-de-usuario
+
+criterion entrar-lleva-a-la-cuenta
+  given
+    services dos-personas
+    url /entrar
+  when
+    type role:textbox/"Usuario" "ana"
+    click role:button/"Entrar"
+  then
+    url /cuenta
+    text main "Hola, Ana."
+
+criterion lo-que-se-crea-se-encuentra
+  given
+    services dos-personas
+    url /entrar
+  when
+    type role:textbox/"Usuario" "ana"
+    click role:button/"Entrar"
+    go /usuarios/nuevo
+    type role:textbox/"Nombre" "Marta"
+    type role:textbox/"Email" "marta.ruiz@fudic.dev"
+    type role:spinbutton/"Edad" "29"
+    upload role:button/"Foto" "./fixtures/marta.png"
+    click role:button/"Dar de alta"
+  then
+    text role:status/"Alta" "Guardado: Marta"
+    sent save avatar "marta.png"
+  when
+    go /usuarios
+    type role:searchbox/"Buscar por nombre" "mar"
+  then
+    count role:listitem 1
+    text role:listitem "Marta — marta.ruiz@fudic.dev"
+
+criterion otro-criterio-no-lo-ve
+  given
+    services dos-personas
+    url /usuarios
+  when
+    type role:searchbox/"Buscar por nombre" "mar"
+  then
+    count role:listitem 0
+    count role:button/"Borrar" 2
+
+criterion un-nombre-reservado-no-aparece
+  given
+    services dos-personas
+    cookie fudic-session ana
+    url /usuarios/nuevo
+  when
+    type role:textbox/"Nombre" "admin"
+    type role:textbox/"Email" "admin@fudic.dev"
+    type role:spinbutton/"Edad" "40"
+    click role:button/"Dar de alta"
+  then
+    text role:status/"Errores del formulario" "Ese nombre está reservado."
+  when
+    go /usuarios
+    type role:searchbox/"Buscar por nombre" "admin"
+  then
+    count role:listitem 0
+
+criterion sin-red-el-alta-no-llega
+  given
+    services vacio
+    answers save-sin-red
+    cookie fudic-session ana
+    url /usuarios/nuevo
+  when
+    type role:textbox/"Nombre" "Marta"
+    type role:textbox/"Email" "marta.ruiz@fudic.dev"
+    type role:spinbutton/"Edad" "29"
+    click role:button/"Dar de alta"
+  then
+    called save 1
+  when
+    go /usuarios
+  then
+    count role:button/"Borrar" 0
+
+criterion luis-no-ve-lo-de-ana
+  given
+    services dos-personas
+    url /entrar
+  when
+    type role:textbox/"Usuario" "ana"
+    click role:button/"Entrar"
+    go /cuenta
+    as luis
+    go /cuenta
+  then
+    text main "No has entrado."
+    as main
+    text main "Hola, Ana."
+
+criterion abre-sin-red
+  given
+    services dos-personas
+    url /about
+    offline
+  then
+    status 200

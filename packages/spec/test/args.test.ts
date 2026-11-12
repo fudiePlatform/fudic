@@ -26,18 +26,21 @@ describe('arguments (criterion 2)', () => {
     expect(codes).toEqual([]);
     const role = args[0]!;
     if (role.kind !== 'role') throw new Error('not a role');
-    expect(role.role.text).toBe('button');
-    expect(role.name?.text).toBe('Detalles con espacio');
-    expect(slice(source, role.name!.span)).toBe('"Detalles con espacio"');
+    const [step] = role.steps;
+    if (step?.kind !== 'role') throw new Error('not a role step');
+    expect(step.role.text).toBe('button');
+    expect(step.name).toMatchObject({ text: 'Detalles con espacio', match: 'exact' });
+    expect(slice(source, step.name!.span)).toBe('"Detalles con espacio"');
     expect(slice(source, role.span)).toBe('role:button/"Detalles con espacio"');
   });
 
   it('reads a role without a name', () => {
     const { source, args } = argsOf('click role:button');
     const role = args[0]!;
-    expect(role.kind).toBe('role');
-    expect(role.kind === 'role' && role.name).toBeUndefined();
-    expect(role.kind === 'role' && slice(source, role.role.span)).toBe('button');
+    if (role.kind !== 'role') throw new Error('not a role');
+    const [step] = role.steps;
+    expect(step?.kind === 'role' && step.name).toBeUndefined();
+    expect(step?.kind === 'role' && slice(source, step.role.span)).toBe('button');
   });
 });
 

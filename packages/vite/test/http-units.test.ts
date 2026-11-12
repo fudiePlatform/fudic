@@ -26,7 +26,7 @@ describe('the functions middleware, before anything else (§4.15)', () => {
   async function middlewares(hook: 'configureServer' | 'configurePreviewServer'): Promise<Middleware[]> {
     const used: Middleware[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as unknown as Record<string, (...a: unknown[]) => unknown>;
-    plugin['config']!({});
+    plugin['config']!({}, { command: 'serve', mode: 'development' });
     plugin['configResolved']!({ root: fileURLToPath(new URL('..', import.meta.url)), base: '/', command: 'serve', build: { outDir: 'dist' } });
     await plugin[hook]!({
       ...fakeDevServerParts(),

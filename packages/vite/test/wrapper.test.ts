@@ -20,6 +20,22 @@ const api = (over: { load?: boolean; paths?: boolean; layout?: boolean } = {}) =
   ...over,
 });
 
+describe('emitRenderChunk — the workbench’s root (SDD-82 §4.2)', () => {
+  it('dev hands every request root through benchRoot, render and data alike', () => {
+    const code = emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true, api: api({ load: true }) });
+    // And its `load` asks the bench for the data, in dev and in the bench’s own build (§4.7).
+    expect(code).toMatch(/\$runLoad\(\$load, \$ctx, (?:true|false), true\)/u);
+    expect(code).toContain('import { benchRoot as $benchRoot } from "@fudic/ssr";');
+    expect(code.match(/const \$root = \$benchRoot\(iocRoot\(\), ctx\.request\);/gu)).toHaveLength(2);
+  });
+
+  it('a page that opens no root, or a build, writes none', () => {
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true })).not.toContain('benchRoot');
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, hasDi: true })).not.toContain('benchRoot');
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true, hasDi: true })).toContain('$benchRoot(iocRoot(), ctx.request)');
+  });
+});
+
 describe('emitRenderChunk — the edge variant', () => {
   const code = emitRenderChunk({
     pageModule: './customer/[id].fud',
@@ -52,7 +68,7 @@ describe('emitRenderChunk — the edge variant', () => {
 
   it('exports data(ctx) so the generated endpoint reuses the same load', () => {
     expect(code).toContain('export async function data(ctx) {');
-    expect(code).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
+    expect(code).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false, false));');
     // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
     expect(code).toContain('return writeFrames($load.spec, data);');
     expect(code).toContain('import { writeFrames } from "@fudic/http/wire/frames";');
@@ -67,13 +83,13 @@ describe('emitRenderChunk — the edge variant', () => {
 
   it('prefers data already resolved by the caller', () => {
     expect(code).toContain(
-      'const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false)));',
+      'const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false, false)));',
     );
   });
 
   it('in dev, a `load` nobody implemented says so', () => {
     const dev = emitRenderChunk({ pageModule: './x.fud', withLoad: true, api: { ...api({ load: true }), dev: true } });
-    expect(dev).toContain('$runLoad($load, $ctx, true)');
+    expect(dev).toContain('$runLoad($load, $ctx, true, false)');
   });
 });
 
@@ -140,7 +156,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
   });
 
   it('the endpoint answers with the two halves in ONE response (§6.10)', () => {
-    expect(edge).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
+    expect(edge).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false, false));');
     expect(edge).toContain('return writeFrames($load.spec, data, await layoutProps($ctx, data));');
   });
 
@@ -176,7 +192,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     });
     // `$ctx` is the server context of the request (SDD-56 §4.6), for both: `load` injects on
     // its own, inside the request, and the container rides no ctx at all.
-    expect(withDi).toContain('$runLoad($load, $ctx, false)');
+    expect(withDi).toContain('$runLoad($load, $ctx, false, false)');
     expect(withDi).toContain('withRequest($root, () => layoutProps($ctx, data))');
     expect(withDi).not.toContain('withDi');
     expect(withDi).toContain('yield* flushHead(page(data, io(ctx), $root, layout));');

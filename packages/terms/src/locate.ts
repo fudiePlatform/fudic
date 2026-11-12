@@ -6,15 +6,53 @@
 import type { Locator, Page } from 'playwright-core';
 import type { Box } from './types.js';
 
-const ROLE = /^role:([a-z]+)(?:\/"(.*)")?$/u;
+type AriaRole = Parameters<Page['getByRole']>[0];
 
-/** A `tag` or `role:<role>[/"<name>"]` reference, as Playwright locates it. Both pierce shadow roots. */
+/** One step of a reference: a tag, or a role with its name, exact or contained. */
+type Step =
+  | { readonly tag: string }
+  | { readonly role: AriaRole; readonly name?: string; readonly exact: boolean };
+
+/** `role:<role>`, `role:<role>/"<name>"` or `role:<role>/~"<text>"`, the name with `\"` and `\\` escaped. */
+const ROLE = /^role:([a-z]+)(?:\/(~?)"((?:[^"\\]|\\.)*)")?$/u;
+
+/** The steps of a reference, split at every `>` outside quotes. */
+function stepsOf(ref: string): readonly Step[] {
+  const parts: string[] = [];
+  let start = 0;
+  let quoted = false;
+  for (let i = 0; i < ref.length; i++) {
+    const c = ref[i];
+    if (quoted && c === '\\') i++;
+    else if (c === '"') quoted = !quoted;
+    else if (!quoted && c === '>') {
+      parts.push(ref.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(ref.slice(start));
+  return parts.map((part): Step => {
+    const role = ROLE.exec(part);
+    if (role === null) return { tag: part };
+    const name = role[3];
+    return name === undefined
+      ? { role: role[1] as AriaRole, exact: true }
+      : { role: role[1] as AriaRole, name: name.replace(/\\(.)/gu, '$1'), exact: role[2] === '' };
+  });
+}
+
+/**
+ * A reference as Playwright locates it: steps joined by `>`, each a tag or a `role:` with an
+ * optional name — `/"…"` exact, `/~"…"` contained — and each searched inside the one before it.
+ * Every step pierces shadow roots.
+ */
 export function locatorOf(page: Page, ref: string): Locator {
-  const role = ROLE.exec(ref);
-  if (role === null) return page.locator(ref);
-  const name = role[2];
-  const kind = role[1] as Parameters<Page['getByRole']>[0];
-  return name === undefined ? page.getByRole(kind) : page.getByRole(kind, { name, exact: true });
+  let at: Page | Locator = page;
+  for (const step of stepsOf(ref)) {
+    if ('tag' in step) at = at.locator(step.tag);
+    else at = step.name === undefined ? at.getByRole(step.role) : at.getByRole(step.role, { name: step.name, exact: step.exact });
+  }
+  return at as Locator;
 }
 
 /**

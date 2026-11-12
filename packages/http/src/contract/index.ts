@@ -38,6 +38,18 @@ export {
   type Use,
 } from './middleware.js';
 export { fails, titleOf } from './fails.js';
+// What a route's fixture holds, for its `.d.ts` (SDD-82 §3.4).
+export type {
+  Answer,
+  Failed,
+  FailedCode,
+  FailedStatus,
+  FileAnswer,
+  FixtureOf,
+  Later,
+  Redirected,
+  ServiceOverride,
+} from './fixture.js';
 export { conform, conformAll, fromText, toText, type Primitive, type Ty } from './wire.js';
 export { folderOf, inTurn, loadingFile, resetRegistry, setFolders, takeRefusal, type Side } from '@fudic/forms/contract';
 export { HttpError } from '../errors.js';

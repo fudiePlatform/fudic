@@ -116,9 +116,12 @@ export function* lines(source: string): Generator<readonly [number, number]> {
   yield [start, source.length];
 }
 
+/** The words that open a line at column 0: the three headers and `criterion`. */
+export const TOP_LEVEL: ReadonlySet<string> = new Set(['component', 'page', 'flow', 'criterion']);
+
 /** The level a line is read at, from its first word when its indentation is wrong. */
 export function levelOf(indent: number, head: string): number {
   if (indent === 0 || indent === 2 || indent === 4) return indent;
-  if (head === 'component' || head === 'criterion') return 0;
+  if (TOP_LEVEL.has(head)) return 0;
   return head === 'given' || head === 'when' || head === 'then' ? 2 : 4;
 }

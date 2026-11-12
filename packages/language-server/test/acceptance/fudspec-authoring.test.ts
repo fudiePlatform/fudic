@@ -114,7 +114,7 @@ describe('criteria 14–16 — snippets through the live connection', () => {
 
   it('offers the criterion snippet with props, and the bare keywords too (criterion 15)', async () => {
     const items = await complete('component app-probe\n\n|');
-    expect(items.map((i) => i.label)).toEqual(['component', 'criterion', 'criterion']);
+    expect(items.map((i) => i.label)).toEqual(['component', 'page', 'flow', 'criterion', 'criterion']);
     const criterion = items.find((i) => i.insertTextFormat === 2);
     expect(criterion?.insertText).toBe('criterion ${1:slug}\n  given\n    props ${2:base}\n  then\n    $0');
   });
@@ -127,6 +127,8 @@ describe('criteria 14–16 — snippets through the live connection', () => {
         insertText: 'visible ${1|app-badge,app-probe,site-nav,role:|}',
         insertTextFormat: 2,
       }),
+      // `as` is a line of every block (SDD-82 §3.7).
+      expect.objectContaining({ label: 'as' }),
     ]);
     const blocks = await complete('component app-probe\n\ncriterion a\n  |');
     expect(blocks.map((i) => i.label)).toEqual(['given', 'when', 'then']);

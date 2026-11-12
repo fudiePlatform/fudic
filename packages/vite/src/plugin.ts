@@ -24,6 +24,7 @@ import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
+import { benchScope, criterionOfRequest, installedBench } from './bench-hooks.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
   transformFudClient,
@@ -200,6 +201,8 @@ import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 interface BuiltServer {
   readonly createApp: (io: { readonly prerendered: (pathname: string) => Promise<string | null> }) => ServerApp;
   readonly config: ServeConfig;
+  /** Present in the workbench's own build (SDD-82 §4.7). */
+  readonly bench?: boolean;
 }
 
 /**
@@ -296,6 +299,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let appId = '';
   /** Where the edge pass writes and the preview reads the server bundle (`edgeDir`). */
   let edgeDir = '';
+  /**
+   * The workbench's own build (SDD-82 §4.7): a build or a preview in a process where the bench is
+   * installed. Its routes and functions answer the bench's criteria with their fixtures, and its
+   * edge goes beside its `outDir`, inside the bench's folder. A `vite build` of anyone else never
+   * has the bench installed.
+   */
+  let benchBuild = false;
+  /** Set by `config`: this Vite is a `vite preview`. */
+  let previewing = false;
   /**
    * The languages of the app, from `fudic.json` (SDD-58 §3.1); `[DEFAULT_LOCALE]` when it
    * declares none (SDD-71). One language has no prefixes and no catalog of its own.
@@ -778,7 +790,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     // debugging. See the header of `constants.ts` for the measurement.
     enforce: 'pre',
 
-    config(userConfig) {
+    config(userConfig, env) {
+      // `vite preview` resolves its config as `serve`: only the env tells it from dev.
+      previewing = env.isPreview === true;
       // The app is the client shell, and it has TWO main-thread entries since BUG-31 §T2:
       // `fudic-boot` (register the Service Worker — every page) and `fudic-main` (the
       // hydration runtime — only a page that hydrates).
@@ -871,7 +885,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // No `sw.json`, no Service Worker: everything is server/SSG (SDD-20 §4.7).
       const configIo = nodeConfigIo();
       swConfig = options.sw ? readSwConfig(root, configIo).config : null;
-      edgeDir = resolvePath(root, options.edgeDir);
+      // The workbench's app (SDD-82 §3.8): its pages and flows run with the Service Worker, as
+      // `"dev": "preview"` serves it. Dev only, and only with the bench installed in the process.
+      if (swConfig !== null && isDev && installedBench() !== undefined) swConfig = { ...swConfig, dev: 'preview' };
+      benchBuild = (!isDev || previewing) && installedBench() !== undefined;
+      // The bench's build must not overwrite the bundle the app's own preview serves.
+      edgeDir = benchBuild ? join(resolvePath(root, config.build.outDir), '..', 'edge') : resolvePath(root, options.edgeDir);
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
@@ -921,9 +940,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // (SDD-60 §4.4). A change anywhere may re-evaluate one of them — or the root — and leave
       // the others registered on contracts a fresh module no longer holds, so the next request
       // reloads every one.
-      if (this.environment.name === 'ssr') invalidateImplementations(this.environment.moduleGraph);
-      if (userOptions.serverReload === false) return;
+      //
+      // Only for a file the graph holds. A file it does not — a job of `@fudic/testing` written in
+      // `.fudic/render` and deleted, an editor's backup — re-evaluates nothing, and invalidating
+      // there emptied the contracts under a request already on its way: the page answered the
+      // 404 of a `load` nobody implemented (the intermittent one of SDD-82 task 36).
       if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
+      invalidateImplementations(this.environment.moduleGraph);
+      if (userOptions.serverReload === false) return;
       options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
     },
 
@@ -1055,6 +1079,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return head.slice(0, head.lastIndexOf('</html>'));
         },
       });
+      // A request of a criterion of the workbench runs in its scope (SDD-82 §3.8): the server's
+      // `Date` reads the criterion's clock. Without the bench installed, nothing changes.
+      server.middlewares.use((req, _res, next) => {
+        // A request without a criterion — or one a test hands in bare — is not the bench's.
+        benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
+      });
       // Functions, remote rules and the CSRF token, with any method, before anything else gets
       // a turn.
       const devFunctions = nodeMiddleware(devServer);
@@ -1128,9 +1158,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const fudicServer = (): Promise<FudicServer | null> =>
         (mounted ??= !existsSync(serverFile)
           ? Promise.resolve(null)
-          : (import(pathToFileURL(serverFile).href) as Promise<BuiltServer>).then(({ createApp, config }) =>
+          : (import(pathToFileURL(serverFile).href) as Promise<BuiltServer>).then(({ createApp, config, bench }) =>
               createServer(createApp({ prerendered: staticPages(outDir) }), {
                 ...serveOptions(Boolean(server.config?.preview?.https), config),
+                // The workbench's own build, served by the workbench (SDD-82 §4.7).
+                ...(bench === true && benchBuild ? { bench: true } : {}),
                 // Preview is a local check: without `FUDIC_SECRET` it signs with one of its own
                 // (SDD-81 §8.2.10). An adapter in production is given one.
                 secret: process.env['FUDIC_SECRET'] ?? randomUUID(),
@@ -1141,6 +1173,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           .then((fudic) => (fudic === null ? next() : nodeMiddleware(fudic, { notFound })(req, res, next)))
           .catch(next);
       };
+      // A request of a criterion runs in its scope, as in dev: the server's `Date` reads its clock.
+      if (benchBuild) {
+        server.middlewares.use((req, _res, next) => {
+          benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
+        });
+      }
       server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.
@@ -1594,7 +1632,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
           // the variant that does, outside `outDir`.
           withLoad: isDev,
-          // Dev has no build and no id: the two entries are served at their stable URLs.
+          // The workbench's services in the request's root (SDD-82 §4.2): only dev serves it.
+          bench: isDev,
           // Dev has no build and no id: the two entries are served at their stable URLs,
           // there is nothing to preload — the dev server hands the runtime out of the module
           // graph — and nothing to embed, so a layout that asks for `?inline` keeps the file
@@ -1823,6 +1862,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // the root only when the app declares a `.fudapi` of its own (SDD-71 §4.5).
           ...(api.sources.length > 0 ? { api: serverApi } : {}),
           ...(contracts ? { root: SERVER_ROOT_ID } : {}),
+          ...(benchBuild ? { bench: true } : {}),
         };
       };
       const [link, edge] = await Promise.all([
@@ -2376,6 +2416,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           errorHints: file.errorHints ?? [],
           ...(edgeFiles.has(FUNCTIONS_FILE) ? { functions: FUNCTIONS_FILE } : {}),
           config: project.config?.serve ?? {},
+          ...(benchBuild ? { bench: true } : {}),
         });
         mkdirSync(edgeDir, { recursive: true });
         writeFileSync(join(edgeDir, SERVER_FILE), server);

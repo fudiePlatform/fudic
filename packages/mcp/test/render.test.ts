@@ -356,6 +356,52 @@ describe('with happy-dom', () => {
   });
 });
 
+describe('a route with its fixture (SDD-82 §3.10, criterion 37)', () => {
+  beforeAll(() => {
+    writeFileSync(
+      join(root, 'src/routes/index.fixture.ts'),
+      "export default { data: { nadie: {}, dos: {} }, calls: { busca: {} }, services: { memoria: [] } };\n",
+    );
+  });
+
+  it('what its fixture is asked for goes to the run, as visit reads it; a name alone is its data', async () => {
+    const { deps, asked } = runners({ piece: { ...RENDERED, status: 200 } });
+    const answer = await renderTool(project, checks(), queue, input({ route: '/', fixture: { data: ['nadie', 'dos'], answers: ['busca'], services: 'memoria' } }), deps);
+    expect(asked.piece[0]).toEqual({ root, target: { route: '/', fixture: { fixture: ['nadie', 'dos'], answers: ['busca'], services: 'memoria' } } });
+    expect(answer.body).toMatchObject({ route: '/', fixture: { data: ['nadie', 'dos'] } });
+    await renderTool(project, checks(), queue, input({ route: '/', fixture: 'nadie' }), deps);
+    expect(asked.piece[1]).toEqual({ root, target: { route: '/', fixture: { fixture: ['nadie'] } } });
+  });
+
+  it('with data from its fixture, its load did not run: no call of it; with only answers, it did', async () => {
+    mkdirSync(join(root, 'src/routes/productos'), { recursive: true });
+    writeFileSync(join(root, 'src/routes/productos/[id].fixture.ts'), 'export default { data: { uno: {} }, calls: { busca: {} } };\n');
+    const { deps } = runners({ piece: { ...RENDERED, status: 200 } });
+    const faked = await renderTool(project, checks(), queue, input({ route: '/productos/1', fixture: 'uno' }), deps);
+    expect(faked.body['calls']).toEqual([]);
+    const real = await renderTool(project, checks(), queue, input({ route: '/productos/1', fixture: { answers: ['busca'] } }), deps);
+    expect(real.body['calls']).toEqual([{ fn: 'routes/productos/[id].load', status: 200 }]);
+  });
+
+  it('a name the fixture does not have: FUD1516; a route with no fixture: FUD1517; nothing runs', async () => {
+    const { deps, asked } = runners();
+    const wrong = await renderTool(project, checks(), queue, input({ route: '/', fixture: { answers: ['nope'] } }), deps);
+    expect(wrong.failed).toBe(true);
+    expect(wrong.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1516', message: 'the fixture has no calls "nope"; it has: [busca]' })]);
+    const none = await renderTool(project, checks(), queue, input({ route: '/vacia', fixture: 'x' }), deps);
+    expect(none.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1517' })]);
+    expect(asked.piece).toEqual([]);
+  });
+
+  it('a URL no route answers goes to the run as it is, which says so; a component takes a case, not a route fixture', async () => {
+    const { deps, asked } = runners({ piece: { kind: 'no-route', paths: [] } });
+    expect((await renderTool(project, checks(), queue, input({ route: '/nada', fixture: 'x' }), deps)).diagnostics).toEqual([expect.objectContaining({ code: 'FUD1422' })]);
+    expect(asked.piece[0]).toEqual({ root, target: { route: '/nada' } });
+    const component = await renderTool(project, checks(), queue, input({ component: 'acme-button', fixture: { data: 'x' } }), deps);
+    expect(component.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1207', message: expect.stringContaining('"fixture" is the name of the case') })]);
+  });
+});
+
 describe('with the browser', () => {
   it('a route: FUD1207, it is seen with happy-dom or fudic_preview', async () => {
     const { deps, asked } = runners();

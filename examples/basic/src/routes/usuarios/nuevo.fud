@@ -1,0 +1,20 @@
+<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="component" href="../../components/site-nav.fud">
+<link rel="component" href="../../components/user-form.fud">
+
+<head>
+  <title>Nueva persona — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="usuarios"></site-nav>
+}
+
+<h1>Nueva persona</h1>
+<p class="lede">
+  El alta en su propia página: el mismo <code>user-form</code> que hay al final de
+  <a href="/usuarios">/usuarios</a>, con su función <code>save</code>, que pide sesión. Lo que se
+  da de alta aquí sale en la tabla y en el buscador de /usuarios.
+</p>
+
+<user-form></user-form>

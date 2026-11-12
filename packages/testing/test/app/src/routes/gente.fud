@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./gente.fudapi">
+
+<head>
+  <title>@data.title — test</title>
+</head>
+
+<h1>@data.title</h1>
+<ul>
+  @foreach (const name of data.names) key (name) {
+    <li>@name</li>
+  }
+</ul>

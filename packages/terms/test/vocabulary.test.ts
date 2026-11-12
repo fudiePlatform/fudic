@@ -1,5 +1,5 @@
 /**
- * SDD-59 §3.5 and §6.7.1–3: the stock vocabulary. Each term is valid as SDD-52 reads it in the
+ * SDD-59 §3.5 and §6.7.1–3, with what SDD-82 §3.7 adds: the stock vocabulary. Each term is valid as SDD-52 reads it in the
  * framework layer, and each one, run with the stock ctx over real Chrome, passes its positive
  * case and fails — never errs — its negative one, with the evidence of §3.5.
  */
@@ -13,11 +13,37 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { stock, termsDir, type Term, type TermContext, type TermOutcome } from '../src/index.js';
 import { fakeHost, launch, type FakeHost } from './browser.js';
 
-/** §3.5, block by block. */
+/** §3.5 of SDD-59 and §3.7 of SDD-82, block by block. */
 const VOCABULARY = {
-  given: [],
-  when: ['click', 'focus', 'press', 'set-attribute', 'type'],
-  then: ['attribute', 'focused', 'hidden', 'min-height', 'min-width', 'present', 'slotted', 'text', 'visible'],
+  given: ['clock', 'cookie', 'locale', 'media', 'offline', 'viewport'],
+  when: ['back', 'check', 'click', 'focus', 'forward', 'go', 'hover', 'offline', 'online', 'press', 'reload', 'select', 'set-attribute', 'type', 'uncheck', 'upload', 'wait'],
+  then: [
+    'attribute',
+    'called',
+    'checked',
+    'count',
+    'disabled',
+    'downloaded',
+    'enabled',
+    'focused',
+    'header',
+    'hidden',
+    'lists',
+    'min-height',
+    'min-width',
+    'not-reloaded',
+    'present',
+    'requests',
+    'sent',
+    'slotted',
+    'status',
+    'text',
+    'title',
+    'unchecked',
+    'url',
+    'value',
+    'visible',
+  ],
 } as const;
 
 type Block = keyof typeof VOCABULARY;
@@ -310,7 +336,7 @@ describe('§6.7.3 — then, with the evidence of SDD-64 §4.2', () => {
 
   it.each(VOCABULARY.then)('%s answers Evidence of text, never a bare sentence (SDD-64 §3.3)', async (name) => {
     await page.setContent('<ui-a style="display:block;width:4px;height:4px">a</ui-a>');
-    const args = { target: 'ui-a', expected: 'a', attribute: 'id', px: 1, slot: 'default' };
+    const args = { target: 'ui-a', expected: 'a', attribute: 'id', px: 1, slot: 'default', n: 1, code: 200, fn: 'save', times: 1, field: 'id', name: 'x', value: 'a' };
     const { evidence } = await run('then', name, args);
     expect(evidence).toEqual({ expected: expect.any(String), actual: expect.any(String) });
   });

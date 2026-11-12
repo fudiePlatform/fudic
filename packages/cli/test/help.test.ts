@@ -50,7 +50,8 @@ Add to a project
   generate form <name>            a form and its unit test
   generate style <name>           a global stylesheet of the project
   generate snippet <file> <name>  a snippet in a file of snippets, and its unit test
-  generate spec <component>       the .fudspec criteria of a component and their fixture
+  generate spec <component|route> the .fudspec criteria of a component or a page and their fixture
+  generate flow <name>            the .fudspec criteria of a flow between pages and its fixture
   generate term <kind> <name>     a step you can use in .fudspec criteria
   generate api <piece>            the server of a route or a component: its .fudapi and handler
   generate showcase [<library>]   a page per component that shows each case of its fixture
@@ -114,7 +115,7 @@ Examples
 const GENERATE_TEST = `
 error  fudic does not generate "test" on its own
        a component comes with its unit test:   fudic g component button
-       it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase
+       it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, flow, term, api, showcase
 
 "fudic generate --help" for more.
 `;
@@ -280,8 +281,8 @@ describe('a usage error (§6.8)', () => {
       [['translate', 'es'], 'translate', 'fudic translate takes no argument: "es"', 'it translates the app you are in, or the one --project names'],
       [['new'], 'new', 'fudic new needs a project name', 'e.g. fudic new shop'],
       [['new', 'shop', '--pm', 'bun'], 'new', 'unknown package manager "bun"', 'use --pm pnpm, npm or yarn'],
-      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase'],
-      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase'],
+      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, flow, term, api, showcase'],
+      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, flow, term, api, showcase'],
       [['g', 'c'], 'generate component', 'fudic generate component needs a name', 'e.g. fudic g component button'],
       [['g', 'p'], 'generate page', 'fudic generate page needs a name', 'e.g. fudic g page about'],
       [['g', 'l'], 'generate layout', 'fudic generate layout needs a name', 'e.g. fudic g layout docs'],

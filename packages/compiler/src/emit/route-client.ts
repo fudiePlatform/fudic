@@ -28,7 +28,7 @@ import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
-import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute, refreshesData } from './level.js';
+import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute, memberSources, refreshesData } from './level.js';
 import {
   authorCode,
   cellNameAt,
@@ -200,6 +200,7 @@ function buildRouteClientModule(
     },
     signals: entryReactiveScope(half),
     moving: entryMoving(code, refreshes),
+    through: memberSources(code, source, roots, apiForms(graph)),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
     ...stampOption(options, graph.entryPath, graph.entryMap),
@@ -226,7 +227,8 @@ function buildRouteClientModule(
   const ids = nodeIds();
   const usage = coreUsage();
   const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
-  const ctx = blockContext(source, scope, linker, ids, usage, hookup, imported);
+  const watched = [...new Set([...imported, ...scope.through])];
+  const ctx = blockContext(source, scope, linker, ids, usage, hookup, watched);
   // The same defaults the SERVER branch of a route starts from (`buildRouteModule` builds its
   // `MarkupEmitter` with no space, no container and no boxes): the two walks have to drop the
   // same whitespace nodes, or `h` adopts a tree that is one node out of step.
@@ -252,7 +254,7 @@ function buildRouteClientModule(
   const reactive = code.signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
   // With the forms of a linked `.fudapi`, which the `@code` used to import (SDD-60 §3.14).
   const renews =
-    (reactive.length > 0 || imported.length > 0 || code.tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
+    (reactive.length > 0 || watched.length > 0 || code.tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
     // `||=`: a block of the walk may already have subscribed what it reads through an import.
@@ -261,7 +263,7 @@ function buildRouteClientModule(
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
-    if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    if (em.watchImports(watched, bodies.hook)) usage.subscribes = true;
     watchTasks(code.tasks, bodies.hook, usage);
     // A write before these subscriptions reached nobody: one repaint (see the component's).
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);

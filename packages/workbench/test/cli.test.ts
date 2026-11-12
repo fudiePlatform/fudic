@@ -6,7 +6,8 @@ import type { WorkbenchSession } from '../src/types.js';
 const open = vi.hoisted(() => vi.fn());
 vi.mock('../src/open.js', () => ({ openWorkbench: open, nodeTargetFs: {} }));
 const runMain = vi.hoisted(() => vi.fn());
-vi.mock('../src/run-cli.js', () => ({ runMain }));
+const recordMain = vi.hoisted(() => vi.fn());
+vi.mock('../src/run-cli.js', () => ({ runMain, recordMain }));
 
 const { main, parseArgs, processIo, USAGE } = await import('../src/cli.js');
 
@@ -115,7 +116,7 @@ describe('main', () => {
     const t = io();
     await main(['C:/p/index.fud'], t.io);
     expect(JSON.parse(t.lines[0]!)).toEqual({
-      error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one' },
+      error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one, of a page or of a flow' },
     });
     expect(t.exits).toEqual([1]);
   });
@@ -201,7 +202,7 @@ describe('main — criteria 5 and 10, commands on stdin', () => {
         v: 2,
         type: 'error',
         file: 'C:/p/index.fud',
-        error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one' },
+        error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one, of a page or of a flow' },
       },
     ]);
     expect(steps).toEqual(['open C:/p/app-badge.fud', 'open C:/p/index.fud']);
@@ -322,9 +323,22 @@ describe('main — run', () => {
     expect(runMain).toHaveBeenCalledWith(['src', '--json'], { write: t.io.write, exit: t.io.exit, cwd: 'C:/p' });
     expect(open).not.toHaveBeenCalled();
   });
+
+  it('hands `record` and the rest of its arguments to recordMain (SDD-82 §3.9)', async () => {
+    const t = io();
+    await main(['record', 'routes/usuarios.fudspec', '--criterion', 'a'], t.io);
+    expect(recordMain).toHaveBeenCalledWith(['routes/usuarios.fudspec', '--criterion', 'a'], { write: t.io.write, exit: t.io.exit, cwd: 'C:/p' });
+    expect(open).not.toHaveBeenCalled();
+  });
 });
 
 describe('processIo', () => {
+  // processIo takes stdout over: each test gets it back as it was.
+  const stdoutWrite = process.stdout.write;
+  afterEach(() => {
+    process.stdout.write = stdoutWrite;
+  });
+
   /** The handlers processIo registers on stdin and on the process, by `stdin:<event>`. */
   function hooked(): Record<string, (arg?: unknown) => void> {
     const handlers: Record<string, (arg?: unknown) => void> = {};
@@ -346,6 +360,18 @@ describe('processIo', () => {
     expect(write).toHaveBeenCalledWith('{"a":1}\n');
     expect(exit).toHaveBeenCalledWith(1);
     expect(real.cwd).toBe(process.cwd());
+  });
+
+  it('keeps stdout for the protocol: anything else written there goes to stderr', () => {
+    hooked();
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const real = processIo();
+    process.stdout.write('[server] GET load 0 ms\n');
+    real.write('{"url":"u"}');
+    expect(err).toHaveBeenCalledWith('[server] GET load 0 ms\n');
+    expect(out).toHaveBeenCalledTimes(1);
+    expect(out).toHaveBeenCalledWith('{"url":"u"}\n');
   });
 
   it('is interactive only when stdout is a terminal', () => {

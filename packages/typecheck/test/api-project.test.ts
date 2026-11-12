@@ -84,6 +84,23 @@ describe('apiContextOf', () => {
     expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id' } });
   });
 
+  it('a route that links components: the <id> of each one with a .fudapi (SDD-82 §3.4)', () => {
+    const links = [
+      '<link rel="component" href="../../components/user-card.fud">',
+      '<link rel="component" href="../../components/plain.fud">',
+      '<link rel="component" href="../../../outside/x.fud">',
+    ].join('');
+    const root = project({
+      'src/routes/products/[id].fudapi': 'load\n  name  str\n',
+      'src/routes/products/[id].fud': PAGE.replace('<title>', `${links}<title>`),
+      'src/components/user-card.fudapi': 'post vote\n',
+      'src/components/plain.fud': '',
+      'outside/x.fudapi': 'post x\n',
+    });
+    const source = readApiProject(root).sources.find((s) => s.id === 'routes/products/[id]')!;
+    expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id', components: ['components/user-card'] } });
+  });
+
   it('the error page of a folder, and the index of a folder', () => {
     const root = project({
       'src/routes/shop/_error.fudapi': 'load\n  n  i32\n',

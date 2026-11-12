@@ -251,7 +251,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     // What the parser and the validator say of each `.fudapi` of the app and each `.fudspec`: the
     // build reports them here, once, with everything else.
     const api = readApiProject(root);
-    const specs = specDiagnostics(root, fs, state.index, state.components);
+    const specs = specDiagnostics(root, fs, state.index, api, state.components);
     for (const { file, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
       problems.push(...fudicProblems(file, diagnostics, elsewhere));
     }

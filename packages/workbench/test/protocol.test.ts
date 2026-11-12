@@ -27,7 +27,7 @@ describe('toWire', () => {
     expect(wire).toEqual({
       code: 'FUD0970',
       severity: 'error',
-      message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one',
+      message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one, of a page or of a flow',
       file: 'C:/p/index.fud',
       line: null,
       column: null,

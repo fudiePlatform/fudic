@@ -27,6 +27,7 @@ import { componentOf, fixtureFile, placeOfStack, routeOf } from './piece.js';
 import { isFudicProject, projectOf, type Project } from './project.js';
 import type { Answer } from './respond.js';
 import type { RunQueue } from './runs.js';
+import { fixtureLines, type FixtureLines, type RouteFixture } from './route-fixture.js';
 
 export const ENGINES = ['happy-dom', 'browser'] as const;
 export const RENDER_AS = ['outline', 'html'] as const;
@@ -34,7 +35,8 @@ export const RENDER_AS = ['outline', 'html'] as const;
 export interface RenderInput {
   readonly route?: string;
   readonly component?: string;
-  readonly fixture?: string;
+  /** A component: a case of its fixture. A route: what its fixture is asked for; a name alone is its `data`. */
+  readonly fixture?: string | RouteFixture;
   readonly props?: Readonly<Record<string, unknown>>;
   readonly as: (typeof RENDER_AS)[number];
   readonly select?: string;
@@ -99,6 +101,19 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
     piece = found.piece;
   } else piece = routeOf(service, asked.route);
 
+  // A component is painted with a case of its fixture, by its name; a route with what its fixture
+  // is asked for, checked against it before anything runs (SDD-82 §3.10). A name alone is `data`.
+  let caseName: string | undefined;
+  let lines: FixtureLines | undefined;
+  if ('component' in asked) {
+    if (typeof input.fixture === 'object') return fail([FUD1207({ reason: 'a component is painted with a case of its fixture: "fixture" is the name of the case' })]);
+    caseName = input.fixture;
+  } else if (input.fixture !== undefined && piece !== undefined) {
+    const checked = fixtureLines(piece.file, typeof input.fixture === 'string' ? { data: input.fixture } : input.fixture);
+    if ('problem' in checked) return fail([checked.problem]);
+    lines = checked.lines;
+  }
+
   const folder = 'component' in asked ? projectOf(folders, root, piece!.file) : folderOf(folders, root, piece);
   const runners = await deps.runners(folder);
   const threw = (reason: string, stack: string): Answer => {
@@ -116,20 +131,20 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
     const result = await queue.run(() =>
       renderInBrowser({
         component: piece!.file,
-        ...(input.fixture !== undefined ? { case: input.fixture } : {}),
+        ...(caseName !== undefined ? { case: caseName } : {}),
         ...(input.props !== undefined ? { props: input.props } : {}),
         ...(input.select !== undefined ? { select: input.select } : {}),
       }),
     );
     if ('diagnostic' in result) return fail([result.diagnostic]);
-    if (result.kind === 'no-case') return fail([FUD1421({ tag: asked.component, name: input.fixture!, cases: result.cases })]);
+    if (result.kind === 'no-case') return fail([FUD1421({ tag: asked.component, name: caseName!, cases: result.cases })]);
     if (result.kind === 'not-json') return fail([FUD1428({ prop: result.prop })]);
     if (result.kind === 'threw') return threw(result.message, '');
     return {
       body: { ...head, ...shown(input.as, result.outline, result.html), calls: [] },
       next: null,
       // What the browser drew, as it drew it: its shot, not the markup painted again elsewhere.
-      ...(result.png !== undefined ? { meta: { [VIEW_META_KEY]: { kind: 'shot', png: keepShot(root, asked.component, input.fixture, result.png) } } } : {}),
+      ...(result.png !== undefined ? { meta: { [VIEW_META_KEY]: { kind: 'shot', png: keepShot(root, asked.component, caseName, result.png) } } } : {}),
     };
   }
 
@@ -138,18 +153,18 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
   }
   const renderPiece = runners.renderPiece;
   const fixture = piece !== undefined && 'component' in asked ? fixtureFile(piece) : undefined;
-  if ('component' in asked && input.fixture !== undefined && fixture === undefined) {
-    return fail([FUD1421({ tag: asked.component, name: input.fixture, cases: [] })]);
+  if ('component' in asked && caseName !== undefined && fixture === undefined) {
+    return fail([FUD1421({ tag: asked.component, name: caseName, cases: [] })]);
   }
   const target =
     'component' in asked
       ? {
           component: piece!.file,
           ...(fixture !== undefined ? { fixture } : {}),
-          ...(input.fixture !== undefined ? { case: input.fixture } : {}),
+          ...(caseName !== undefined ? { case: caseName } : {}),
           ...(input.props !== undefined ? { props: input.props } : {}),
         }
-      : { route: asked.route };
+      : { route: asked.route, ...(lines !== undefined ? { fixture: lines } : {}) };
   const result = await queue.run(() => renderPiece({ root: folder, target, ...(input.select !== undefined ? { select: input.select } : {}) }));
   switch (result.kind) {
     case 'broken':
@@ -157,7 +172,7 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
     case 'threw':
       return threw(result.error.message, result.error.stack);
     case 'no-case':
-      return fail([FUD1421({ tag: asked.component!, name: input.fixture!, cases: result.cases })]);
+      return fail([FUD1421({ tag: asked.component!, name: caseName!, cases: result.cases })]);
     case 'no-route':
       return fail([FUD1422({ url: asked.route!, paths: result.paths })]);
     case 'no-match':
@@ -168,7 +183,8 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
       const unconnected = [...new Set(calls.filter((c) => c.status === 404 && missing.has(c.fn)).map((c) => c.fn))];
       // A route's `load` runs in its server render, not through `fetch`: it is a call all the
       // same, with the page's status. Without a handler, that status is its 404.
-      const load = 'route' in asked && piece?.sibling !== undefined ? service.handlers(piece.sibling)?.find((h) => h.kind === 'load') : undefined;
+      // Not when the fixture handed its data instead: that load never ran (SDD-82 §3.10).
+      const load = 'route' in asked && piece?.sibling !== undefined && lines?.fixture === undefined ? service.handlers(piece.sibling)?.find((h) => h.kind === 'load') : undefined;
       if (load !== undefined) {
         calls.unshift({ fn: load.name, status: result.status! });
         if (load.state === 'missing') unconnected.unshift(load.name);

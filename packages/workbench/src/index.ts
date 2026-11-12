@@ -8,6 +8,7 @@ export { isFailure } from './types.js';
 export { openWorkbench } from './open.js';
 export { runSpecs } from './run.js';
 export type { RunOptions, RunSummary } from './run.js';
+export type { RecordedCriterion, Recording, SkippedCriterion } from './record.js';
 export { caseShape, propAttrs, signalLiterals, CONTENT } from './mount-source.js';
 export type { CaseShape, SignalLiteral } from './mount-source.js';
 export { isShowcaseFile, planShowcase, showcaseMark } from './showcase.js';

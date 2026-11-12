@@ -69,9 +69,9 @@ export function only(source: string): SourceDiagnostic {
 /** Every span in a tree, for invariants over all of them. */
 export function spansOf(file: SpecFile): readonly Span[] {
   const out: Span[] = [file.span, ...file.comments];
-  if (file.component !== undefined) {
-    out.push(file.component.span, file.component.keyword);
-    if (file.component.tag !== undefined) out.push(file.component.tag.span);
+  if (file.header !== undefined) {
+    out.push(file.header.span, file.header.keyword);
+    if (file.header.name !== undefined) out.push(file.header.name.span);
   }
   for (const c of file.criteria) {
     out.push(c.span, c.keyword);
@@ -89,7 +89,14 @@ export function spansOf(file: SpecFile): readonly Span[] {
 
 function argSpans(a: Arg): readonly Span[] {
   if (a.kind === 'string') return [a.span, a.contentSpan];
-  if (a.kind === 'role') return a.name !== undefined ? [a.span, a.role.span, a.name.span] : [a.span, a.role.span];
+  if (a.kind === 'role') {
+    return [
+      a.span,
+      ...a.steps.flatMap((s) =>
+        s.kind === 'tag' ? [s.span, s.tag.span] : [s.span, s.role.span, ...(s.name !== undefined ? [s.name.span] : [])],
+      ),
+    ];
+  }
   return [a.span];
 }
 

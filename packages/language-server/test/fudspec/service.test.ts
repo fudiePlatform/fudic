@@ -94,7 +94,7 @@ describe('the other requests', () => {
   it('completes, hovers and goes to the definition', async () => {
     const s = service();
     const list = await s.provideCompletionItems?.(doc(TEXT), { line: 3, character: 4 }, { triggerKind: 1 }, NONE);
-    expect(list?.items.map((i) => i.label)).toEqual(['min-height', 'visible']);
+    expect(list?.items.map((i) => i.label)).toEqual(['min-height', 'visible', 'as']);
     const hover = (await s.provideHover?.(doc(TEXT), at('min-height'), NONE)) as Hover;
     expect((hover.contents as { value: string }).value).toContain('min-height target:element px:number');
     const definition = await s.provideDefinition?.(doc(TEXT), at('min-height'), NONE);
@@ -113,7 +113,7 @@ describe('the other requests', () => {
 
   it('takes the .fudspec URI itself as well as its root code', async () => {
     const list = await service().provideCompletionItems?.(doc('', SPEC_URI), { line: 0, character: 0 }, { triggerKind: 1 }, NONE);
-    expect(list?.items.map((i) => i.label)).toEqual(['component', 'component', 'criterion', 'criterion']);
+    expect(list?.items.map((i) => i.label)).toEqual(['component', 'component', 'page', 'flow', 'criterion', 'criterion']);
   });
 });
 

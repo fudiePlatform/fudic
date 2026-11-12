@@ -8,7 +8,7 @@
  */
 
 import { FUD1207, render, type FudCode, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
-import { isFudicCompileError } from '@fudic/vite';
+import { isFudicCompileError, type BenchCall } from '@fudic/vite';
 import type { BlockKind, Layer } from '@fudic/spec';
 import type { BrowserName } from './browser.js';
 import type { CriterionReport } from './report-of.js';
@@ -54,6 +54,10 @@ export interface DescribedStep {
 
 export interface DescribedCriterion {
   readonly id: string;
+  /**
+   * Where its page opens, the one Live shows: a component's, a path on the shell's server; a
+   * page's or a flow's, absolute, on the app's Vite (or its build, without network).
+   */
   readonly route: string;
   /** 1-based: the line of its `criterion` in the `.fudspec`; 1 without one. */
   readonly line: number;
@@ -133,6 +137,8 @@ export interface ResultMessage {
   readonly pageErrors: readonly string[];
   /** Why the criterion could not run at all: its page did not load, its fixture failed. */
   readonly error?: string;
+  /** A page's or a flow's: every call it made, in order, answered by the fixture or not (SDD-82 §4.4). */
+  readonly calls?: readonly BenchCall[];
 }
 
 /** What the runs of a component are doing: pinned, paused, and how many saves wait. */

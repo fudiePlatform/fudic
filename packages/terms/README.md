@@ -27,8 +27,41 @@ pnpm add -D @fudic/terms
 | `then` | `slotted <target> <slot>` | it went to that slot of its host (`default`: the unnamed one) |
 | `then` | `min-height <target> <px>` · `min-width <target> <px>` | it is at least that big |
 
-A target is a tag (`ui-menu`) or a role with its exact name (`role:menuitem/"Open"`). A term of
-your own in `fudic/terms/<block>/<name>.js` replaces the stock one of the same name.
+For pages and flows (and what makes sense of them without a server, on a component too):
+
+| Block | Term | Passes when |
+|---|---|---|
+| `given` | `cookie <name> "<value>"` | — the browser has it, for the whole site, before the page opens |
+| `given` | `locale <tag>` | — `Accept-Language` and `navigator.language` say it |
+| `given` | `media <feature> <value>` | — `prefers-color-scheme dark`, `prefers-reduced-motion reduce`… |
+| `given` | `viewport <width> <height>` | — the window is that big |
+| `given` | `clock <instant>` | — the browser and the criterion's server stand at that time until a `wait` |
+| `given` | `offline` | — opens without network, after a visit that installs the Service Worker |
+| `when` | `go <url>` · `back` · `forward` · `reload` | — the address bar and the history |
+| `when` | `check <target>` · `uncheck <target>` | — clicks the checkbox |
+| `when` | `select <target> "<option>"` · `hover <target>` | — picks by the option's text · moves the mouse over it |
+| `when` | `upload <target> "<file>"` | — chooses that file, relative to the `.fudspec` |
+| `when` | `wait <ms>` | — moves the clock (both with `clock`, real time without) |
+| `when` | `offline` · `online` | — cuts the network, or gives it back |
+| `then` | `title "<expected>"` · `url <path>` | the document's title · where the page is |
+| `then` | `status <code>` · `header <name> "<expected>"` | of the last document response |
+| `then` | `count <target> <n>` | the reference gives that many |
+| `then` | `value <target> "<expected>"` | the control has that value |
+| `then` | `checked` · `unchecked` · `enabled` · `disabled` `<target>` | the control is so |
+| `then` | `called <fn> <times>` | the function or remote rule was called that many times |
+| `then` | `sent <fn> <field> "<expected>"` | in its last call, the field had that value |
+| `then` | `lists "<value>"` | the real `paths()` of the route includes it |
+| `then` | `not-reloaded` · `requests <n>` · `downloaded "<name>"` | over the last `when` block |
+
+A target is a tag (`ui-menu`), a role with its exact name (`role:menuitem/"Open"`) or with a name
+that contains a text (`role:row/~"Ana"`), and steps joined by `>` each look inside the one before
+(`role:row/~"Ana">role:checkbox/"Activo"`). A term of your own in `fudic/terms/<block>/<name>.js`
+replaces the stock one of the same name.
+
+A `then` runs on a quiet page — no request on its way, no short timer, no frame pending — and a
+positive one is tried again until it holds or 5 s pass. A term that holds by what is NOT there
+says so with `meta.negative` (`true`, or a function of its arguments, as `count … 0`): it is read
+once.
 
 ## Writing a term
 
@@ -72,6 +105,12 @@ answers a sentence of what it did.
 - `act(target, gesture)` — runs a gesture and waits until the page has served it, hydration
   included. A `when` that touches the page goes through it.
 - `text(target)` — the text a person sees, across shadow roots and slots.
+
+And what it knows of the criterion (`CriterionRecord`): `url` and `resolve(path)` (relative to
+the `.fudspec`), `quiet()` (waits for the quiet page), `clock()` and `advance(ms)`, `calls()` (what
+the page asked the server, answered by the fixture or for real), `response()` (the last document
+response), `lastWhen()` (the requests and downloads of the last `when` block), `reloaded()` and
+`paths()` (the route's real `paths()`). On a component, `calls()` is empty and `paths()` is null.
 
 ## Extending the workbench
 

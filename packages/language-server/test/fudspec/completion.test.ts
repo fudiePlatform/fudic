@@ -22,9 +22,9 @@ function offered(marked: string, w = world()): CompletionList | undefined {
 describe('keywords by indentation', () => {
   it('offers component and criterion at column 0, plus their snippets (SDD-53 §4.4)', () => {
     // The component snippet first, while the file has no component line.
-    expect(labels('|')).toEqual(['component', 'component', 'criterion', 'criterion']);
+    expect(labels('|')).toEqual(['component', 'component', 'page', 'flow', 'criterion', 'criterion']);
     // Once the file has its component line, only the criterion snippet is added.
-    expect(labels(`${HEAD}crit|`)).toEqual(['component', 'criterion', 'criterion']);
+    expect(labels(`${HEAD}crit|`)).toEqual(['component', 'page', 'flow', 'criterion', 'criterion']);
   });
 
   it('offers the blocks at two spaces', () => {
@@ -59,17 +59,19 @@ describe('terms of the block', () => {
         insertText: 'visible ${1|fud-button,fud-card,role:|}',
         insertTextFormat: 2,
       },
+      // `as` is a line of every block (SDD-82 §3.7), with the people already named.
+      { label: 'as', kind: 14, detail: 'as <who>', insertText: 'as ${1:main}', insertTextFormat: 2 },
     ]);
   });
 
   it('adds props in given, and only there', () => {
-    expect(labels(`${HEAD}  given\n    ro|`)).toEqual(['route', 'props']);
-    expect(labels(`${HEAD}  when\n    |`)).toEqual([]);
+    expect(labels(`${HEAD}  given\n    ro|`)).toEqual(['route', 'props', 'as']);
+    expect(labels(`${HEAD}  when\n    |`)).toEqual(['as']);
   });
 
   it('finds the block above comments and other lines, \\r\\n included', () => {
-    expect(labels(`${HEAD}  then\n    visible x\n# note\n    |`)).toEqual(['min-height', 'visible']);
-    expect(labels(`${HEAD.replaceAll('\n', '\r\n')}  then\r\n    |`)).toEqual(['min-height', 'visible']);
+    expect(labels(`${HEAD}  then\n    visible x\n# note\n    |`)).toEqual(['min-height', 'visible', 'as']);
+    expect(labels(`${HEAD.replaceAll('\n', '\r\n')}  then\r\n    |`)).toEqual(['min-height', 'visible', 'as']);
   });
 
   it('offers nothing without a block above', () => {

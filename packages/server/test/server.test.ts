@@ -238,6 +238,39 @@ describe('a route (step 8)', () => {
     expect(first!.headers.get('content-type')).toBe('text/html; charset=utf-8');
   });
 
+  it('in the workbench’s own build, a criterion’s request is painted on demand, never prerendered (SDD-82 §4.2, §4.7)', async () => {
+    const key = Symbol.for('fudic.bench');
+    const hooks = { criterionOf: (request: Request) => (request.headers.get('cookie') === 'fudic-bench=r-1.c' ? 'r-1.c' : undefined) };
+    (globalThis as Record<symbol, unknown>)[key] = hooks;
+    try {
+      const routes = [
+        { pattern: '/about', prerendered: '<p>prerendered</p>', module: pageModule() },
+        // A route the build only prerendered has nothing else to serve: its file, criterion or not.
+        { pattern: '/static', prerendered: '<p>static</p>' },
+      ];
+      const benched = createServer(testApp({ routes }), { bench: true });
+      const criterion = { cookie: 'fudic-bench=r-1.c' };
+      expect(await (await benched.fetch(navigate('/about', criterion)))!.text()).toContain('http://app.test/about');
+      expect(await (await benched.fetch(navigate('/about')))!.text()).toBe('<p>prerendered</p>');
+      expect(await (await benched.fetch(navigate('/static', criterion)))!.text()).toBe('<p>static</p>');
+      // Any other build ignores the cookie.
+      expect(await (await createServer(testApp({ routes })).fetch(navigate('/about', criterion)))!.text()).toBe('<p>prerendered</p>');
+    } finally {
+      delete (globalThis as Record<symbol, unknown>)[key];
+    }
+  });
+
+  it('the workbench’s own build tells its functions so; any other build does not', async () => {
+    const seen: (boolean | undefined)[] = [];
+    const functions = (options: FunctionsOptions) => {
+      seen.push(options.bench);
+      return async () => null;
+    };
+    createServer(testApp({ functions }), { bench: true });
+    createServer(testApp({ functions }));
+    expect(seen).toEqual([true, undefined]);
+  });
+
   it('a route with no page and nothing to render it with is not the app’s; no route neither', async () => {
     const server = createServer(testApp({ routes: [{ pattern: '/blog' }] }));
     expect(await server.fetch(navigate('/blog'))).toBeNull();

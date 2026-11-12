@@ -8,7 +8,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { FUD0973, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0950, FUD0953, FUD0973, FUD1207, type FudDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 import {
   parseSpec,
   specContextOf,
@@ -20,11 +20,13 @@ import {
   type TermCatalog,
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
+import type { App } from './app.js';
+import { needsOffline, planApp, type AppFixtures } from './app-plan.js';
 import { firstLine } from './browser.js';
 import { MissingTermError, namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import type { LoadedExtension } from './extension.js';
 import { loadProjectExtension, missingRuntime, resolveRuntime, type TermsRuntime } from './runtime.js';
-import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
+import { planBench, readCriterion, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
 import {
   problemOf,
   toWire,
@@ -49,6 +51,10 @@ export interface SessionInput {
    * Injected by the tests that need one project with and without it.
    */
   readonly runtime?: TermsRuntime | null;
+  /** The app's Vite, for a page or a flow (SDD-82 §3.8): started on the first call. */
+  readonly app?: () => Promise<App>;
+  /** It records (SDD-82 §3.9): a page's or a flow's criteria run without `data` and `answers`. */
+  readonly record?: boolean;
 }
 
 export interface LoadedSession {
@@ -111,7 +117,8 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     specText = readText(target.spec) ?? '';
     const parsed = parseSpec(specText);
     spec = parsed.value;
-    const found = [...parsed.diagnostics, ...validateSpec(spec, context)];
+    const validated = validateSpec(spec, context);
+    const found = [...parsed.diagnostics, ...(input.record === true ? validated.filter((d) => !aboutRecorded(spec, d)) : validated)];
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
@@ -120,15 +127,23 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     }
   }
 
-  const executed = await executeFixture(target, vite);
+  // A page or a flow runs on the app's Vite: its fixture is executed there, so a service it
+  // replaces is the very class the app's server injects (SDD-82 §4.3).
+  const app = target.kind === undefined ? undefined : await input.app?.();
+  const appVite = app?.vite ?? vite;
+  const executed = await executeFixture(target, appVite);
   if (executed.error !== undefined) diagnostics.push({ diagnostic: executed.error, file: target.fixture });
 
-  const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
-  for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
-  writePlanFiles(input.dir, target.tag, plan.files);
-  for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
-
-  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
+  let fixtureOk: readonly PlannedCriterion[];
+  if (target.kind === undefined) {
+    const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
+    for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
+    writePlanFiles(input.dir, target.tag, plan.files);
+    for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
+    fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
+  } else {
+    fixtureOk = await appCriteria(target, spec, executed, app, context, input.record === true);
+  }
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
   const criteria =
     project !== null && 'error' in project
@@ -139,7 +154,8 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
   const expectations = new Map(described.map((d) => [d.criterion.id, d.expectations]));
   const message = sessionMessage(target, diagnostics, described.map((d) => d.criterion));
-  const problem = await compileProblem(vite, target.component);
+  // A flow has no page of its own to compile.
+  const problem = target.kind === 'flow' ? undefined : await compileProblem(appVite, target.component);
   return { criteria, message, loadTerm, extensions, reads, source: source(expectations), ...(problem !== undefined ? { problem } : {}) };
 }
 
@@ -184,6 +200,64 @@ async function executeFixture(
   }
 }
 
+/**
+ * The criteria of a page or a flow: each one on the app's Vite, with what its fixture lines
+ * name. Without the app, or with a fixture that threw, every one ends in error saying why.
+ */
+async function appCriteria(
+  target: BenchTarget,
+  spec: SpecFile,
+  executed: { fixtures: ExecutedFixtures; error?: FudDiagnostic },
+  app: App | undefined,
+  context: SpecContext,
+  record: boolean,
+): Promise<readonly PlannedCriterion[]> {
+  const pattern = target.route === undefined ? undefined : context.page(target.route)?.pattern;
+  // The criteria without network run on the app built (§4.7): built only when one of them is here.
+  const offline = app !== undefined && spec.criteria.some((c) => needsOffline(readCriterion(c).steps)) ? await previewOf(app) : undefined;
+  const planned = planApp({
+    target,
+    spec,
+    fixtures: executed.fixtures as AppFixtures,
+    app: app ?? { origin: '', bench: undefined as never, run: '', paths: undefined as never },
+    ...(record ? { record } : {}),
+    ...(pattern !== undefined ? { pattern } : {}),
+    ...(typeof offline === 'string' ? { offline } : {}),
+  });
+  const problem = executed.error ?? (app === undefined ? FUD1207({ reason: "the app's Vite is not running" }) : undefined);
+  if (problem !== undefined) return planned.map((c) => ({ ...c, error: problem.message, problem }));
+  // A build that failed leaves the criteria without network in error, saying why; the rest run.
+  if (offline === undefined || typeof offline === 'string') return planned;
+  return planned.map((c) => (needsOffline(c.steps) ? { ...c, error: offline.message, problem: offline } : c));
+}
+
+/** The codes of a fixture line that names nothing, taken from the codes themselves. */
+const NAMES_NOTHING = new Set([
+  FUD0950({ span: { start: 0, end: 0 }, line: '', fixture: '', available: [] }).code,
+  FUD0953({ span: { start: 0, end: 0 }, fixture: '' }).code,
+]);
+
+/**
+ * Whether a diagnostic says that a `data` or `answers` line names nothing: what recording is
+ * about to write (SDD-82 §3.9), so it does not stop the criterion from running.
+ */
+function aboutRecorded(spec: SpecFile, diagnostic: SourceDiagnostic): boolean {
+  if (!NAMES_NOTHING.has(diagnostic.code)) return false;
+  const { start } = diagnostic.span;
+  return spec.criteria.some((c) =>
+    c.blocks.some((b) => b.terms.some((t) => (t.name.text === 'data' || t.name.text === 'answers') && t.span.start <= start && start <= t.span.end)),
+  );
+}
+
+/** The origin of the app built, or why it could not be built. */
+async function previewOf(app: App): Promise<string | FudDiagnostic> {
+  try {
+    return (await app.offline()).origin;
+  } catch (error) {
+    return FUD1207({ reason: `the app does not build for the criteria without network: ${firstLine(error)}` });
+  }
+}
+
 /** A fixture that threw leaves the criteria that mount with props in error; the rest still run. */
 function failProps(plan: BenchPlan, problem: FudDiagnostic): PlannedCriterion[] {
   return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: problem.message, problem }));
@@ -195,12 +269,13 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
     const module = catalog.resolve(block, name);
     if (module === undefined) throw new MissingTermError(block, name);
     const loaded = await vite.ssrLoadModule(module.path);
-    const meta = loaded['meta'] as { describe?: LoadedTerm['describe'] } | undefined;
+    const meta = loaded['meta'] as { describe?: LoadedTerm['describe']; negative?: LoadedTerm['negative'] } | undefined;
     return {
       path: module.path,
       layer: module.layer,
       params: module.params,
       ...(typeof meta?.describe === 'function' ? { describe: meta.describe } : {}),
+      ...(meta?.negative !== undefined ? { negative: meta.negative } : {}),
       run: loaded['run'] as LoadedTerm['run'],
     };
   };
@@ -242,7 +317,8 @@ async function describeCriterion(
       : { name: criterion.fixture, line: lineOf(criterion.propsOffset) };
   const steps = described.map((d) => d.step);
   return {
-    criterion: { id: criterion.id, route: criterion.route, line: lineOf(criterion.offset), props, steps },
+    // A page's or a flow's lives on the app's Vite, not on the shell's server (SDD-82 §8.2.60).
+    criterion: { id: criterion.id, route: (criterion.app?.origin ?? '') + criterion.route, line: lineOf(criterion.offset), props, steps },
     expectations: described.map((d) => d.describe),
   };
 }

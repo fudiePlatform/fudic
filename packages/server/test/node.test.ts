@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createServer, type FetchHooks, type FudicServer } from '../src/index.js';
-import { htmlPathFor, LINGER_MS, nodeMiddleware, sendResponse, staticPages, toRequest, wantsEarlyHints, type NodeMiddleware } from '../src/node/index.js';
+import { htmlPathFor, LINGER_MS, nodeMiddleware, NOT_HTTP, sendResponse, staticPages, toRequest, wantsEarlyHints, type NodeMiddleware } from '../src/node/index.js';
 import { pageModule, testApp } from './helpers.js';
 
 describe('toRequest and sendResponse, over a real Node server', () => {
@@ -55,6 +55,40 @@ describe('toRequest and sendResponse, over a real Node server', () => {
     expect(seen!.request.headers.get('x-one')).toBe('uno');
     expect(seen!.request.headers.get('cookie')).toBe('a=1');
     expect(seen!.aborted()).toBe(false);
+  });
+
+  it('Response.error() is no response at all: the connection is cut (SDD-82 §3.5)', async () => {
+    answer = () => Response.error();
+    await expect(fetch(`${origin}/cut`)).rejects.toThrow();
+  });
+
+  it('Response.error() on a connection already used: no response, and nothing for a client to send again', async () => {
+    const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+    const ask = (path: string): Promise<{ status?: number; error?: string; reused: boolean }> =>
+      new Promise((resolve) => {
+        const req = request(`${origin}${path}`, { agent }, (res) => {
+          res.resume();
+          res.on('end', () => resolve({ status: res.statusCode!, reused: req.reusedSocket }));
+        });
+        req.on('error', (error) => resolve({ error: error.message, reused: req.reusedSocket }));
+        req.end();
+      });
+    let served = 0;
+    answer = (r) => {
+      served++;
+      return new URL(r.url).pathname === '/cut' ? Response.error() : new Response('ok');
+    };
+    try {
+      expect(await ask('/first')).toEqual({ status: 200, reused: false });
+      // A bare cut here is what a browser retries; bytes that are not HTTP are a parse error.
+      const cut = await ask('/cut');
+      expect(cut).toMatchObject({ reused: true });
+      expect(cut.status).toBeUndefined();
+      expect(cut.error).toMatch(/parse error|invalid|expected http/iu);
+      expect(served).toBe(2);
+    } finally {
+      agent.destroy();
+    }
   });
 
   it('a PUT carries its body, and several set-cookie come back as several', async () => {
@@ -248,6 +282,27 @@ function fed(): { body: ReadableStream<Uint8Array>; push(text: string): void; fa
     cancelled,
   };
 }
+
+describe('sendResponse of Response.error()', () => {
+  it('writes what is not HTTP on the socket and closes it', async () => {
+    const res = new FakeRes();
+    const ended: string[] = [];
+    Object.assign(res, { socket: { end: (bytes: string) => void ended.push(bytes) } });
+    await sendResponse(res as never, Response.error());
+    expect(ended).toEqual([NOT_HTTP]);
+    expect(res.destroyed).toBe(false);
+  });
+
+  it('with no socket, or on an HTTP/2 stream, the response is destroyed', async () => {
+    const bare = new FakeRes();
+    Object.assign(bare, { socket: null });
+    await sendResponse(bare as never, Response.error());
+    const h2 = new FakeRes();
+    Object.assign(h2, { socket: { end: () => undefined }, stream: {} });
+    await sendResponse(h2 as never, Response.error());
+    expect([bare.destroyed, h2.destroyed]).toEqual([true, true]);
+  });
+});
 
 describe('sendResponse, as the body comes', () => {
   it('waits for drain when the socket is full, and goes on after it', async () => {

@@ -103,7 +103,7 @@ function setup(
   projectRoot = root,
 ): AnyHook {
   const plugin = fudic({ routesDir: 'fixtures', ...userOptions }) as AnyHook;
-  plugin.config({});
+  plugin.config({}, { command: 'serve', mode: 'development' });
   plugin.configResolved({ root: projectRoot, base: '/', command, build: { outDir: 'dist' } });
   return plugin;
 }
@@ -125,7 +125,7 @@ const emittedNames = (ctx: { emitFile: ReturnType<typeof vi.fn> }): string[] =>
 describe('config / configResolved', () => {
   it('config declares the custom shell entry', () => {
     const plugin = fudic() as AnyHook;
-    expect(plugin.config({})).toMatchObject({ appType: 'custom' });
+    expect(plugin.config({}, { command: 'serve', mode: 'development' })).toMatchObject({ appType: 'custom' });
   });
 
   it('accepts a manifestUrl that does not sit under base (fallback file name)', () => {
@@ -241,7 +241,7 @@ describe('buildStart', () => {
     const errors: string[] = [];
     const warnings: string[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({
       root,
       base: '/',
@@ -588,14 +588,27 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
 
 describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-51)', () => {
   /** Run the hook in `environment` over `modules`, and what the client was sent. */
+  /** The modules the last `hot` took out of its graph: a wrapper that holds a contract. */
+  let invalidated: string[] = [];
+
   function hot(environment: string, modules: unknown[], options: Record<string, unknown> = {}): unknown[] {
     const sent: unknown[] = [];
     const server = { environments: { client: { hot: { send: (payload: unknown) => sent.push(payload) } } } };
-    // An empty graph: the implementations of SDD-60 §4.4 are invalidated in it, and there are none.
-    const moduleGraph = { idToModuleMap: new Map(), invalidateModule: () => undefined };
+    // One module that holds a contract (SDD-60 §4.4): what an invalidation takes out.
+    const wrapper = { id: 'fudic-wrapper:/', file: null };
+    invalidated = [];
+    const moduleGraph = { idToModuleMap: new Map([[wrapper.id, wrapper]]), invalidateModule: (mod: { id: string }) => void invalidated.push(mod.id) };
     setup('serve', options).hotUpdate.call({ environment: { name: environment, moduleGraph } }, { modules, server });
     return sent;
   }
+
+  it('a change the ssr graph holds empties the implementations; one it does not hold leaves them (SDD-82 task 36)', () => {
+    hot('ssr', [{ id: '/src/server/handlers.ts' }], { serverReload: false });
+    expect(invalidated).toEqual(['fudic-wrapper:/']);
+    // A job of @fudic/testing written in `.fudic/render` and deleted: not in the graph.
+    hot('ssr', []);
+    expect(invalidated).toEqual([]);
+  });
 
   it('`serverReload: false` reloads nothing: the host reruns by itself, as the workbench does', () => {
     expect(hot('ssr', [{ id: '/src/routes/index.fud' }], { serverReload: false })).toEqual([]);
@@ -630,7 +643,7 @@ describe('configurePreviewServer middleware', () => {
   function withPreview(outDir: string, previewRoot: string, https = false): Preview {
     const used: Middleware[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
-    plugin.config({});
+    plugin.config({}, { command: 'serve', mode: 'development' });
     plugin.configResolved({ root: previewRoot, base: '/', command: 'build', build: { outDir } });
     const after = plugin.configurePreviewServer({
       config: { preview: { https } },

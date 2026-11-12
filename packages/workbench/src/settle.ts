@@ -12,7 +12,7 @@
  * idle at once after it.
  */
 
-import type { LocatorLike, PageLike, PageScript } from './browser.js';
+import { firstLine, type LocatorLike, type PageLike, type PageScript } from './browser.js';
 
 /** Where the observer keeps the ids it has seen. Only in the measuring instance. */
 const SEEN = '__fudicBenchHydrated';
@@ -23,8 +23,22 @@ export const OBSERVER = `(() => {
   document.addEventListener('fud:hydrated', (event) => seen.add(String(event.detail.id)));
 })();`;
 
-/** The nearest `[data-fud-id]` ancestor, crossing shadow roots like the capturer does. */
+/**
+ * Where the document a gesture began on is marked. A gesture may take the page to another
+ * document (a link, a redirect a function answered): the new one starts without the mark, and
+ * whatever was being waited for in the old one will never come.
+ */
+const ACTING = '__fudicBenchActing';
+
+/** What Playwright says when a script ran into a navigation. */
+const NAVIGATING = /context was destroyed|navigat/iu;
+
+/**
+ * Marks the document, and finds the nearest `[data-fud-id]` ancestor, crossing shadow roots
+ * like the capturer does.
+ */
 const NEAREST_HOST: PageScript = `(element) => {
+  globalThis.${ACTING} = true;
   for (let node = element; node; node = node.parentNode ?? node.host) {
     if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-fud-id')) {
       return { id: node.getAttribute('data-fud-id'), defined: customElements.get(node.localName) !== undefined };
@@ -33,15 +47,24 @@ const NEAREST_HOST: PageScript = `(element) => {
   return null;
 }`;
 
-const HYDRATED: PageScript = `(id) => globalThis.${SEEN}.has(id)`;
+/** Hydrated, or no longer the document the gesture began on. */
+const HYDRATED: PageScript = `(id) => globalThis.${ACTING} !== true || globalThis.${SEEN}.has(id)`;
 
 const FRAME: PageScript = `() => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))`;
 
-/** Runs an action and returns once the page has served the gesture. */
+/**
+ * Runs an action and returns once the page has served the gesture. A gesture that took the page
+ * to another document is served too: the engine waits for the quiet page after the `when`, and
+ * that waits for the navigation.
+ */
 export async function settled<T>(page: PageLike, element: LocatorLike, act: () => Promise<T>): Promise<T> {
   const host = await element.evaluate<{ id: string; defined: boolean } | null>(NEAREST_HOST);
   const result = await act();
-  if (host !== null && !host.defined) await page.waitFor(HYDRATED, host.id);
-  await page.evaluate(FRAME);
+  try {
+    if (host !== null && !host.defined) await page.waitFor(HYDRATED, host.id);
+    await page.evaluate(FRAME);
+  } catch (error) {
+    if (!NAVIGATING.test(firstLine(error))) throw error;
+  }
   return result;
 }

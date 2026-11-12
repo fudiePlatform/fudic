@@ -22,6 +22,10 @@ import {
 } from '@fudic/api';
 import { API_DIR, API_TYPES_DIR, ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
+import { linkedComponentIds } from './spec-reach.js';
+
+export { loadFields } from './load-fields.js';
+export { linkedComponentIds, routeParams, specReach, type SpecReachInput } from './spec-reach.js';
 
 /** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
 export interface ApiLibrary {
@@ -104,8 +108,19 @@ export function apiContextOf(root: string, source: ApiSource): ApiContext {
   const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
   const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
   const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
-  const layoutProps = layoutPropsType(page, readFileSync(page, 'utf8'), `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
-  return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
+  const text = readFileSync(page, 'utf8');
+  const layoutProps = layoutPropsType(page, text, `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
+  // A component's functions are in the `.fudapi` beside its `.fud`, whose `<id>` is its path in `src/`.
+  const components = linkedComponentIds(base, page, text, existsSync);
+  return {
+    route: {
+      params,
+      pattern,
+      ...(error ? { error: true } : {}),
+      ...(layoutProps !== undefined ? { layoutProps } : {}),
+      ...(components.length > 0 ? { components } : {}),
+    },
+  };
 }
 
 /**

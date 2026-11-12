@@ -36,7 +36,7 @@ export class Users {
       const text = String(value);
       return /[",\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
     };
-    const rows = allPeople().map((p) => [p.id, p.name, p.email, p.age, p.active, p.notes].map(cell).join(','));
+    const rows = this.all().map((p) => [p.id, p.name, p.email, p.age, p.active, p.notes].map(cell).join(','));
     return ['id,name,email,age,active,notes', ...rows].join('\n') + '\n';
   }
 }

@@ -253,7 +253,7 @@
 <div class="panel">
   <div class="row">
     <input type="search" placeholder="Nombre…" aria-label="Buscar por nombre" @input=@buscar($value)>
-    <span role="status">@(found.pending() ? "Buscando…" : "")</span>
+    <span role="status" aria-label="Búsqueda">@(found.pending() ? "Buscando…" : "")</span>
   </div>
   <p>
     Cada tecla lanza una búsqueda y cancela la anterior: en Network la vieja sale como
@@ -273,7 +273,7 @@
   <div class="row">
     <button @click=@buscarLento>Búsqueda lenta (3 s)</button>
     <button @click=@cancelarLento>Cancelar</button>
-    <span role="status">@(lenta.pending() ? "Buscando…" : lenta.state() === "cancelled" ? "Búsqueda cancelada." : "")</span>
+    <span role="status" aria-label="Búsqueda lenta">@(lenta.pending() ? "Buscando…" : lenta.state() === "cancelled" ? "Búsqueda cancelada." : "")</span>
   </div>
   <p>
     Busca el texto de arriba y tarda tres segundos a propósito: pulsa <em>Cancelar</em> antes y

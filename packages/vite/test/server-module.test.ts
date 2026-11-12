@@ -14,6 +14,7 @@ import { emitServerModule, type ServerModuleInput } from '../src/server-module.j
 interface Built {
   readonly createApp: (io: { prerendered(pathname: string): Promise<string | null> }) => ServerApp;
   readonly config: unknown;
+  readonly bench?: boolean;
 }
 
 /** The module of `input`, with `chunks` beside it, imported. */
@@ -109,5 +110,12 @@ describe('server.mjs', () => {
     const { mod: bare, text } = await load({});
     expect(text).not.toContain('handler');
     expect(bare.createApp(none).functions).toBeUndefined();
+  });
+});
+
+describe('the workbench’s own build (SDD-82 §4.7)', () => {
+  it('says so in a bench export; any other build has none', async () => {
+    expect((await load({ bench: true })).mod.bench).toBe(true);
+    expect((await load({})).mod.bench).toBeUndefined();
   });
 });

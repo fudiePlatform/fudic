@@ -10,6 +10,10 @@ export { defineExtension, stock } from './stock.js';
 export type {
   BenchExtension,
   Box,
+  Call,
+  CriterionRecord,
+  DocumentResponse,
+  LastWhen,
   ContextOf,
   Evidence,
   Fixtures,

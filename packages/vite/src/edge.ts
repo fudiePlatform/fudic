@@ -73,6 +73,11 @@ export interface EdgeExtras {
    * it once to find a duplicate or a wrong folder, prerender or not (SDD-60 §4.6).
    */
   readonly root?: string;
+  /**
+   * The workbench's own build (SDD-82 §4.7): each route's wrapper reads the bench, as dev's does,
+   * for the requests of its criteria.
+   */
+  readonly bench?: boolean;
 }
 
 const BUILTINS = new Set(builtinModules);
@@ -139,6 +144,7 @@ export function edgePlugin(
         ...routeApi(rb, SERVER_ROOT_ID, false),
         ...(rb.analysis.buffer !== undefined ? { buffer: rb.analysis.buffer } : {}),
         withLoad: true, // the edge resolves data in process
+        ...(extras.bench === true ? { bench: true } : {}),
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
       });

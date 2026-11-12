@@ -269,6 +269,60 @@ describe('fudic_spec_run (criteria 24 and 25)', { timeout: 60_000 }, () => {
   });
 });
 
+describe('fudic_spec_run of pages and flows (SDD-82 §3.10, criterion 37)', { timeout: 60_000 }, () => {
+  const PAGE = 'src/routes/blog/[slug].fudspec';
+  const FLOW = 'src/flows/alta.fudspec';
+  let fresh: Checks;
+
+  beforeAll(() => {
+    mkdirSync(join(app.root, 'src/routes/blog'), { recursive: true });
+    writeFileSync(join(app.root, 'src/routes/blog/[slug].fud'), '<link rel="layout" href="../../layouts/_layout.fud">\n\n<h1>Post</h1>\n');
+    mkdirSync(join(app.root, 'src/flows'), { recursive: true });
+    writeFileSync(join(app.root, FLOW), 'flow alta\n');
+    // The service reads the routes once: one that sees the page written above.
+    fresh = new Checks(app.root);
+  });
+
+  it('a route by its pattern or as its header writes it; a flow by its name', async () => {
+    for (const [spec, file] of [['/blog/:slug', PAGE], ['/blog/[slug]', PAGE], ['alta', FLOW]] as const) {
+      const deps = runnersOf({ specs: summary([]) });
+      await runSpecsTool(project, fresh, queue, { failing: false, spec }, deps);
+      expect((deps.asked[0] as { paths: string[] }).paths.map((p) => toPosix(p)), spec).toEqual([toPosix(join(app.root, file))]);
+    }
+  });
+
+  it('every call of each criterion that made one, passing or not, with whether the fixture answered it', async () => {
+    const call = { id: 'routes/usuarios', name: 'search', args: { q: 'lu' }, faked: true, status: 200 };
+    const reports = [criterion({ spec: PAGE, id: 'busca', calls: [call] }), criterion({ spec: PAGE, id: 'nada', calls: [] }), criterion({ id: 'componente' })];
+    const answer = await runSpecsTool(project, fresh, queue, { failing: false, spec: '/blog/[slug]' }, runnersOf({ specs: summary(reports) }));
+    expect(answer.body['calls']).toEqual([{ spec: PAGE, id: 'busca', calls: [{ fn: 'routes/usuarios.search', args: { q: 'lu' }, faked: true, status: 200 }] }]);
+    const none = await runSpecsTool(project, fresh, queue, { failing: false, spec: 'alta' }, runnersOf({ specs: summary([criterion({ spec: FLOW, id: 'x' })]) }));
+    expect(none.body).not.toHaveProperty('calls');
+  });
+
+  it('record: asked of the runner, answered with what was recorded and what not; its diagnostics; no history', async () => {
+    const recording = {
+      recorded: [{ spec: join(app.root, PAGE), id: 'uno', data: ['uno'], calls: ['search'] }],
+      skipped: [{ spec: join(app.root, FLOW), id: 'dos', reason: 'it did not pass against the real server' }],
+      diagnostics: [FUD0972({ file: SPEC } as never) as never],
+    };
+    const deps = runnersOf({ specs: { ...summary([criterion({ spec: PAGE, id: 'uno' })]), recording } as RunSummary });
+    const answer = await runSpecsTool(project, fresh, queue, { failing: false, record: true }, deps);
+    expect((deps.asked[0] as { record?: boolean }).record).toBe(true);
+    expect(answer.body['recording']).toEqual({
+      recorded: [{ spec: PAGE, id: 'uno', data: ['uno'], calls: ['search'] }],
+      skipped: [{ spec: FLOW, id: 'dos', reason: 'it did not pass against the real server' }],
+    });
+    expect(codes(answer)).toEqual(['FUD0972']);
+    expect(answer.next).toBe('Only a criterion that passes against the real server is recorded: fix what did not pass, then record again.');
+
+    const all = runnersOf({ specs: { ...summary([]), recording: { recorded: [], skipped: [], diagnostics: [] } } as RunSummary });
+    expect((await runSpecsTool(project, fresh, queue, { failing: false, record: true }, all)).next).toBe(
+      'Recorded: each criterion now names its data and answers, and runs with them without the server.',
+    );
+  });
+});
+
 describe('outside a project', () => {
   it('both: FUD1404', async () => {
     const dir = tempDir();
@@ -365,6 +419,11 @@ describe('over a client', () => {
       expect(await answer('fudic_test', { paths: ['src'], names: ['x'], failing: true })).toEqual(['FUD1207']);
       expect(await answer('fudic_spec_run', {})).toEqual(['FUD1207']);
       expect(await answer('fudic_spec_run', { spec: 'app-nope', criteria: ['a'] })).toEqual(['FUD1405']);
+      expect(await answer('fudic_spec_run', { record: true })).toEqual(['FUD1207']);
+      // A route's fixture, whole or empty, as the schemas take it: here no route answers, and no app is served.
+      expect(await answer('fudic_render', { route: '/', fixture: { data: 'x', answers: ['a'], services: 's' } })).toEqual(['FUD1207']);
+      expect(await answer('fudic_render', { route: '/', fixture: 'x' })).toEqual(['FUD1207']);
+      expect(await answer('fudic_preview', { fixture: {} })).toEqual(['FUD1207']);
       await client.close();
     } finally {
       dir.dispose();

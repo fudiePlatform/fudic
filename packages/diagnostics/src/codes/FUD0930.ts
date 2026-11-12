@@ -7,6 +7,6 @@ export interface FUD0930Params extends SourceInput {
   readonly keyword: 'given' | 'when' | 'then';
 }
 
-/** A block repeated or written out of order (`.fudspec`) (SDD-52). */
+/** A `given` after another block, or the same block twice in a row (`.fudspec`) (SDD-52, SDD-82). */
 export const FUD0930 = (p: FUD0930Params): SourceDiagnostic =>
-  source('FUD0930', 'error', `\`${p.keyword}\` is out of order: a criterion has given, when, then, in that order and once each`, p);
+  source('FUD0930', 'error', `\`${p.keyword}\` is out of order: \`given\` goes first and once, then \`when\` and \`then\` take turns`, p);

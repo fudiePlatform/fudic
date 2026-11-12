@@ -1,0 +1,103 @@
+page /usuarios
+
+criterion lista-las-personas
+  given
+    data dos-personas
+  then
+    title "Usuarios — fudic"
+    count role:button/"Borrar" 2
+    text role:row/~"Ana" "ana@fudic.dev"
+
+criterion sin-nadie-la-tabla-queda-vacia
+  given
+    data nadie
+  then
+    count role:button/"Borrar" 0
+
+criterion entrar-como-ana
+  given
+    data dos-personas con-ana-dentro
+    answers entra-ana
+  when
+    click role:button/"Entrar como Ana"
+  then
+    sent login user "ana"
+    text body "Sesión: ana"
+
+criterion busca-sin-ir-al-servidor
+  given
+    data dos-personas
+    answers busca-luis
+  when
+    type role:searchbox/"Buscar por nombre" "lu"
+  then
+    text role:listitem "Luis — luis@fudic.dev"
+    sent search q "lu"
+
+criterion mientras-busca-lo-dice
+  given
+    data dos-personas
+    answers buscando
+  when
+    type role:searchbox/"Buscar por nombre" "lu"
+  then
+    text role:status/"Búsqueda" "Buscando…"
+
+criterion a-ana-no-se-desactiva
+  given
+    data dos-personas
+    answers ana-no-se-desactiva
+  when
+    uncheck role:row/~"Ana">role:checkbox/"Activo"
+  then
+    checked role:row/~"Ana">role:checkbox/"Activo"
+    text role:alert "A Ana no se la puede desactivar."
+    url /usuarios
+
+criterion borrar-a-luis-no-recarga
+  given
+    data dos-personas
+    answers luis-borrado
+  when
+    click role:row/~"Luis">role:button/"Borrar"
+  then
+    not-reloaded
+    count role:button/"Borrar" 1
+    sent remove id "2"
+
+criterion borrar-sin-sesion-lleva-al-error
+  given
+    data dos-personas
+    answers sin-sesion
+  when
+    click role:row/~"Luis">role:button/"Borrar"
+  then
+    status 401
+
+criterion caido-pinta-el-error
+  given
+    data caido
+  then
+    status 503
+
+criterion sin-sesion-lleva-a-entrar
+  given
+    data sin-sesion
+  then
+    url /entrar
+
+criterion exportar
+  given
+    data dos-personas
+    answers csv
+  when
+    click role:link/"Exportar CSV"
+  then
+    downloaded "personas.csv"
+
+criterion de-verdad-con-cookie
+  given
+    cookie fudic-session ana
+  then
+    text body "Sesión: ana"
+    header cache-control "private, no-store"

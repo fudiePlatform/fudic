@@ -47,7 +47,7 @@ import { fileURLToPath } from 'node:url';
 import type { Diagnostic, Span } from '@fudic/compiler';
 import { FUD0852 } from '@fudic/diagnostics';
 import { explain } from '@fudic/diagnostics/explain';
-import { createTermCatalog, parseSpec, readFixtures, validateSpec, type SpecContext, type SpecFs } from '@fudic/spec';
+import { parseSpec, specContextOf, validateSpec, type SpecContext, type SpecFs } from '@fudic/spec';
 import { nodePackageFs } from '@fudic/resolve';
 import { createProjectChecker, parseFud, tagOf } from '@fudic/typecheck';
 import { echoes } from '@fudic/typecheck/problems';
@@ -280,14 +280,10 @@ function check(root: string): Found[] {
     .map((path) => ({ path, tag: tagOf(parseFud(readFileSync(path, 'utf8')).document) }))
     .filter((c) => c.tag !== '');
   const component = (tag: string) => components.find((c) => c.tag === tag);
-  const context: SpecContext = {
-    terms: createTermCatalog(
-      [
-        { layer: 'workspace', path: `${root}/fudic/terms` },
-        { layer: 'framework', path: FRAMEWORK_TERMS },
-      ],
-      nodeSpecFs,
-    ),
+  // The project's `fudic/terms/` first, then the framework's: the context every host builds.
+  const context: SpecContext = specContextOf(root, {
+    fs: nodeSpecFs,
+    frameworkTerms: FRAMEWORK_TERMS,
     component(tag) {
       const c = component(tag);
       if (c === undefined) return undefined;
@@ -298,13 +294,7 @@ function check(root: string): Found[] {
         requiredProps: props === undefined ? 'unknown' : props.filter((p) => p.required).map((p) => p.name),
       };
     },
-    fixtures(tag) {
-      const c = component(tag);
-      const path = c === undefined ? undefined : `${dirname(c.path)}/${tag}.fixture.ts`;
-      const source = path === undefined ? undefined : nodeSpecFs.readFile(path);
-      return source === undefined ? undefined : readFixtures(source, path!);
-    },
-  };
+  });
   for (const file of files.filter((f) => f.endsWith('.fudspec'))) {
     const parsed = parseSpec(readFileSync(file, 'utf8'));
     for (const d of [...parsed.diagnostics, ...validateSpec(parsed.value, context)]) add(file, d);

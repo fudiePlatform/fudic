@@ -44,14 +44,17 @@ describe('@fudic/vite/harness', () => {
       [
         'API_SCHEME',
         'ApiProject',
+        'BENCH_COOKIE',
         'ROOT_FILE_PREFIX',
         'SERVER_ROOT_ID',
         'classifyError',
+        'createBench',
         'discoverRoutes',
         'drainStream',
         'edgeContext',
         'emitRenderChunk',
         'idWithoutLocale',
+        'installBench',
         'loadRouteData',
         'matchRouteBuild',
         'nodeConfigIo',
@@ -64,6 +67,7 @@ describe('@fudic/vite/harness', () => {
         'routeApi',
         'routeUsesDi',
         'withLocale',
+        'withRequest',
       ],
     );
   });

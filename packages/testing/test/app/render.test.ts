@@ -98,6 +98,11 @@ describe('criterion 3: a route by a concrete URL', () => {
     expect(out.html).toBe(' <nav></nav> <main><h1>Tag uno</h1></main> ');
   });
 
+  test('with the lines of its fixture (SDD-82 §3.10): what the fixture names, painted', async () => {
+    const out = rendered(await renderJob({ target: { route: '/gente', fixture: { fixture: 'one' } }, select: 'h1' }));
+    expect(out.outline).toBe('- heading "One" [level=1]');
+  });
+
   test('select narrows a page too', async () => {
     const out = rendered(await renderJob({ target: { route: '/blog/x' }, select: 'h1' }));
     expect(out.outline).toBe('- heading "Post x" [level=1]');
@@ -183,7 +188,7 @@ describe('criterion 6: the preview', () => {
 describe('the concrete URLs of the project', () => {
   test('the routes with no params, and the paths() of those with them', async () => {
     const urls = await concreteRoutes();
-    expect([...urls].sort()).toEqual(['/contador', '/espera', '/moved', '/roto', '/tags/dos', '/tags/uno']);
+    expect([...urls].sort()).toEqual(['/contador', '/espera', '/gente', '/moved', '/roto', '/tags/dos', '/tags/uno']);
   });
 });
 

@@ -234,6 +234,7 @@ describe('fudic_generate (criteria 18 and 19)', { timeout: 60_000 }, () => {
     ['layout', { kind: 'layout', name: '_admin' }, ['g', 'layout', '_admin']],
     ['snippet', { kind: 'snippet', file: 'ui', name: 'card' }, ['g', 'snippet', 'ui', 'card']],
     ['spec', { kind: 'spec', name: 'app-badge' }, ['g', 'spec', 'app-badge']],
+    ['flow', { kind: 'flow', name: 'checkout' }, ['g', 'flow', 'checkout']],
     ['term', { kind: 'term', block: 'then', name: 'has-shadow', param: ['target:element', 'px:number'] }, ['g', 'term', 'then', 'has-shadow', '--param', 'target:element', '--param', 'px:number']],
     ['api', { kind: 'api', name: 'src/routes/about.fud' }, ['g', 'api', 'src/routes/about.fud']],
     ['service', { kind: 'service', name: 'cart', provided: true }, ['g', 'service', 'cart', '--provided']],

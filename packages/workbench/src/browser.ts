@@ -8,7 +8,7 @@
  */
 
 import { FUD0975 } from '@fudic/diagnostics';
-import { chromium, firefox, webkit, type Browser, type Locator, type Page } from 'playwright-core';
+import { chromium, firefox, webkit, type Browser, type BrowserContext, type Frame, type Locator, type Page, type Request } from 'playwright-core';
 import type { Viewport } from './protocol.js';
 import type { WorkbenchFailure } from './types.js';
 
@@ -52,8 +52,11 @@ export interface PageLike {
   readonly page: Page;
   /** One of the terms' locators, as the workbench reads it. */
   adopt(locator: Locator): LocatorLike;
-  /** Navigates and waits for `load`; the HTTP status, or null when there was no response. */
-  goto(url: string): Promise<number | null>;
+  /**
+   * Navigates and waits for `load`, or only for the response with `commit` (a document that
+   * waits on the criterion's clock never loads on its own); the HTTP status, or null without one.
+   */
+  goto(url: string, until?: 'load' | 'commit'): Promise<number | null>;
   /** An element by CSS selector: the mounted component. */
   locate(css: string): LocatorLike;
   evaluate<R>(script: PageScript, arg?: unknown): Promise<R>;
@@ -64,6 +67,22 @@ export interface PageLike {
   /** Answers by nobody the WebSockets whose URL matches. */
   silenceWebSockets(matches: (url: URL) => boolean): Promise<void>;
   onPageError(listener: (message: string) => void): void;
+  /** A cookie in this page's own context, for `url` (SDD-82 §4.2). */
+  addCookie(name: string, value: string, url: string): Promise<void>;
+  /**
+   * The requests of this page's context still on their way — of its documents and of its Service
+   * Worker — as `GET /path`. An `EventSource` or a WebSocket is never on its way (SDD-82 §4.5).
+   */
+  pending(): readonly string[];
+  /**
+   * The last response of a main-frame navigation — served by the server or by the Service
+   * Worker — with its headers in lower case; null when the last navigation got none.
+   */
+  document(): { readonly status: number; readonly headers: Readonly<Record<string, string>> } | null;
+  /** How many requests this page's context has sent so far: streams too, they went out. */
+  requests(): number;
+  /** The names of the files this page downloaded so far, in order. */
+  downloads(): readonly string[];
   close(): Promise<void>;
 }
 
@@ -177,13 +196,67 @@ function inPage(script: PageScript, params: string): () => unknown {
   return new Function(params, `return (${script})(${params});`) as () => unknown;
 }
 
+/** What a request is, in a list of what is pending. */
+const requestLine = (request: Request): string => `${request.method()} ${new URL(request.url()).pathname}`;
+
+/** Resources that stay open by design: no gesture waits for them to end. */
+const STREAMS = new Set(['eventsource', 'websocket']);
+
+/** The frame of a request of a document; null for one of a Service Worker, which has none. */
+const frameOf = (request: Request): Frame | null => (request.serviceWorker() === null ? request.frame() : null);
+
+/**
+ * The requests of a context on their way, kept from now on.
+ *
+ * A document left half loaded (a `go` while it still loads its modules) never says how its
+ * requests ended: the browser drops them with no `requestfailed`, even those it asked while the
+ * next navigation was on its way. So when a frame's navigation answers, everything else that
+ * frame asked is over: the new document has asked nothing yet.
+ */
+export function inFlight(context: Pick<BrowserContext, 'on'>): () => readonly string[] {
+  const open = new Set<Request>();
+  context.on('request', (request) => {
+    if (!STREAMS.has(request.resourceType())) open.add(request);
+  });
+  const done = (request: Request): void => void open.delete(request);
+  context.on('requestfinished', done);
+  context.on('requestfailed', done);
+  context.on('response', (response) => {
+    const navigation = response.request();
+    const frame = frameOf(navigation);
+    if (frame === null || !navigation.isNavigationRequest()) return;
+    for (const request of open) if (request !== navigation && frameOf(request) === frame) open.delete(request);
+  });
+  return () => [...open].map(requestLine);
+}
+
+/** What a page reports of its documents, its requests and its downloads, kept from now on. */
+export function pageRecord(page: Pick<Page, 'on' | 'mainFrame'> & { context(): Pick<BrowserContext, 'on'> }): Pick<PageLike, 'document' | 'requests' | 'downloads'> {
+  let last: ReturnType<PageLike['document']> = null;
+  let sent = 0;
+  const downloads: string[] = [];
+  const mainNavigation = (request: Request): boolean => request.isNavigationRequest() && request.frame() === page.mainFrame();
+  page.on('response', (response) => {
+    if (mainNavigation(response.request())) last = { status: response.status(), headers: response.headers() };
+  });
+  // A navigation without a response (no network) leaves no response of a document behind.
+  page.on('requestfailed', (request) => {
+    if (mainNavigation(request)) last = null;
+  });
+  page.on('download', (download) => void downloads.push(download.suggestedFilename()));
+  page.context().on('request', () => void sent++);
+  return { document: () => last, requests: () => sent, downloads: () => downloads };
+}
+
 function adaptPage(page: Page, closed: () => void): PageLike {
   let closing: Promise<void> | undefined;
+  const pending = inFlight(page.context());
+  const record = pageRecord(page);
   return {
     page,
     adopt: adaptLocator,
-    async goto(url) {
-      const response = await page.goto(url, { waitUntil: 'load' });
+    async goto(url, until = 'load') {
+      const response = await page.goto(url, { waitUntil: until });
       return response?.status() ?? null;
     },
     locate(css) {
@@ -200,6 +273,9 @@ function adaptPage(page: Page, closed: () => void): PageLike {
     onPageError(listener) {
       page.on('pageerror', (error) => listener(firstLine(error)));
     },
+    addCookie: (name, value, url) => page.context().addCookies([{ name, value, url }]),
+    pending,
+    ...record,
     // Closed once, whoever asks first (a cancel and the engine's `finally` both do): the context
     // goes with the page.
     close: () =>

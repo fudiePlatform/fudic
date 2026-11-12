@@ -32,6 +32,8 @@ function terms(table: Record<string, Run>): TermLoader {
     const term: LoadedTerm = {
       path: `C:/terms/${name}.js`,
       layer: 'framework',
+      // Read once: a red one is red at once. The retries of a positive then have their own tests.
+      negative: true,
       params: [
         { name: 'target', type: 'element' },
         { name: 'n', type: 'number' },
@@ -78,7 +80,8 @@ describe('runCriterion, on a page without a browser — criterion 12', () => {
   it('opens a page, silences every WebSocket but the bench, observes, goes, and closes', async () => {
     const page = fakePage();
     const { result } = await run(page, criterion([{ block: 'then', term: 'a', args: ['x', '1'] }]), terms({ a: ok }));
-    expect(page.calls).toEqual(['silence /@vite/client /', 'addInitScript', `goto ${ORIGIN}/c`, SHOT, 'close']);
+    // The quiet page (SDD-82 §4.5): its init script, and one look before the then and one more after it.
+    expect(page.calls).toEqual(['silence /@vite/client /', 'addInitScript', 'addInitScript', `goto ${ORIGIN}/c`, 'evaluate', 'evaluate', SHOT, 'close']);
     expect(result).toMatchObject({
       id: 'c',
       verdict: 'pass',
@@ -242,7 +245,7 @@ describe('runCriterion — SDD-59 §6.3, the workbench is extended from outside'
       loaded('C:/a.js', { setup: setup('a') }),
       loaded('C:/b.js', { setup: setup('b') }),
     ]);
-    expect(page.calls).toEqual(['silence /@vite/client /', 'addInitScript', 'setup a', 'setup b', `goto ${ORIGIN}/c`, SHOT, 'close']);
+    expect(page.calls).toEqual(['silence /@vite/client /', 'addInitScript', 'addInitScript', 'setup a', 'setup b', `goto ${ORIGIN}/c`, SHOT, 'close']);
     expect(given).toHaveLength(2);
     expect(given[0]).toBe(page.page);
     expect(given[1]).toBe(page.page);

@@ -26,7 +26,33 @@ import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 const TERMS_PACKAGE = toPosix(fileURLToPath(new URL('../../../terms', import.meta.url)));
 
 /** The stock `then` vocabulary of SDD-59 §3.5. */
-const STOCK_THEN = ['attribute', 'focused', 'hidden', 'min-height', 'min-width', 'present', 'slotted', 'text', 'visible'];
+const STOCK_THEN = [
+  'attribute',
+  'called',
+  'checked',
+  'count',
+  'disabled',
+  'downloaded',
+  'enabled',
+  'focused',
+  'header',
+  'hidden',
+  'lists',
+  'min-height',
+  'min-width',
+  'not-reloaded',
+  'present',
+  'requests',
+  'sent',
+  'slotted',
+  'status',
+  'text',
+  'title',
+  'unchecked',
+  'url',
+  'value',
+  'visible',
+];
 
 const SPEC = 'component ui-button\n\ncriterion renders\n  then\n    visible ui-button\n';
 
@@ -107,9 +133,10 @@ describe('SDD-59 §6.7.7 — each .fudspec with the layer of its project', () =>
   it('completion after then offers the stock vocabulary where it is installed, and nothing where it is not', async () => {
     const marked = 'component ui-button\n\ncriterion a\n  then\n    |';
     const con = await complete('con/src/ui-button.fudspec', marked);
-    expect(con.map((i) => i.label)).toEqual(STOCK_THEN);
-    expect(new Set(con.map((i) => i.labelDetails?.description))).toEqual(new Set(['framework']));
-    expect(await complete('sin/src/ui-button.fudspec', marked)).toEqual([]);
+    // And `as`, a line of every block that is not a term (SDD-82 §3.7).
+    expect(con.map((i) => i.label)).toEqual([...STOCK_THEN, 'as']);
+    expect(new Set(con.filter((i) => i.label !== 'as').map((i) => i.labelDetails?.description))).toEqual(new Set(['framework']));
+    expect((await complete('sin/src/ui-button.fudspec', marked)).map((i) => i.label)).toEqual(['as']);
   });
 
   it('installing the package in the other project gives it the layer, once its package.json changes', async () => {

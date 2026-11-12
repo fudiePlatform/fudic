@@ -1,6 +1,6 @@
 /**
- * `fudic-workbench <file> [options]`, and `fudic-workbench run …` (run-cli.ts), which runs and
- * exits. The workbench's protocol with whoever launched it is JSON
+ * `fudic-workbench <file> [options]`, and `fudic-workbench run …` and `record …` (run-cli.ts),
+ * which run and exit. The workbench's protocol with whoever launched it is JSON
  * lines. The first one on stdout says where the shell of `<file>` is, or why it could not open;
  * after it, every message the shells receive, one per line. On stdin it reads commands, one per
  * line (`open` another component, `close` one). It lives until stdin closes — which is what
@@ -17,7 +17,7 @@ import { obey } from './control.js';
 import { openWorkbench } from './open.js';
 import { parseCommand, type BenchMessage } from './protocol.js';
 import { BenchConsole } from './report.js';
-import { runMain } from './run-cli.js';
+import { recordMain, runMain } from './run-cli.js';
 import { isFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
 
 /** The process, as the binary uses it; injected so `main` runs without spawning anything. */
@@ -78,6 +78,10 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
     await runMain(argv.slice(1), { write: io.write, exit: io.exit, cwd: io.cwd });
     return;
   }
+  if (argv[0] === 'record') {
+    await recordMain(argv.slice(1), { write: io.write, exit: io.exit, cwd: io.cwd });
+    return;
+  }
   const fail = (error: { readonly code?: string; readonly message: string }) => {
     io.write(JSON.stringify({ error }));
     io.exit(1);
@@ -129,8 +133,14 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
   });
 }
 
-/** The real process behind `CliIo`. */
+/**
+ * The real process behind `CliIo`. Its stdout is the protocol's alone: whatever else writes
+ * there — the app's own `console.info`, run by the bench in this same process — goes to stderr,
+ * or the parent would read it as the first line (SDD-82 §8.2.59).
+ */
 export function processIo(): CliIo {
+  const protocol = process.stdout.write.bind(process.stdout);
+  process.stdout.write = process.stderr.write.bind(process.stderr) as typeof process.stdout.write;
   const lines: ((line: string) => void)[] = [];
   let buffered = '';
   process.stdin.setEncoding('utf8');
@@ -143,7 +153,7 @@ export function processIo(): CliIo {
     }
   });
   return {
-    write: (line) => process.stdout.write(`${line}\n`),
+    write: (line) => protocol(`${line}\n`),
     onLine(callback) {
       lines.push(callback);
     },

@@ -4,11 +4,15 @@
  * and the browser. The workbench opened from the editor and `fudic-workbench run` start it the
  * same way, so a criterion cannot pass in one and fail in the other because of the way there.
  *
+ * Pages and flows (SDD-82) run on a second Vite, the app's own: started the first time one of
+ * them asks for it, and closed with the rest.
+ *
  * Closing undoes all of it: a browser that outlives the editor is the worst defect this feature
  * can have.
  */
 
 import type { ViteDevServer } from 'vite';
+import { startApp, type App } from './app.js';
 import { emptyBenchDir, removeBenchDir, sweepBenchDirs, writePlanFiles } from './bench-dir.js';
 import { startBenchServer, type BenchServer } from './bench-server.js';
 import { launchBrowser, type BrowserLike } from './browser.js';
@@ -25,6 +29,8 @@ export interface Project {
   readonly browser: BrowserLike;
   /** The process's workbench folder. */
   readonly dir: string;
+  /** The app's own Vite, for pages and flows: started on the first call. */
+  app(): Promise<App>;
   /** To the shells and to `options.onMessage`. */
   publish(message: BenchMessage): void;
   /** Browser, Vite, server, and the folder unless `keep`. */
@@ -38,6 +44,8 @@ export interface ProjectInput {
   readonly options: WorkbenchOptions;
   /** A file Vite has finished processing after a change; absent when nothing reruns on save. */
   readonly onProcessed?: (file: string) => void;
+  /** What starts the app's Vite; `startApp` by default. */
+  readonly startApp?: (root: string) => Promise<App>;
 }
 
 export async function startProject(input: ProjectInput): Promise<Project | WorkbenchFailure> {
@@ -51,7 +59,7 @@ export async function startProject(input: ProjectInput): Promise<Project | Workb
   sweepBenchDirs(dir);
   emptyBenchDir(dir);
   // Before Vite starts: the plugin looks for components once, at start, in the pages it finds.
-  for (const target of input.targets) writePlanFiles(dir, target.tag, mountFiles(target));
+  for (const target of input.targets) if (target.kind === undefined) writePlanFiles(dir, target.tag, mountFiles(target));
   const vite = await startVite({
     root,
     routesDir: benchRoutesDir(),
@@ -60,9 +68,18 @@ export async function startProject(input: ProjectInput): Promise<Project | Workb
   });
   server.mount(vite.middlewares);
 
+  let app: Promise<App> | undefined;
+  const appOf = (): Promise<App> =>
+    (app ??= (input.startApp ?? ((at: string) => startApp(at, `${dir}/app/dist`)))(root).then((started) => {
+      server.serveCriteria(started.bench);
+      return started;
+    }));
+
   const browser = await launchBrowser(options.browser);
   const shutdown = async (opened?: BrowserLike) => {
     await opened?.close();
+    // An app that did not start has nothing to close.
+    await app?.then((started) => started.close(), () => undefined);
     await vite.close();
     await server.close();
     if (options.keep !== true) removeBenchDir(dir);
@@ -71,5 +88,5 @@ export async function startProject(input: ProjectInput): Promise<Project | Workb
     await shutdown();
     return browser;
   }
-  return { root, server, vite, browser, dir, publish, close: () => shutdown(browser) };
+  return { root, server, vite, browser, dir, app: appOf, publish, close: () => shutdown(browser) };
 }

@@ -4,6 +4,8 @@ export const meta = {
   block: 'then',
   params: [{ name: 'target', type: 'element' }],
   describe: ({ target }) => `${target} is hidden`,
+  // Holds by what is not there: read once, on the quiet page.
+  negative: true,
 };
 
 /** @type {import('@fudic/terms').Term['run']} */

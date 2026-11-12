@@ -6,6 +6,9 @@ import { load as loadEspera } from 'fudic:routes/espera';
 import { load as loadMoved } from 'fudic:routes/moved';
 import { load as loadRoto } from 'fudic:routes/roto';
 import { like, load as loadTag, paths as pathsTag } from 'fudic:routes/tags/[tag]';
+import { clock, load as loadGente, rename } from 'fudic:routes/gente';
+import { inject } from '@fudic/di';
+import { NOW } from '../services/now';
 import { findPost } from '../data/posts';
 
 load.handle(async (ctx) => {
@@ -32,3 +35,7 @@ loadTag.handle((ctx) => ({ tag: ctx.params.tag }));
 pathsTag.handle(() => ['uno', { tag: 'dos' }, { other: 'x' }] as never);
 
 like.handle(() => 'liked');
+
+loadGente.handle(() => ({ title: 'Real', names: ['real'] }));
+rename.handle(() => 'renamed for real');
+clock.handle(() => inject(NOW));

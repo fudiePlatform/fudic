@@ -5,11 +5,12 @@
  */
 
 import { existsSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { within } from './locate.js';
 import { FUD1207, FUD1404, FUD1405, type FilePosition, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
 import { nodeIo, recordSpecRun, recordTestRun, snapshot } from '@fudic/history';
 import { toPosix } from '@fudic/typecheck';
+import { FLOWS_DIR, SPEC_EXTENSION } from '@fudic/spec';
 import type { Checks } from './checks.js';
 import { located } from './check.js';
 import { loadRunners, type Runners } from './fudic.js';
@@ -153,16 +154,25 @@ export async function runTestsTool(project: Project, checks: Checks, queue: RunQ
 }
 
 export interface SpecInput {
-  /** A tag, a route, or a path; none = every piece. */
+  /** A tag, a route, a flow, or a path; none = every piece. */
   readonly spec?: string;
   readonly criteria?: readonly string[];
   readonly failing: boolean;
+  /** Record (SDD-82 §3.9): pages and flows against the real server, what it answered written into their fixtures. */
+  readonly record?: boolean;
 }
 
-/** The `.fudspec` a tag, a route or a path names; undefined when it names none. */
+/**
+ * The `.fudspec` a tag, a route, a flow or a path names; undefined when it names none. A route is
+ * written by its URL pattern or as its header writes it (`/blog/:slug`, `/blog/[slug]`); a flow by
+ * its name, in the `src/flows` of a project.
+ */
 async function specOf(project: Project, checks: Checks, spec: string): Promise<string | undefined> {
-  const piece = (await checks.service()).pieces().find((p) => p.name === spec);
+  const name = spec.replace(/\[([^\]/]+)\]/gu, ':$1');
+  const piece = (await checks.service()).pieces().find((p) => p.name === spec || (p.kind === 'route' && p.name === name));
   if (piece !== undefined) return `${piece.file.slice(0, -'.fud'.length)}.fudspec`;
+  const flow = (await checks.folders()).map((folder) => join(folder, FLOWS_DIR, `${spec}${SPEC_EXTENSION}`)).find((file) => existsSync(file));
+  if (flow !== undefined) return flow;
   const asked = located(project.root, [spec]);
   if ('error' in asked) return undefined;
   const path = asked.under[0]!;
@@ -195,11 +205,28 @@ export async function runSpecsTool(project: Project, checks: Checks, queue: RunQ
       root,
       failing: input.failing,
       ...(input.criteria !== undefined ? { criteria: input.criteria } : {}),
+      ...(input.record === true ? { record: true } : {}),
       onDiagnostic: (d) => problems.push(d),
     });
     // Nothing ran: no browser, no `.fudspec` where it was asked. The codes of SDD-64 say which.
     if ('diagnostic' in summary) return { body: {}, diagnostics: [summary.diagnostic], failed: true };
-    await recordSpecRun(summary, before, io);
+    // A recording runs the criteria against the real server without their fixtures: not the run a
+    // piece's history keeps.
+    if (summary.recording === undefined) await recordSpecRun(summary, before, io);
+    else problems.push(...summary.recording.diagnostics);
+    // Every call of a page or a flow, by criterion, answered by the fixture or not (SDD-82 §4.4).
+    const calls = summary.reports.flatMap((r) =>
+      r.calls === undefined || r.calls.length === 0
+        ? []
+        : [{ spec: posix(r.spec), id: r.id, calls: r.calls.map((c) => ({ fn: `${c.id}.${c.name}`, args: c.args, faked: c.faked, status: c.status })) }],
+    );
+    const recording =
+      summary.recording === undefined
+        ? undefined
+        : {
+            recorded: summary.recording.recorded.map((r) => ({ spec: posix(relative(root, r.spec)), id: r.id, data: r.data, calls: r.calls })),
+            skipped: summary.recording.skipped.map((s) => ({ spec: posix(relative(root, s.spec)), id: s.id, reason: s.reason })),
+          };
     const criteria = summary.reports
       .filter((r) => r.verdict !== 'pass')
       .map((r) => ({
@@ -220,10 +247,21 @@ export async function runSpecsTool(project: Project, checks: Checks, queue: RunQ
     const units = ranFirst(await phasesOf(root, checks), root, paths);
     const red = units.find((u) => u.phase === 'red' || u.phase === 'view');
     return {
-      body: { summary: { pass: summary.pass, fail: summary.fail, error: summary.error }, browser: summary.browser, criteria, ms: summary.ms },
+      body: {
+        summary: { pass: summary.pass, fail: summary.fail, error: summary.error },
+        browser: summary.browser,
+        criteria,
+        ...(calls.length > 0 ? { calls } : {}),
+        ...(recording !== undefined ? { recording } : {}),
+        ms: summary.ms,
+      },
       diagnostics: problems,
       next:
-        summary.error > 0
+        recording !== undefined
+          ? recording.skipped.length > 0
+            ? 'Only a criterion that passes against the real server is recorded: fix what did not pass, then record again.'
+            : 'Recorded: each criterion now names its data and answers, and runs with them without the server.'
+          : summary.error > 0
           ? 'A criterion that errors did not say pass or fail: fix what its diagnostics say, then run fudic_spec_run again.'
           : red === undefined
             ? null

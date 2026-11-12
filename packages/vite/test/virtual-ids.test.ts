@@ -48,7 +48,7 @@ type AnyHook = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 /** A configured plugin — `resolveId` answers only once `configResolved` has run. */
 function configured(): AnyHook {
   const plugin = fudic() as AnyHook;
-  plugin.config({});
+  plugin.config({}, { command: 'serve', mode: 'development' });
   plugin.configResolved({ root: process.cwd(), base: '/', command: 'build', build: { outDir: 'dist' } });
   return plugin;
 }

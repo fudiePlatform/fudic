@@ -24,7 +24,7 @@ describe('recovery (criterion 8)', () => {
   ])('reads %s at its own level from a wrong indentation', (_, source) => {
     const { value, diagnostics } = parseSpec(source);
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0921']);
-    expect(value.component?.tag?.text).toBe('fud-x');
+    expect(value.header?.name?.text).toBe('fud-x');
     expect(value.criteria[0]?.blocks[0]?.terms).toHaveLength(1);
   });
 

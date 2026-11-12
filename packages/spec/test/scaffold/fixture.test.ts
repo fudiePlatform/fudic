@@ -1,6 +1,6 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
-import { fixtureEntry, fixtureModule, readFixtures, type PropField } from '../../src/index.js';
+import { fixtureEntry, fixtureModule, flowFixtureModule, pageFixtureModule, readFixtures, type PropField } from '../../src/index.js';
 
 const PATH = '/ws/app-card.fixture.ts';
 
@@ -89,5 +89,46 @@ describe('readFixtures — `end`', () => {
     expect('end' in readFixtures('export const a = {};', PATH)).toBe(false);
     expect('end' in readFixtures('const x = {};\nexport default x;', PATH)).toBe(false);
     expect('end' in readFixtures('', PATH)).toBe(false);
+  });
+});
+
+describe('pageFixtureModule and flowFixtureModule (SDD-82 §3.10)', () => {
+  const USERS: readonly PropField[] = [
+    { name: 'title', required: true, shape: { kind: 'string' } },
+    { name: 'users', required: true, shape: { kind: 'array', element: { kind: 'opaque' } } },
+    { name: 'note', required: false, shape: { kind: 'string' } },
+  ];
+
+  it('a page: data sampled from load, paths when declared, calls empty, typed by the route', () => {
+    const source = pageFixtureModule('routes/usuarios', { data: { name: 'base', fields: USERS }, paths: true });
+    expect(source).toBe(
+      [
+        "import type { Fixtures } from 'fudic:routes/usuarios';",
+        '',
+        'export default {',
+        '  data: {',
+        "    base: { title: '', users: [] },",
+        '  },',
+        '  paths: [],',
+        '  calls: {},',
+        '} satisfies Fixtures;',
+        '',
+      ].join('\n'),
+    );
+    expect(errors(source)).toEqual([]);
+    const read = readFixtures(source, PATH);
+    expect(read.data?.names.map((n) => n.text)).toEqual(['base']);
+    expect(read.paths?.names).toEqual([]);
+    expect(read.calls?.names).toEqual([]);
+  });
+
+  it('a page without load nor paths: only calls', () => {
+    expect(pageFixtureModule('routes/index', {})).toBe("import type { Fixtures } from 'fudic:routes/index';\n\nexport default {\n  calls: {},\n} satisfies Fixtures;\n");
+  });
+
+  it('a flow: services empty, typed by @fudic/spec', () => {
+    const source = flowFixtureModule();
+    expect(source).toBe("import type { FlowFixtures } from '@fudic/spec';\n\nexport default {\n  services: {},\n} satisfies FlowFixtures;\n");
+    expect(readFixtures(source, PATH).services?.names).toEqual([]);
   });
 });

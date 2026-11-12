@@ -36,6 +36,35 @@ export function socketPath(tag: string): string {
   return `${shellPath(tag)}ws`;
 }
 
+/** Where a backend that is not fudic's asks what a criterion runs with (SDD-82 §3.8). */
+const CRITERION_PREFIX = `${BENCH_PREFIX}criterion/`;
+
+/** The criterion `/__bench/criterion/<id>` asks about; undefined for any other path. */
+export function criterionPath(path: string): string | undefined {
+  return path.startsWith(CRITERION_PREFIX) && path.length > CRITERION_PREFIX.length
+    ? decodeURIComponent(path.slice(CRITERION_PREFIX.length))
+    : undefined;
+}
+
+/** What the bench reads a criterion's names from. */
+export interface CriterionNamesOf {
+  names(criterion: string): { readonly services?: string; readonly answers?: readonly string[]; readonly clock?: string } | undefined;
+}
+
+/**
+ * `{ services, answers, clock }` of a running criterion — the names of its fixture lines, which a
+ * backend in another language seeds itself with — or a 404 for one that is not running.
+ */
+export function criterionResponse(bench: CriterionNamesOf, id: string, res: ServerResponse): void {
+  const names = bench.names(id);
+  if (names === undefined) {
+    res.writeHead(404, { 'content-type': 'application/json' }).end(JSON.stringify({ error: `no criterion "${id}" is running` }));
+    return;
+  }
+  const body = { services: names.services ?? null, answers: names.answers ?? [], clock: names.clock ?? null };
+  res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(body));
+}
+
 /** Connect-style middleware: Vite's `middlewares`. */
 export type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
 
@@ -58,6 +87,8 @@ export interface BenchServer {
   publish(message: BenchMessage): void;
   /** Keeps a shot, dropping the previous one of that criterion and kind, and answers its URL. */
   putShot(tag: string, id: string, kind: 'before' | 'after', png: Buffer): string;
+  /** Answers `/__bench/criterion/<id>` from the app's bench (SDD-82 §3.8). Before it, a 404. */
+  serveCriteria(bench: CriterionNamesOf): void;
   /** Who obeys what the shells send. Before it, they are ignored. */
   onCommand(handler: (command: RunCommand) => void): void;
   /** Forgets a component: its kept messages and shots, and its shells are disconnected. */
@@ -91,6 +122,7 @@ function benchPath(path: string): { tag: string; rest: string } | undefined {
 export async function startBenchServer(input: BenchServerInput): Promise<BenchServer> {
   let vite: Middleware | undefined;
   let obey: ((command: RunCommand) => void) | undefined;
+  let criteria: CriterionNamesOf | undefined;
   let shotCount = 0;
   const components = new Map<string, Kept>();
   const kept = (tag: string): Kept => {
@@ -106,6 +138,11 @@ export async function startBenchServer(input: BenchServerInput): Promise<BenchSe
 
   const http = createServer((req, res) => {
     const path = (req.url as string).split('?')[0]!;
+    const criterion = criterionPath(path);
+    if (criterion !== undefined && criteria !== undefined) {
+      criterionResponse(criteria, criterion, res);
+      return;
+    }
     const bench = benchPath(path);
     if (bench?.rest === '') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(shellPage());
@@ -199,6 +236,9 @@ export async function startBenchServer(input: BenchServerInput): Promise<BenchSe
       const name = `${prefix}${++shotCount}-${kind}.png`;
       shots.set(name, png);
       return `${shellPath(segment(tag))}shot/${name}`;
+    },
+    serveCriteria(bench) {
+      criteria = bench;
     },
     onCommand(handler) {
       obey = handler;

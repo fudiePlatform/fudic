@@ -76,6 +76,19 @@ await renderSnippet('./fields.fud', 'row(@item)', { scope: { item: { id: 1 } } }
 When a route throws in `load`, `visit` renders `_error.fud` with the error's status, the same
 as `vite dev`. When it redirects, `visit` throws and names the target.
 
+The route's fixture (`usuarios.fixture.ts`, beside the page) is the one its `.fudspec` uses, and
+`visit` applies it the same way the workbench does:
+
+```ts
+await visit('/usuarios', { fixture: 'dos-personas' });              // load returns data['dos-personas']
+await visit('/usuarios', { fixture: ['dos-personas', 'con-ana'] }); // the next data request gets the second
+await visit('/usuarios', { answers: ['busca-luis'], services: 'memoria' });
+```
+
+`answers` names groups of `calls`: a function in one of them answers without running its
+handler, and the last group that names it wins. `services` names a group whose services take
+the real ones' place in every request. Anything the fixture does not name runs for real.
+
 ## Shadow roots
 
 `shadowOf(host)` returns the options a shadow root was really created with: `delegatesFocus`,
