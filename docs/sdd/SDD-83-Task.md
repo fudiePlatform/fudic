@@ -5,12 +5,12 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 0 / 30 — `Listo`.
+> **Progreso:** 1 / 30 — `En curso`.
 
-**Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
-escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
-propio worktree desde esta rama. Si un test destapa un defecto, se corrige el código, no el test.
-Cada fase cerrada va a `origin`.
+**Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
+por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
+tests y cobertura en verde. Primera tanda: fases 1–3. Si un test destapa un defecto, se corrige el
+código, no el test.
 
 **El orden manda en tres puntos.**
 
@@ -24,7 +24,7 @@ Cada fase cerrada va a `origin`.
 
 ## Fase 1 — diagnósticos
 
-- [ ] **1. Diagnósticos.**
+- [x] **1. Diagnósticos.**
   - `FUD1520`–`FUD1528`, cada uno con su función, su `.md` y su línea en `index.ts` (SDD §3.12).
   - `FUD0725` gana los problemas `diagnostics` y `baseline`.
   - *Depende de:* —.
