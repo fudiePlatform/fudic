@@ -5,7 +5,32 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
+> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35, con dos fallos abiertos: ver el relevo del 2026-11-12) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
+
+## Relevo (2026-11-12, la prueba de Pedro, tarea 35)
+
+**Dónde estamos.** Fase 9 commiteada (`06059b0f`): ejemplo, guía, README y seis fallos arreglados
+(SDD §8.2.51–58). typecheck, test y build en verde; `.vsix` de la rama instalado. Sin merge a
+`main` (espera a la prueba). Al probar en VS Code, Pedro encontró dos problemas que **la siguiente
+sesión tiene que resolver** antes de cerrar la tarea 35:
+
+1. **«Fudic: The workbench stopped.» al abrir el banco sobre `src/flows/alta-de-usuario.fudspec`**
+   desde el editor. Pasa siempre (dos de dos). Por la CLI (`fudic-workbench run` sobre ese flujo) y
+   por `runSpecs` (test `example-green.test.ts > criterion 39`) los 7 criterios pasan, así que el
+   fallo está en el camino del editor: `openWorkbench` + el shell (`src/open.ts`, `project.ts`,
+   `session.ts`) con un destino `flow` (el `component` de un flujo es la propia `.fudspec`, ver
+   `target.ts:routeTarget`). Mirar qué hace morir el proceso: quizá el reloj/rebuild del criterio
+   `abre-sin-red` (`offline` lanza un `vite build` + `vite preview` en
+   `node_modules/.fudic-bench/<pid>/app/dist`, SDD §8.2.24) o el vigilante de ficheros del shell
+   sobre un `.fudspec` que no es un componente. Reproducir con un test en `test/browser/` que abra
+   el flujo con `openWorkbench` y `connectShell`, como hace `example-green` con `app-card`.
+2. **«Live» da siempre 404** (el botón que abre la página viva del criterio). Probablemente la URL
+   viva de un criterio de página/flujo apunta al Vite de componentes
+   (`/__bench/<tag>/…`) y no al Vite de la app, o le falta la cookie `fudic-bench` del criterio.
+   Ver dónde construye el shell esa URL (`protocol.ts`/`shell`, mensaje con la URL de «Live») y
+   cubrirlo con un test para página y flujo.
+
+Lo demás de abajo sigue valiendo.
 
 ## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
