@@ -18,7 +18,11 @@ import { FUD0726, type FileDiagnostic } from '@fudic/diagnostics';
 export interface ProjectResult {
   /** `null` when there is no `fudic.json`, or it is unusable. */
   readonly config: ProjectConfig | null;
-  /** Fatal: a malformed `fudic.json`, or what has no correct behaviour possible (§5). */
+  /**
+   * What the build says of the file before anything else: a malformed `fudic.json`, or what has
+   * no correct behaviour possible (§5), which stop it; and an entry of `diagnostics` it dropped,
+   * which is a warning (`FUD1520`) or, for an error lowered, an error (`FUD1521`).
+   */
   readonly errors: readonly FileDiagnostic[];
 }
 

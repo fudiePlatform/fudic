@@ -31,3 +31,4 @@ export {
   type ProjectConfig,
 } from './read.js';
 export { tagOf } from './tag.js';
+export { readPolicy, ProjectPolicies, type PolicyRead, type ProjectAt } from './policy.js';

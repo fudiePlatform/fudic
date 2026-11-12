@@ -691,3 +691,20 @@ Nada.
     demás como desconocidas.
 21. **Un comentario mal escrito es el mismo código que uno sin motivo** (`FUD1522`): en los dos casos
     el comentario no silencia nada y el arreglo es escribirlo entero.
+
+### 8.2. Tomadas al implementar
+
+1. **El criterio 4 nombra `FUD0050`, que está retirado.** Escrito en la política da `FUD1520` con sus
+   sustitutos (`FUD0052`, `FUD0051`); el criterio se prueba con `FUD0051`, un error vivo.
+2. **El catálogo como datos.** La política necesita la severidad de un código antes de que exista un
+   diagnóstico suyo. `@fudic/diagnostics` gana `codeInfo` y `liveCodes`, sobre una tabla generada de
+   los `.md` (`pnpm --filter @fudic/diagnostics catalog`); un test la compara con la carpeta.
+3. **El `text` de un comentario lleva sus delimitadores** (`@* … *@`, `/* … */`, `//`, `#`). Así
+   `FUD1520` y `FUD1521` subrayan el código dentro del comentario, no el comentario entero.
+4. **Una sola llamada en los tres sitios: `govern`.** Lee los comentarios, aplica la política a los
+   diagnósticos del fichero y a los de los comentarios, y añade los `FUD1523` cuando quien llama tiene
+   todos los diagnósticos del fichero (`complete`). El plugin de Vite, que solo ve los del compilador,
+   no da `FUD1523`; el informe de `@fudic/typecheck` y el editor sí.
+5. **Una entrada de `diagnostics` descartada no tumba la configuración.** `FUD0725` (forma inválida)
+   deja el `fudic.json` sin configuración, como cualquier otro campo; `FUD1520` y `FUD1521` quitan esa
+   entrada y el resto vale.

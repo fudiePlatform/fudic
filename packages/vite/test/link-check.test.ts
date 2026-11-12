@@ -26,8 +26,8 @@ const component = (tag: string, ...hrefs: readonly string[]): string =>
   `${hrefs.map((href) => `<link rel="component" href="${href}">`).join('\n')}\n<${tag}>\n  <template shadowrootmode="open"><slot></slot></template>\n</${tag}>\n`;
 
 /** A fudic library's config, as `@fudic/config` fills it. */
-const libConfig: ProjectConfig = { id: '', kind: 'lib', prefix: 'ui', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline' };
-const appConfig: ProjectConfig = { id: 'otra', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline' };
+const libConfig: ProjectConfig = { id: '', kind: 'lib', prefix: 'ui', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } };
+const appConfig: ProjectConfig = { id: 'otra', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } };
 
 /** Files in a `Record`, and whatever the resolver is told to answer per href. */
 function io(

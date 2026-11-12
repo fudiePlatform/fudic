@@ -24,6 +24,12 @@ export { LineMap, rangeOf } from './linemap.js';
 export type { Place, Rendered, FormatOptions, Located } from './render.js';
 export { render, format, locate } from './render.js';
 export { DOCS_BASE, docsUrl } from './docs.js';
+export type { LiveCode, RetiredCode } from './catalog.js';
+export { codeInfo, liveCodes } from './catalog.js';
+export type { Suppression, SourceComment, SuppressionsResult } from './suppressions.js';
+export { readSuppressions } from './suppressions.js';
+export type { PolicyLevel, Policy, PolicyResult, GovernOptions } from './policy.js';
+export { applyPolicy, govern } from './policy.js';
 
 // ── codes ──────────────────────────────────────────────────────────────────────
 export * from './codes/FUD0001.js';
