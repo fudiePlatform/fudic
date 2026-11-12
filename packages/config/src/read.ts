@@ -17,7 +17,7 @@
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
 import { API_DIR, BROWSER_DIR, DEFAULT_LOCALE, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Policy, type Span } from '@fudic/diagnostics';
-import { readBaseline, type BaselineConfig } from './baseline.js';
+import { floorWarning, readBaseline, type BaselineConfig } from './baseline.js';
 import { readPolicy } from './policy.js';
 import { readServe, type ServeConfig } from './serve.js';
 
@@ -210,7 +210,13 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   if (baseline.malformed !== undefined) {
     ctx.diagnostics.push(malformed({ problem: 'baseline', reason: baseline.malformed }, baselineKey));
   }
-  const dropped = [...policy.dropped, ...baseline.dropped];
+  // On the year itself when the object form names one, else on `"baseline"`: where the fix goes.
+  const targetKey =
+    baselineKey !== undefined && typeof fields['baseline'] === 'object'
+      ? fieldSpan(ctx.text, 'target', baselineKey.end)
+      : undefined;
+  const floor = floorWarning(baseline.baseline, targetKey ?? baselineKey);
+  const dropped = [...policy.dropped, ...baseline.dropped, ...(floor === undefined ? [] : [floor])];
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name

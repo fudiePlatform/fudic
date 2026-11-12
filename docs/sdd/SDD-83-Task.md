@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 12 / 30 — `En curso`.
+> **Progreso:** 15 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -109,19 +109,19 @@ código, no el test.
 
 ## Fase 5 — lo que pone fudic
 
-- [ ] **13. El remedio de `delegatesFocus`.**
+- [x] **13. El remedio de `delegatesFocus`.**
   - Al hidratar, si la clase lo pide y el shadow root no lo tiene: host enfocable y el foco al primer
     elemento enfocable de dentro, también desde `focus()` (§4.6).
   - *Depende de:* —.
   - *Paquetes:* `core`, `forms`.
   - *Ficheros:* `core/src/element.ts`, `core/src/focus-delegate.ts`, `forms/src/element.ts`.
-- [ ] **14. El manifiesto y el suelo.**
+- [x] **14. El manifiesto y el suelo.**
   - `EMITTED` y `FLOOR` en `@fudic/baseline` (§3.7).
   - `FUD1525` sobre `baseline` de `fudic.json` cuando el corte es anterior al suelo.
   - *Depende de:* 10, 13.
   - *Paquetes:* `baseline`, `config`.
   - *Ficheros:* `baseline/src/emitted.ts`, `config/src/baseline.ts`.
-- [ ] **15. Los tests de lo que pone fudic.** Criterios 27 y 29.
+- [x] **15. Los tests de lo que pone fudic.** Criterios 27 y 29.
   - *Depende de:* 14.
   - *Paquetes:* `core`, `forms`, `config`.
 

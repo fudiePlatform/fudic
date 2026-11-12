@@ -288,6 +288,10 @@ y `pipes`, y los módulos del proyecto que importan):
 export interface EmittedFeature {
   /** The BCD key, or null when the data has none (`<style type="module" specifier>`). */
   readonly key: string | null;
+  /** The web-features id of the key, or null with no key (§8.2, decision 14). */
+  readonly feature: string | null;
+  /** The key's `newly` date; null with no key or when it is not in Baseline. */
+  readonly newly: string | null;
   /** What makes fudic emit it. */
   readonly when: string;
   /** What fudic does where it is missing, or null when it needs it. */
@@ -298,6 +302,9 @@ export const EMITTED: readonly EmittedFeature[];
 
 /** The newest `newly` date among the entries with no remedy: the oldest browsers fudic runs in. */
 export const FLOOR: string;   // '2024-03-05'
+
+/** The features fudic needs that a level cutting on `cutoff` lacks, for FUD1525. */
+export function needsNewer(cutoff: string): readonly string[];
 ```
 
 - **Lo del manifiesto no avisa en el código del usuario.** Si el autor escribe `shadowrootmode` en su
@@ -746,3 +753,14 @@ Nada.
     guarda cada id de `allow` tal como se escribió con lo que permite (él mismo, o su destino), para
     que `FUD1528` y las bombillas sepan qué entrada tocar; `allowedFeatures` da el conjunto para el
     juez. Un `FUD1527` no tumba la configuración, como `FUD1520`.
+14. **El manifiesto lleva la feature y la fecha de cada clave.** `EmittedFeature` gana `feature` y
+    `newly`, copiadas de la tabla, para que `@fudic/config` calcule `FUD1525` desde
+    `@fudic/baseline/config` sin cargar la tabla de claves (decisión 10). Un test las ata a la tabla:
+    una versión de `web-features` que mueva una fecha falla ahí. `FLOOR` se calcula de esas fechas, y
+    `needsNewer(cutoff)` da las features que un nivel no tiene, para el mensaje.
+15. **`FUD1525` va sobre `"target"`** cuando `baseline` es un objeto que lo escribe, y si no sobre
+    `"baseline"`: donde se escribe el arreglo. No tumba la configuración, como `FUD1527`.
+16. **El remedio del foco** mira `shadowRoot.delegatesFocus === false` y el `shadowInit()` de la clase,
+    así un control de formulario y un autor con `shadowrootdelegatesfocus` pasan por el mismo sitio.
+    Además del foco, una pulsación dirigida al host (lo que un `<label>` reenvía a su control) lleva
+    el foco dentro: hay motores que reenvían la pulsación sin mover el foco.

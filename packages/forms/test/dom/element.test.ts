@@ -104,6 +104,34 @@ describe('the class the browser reads', () => {
   });
 });
 
+describe('a control hydrated where the parser ignored `shadowrootdelegatesfocus` (SDD-83 criterion 29)', () => {
+  /**
+   * The shadow root an old browser leaves: the server wrote the attribute, the parser did not
+   * read it, and the root does not delegate. happy-dom's never do, which is what this needs.
+   */
+  function hydrated(): { el: Probe; field: HTMLElement } {
+    const el = mount();
+    const shadow = el.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<span>Title</span><input id="field">';
+    el.h([]);
+    return { el, field: shadow.getElementById('field')! };
+  }
+
+  it('a click its <label> forwards to the host leaves the focus in the inner <input>', () => {
+    const { el, field } = hydrated();
+    // What a real `<label for>` does with a form-associated control: it forwards the click to
+    // the host. happy-dom's label only knows the native controls, so the forward is made here.
+    el.click();
+    expect(el.shadowRoot!.activeElement).toBe(field);
+  });
+
+  it('host.focus() leaves the focus in the inner <input>', () => {
+    const { el, field } = hydrated();
+    el.focus();
+    expect(el.shadowRoot!.activeElement).toBe(field);
+  });
+});
+
 describe('the control is picked up from the payload', () => {
   it('finds it among the crossed values, by shape', () => {
     const f = form({ title: control('') });

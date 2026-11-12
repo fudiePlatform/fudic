@@ -7,6 +7,7 @@ import {
   allowedFeatures,
   CONFIG_FILE,
   DEFAULT_BASELINE,
+  floorWarning,
   readBaseline,
   readProjectConfig,
   type ConfigIo,
@@ -123,5 +124,50 @@ describe('baseline in fudic.json', () => {
   it('readBaseline and allowedFeatures on their own', () => {
     expect(readBaseline(undefined, () => undefined)).toEqual({ baseline: DEFAULT_BASELINE, dropped: [] });
     expect(allowedFeatures(DEFAULT_BASELINE)).toEqual(new Set());
+  });
+});
+
+describe('the floor: what fudic itself needs (SDD-83 §3.7)', () => {
+  it('"baseline": 2023 is one FUD1525 on the key, naming what sets the floor, and the level stands (criterion 27)', () => {
+    const text = '{"id":"shop","baseline":2023}';
+    const result = readText(text);
+    expect(result.config?.baseline).toEqual({ target: 2023, allow: [] });
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: 'FUD1525',
+      severity: 'warning',
+      file: CONFIG_FILE,
+      span: { start: text.indexOf('"baseline"'), end: text.indexOf('"baseline"') + 10 },
+    });
+    expect(result.diagnostics[0]?.message).toBe(
+      'fudic needs browsers from 2024-03-05 on (declarative-shadow-dom, promise-withresolvers); Baseline 2023 asks for 2023-12-31',
+    );
+  });
+
+  it('in the object form it points at the target, where the fix goes', () => {
+    const text = '{"id":"shop","baseline":{"allow":["popover"],"target":2023}}';
+    const result = readText(text);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD1525']);
+    expect(result.diagnostics[0]?.span).toEqual({ start: text.indexOf('"target"'), end: text.indexOf('"target"') + 8 });
+  });
+
+  it('an object form with no target is widely, above the floor: nothing to say', () => {
+    expect(read({ allow: ['popover'] }).diagnostics).toEqual([]);
+  });
+
+  it('names only the features a level lacks: an older year lacks more of them', () => {
+    expect(read(2022).diagnostics[0]?.message).toBe(
+      'fudic needs browsers from 2024-03-05 on (declarative-shadow-dom, promise-withresolvers, form-associated-custom-elements, constructed-stylesheets); Baseline 2022 asks for 2022-12-31',
+    );
+  });
+
+  it('2024, newly and widely are at or above the floor: no FUD1525', () => {
+    for (const level of [2024, 'newly', 'widely']) expect(read(level).diagnostics).toEqual([]);
+    expect(readText('{"id":"shop"}').diagnostics).toEqual([]);
+  });
+
+  it('floorWarning on its own: with no span, and silent above the floor', () => {
+    expect(floorWarning({ target: 2020, allow: [] })?.span).toBeUndefined();
+    expect(floorWarning({ target: 2025, allow: [] })).toBeUndefined();
   });
 });

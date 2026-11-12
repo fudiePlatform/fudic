@@ -8,8 +8,17 @@
  * allows what it became — the author meant that feature, and webstatus.dev renamed it.
  */
 
-import { feature, FIRST_YEAR, lastYear, type Target } from '@fudic/baseline/config';
-import { FUD1527, type FileDiagnostic, type Span } from '@fudic/diagnostics';
+import {
+  cutoff,
+  describeTarget,
+  feature,
+  FIRST_YEAR,
+  FLOOR,
+  lastYear,
+  needsNewer,
+  type Target,
+} from '@fudic/baseline/config';
+import { FUD1525, FUD1527, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 import { CONFIG_FILE } from './constants.js';
 
 /** What `baseline` declares, with its defaults filled. */
@@ -77,6 +86,23 @@ export function readBaseline(value: unknown, idSpan: (id: string) => Span | unde
     }
   }
   return { baseline: { target, allow }, dropped };
+}
+
+/**
+ * `FUD1525` when the level cuts before the oldest browsers fudic itself runs in (SDD-83 §3.7): no
+ * fudic page can promise what the project asks for. The only warning fudic causes on its own.
+ */
+export function floorWarning(baseline: BaselineConfig, span?: Span): FileDiagnostic | undefined {
+  const asks = cutoff(baseline.target);
+  if (asks >= FLOOR) return undefined;
+  return FUD1525({
+    file: CONFIG_FILE,
+    ...spanOf(span),
+    floor: FLOOR,
+    features: needsNewer(asks),
+    baseline: describeTarget(baseline.target),
+    cutoff: asks,
+  });
 }
 
 /** A level: `widely`, `newly`, or a whole year from 2015 to the data's. */

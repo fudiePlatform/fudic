@@ -683,10 +683,10 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
     ).default;
     expect(Object.keys(config.dependencies)).toEqual(['@fudic/baseline', '@fudic/conventions', '@fudic/diagnostics']);
     // The Baseline data of SDD-83 is a generated table and a judge: no dependency at all.
-    const baseline: { dependencies?: Record<string, string> } = (
+    const baseline: Readonly<Record<string, unknown>> = (
       await import('../../../baseline/package.json', { with: { type: 'json' } })
     ).default;
-    expect(baseline.dependencies).toBeUndefined();
+    expect(baseline['dependencies']).toBeUndefined();
   });
 });
 

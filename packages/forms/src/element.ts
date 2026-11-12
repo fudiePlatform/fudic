@@ -71,6 +71,10 @@ export abstract class FudicControlElement extends FudicElement {
    * `delegatesFocus`, so a click on an outside `<label for>` lands in the `<input>`. The bridge
    * — `referenceTarget`, the same one the server wrote — comes from the base, as for any
    * component.
+   *
+   * The base reads this init when it hydrates, too: a browser that ignored the server's
+   * `shadowrootdelegatesfocus` gets the delegation from script instead (SDD-83 §4.6), so a form
+   * works at Baseline «widely» without asking anything of its author.
    */
   protected override shadowInit(): ShadowRootInit {
     return { ...super.shadowInit(), delegatesFocus: true };
