@@ -27,7 +27,7 @@ describe('readProjectConfig', () => {
   it('reads the three fields and says nothing else (criterion 1)', () => {
     const result = readProjectConfig(ROOT, io('{"id":"shop","kind":"app","prefix":"shop"}'));
 
-    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } });
+    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() }, baseline: { target: 'widely', allow: [] } });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -46,7 +46,7 @@ describe('readProjectConfig', () => {
   it('fills the defaults of the fields that are not there (criterion 4)', () => {
     const result = readProjectConfig(ROOT, io('{}'));
 
-    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } });
+    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() }, baseline: { target: 'widely', allow: [] } });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -175,7 +175,7 @@ describe('readProjectConfig', () => {
         pipes: 'src/pipes',
         earlyHints: true,
         css: 'inline',
-        diagnostics: { codes: new Map() },
+        diagnostics: { codes: new Map() }, baseline: { target: 'widely', allow: [] },
       });
       expect(result.diagnostics).toEqual([]);
     });

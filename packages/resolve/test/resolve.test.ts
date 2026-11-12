@@ -123,7 +123,7 @@ describe('a package href', () => {
           earlyHints: true,
           css: 'inline',
           // SDD-83 §3.1: no policy, every code as it is.
-          diagnostics: { codes: new Map() },
+          diagnostics: { codes: new Map() }, baseline: { target: 'widely', allow: [] },
         },
       },
     });

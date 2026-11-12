@@ -23,7 +23,7 @@ function io(files: Record<string, string>): ConfigIo {
   };
 }
 
-const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } } as const;
+const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() }, baseline: { target: 'widely', allow: [] } } as const;
 const EMPTY = { global: [], optional: [], errors: [], warnings: [] };
 const theme = (path: string) => [{ name: 'theme', path }];
 

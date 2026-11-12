@@ -32,3 +32,11 @@ export {
 } from './read.js';
 export { tagOf } from './tag.js';
 export { readPolicy, ProjectPolicies, type PolicyRead, type ProjectAt } from './policy.js';
+export {
+  allowedFeatures,
+  DEFAULT_BASELINE,
+  readBaseline,
+  type AllowedId,
+  type BaselineConfig,
+  type BaselineRead,
+} from './baseline.js';

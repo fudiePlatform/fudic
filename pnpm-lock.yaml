@@ -269,6 +269,21 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
 
+  packages/baseline:
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
+      web-features:
+        specifier: 3.45.0
+        version: 3.45.0
+
   packages/cli:
     dependencies:
       '@fudic/api':
@@ -387,6 +402,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@fudic/baseline':
+        specifier: workspace:*
+        version: link:../baseline
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
@@ -4452,6 +4470,9 @@ packages:
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
 
+  web-features@3.45.0:
+    resolution: {integrity: sha512-Atp/v77aPEuVIPsw7tYz9IrID8CztDcIleh8n/Z8r7HEkvNt7eYWHF8s4hlWQ0QskFzTPDjq81vjubXXCnBMSg==}
+
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
 
@@ -7982,6 +8003,8 @@ snapshots:
   vscode-textmate@9.3.2: {}
 
   vscode-uri@3.1.0: {}
+
+  web-features@3.45.0: {}
 
   webidl-conversions@3.0.1: {}
 

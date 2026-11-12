@@ -378,6 +378,7 @@ export type Target = 'widely' | 'newly' | number;
 export interface KeyStatus {
   readonly key: string;
   readonly feature: string;           // web-features id
+  readonly features: readonly string[]; // all of them: audio and video share HTMLMediaElement
   readonly newly: string | null;      // 'YYYY-MM-DD'; null when not in Baseline
   readonly support: Readonly<Partial<Record<CoreBrowser, string>>>;
 }
@@ -385,13 +386,21 @@ export interface KeyStatus {
 export const AS_OF: string;                                   // the data's date
 export function cutoff(target: Target, asOf?: string): string;
 export function status(key: string): KeyStatus | undefined;
-export function passes(key: string, target: Target, allow?: ReadonlySet<string>): boolean;
+export function passes(key: string, target: Target, allow?: ReadonlySet<string>, asOf?: string): boolean;
 export function feature(id: string): FeatureInfo | Moved | undefined;   // for allow, hover, explain
-export function browsersFor(target: Target): readonly string[];         // for Vite's build.target
+export function browsersFor(target: Target, asOf?: string): readonly string[]; // for Vite's build.target
 export function firstKnown(candidates: readonly string[]): string | undefined;
 export function cssFunctionKeys(name: string): readonly string[];
 export function cssUnitKey(unit: string): string | undefined;
+export function tagInterface(tag: string): string;            // 'HTMLDivElement'; 'HTMLElement' if none
+export function widelyOn(newly: string): string;              // newly + 30 months, for FUD1524
+export function describeTarget(target: Target): string;       // 'widely available', 'Baseline 2024'
+export const FIRST_YEAR: 2015;
+export function lastYear(asOf?: string): number;              // the data's year
 ```
+
+`@fudic/baseline/config` exporta solo lo que necesita leer un `fudic.json` (los niveles y `feature`),
+sin la tabla de claves (§8.2, decisión 10).
 
 - Cada lector de comentarios (el lexer del `.fud`, el de líneas del `.fudapi` y del `.fudspec`, el de
   reglas CSS, Oxc para TS) da sus comentarios a `readSuppressions`. La directiva se lee en un solo
@@ -720,3 +729,20 @@ Nada.
    con sus errores y calla lo demás.
 9. **El editor vuelve a pedir los diagnósticos al guardar un `fudic.json`**, como ya hacía con un
    `.fudapi` o un módulo de términos.
+10. **La tabla de claves, en texto y aparte.** Como literales de objeto, cargar `@fudic/baseline`
+    costaba 40 ms a todo proceso que lee un `fudic.json`, la CLI incluida, juzgue algo o no. El
+    generador escribe dos ficheros: `data.generated.ts` (fecha, navegadores, features, redirecciones,
+    unidades, etiquetas; 72 KB) y `table.generated.ts` (claves, estados y funciones CSS, como JSON en
+    texto que el juez parsea la primera vez que se le pregunta). `@fudic/config` importa
+    `@fudic/baseline/config`, que no carga la tabla, y las dos entradas se empaquetan con rolldown
+    como `@fudic/diagnostics` (BUG-51): leer un `fudic.json` paga unos pocos milisegundos.
+11. **`asOf` en todo lo que depende de la fecha**: `cutoff`, `passes`, `browsersFor`, `lastYear`, como
+    último parámetro (criterio 17).
+12. **Una clave puede ser de dos features** (`audio` y `video` comparten `api.HTMLMediaElement.*`, con
+    el mismo estado). `KeyStatus.features` las lleva todas; `feature` es la primera, y `passes` acepta
+    la clave si cualquiera de ellas está en `allow`.
+13. **`baseline` en `fudic.json`.** La forma de objeto sin `target` es `widely`; una clave que no es
+    `target` ni `allow`, o un `allow` con algo que no es texto, es `FUD0725`. `ProjectConfig.baseline`
+    guarda cada id de `allow` tal como se escribió con lo que permite (él mismo, o su destino), para
+    que `FUD1528` y las bombillas sepan qué entrada tocar; `allowedFeatures` da el conjunto para el
+    juez. Un `FUD1527` no tumba la configuración, como `FUD1520`.

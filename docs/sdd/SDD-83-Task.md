@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 7 / 30 — `En curso`.
+> **Progreso:** 12 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -78,32 +78,32 @@ código, no el test.
 
 ## Fase 4 — `@fudic/baseline`
 
-- [ ] **8. El paquete.**
+- [x] **8. El paquete.**
   - `packages/baseline`, sin dependencias de runtime, con `web-features` exacto como dependencia de
     desarrollo y umbrales al 100 % desde el primer commit.
   - *Depende de:* —.
   - *Paquete:* `baseline`.
-  - *Ficheros:* `package.json`, `tsconfig*.json`, `vitest.config.ts`, `README.md`.
-- [ ] **9. El generador y la tabla.**
+  - *Ficheros:* `package.json`, `tsconfig*.json`, `vitest.config.ts`, `rolldown.config.ts`, `README.md`.
+- [x] **9. El generador y la tabla.**
   - `scripts/generate.ts` y `pnpm --filter @fudic/baseline generate`.
-  - `src/data.generated.ts`: claves, features, redirecciones, `AS_OF`, el índice de funciones CSS, la
+  - `src/data.generated.ts` y `src/table.generated.ts`: claves, features, redirecciones, `AS_OF`, el índice de funciones CSS, la
     tabla de unidades, la tabla etiqueta → interfaz DOM (§4.2).
   - *Depende de:* 8.
   - *Paquete:* `baseline`.
-  - *Ficheros:* `scripts/generate.ts`, `scripts/units.ts`, `src/data.generated.ts`.
-- [ ] **10. El juez.**
+  - *Ficheros:* `scripts/generate.ts`, `scripts/units.ts`, `src/data.generated.ts`, `src/table.generated.ts`.
+- [x] **10. El juez.**
   - `cutoff`, `status`, `passes`, `feature`, `browsersFor`, `firstKnown`, `cssFunctionKeys`,
     `cssUnitKey` (§3.10). `AS_OF` inyectable.
   - *Depende de:* 9.
   - *Paquete:* `baseline`.
-  - *Ficheros:* `src/level.ts`, `src/judge.ts`, `src/browsers.ts`, `src/index.ts`.
-- [ ] **11. `baseline` en `fudic.json`.**
+  - *Ficheros:* `src/level.ts`, `src/features.ts`, `src/judge.ts`, `src/browsers.ts`, `src/config.ts`, `src/index.ts`.
+- [x] **11. `baseline` en `fudic.json`.**
   - `ProjectConfig.baseline` (`target`, `allow`), por defecto `widely`; `FUD0725` con `baseline`;
     `FUD1527` para un id desconocido, movido o partido.
   - *Depende de:* 10.
   - *Paquete:* `config`.
   - *Ficheros:* `src/read.ts`, `src/baseline.ts`.
-- [ ] **12. Los tests del juez.** Criterios 14–17, con `AS_OF` fijado.
+- [x] **12. Los tests del juez.** Criterios 14–17, con `AS_OF` fijado.
   - *Depende de:* 11.
   - *Paquetes:* `baseline`, `config`.
 
