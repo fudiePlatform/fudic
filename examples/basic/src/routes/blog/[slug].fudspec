@@ -1,0 +1,23 @@
+page /blog/[slug]
+
+criterion un-articulo-en-ingles-cambia-el-idioma
+  given
+    path file-system-routing
+    data en-ingles
+  then
+    attribute html lang "en"
+    title "DSD in depth — fudic"
+
+criterion un-slug-fuera-de-paths
+  given
+    url /blog/no-lo-conozco
+    data no-existe
+  then
+    text h1 "Artículo no encontrado"
+
+criterion paths-enumera-el-primero
+  given
+    path declarative-shadow-dom
+  then
+    lists declarative-shadow-dom
+    attribute html lang "es"

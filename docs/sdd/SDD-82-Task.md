@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 29 / 36 — `En curso`. Fases 1–8 hechas; sigue la fase 9 (ejemplo, guía y cierre).
+> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
 
 ## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
@@ -280,7 +280,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 9 — ejemplo, guía y cierre
 
-- [ ] **30. El ejemplo.**
+- [x] **30. El ejemplo.**
   - `/entrar` con su formulario que lleva a `/`; `/usuarios/nuevo`; `MemoryUsers`.
   - Las fixtures y specs de §4.9: `routes/usuarios`, `routes/blog/[slug]`, `routes/espera` y
     `src/flows/alta-de-usuario`.
@@ -288,19 +288,19 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/routes/entrar.{fud,fudapi}`, `src/routes/usuarios/nuevo.{fud,fudapi}`,
     `src/services/memory-users.ts`, `src/routes/**/*.{fudspec,fixture.ts}`, `src/flows/**`.
-- [ ] **31. Los tests del ejemplo.** Criterio 39: `fudic-workbench run` sobre el ejemplo, en verde.
+- [x] **31. Los tests del ejemplo.** Criterio 39: `fudic-workbench run` sobre el ejemplo, en verde.
   - *Depende de:* 30.
   - *Paquete:* `examples/basic`.
-- [ ] **32. La guía del MCP y los README.**
+- [x] **32. La guía del MCP y los README.**
   - `fudspec.md` y su copia en español: «Pages» y «Flows».
   - `spec`, `terms` y `workbench/README.md` (criterio 40).
   - *Depende de:* 30.
   - *Paquetes:* `mcp`, `spec`, `terms`, `workbench`.
   - *Ficheros:* `guide/**`, `README.md`.
-- [ ] **33. El `.vsix` de la rama.**
+- [x] **33. El `.vsix` de la rama.**
   - *Depende de:* 29.
   - *Paquete:* `vscode`.
-- [ ] **34. `docs/PENDIENTE.md` e INDEX.** El estado, el registro de progreso y la nota 5 cerrada.
+- [x] **34. `docs/PENDIENTE.md` e INDEX.** El estado, el registro de progreso y la nota 5 cerrada.
   - *Depende de:* 31, 32.
   - *Paquete:* docs.
 - [ ] **35. La prueba de Pedro.** SDD §6.1, con el `.vsix` de la rama.

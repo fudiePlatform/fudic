@@ -159,6 +159,13 @@ describe('§3.7 — given (criteria 25, 26)', () => {
     expect(await page.textContent('body')).toContain('cookie=fudic-session=ana');
   });
 
+  it('cookie is for the whole site, not only the folder of a deeper criterion URL', async () => {
+    host.record.url = `${origin}/usuarios/nuevo`;
+    await run('given', 'cookie', { name: 'fudic-session', value: 'ana' });
+    await page.goto(`${origin}/echo`);
+    expect(await page.textContent('body')).toContain('cookie=fudic-session=ana');
+  });
+
   it('locale asks for the page in that language and says the browser speaks it', async () => {
     expect(await run('given', 'locale', { tag: 'en' })).toEqual({ pass: true, evidence: 'speaks en' });
     await page.goto(`${origin}/echo`);

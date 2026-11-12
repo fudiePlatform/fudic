@@ -67,8 +67,9 @@ describe('htmlOf', () => {
   });
 
   it('never throws: a selector that matches nothing in time is the first line of the error', async () => {
-    page.setDefaultTimeout(200);
+    // The page is set first: under load, writing it can take longer than the short wait.
     await page.setContent('<p>x</p>');
+    page.setDefaultTimeout(200);
     expect(await htmlOf(page, 'nothing-here')).toMatch(/^error: .*Timeout 200ms exceeded/u);
   });
 });

@@ -1,15 +1,54 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
+<link rel="server" href="./entrar.fudapi">
 
 <head>
   <title>Entrar — fudic</title>
+  <style>
+    form {
+      display: grid;
+      gap: var(--gap);
+      max-width: 22rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: 1.1rem;
+      background: var(--surface);
+    }
+    input {
+      font: inherit;
+      padding: var(--pad-field);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    button {
+      justify-self: start;
+      border-color: var(--brand);
+      background: var(--brand);
+      color: white;
+    }
+    .error:empty {
+      display: none;
+    }
+  </style>
 </head>
 
 @section nav {
   <site-nav></site-nav>
 }
 
-@* Adonde lleva `error-pages` con `routes 403 /entrar` en `src/http.fudapi`: una sesión que el servidor no
-   reconoce no pinta la página de error, trae aquí. *@
+@* Adonde lleva `error-pages` con `routes 403 /entrar` en `src/http.fudapi`: una sesión que el
+   servidor no reconoce no pinta la página de error, trae aquí. *@
 <h1>Entrar</h1>
-<p>El servidor no reconoce tu sesión. Vuelve a <a href="/usuarios">usuarios</a> y entra como Ana.</p>
+<p>
+  Escribe <code>ana</code> o <code>luis</code>: la función <code>entrar</code> pone la cookie de
+  sesión y responde con una redirección a <a href="/cuenta">/cuenta</a>, que dice quién ha entrado.
+  Con otro nombre la cookie se pone igual, pero el servidor no lo conoce: una función protegida
+  responde 403 y vuelves aquí.
+</p>
+
+<form control=@entrarForm form:=@entrar>
+  <label for="usuario">Usuario</label>
+  <input id="usuario" type="text" autocomplete="username" control=@entrarForm.user>
+  <small class="error" error=@entrarForm.user></small>
+  <button type="submit">Entrar</button>
+</form>

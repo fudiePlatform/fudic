@@ -28,7 +28,7 @@ import { codeScope, hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { isFormAssociated, shadowOptionsOf } from '../binding/index.js';
-import { formAssociatedTags, movingNames } from './level.js';
+import { formAssociatedTags, memberSources, movingNames, templateOf } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
 import { projectAdoptOf } from './project-styles.js';
@@ -240,6 +240,8 @@ function buildComponentClientModule(
     // The same set `level.ts` decides hydratability with, and from the same function: what
     // the emit hands over again and what the page marks hydratable cannot disagree.
     moving: movingNames(comp),
+    // And what moves through a store or a form it binds, from the same function as well.
+    through: memberSources(codeOf(comp), comp.source, templateOf(comp)),
     // And the same set the server branch writes `data-fud-adopt` from (BUG-31 §T4): the two
     // fabricate the same host, so they have to answer this identically.
     styled: styledTags(graph),
@@ -293,7 +295,9 @@ function buildComponentClientModule(
   const usage = coreUsage();
   // The forms of a linked `.fudapi` are such modules too (SDD-60 §3.14): before, the `@code` imported them.
   const imported = [...new Set([...clientImports, ...apiForms(graph)])];
-  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup, imported);
+  // What a walk watches a member of: those, and the forms it binds (`ClientScope.through`).
+  const watched = [...new Set([...imported, ...scope.through])];
+  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup, watched);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -364,7 +368,7 @@ function buildComponentClientModule(
   const rebinds = !hookup.rebind.empty;
   if (rebinds) bodies.hook.line('$cb();');
   const renews =
-    (reactive.length > 0 || imported.length > 0 || tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
+    (reactive.length > 0 || watched.length > 0 || tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
     // `||=`: a block of the walk may already have subscribed what it reads through an import.
@@ -376,7 +380,7 @@ function buildComponentClientModule(
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
-    if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    if (em.watchImports(watched, bodies.hook)) usage.subscribes = true;
     watchTasks(tasks, bodies.hook, usage);
     // A write that came before these subscriptions — an `effect` that ran with the factory —
     // reached nobody, and the markup still says what the server painted: one repaint.

@@ -1,6 +1,6 @@
 # SDD-82 — Specs de página y de flujo: la `.fudspec` sale del componente
 
-> **Estado:** `Listo` (2026-11-08) — [tareas](./SDD-82-Task.md).
+> **Estado:** `Hecho` (2026-11-12), a falta de la prueba de Pedro (§6.1) — [tareas](./SDD-82-Task.md).
 > **Paquetes:** `@fudic/spec` · `@fudic/terms` · `@fudic/workbench` · `@fudic/vite` · `@fudic/http` · `@fudic/api` ·
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
@@ -474,6 +474,8 @@ nuevas y el vocabulario nuevo que tenga sentido sin servidor (`check`, `select`,
 `value`, `count`, `media`, `viewport`, `clock`, `wait`…).
 
 ### 4.9. Los ejemplos
+
+Lo que corre en `examples/basic` se ajusta en lo que dice §8.2.51; sus ficheros mandan.
 
 En `examples/basic`, que gana `/entrar` con un formulario que lleva a `/` («Hola, Ana»),
 `/usuarios/nuevo` (el alta en su propia página) y `MemoryUsers`.
@@ -1028,6 +1030,43 @@ Nada.
     que `record` (su grupo admite también `services`): una `data` con la muestra del `load`, un
     `calls` vacío (`{}`) y un `services` sin servicios (`[]`); un grupo que no existe se crea. La
     bombilla de `FUD1504` solo sale si la fixture trae algún valor en `paths`.
+51. **Los ejemplos de §4.9, tal como corren en `examples/basic`** (fase 9). `/entrar` lleva a
+    `/cuenta`, que ya dice «Hola, Ana.»: el inicio es estático y prerenderizado, y darle un `load`
+    para saludar le quitaba justo lo que enseña. El alta de `/usuarios/nuevo` es el `user-form` de
+    siempre (su botón dice «Dar de alta» y su aviso «Guardado: …»). Marta se da de alta con otro
+    email: la regla `email-taken` lee la tabla del módulo, no `Users`, y `marta@fudic.dev` ya está
+    en ella. Las regiones `role="status"` de `/usuarios` y del formulario llevan nombre
+    («Búsqueda», «Búsqueda lenta», «Alta», «Errores del formulario»): sin él la referencia daba
+    varias. El blog usa sus slugs de verdad. `luis-no-ve-lo-de-ana` lee los textos de `/cuenta`.
+    `routes/espera.fudspec` prueba `later` con el reloj del criterio (un `@await` espera al de
+    arriba: el bloque que falla a los 3 s se pinta a los 5).
+52. **`cookie` es para todo el sitio** (`path=/`): con la URL del criterio de `/usuarios/nuevo`,
+    Playwright la dejaba en `/usuarios` y no viajaba con `/_fudic/fn/…`.
+53. **Un gesto que lleva a otro documento está atendido.** `settled` marca el documento antes del
+    gesto; si al acabar ya no es el mismo (un enlace, la redirección que respondió una función),
+    no espera la hidratación del viejo ni su frame: la página quieta tras el `when` espera la
+    navegación.
+54. **Un documento abandonado a medio cargar no deja peticiones pendientes.** Chrome no avisa del
+    final de lo que pedía (ni `requestfailed`); cuando responde la navegación de un frame, todo lo
+    demás que pidió ese frame se da por acabado.
+55. **`fails(0, …)` escribe bytes que no son HTTP antes de cortar.** Un corte sin nada recibido
+    sobre una conexión ya usada es uno que Chrome reintenta, una vez por conexión libre: el
+    servidor veía la misma llamada hasta siete veces y `called … 1` fallaba. Sobre HTTP/2 se
+    resetea el flujo.
+56. **Fuera de esta spec, del compilador: un valor leído a través de un formulario o de un almacén
+    importado se mueve.** `<form-errores .issues=@personForm.$issues()>` pintaba la lista vacía con
+    la que se montó y ninguna otra: el hijo no se hidrataba y el padre no se la volvía a dar. Los
+    nombres cuyos miembros se mueven (lo que importa el `@code`, los formularios que se enlazan con
+    `control`, y en una ruta los de su `.fudapi`) los da `memberSources`; el nivel de hidratación y
+    el emit del padre preguntan a la misma función.
+57. **`fudic_generate` del MCP genera `flow`**, como `fudic g flow`: faltaba en su lista.
+58. **El 404 intermitente de `preview-e2e` (tarea 36) era el plugin vaciando los contratos.** Su
+    `hotUpdate` invalidaba las implementaciones del servidor con cualquier fichero que cambiara,
+    también uno que el grafo no tiene. `fudic_preview` lista las rutas con un trabajo de
+    `@fudic/testing` que escribe y borra ficheros en `.fudic/render`, dentro de la app: el watcher
+    del servidor de desarrollo los veía y, si el aviso llegaba con una petición en camino, el
+    wrapper leía un contrato vacío y la página respondía el 404 de un `load` sin implementar. Ahora
+    solo invalida con un módulo del grafo SSR, que es lo único que puede volver a evaluarse.
 
 ### 8.3. Pendiente de decidir
 

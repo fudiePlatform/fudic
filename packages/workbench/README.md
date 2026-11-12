@@ -1,7 +1,7 @@
 # `@fudic/workbench`
 
-A component's acceptance criteria, run in a real browser: green or red on every save, in the
-editor, and from the command line.
+The acceptance criteria of a component, a page or a flow between pages, run in a real browser:
+green or red on every save, in the editor, and from the command line.
 
 ```
 app-tabs.fud
@@ -9,6 +9,11 @@ app-tabs.fudspec          the criteria
 app-tabs.fixture.ts       the props each criterion mounts with (`props <name>`)
 fudic/terms/{given,when,then}/<term>.js   your own terms, when the stock ones are not enough
 fudic/bench.js            your own extension of the workbench, optional
+
+routes/usuarios.fudspec   page /usuarios: the route with its layout, by its URL
+routes/usuarios.fixture.ts  what the page's criteria put in place of load, its calls, paths, services
+src/flows/alta.fudspec    flow alta: the real server, across pages
+src/flows/alta.fixture.ts the services each criterion of the flow gets
 ```
 
 ## Setup
@@ -80,7 +85,7 @@ When it does not open:
 | `@fudic/workbench` is not installed in this workspace | step 1 of Setup, in the app the file belongs to |
 | could not run Node | set `fudic.workbench.node` to your Node executable |
 | FUD0975, could not launch a browser | step 2 of Setup, or choose one in `fudic.workbench.browser` |
-| FUD0970 | the file is not a component with a tag: pages, routes and layouts do not open |
+| FUD0970 | the file is not a component with a tag, nor a `.fudspec`: a layout does not open, nor a route without its `.fudspec` |
 
 ## From the command line
 
@@ -204,6 +209,46 @@ writes, seeded with the fixture's initial value (it must be a JSON value). The c
 mounted without the app's layout, so a sheet the layout links does not reach it.
 
 Criteria run in parallel, each in its own page; a page has 30 s to load.
+
+## Pages and flows
+
+A `page` or a `flow` runs on a second Vite, the app's: the user's own `vite.config`, its real
+`routesDir`, and the Service Worker installed (in preview mode, whatever `sw.json` says for dev).
+Each criterion gets a browser context of its own and a cookie, `fudic-bench=<run>-<n>.<slug>`,
+that every request of it carries — navigation, functions, the data endpoint, remote rules, the
+Service Worker's. The server reads the criterion off it through the bench's hooks
+(`installBench`, `createBench` of `@fudic/vite`): the fixture's `data` in place of `load`, the
+answers of `answers` in place of a function or a remote rule, the `services` of the criterion in
+its root container, and its clock. What the fixture does not name runs for real, and every call
+goes to the criterion's log, which `called` and `sent` read and the report shows.
+
+- A flow's `services` are created once per criterion: what one creates, no other sees.
+- `as <who>` opens another context, with the same criterion cookie and none of the others.
+- Before every `then` the page is quiet: no request of its documents or its Service Worker on its
+  way, no `setTimeout` due within a second, no animation frame. A page that does not settle in 5 s
+  is `FUD1508`, with what was still pending; a `setInterval` does not count.
+- `clock` installs Playwright's clock and stops it at that instant, with the criterion's server
+  standing at the same time; only `wait` moves them.
+- A criterion with `offline` runs against the app built (`node_modules/.fudic-bench/<pid>/app/dist`,
+  rebuilt when a file of the app changes) and served with `vite preview`: in dev the Service
+  Worker paints no route.
+- A backend that is not fudic's server reads the same cookie and asks either Vite
+  `GET /__bench/criterion/<id>` for `{ services, answers, clock }` by name.
+
+## Recording
+
+```sh
+pnpm exec fudic-workbench record [<path>…] [--criterion <id>]… [--browser <b>] [--json]
+```
+
+Runs the criteria of pages and flows against the real server, without `data` and `answers`, and
+writes what it answered into their fixtures under the criterion's name: each `data` the route
+asked for (`<criterion>`, `<criterion>-2`…), each function's last answer in `calls['<criterion>']`,
+a received file as `file('./fixtures/<criterion>/<name>')` with its bytes beside it. The
+`.fudspec` lines are renamed to them, so the criterion runs afterwards with the server stopped.
+Only a criterion that passes is recorded; a value that cannot be written as a literal is
+`FUD1515` and left out. A component's spec is not recorded. `runSpecs(paths, { record: true })`
+does the same and answers `recording`.
 
 ## The terms' `ctx`
 

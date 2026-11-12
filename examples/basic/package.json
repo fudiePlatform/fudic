@@ -32,6 +32,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@fudic/server": "workspace:*",
+    "@fudic/spec": "workspace:*",
     "@fudic/terms": "workspace:*",
     "@fudic/testing": "workspace:*",
     "@fudic/vite": "workspace:*",

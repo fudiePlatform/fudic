@@ -361,8 +361,8 @@
   },
   "examples/basic/src/routes/entrar.fud": {
     "kind": "route",
-    "reactive": false,
-    "hydration": "gesture",
+    "reactive": true,
+    "hydration": "eager",
     "hydrates": []
   },
   "examples/basic/src/routes/espera.fud": {
@@ -537,6 +537,16 @@
     "reactive": true,
     "hydration": "gesture",
     "hydrates": [
+      "form-errores",
+      "user-form"
+    ]
+  },
+  "examples/basic/src/routes/usuarios/nuevo.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "form-errores",
       "user-form"
     ]
   },
@@ -1073,6 +1083,12 @@
   "packages/testing/test/app/src/routes/espera.fud": {
     "kind": "route",
     "reactive": true,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/gente.fud": {
+    "kind": "route",
+    "reactive": false,
     "hydration": "gesture",
     "hydrates": []
   },

@@ -940,9 +940,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // (SDD-60 §4.4). A change anywhere may re-evaluate one of them — or the root — and leave
       // the others registered on contracts a fresh module no longer holds, so the next request
       // reloads every one.
-      if (this.environment.name === 'ssr') invalidateImplementations(this.environment.moduleGraph);
-      if (userOptions.serverReload === false) return;
+      //
+      // Only for a file the graph holds. A file it does not — a job of `@fudic/testing` written in
+      // `.fudic/render` and deleted, an editor's backup — re-evaluates nothing, and invalidating
+      // there emptied the contracts under a request already on its way: the page answered the
+      // 404 of a `load` nobody implemented (the intermittent one of SDD-82 task 36).
       if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
+      invalidateImplementations(this.environment.moduleGraph);
+      if (userOptions.serverReload === false) return;
       options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
     },
 

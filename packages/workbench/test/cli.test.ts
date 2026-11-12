@@ -116,7 +116,7 @@ describe('main', () => {
     const t = io();
     await main(['C:/p/index.fud'], t.io);
     expect(JSON.parse(t.lines[0]!)).toEqual({
-      error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one' },
+      error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one, of a page or of a flow' },
     });
     expect(t.exits).toEqual([1]);
   });
@@ -202,7 +202,7 @@ describe('main — criteria 5 and 10, commands on stdin', () => {
         v: 2,
         type: 'error',
         file: 'C:/p/index.fud',
-        error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one' },
+        error: { code: 'FUD0970', message: 'C:/p/index.fud is not a component with a tag, nor the .fudspec of one, of a page or of a flow' },
       },
     ]);
     expect(steps).toEqual(['open C:/p/app-badge.fud', 'open C:/p/index.fud']);

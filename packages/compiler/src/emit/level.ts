@@ -27,7 +27,8 @@ import type { ElementNode, HtmlContent } from '../html/index.js';
 import { bridgeOf, classifyAttribute, isFormAssociated, shadowOptionsOf, type ShadowOptions } from '../binding/index.js';
 import { blocksOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
-import { readsMoving, spreadReadsMoving } from './attrs.js';
+import { readsMoving, spreadReadsMoving, valueReadsMember } from './attrs.js';
+import { apiForms } from './api-links.js';
 
 /**
  * Every `ElementNode` a COMPONENT TEMPLATE can render, however deep and through whatever
@@ -301,6 +302,7 @@ function induceFrom(
   roots: readonly HtmlContent[],
   code: ExtractedCode,
   moving: ReadonlySet<string>,
+  through: ReadonlySet<string>,
   hydratable: Set<string>,
 ): boolean {
   let changed = false;
@@ -327,7 +329,7 @@ function induceFrom(
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, source).value;
       if (b.type !== 'property') continue;
-      if (!readsMoving(b.value, code.template.ast, moving)) continue;
+      if (!readsMoving(b.value, code.template.ast, moving) && !valueReadsMember(b.value, source, through)) continue;
       hydratable.add(child.tag);
       changed = true;
       return;
@@ -373,13 +375,24 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
     changed = false;
     for (const comp of components) {
       if (!hydratable.has(comp.tag)) continue;
-      if (induceFrom(graph, comp.source, templateOf(comp), codeOf(comp), movingNames(comp), hydratable)) {
+      const code = codeOf(comp);
+      const roots = templateOf(comp);
+      const through = memberSources(code, comp.source, roots);
+      if (induceFrom(graph, comp.source, roots, code, movingNames(comp), through, hydratable)) {
         changed = true;
       }
     }
     if (
       entry !== undefined &&
-      induceFrom(graph, graph.entrySource, entry.roots, entry.code, entryMoving(entry.code, refreshesData(graph)), hydratable)
+      induceFrom(
+        graph,
+        graph.entrySource,
+        entry.roots,
+        entry.code,
+        entryMoving(entry.code, refreshesData(graph)),
+        memberSources(entry.code, graph.entrySource, entry.roots, apiForms(graph)),
+        hydratable,
+      )
     ) {
       changed = true;
     }
@@ -489,4 +502,36 @@ export function movingNames(comp: ResolvedComponent): ReadonlySet<string> {
     // A `task` is read through accessors that read signals: what it shows moves with it.
     ...code.tasks,
   ]);
+}
+
+/**
+ * The names whose MEMBERS can move though the name itself is no source: the stores an owner
+ * imports in its `@code`, the forms it binds with `control` (the root of `control=@form.field`),
+ * and — for the entry, whose `.fudapi` the graph links — the forms that file gives it.
+ *
+ * A value read through one, `.issues=@personForm.$issues()`, moves: the child it is handed to
+ * hydrates and gets it again. Without this the child painted the empty list it was handed at
+ * first and never another, and nothing could say so. The emit of the owner asks this same
+ * function (`ClientScope.through`), so the two answers cannot disagree: a value handed again to
+ * a child that did not hydrate is a host with no `u` to call.
+ *
+ * Per file, like `movingNames`: a component in a route's graph has no `.fudapi` of its own here,
+ * which is why the forms it binds are read off its markup.
+ */
+export function memberSources(
+  code: ExtractedCode,
+  source: string,
+  roots: readonly HtmlContent[],
+  forms: readonly string[] = [],
+): ReadonlySet<string> {
+  const out = new Set<string>([...code.clientImports, ...forms]);
+  walkElements(roots, (el) => {
+    for (const attr of el.attributes) {
+      const b = classifyAttribute(attr, source).value;
+      if (b.type !== 'control') continue;
+      const root = /^\s*([A-Za-z_$][\w$]*)/u.exec(source.slice(b.value.expr.start, b.value.expr.end));
+      if (root !== null) out.add(root[1]!);
+    }
+  });
+  return out;
 }

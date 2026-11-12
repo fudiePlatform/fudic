@@ -1,0 +1,10 @@
+# Signs in with a form: sets the session cookie and takes the browser to /cuenta, which says who
+# is in. The redirect travels as the function's answer: `error-pages` of src/http.fudapi follows it.
+post entrar
+  form entrarForm
+
+form entrarForm
+  catches 400 422
+
+  user  str = ""
+    required  "Escribe tu usuario."

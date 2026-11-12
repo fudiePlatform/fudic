@@ -114,7 +114,7 @@
       }
 
       <button type="submit">Dar de alta</button>
-      <p class="aviso" role="status">@aviso()</p>
+      <p class="aviso" role="status" aria-label="Alta">@aviso()</p>
     </form>
   </template>
 </user-form>

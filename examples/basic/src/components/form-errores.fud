@@ -34,7 +34,7 @@
 
 <form-errores>
   <template shadowrootmode="open">
-    <div class="caja" role="status">
+    <div class="caja" role="status" aria-label="Errores del formulario">
       @if (issues.length > 0) {
         <p>Revisa @issues.length @(issues.length === 1 ? "cosa" : "cosas"):</p>
         <ol>

@@ -150,6 +150,40 @@ describe('inFlight', () => {
     listeners.get('requestfailed')!(b);
     expect(pending()).toEqual([]);
   });
+
+  it('a navigation that answers ends everything else its frame asked: a document left half loaded says nothing', () => {
+    const listeners = new Map<string, (value: unknown) => void>();
+    const pending = inFlight({ on: ((event: string, listener: (value: unknown) => void) => void listeners.set(event, listener)) as never });
+    const main = { name: 'main' };
+    const other = { name: 'iframe' };
+    const request = (path: string, frame: unknown, navigation = false, worker = false) => ({
+      resourceType: () => (navigation ? 'document' : 'script'),
+      method: () => 'GET',
+      url: () => `http://x${path}`,
+      isNavigationRequest: () => navigation,
+      serviceWorker: () => (worker ? {} : null),
+      frame: () => {
+        if (worker) throw new Error('a Service Worker request has no frame');
+        return frame;
+      },
+    });
+    const response = (req: unknown) => ({ request: () => req });
+    const old = request('/entrar.js', main);
+    const sw = request('/sw-warm.js', null, false, true);
+    const framed = request('/frame.js', other);
+    const go = request('/cuenta', main, true);
+    // The old document goes on asking while the navigation is on its way.
+    const late = request('/entrar-late.js', main);
+    for (const r of [old, sw, framed, go, late]) listeners.get('request')!(r);
+    const fresh = request('/cuenta.js', main);
+    // A resource's response, a frame's own navigation and a worker's request end nothing else.
+    listeners.get('response')!(response(old));
+    listeners.get('response')!(response(sw));
+    expect(pending()).toEqual(['GET /entrar.js', 'GET /sw-warm.js', 'GET /frame.js', 'GET /cuenta', 'GET /entrar-late.js']);
+    listeners.get('response')!(response(go));
+    listeners.get('request')!(fresh);
+    expect(pending()).toEqual(['GET /sw-warm.js', 'GET /frame.js', 'GET /cuenta', 'GET /cuenta.js']);
+  });
 });
 
 describe('pageRecord', () => {

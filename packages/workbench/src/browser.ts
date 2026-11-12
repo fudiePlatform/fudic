@@ -8,7 +8,7 @@
  */
 
 import { FUD0975 } from '@fudic/diagnostics';
-import { chromium, firefox, webkit, type Browser, type BrowserContext, type Locator, type Page, type Request } from 'playwright-core';
+import { chromium, firefox, webkit, type Browser, type BrowserContext, type Frame, type Locator, type Page, type Request } from 'playwright-core';
 import type { Viewport } from './protocol.js';
 import type { WorkbenchFailure } from './types.js';
 
@@ -202,7 +202,17 @@ const requestLine = (request: Request): string => `${request.method()} ${new URL
 /** Resources that stay open by design: no gesture waits for them to end. */
 const STREAMS = new Set(['eventsource', 'websocket']);
 
-/** The requests of a context on their way, kept from now on. */
+/** The frame of a request of a document; null for one of a Service Worker, which has none. */
+const frameOf = (request: Request): Frame | null => (request.serviceWorker() === null ? request.frame() : null);
+
+/**
+ * The requests of a context on their way, kept from now on.
+ *
+ * A document left half loaded (a `go` while it still loads its modules) never says how its
+ * requests ended: the browser drops them with no `requestfailed`, even those it asked while the
+ * next navigation was on its way. So when a frame's navigation answers, everything else that
+ * frame asked is over: the new document has asked nothing yet.
+ */
 export function inFlight(context: Pick<BrowserContext, 'on'>): () => readonly string[] {
   const open = new Set<Request>();
   context.on('request', (request) => {
@@ -211,6 +221,12 @@ export function inFlight(context: Pick<BrowserContext, 'on'>): () => readonly st
   const done = (request: Request): void => void open.delete(request);
   context.on('requestfinished', done);
   context.on('requestfailed', done);
+  context.on('response', (response) => {
+    const navigation = response.request();
+    const frame = frameOf(navigation);
+    if (frame === null || !navigation.isNavigationRequest()) return;
+    for (const request of open) if (request !== navigation && frameOf(request) === frame) open.delete(request);
+  });
   return () => [...open].map(requestLine);
 }
 

@@ -22,6 +22,7 @@ export const GENERATE_KINDS = [
   'lib',
   'guide',
   'spec',
+  'flow',
   'term',
   'api',
   'showcase',
@@ -130,11 +131,11 @@ export function registerProjectTools(server: McpServer, project: Project, checks
       title: 'fudic generate',
       description:
         'Creates a piece of the fudic project exactly as `fudic g <kind>` does: component, page, layout, snippet, app, lib, ' +
-        'guide, spec, term, api, showcase, service, form, pipe or style. Never write these files from scratch. ' +
+        'guide, spec, flow, term, api, showcase, service, form, pipe or style. Never write these files from scratch. ' +
         'A component or a page takes `purpose`: what the user asked for, in one sentence.',
       inputSchema: {
         kind: z.enum(GENERATE_KINDS),
-        name: z.string().optional().describe('Its name: the tag of a component, the route of a page (products/[id])…'),
+        name: z.string().optional().describe('Its name: the tag of a component, the route of a page (products/[id]) or of a spec (/products), the name of a flow…'),
         purpose: z.string().optional().describe('component and page: what the user asked for, in one sentence'),
         file: z.string().optional().describe('snippet: the file it goes in'),
         block: z.string().optional().describe('term: given, when or then'),

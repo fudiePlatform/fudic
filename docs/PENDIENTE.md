@@ -181,6 +181,13 @@ Las tres primeras valen para cualquier warning, no solo los de Baseline.
 
 ### 5. Fixtures del `load` de las páginas
 
+> **Cerrada el 2026-11-12: [SDD-82](sdd/SDD-82-specs-de-pagina-y-de-flujo.md) `Hecho`**, a falta de
+> la prueba de Pedro. Una `.fudspec` puede ser de una página (`page /usuarios`, con su fixture
+> tipada por el `Fixtures` del `.fudapi`) o de un flujo (`flow alta-de-usuario`), y el banco, la
+> CLI, el editor, el MCP y `visit` las ejecutan con la misma fixture. Lo grabado contra el servidor
+> real se vuelca en el `.fixture.ts` (`fudic-workbench record`), que era la mitad de «Después: fake o
+> log de llamadas».
+>
 > **Redactada el 2026-11-08** como [SDD-82](sdd/SDD-82-specs-de-pagina-y-de-flujo.md) (specs de
 > página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`, `Hecho` el
 > 2026-11-10 a falta de la prueba de Pedro: la 82 ya puede empezar tras su merge). Lo de abajo

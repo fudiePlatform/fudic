@@ -299,6 +299,26 @@ export function readsMoving(
 }
 
 /**
+ * Whether a text reads a MEMBER of one of `names`: `userForm.$issues()`, `store?.count()`. An
+ * imported form or store is no source itself — its members are — so this is how a read through
+ * it is told apart (BUG-42 §4.3). One pattern for every reader: the pass that subscribes such a
+ * read, the hand-over of a child that is given one, and the level rule that makes that child
+ * hydrate, which have to agree for the reason `readsMoving` gives.
+ */
+export function readsMember(text: string, names: Iterable<string>): boolean {
+  for (const name of names) {
+    if (new RegExp(`(?<![\\w$.])${name.replace(/\$/gu, '\\$')}\\s*\\??\\.`, 'u').test(text)) return true;
+  }
+  return false;
+}
+
+/** The same question of an attribute value: does one of its expressions read through `names`? */
+export function valueReadsMember(value: readonly AttributeValuePart[], source: string, names: Iterable<string>): boolean {
+  const list = [...names];
+  return value.some((part) => part.type === 'razor-expression' && readsMember(source.slice(part.expr.start, part.expr.end), list));
+}
+
+/**
  * The same question for the `...object`s of a host: every prop a spread hands over is read off
  * its object, so the props move exactly when the object reads something that does (decision
  * 148). The level rule and the client emit both ask it here, for the reason `readsMoving` gives.

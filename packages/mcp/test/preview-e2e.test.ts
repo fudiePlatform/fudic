@@ -165,7 +165,8 @@ describe('over stdio', () => {
     it('a handler that throws while it runs: once, in the next call, as FUD1425 at the throw', async () => {
       const local = site.dev.local!;
       const page = await fetch(`${local}/productos/roto`, { headers: { accept: 'text/html' } });
-      expect(page.status).toBe(500);
+      // What answered, when it is not the 500: the page says whose it is.
+      expect(page.status, await page.clone().text()).toBe(500);
       const next = await preview();
       expect(next.diagnostics).toEqual([
         expect.objectContaining({ code: 'FUD1425', message: 'the server failed while previewing: the database is down', at: expect.stringMatching(/^src\/server\/handlers\.ts:11:/u) }),

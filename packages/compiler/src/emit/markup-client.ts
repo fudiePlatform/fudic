@@ -52,9 +52,11 @@ import { type AssetLinker } from './assets.js';
 import {
   crossingExpr,
   hasHostBindings,
+  readsMember,
   readsMoving,
   spreadProps,
   spreadReadsMoving,
+  valueReadsMember,
   writeElementAttrs,
   type HostContext,
   type PropTarget,
@@ -276,6 +278,12 @@ export interface ClientScope {
   cellOf(name: string): string | undefined;
   readonly signals: ReadonlySet<string>;
   readonly moving: ReadonlySet<string>;
+  /**
+   * The names whose MEMBERS move: the stores it imports and the forms it binds. A value read
+   * through one (`.issues=@personForm.$issues()`) is handed to the child again when it moves —
+   * from the same function `level.ts` makes that child hydrate with (`memberSources`).
+   */
+  readonly through: ReadonlySet<string>;
   /**
    * The tags that carry a shared stylesheet (BUG-31 §T4). The client branch fabricates the
    * same host the server serialized, so it writes `data-fud-adopt` under exactly the same
@@ -525,13 +533,10 @@ export class ClientMarkupEmitter {
    * What decides a construct counts as one of these reads (`headerReads`, SDD-80 §8.2.34).
    */
   watchImports(imported: readonly string[], hook: CodeWriter, update = '$u'): boolean {
-    const member = imported.map(
-      (name) => new RegExp(`(?<![\\w$.])${name.replace(/\$/gu, '\\$')}\\s*\\??\\.`, 'u'),
-    );
     let watched = false;
     for (const value of this.#expressions) {
       const text = value.map((part) => (typeof part === 'string' ? part : part.text)).join('');
-      if (!member.some((re) => re.test(text))) continue;
+      if (!readsMember(text, imported)) continue;
       hook.mappedLine('$d.push($sub(() => (', ...value, `), ${update}));`);
       watched = true;
     }
@@ -1460,6 +1465,12 @@ export class ClientMarkupEmitter {
     // reassigns its props and runs its own update, which reaches the next: the chain advances
     // by one hop per level, in order, and no level needs to know how far the signal is.
     if (bound.some((s) => s.changes)) this.#bodies.update.line(`${v}.u([, , ${initial}]);`);
+    // A value read through a store or a form has no name to subscribe to, and no prop of this
+    // component moves it: the pass that hands it over again has to hear the read itself, as a
+    // value write that reads it does (`watchImports`).
+    for (const s of bound) {
+      if (s.changes && readsMember(s.expr, this.#scope.through)) this.#expressions.push([s.expr]);
+    }
 
     for (const source of new Set(bound.flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
       // The update is SPARSE: one subscription per signal, and each writes ONLY the slots
@@ -1579,7 +1590,10 @@ export class ClientMarkupEmitter {
    * SAME function the level rule uses, because the two answers have to agree (`attrs.ts`).
    */
   #reads(value: readonly AttributeValuePart[]): boolean {
-    return readsMoving(value, this.#hookup.template.ast, this.#scope.moving);
+    return (
+      readsMoving(value, this.#hookup.template.ast, this.#scope.moving) ||
+      valueReadsMember(value, this.#source, this.#scope.through)
+    );
   }
 
   /** Whether an attribute value reads a parameter of this block — it moves with the row. */
