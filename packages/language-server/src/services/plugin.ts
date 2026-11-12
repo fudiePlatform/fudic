@@ -46,7 +46,7 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
-import { fudicDiagnostics, portableTypeDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
+import { fudicDiagnostics, governFile, portableTypeDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import { rangeOf as fileRangeOf } from '../fudapi/document.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -673,12 +673,17 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // The typed pass over the program the editor already holds: the same function the
               // build calls, so the same spans (SDD-61 §4.2).
               const program = typeScriptService(context)?.getProgram();
-              return [
+              const found = [
                 ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
                 ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
                 ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
                 ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
-              ].map((diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)));
+              ];
+              // Under the project's policy and the file's own comments, as the build reports it.
+              const policy = deps.configs?.policyFor(cached.path) ?? null;
+              return governFile(cached.path, cached.source, found, policy, { parsed: cached, complete: true }).map(
+                (diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)),
+              );
             },
             undefined,
           );

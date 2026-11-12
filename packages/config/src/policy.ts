@@ -55,7 +55,7 @@ export function readPolicy(value: unknown, keySpan: (key: string) => Span | unde
       continue;
     }
     if (!CODE.test(key)) {
-      return { policy: empty, malformed: `"${key}" is neither a code like "FUD1380" nor "warnings"`, dropped: [] };
+      return { policy: empty, malformed: `"${key}" is neither a code ("FUD" and four digits) nor "warnings"`, dropped: [] };
     }
     const where = { file: CONFIG_FILE, ...spanOf(keySpan(key)) };
     const info = codeInfo(key);

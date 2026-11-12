@@ -708,3 +708,15 @@ Nada.
 5. **Una entrada de `diagnostics` descartada no tumba la configuración.** `FUD0725` (forma inválida)
    deja el `fudic.json` sin configuración, como cualquier otro campo; `FUD1520` y `FUD1521` quitan esa
    entrada y el resto vale.
+6. **Dónde se aplica, en concreto.** En `@fudic/typecheck`, `governFile` (comentarios según la
+   extensión del fichero + `govern`) y `projectPolicies` (el `fudic.json` más cercano), también en su
+   entrada ligera `problems`, sin TypeScript. Los usan el comprobador, el `BuildReporter` del plugin
+   (todo lo que dice el build pasa por él) y, en el editor, los diagnósticos del `.fud`, del `.fudapi`
+   y del `.fudspec` y el «una sola voz» que calla a TypeScript donde habla un error de fudic.
+7. **Un `.fudapi` o `.fudspec` sin diagnósticos también pasa por el comprobador**, para que un
+   `fud-disable` que ya no silencia nada dé su `FUD1523` igual que en un `.fud`.
+8. **Qué es «un fichero de una lib» al compilar una app**: uno cuyo `fudic.json` más cercano es de
+   otro proyecto y dice `"kind": "lib"`. El comprobador ya no miraba esos ficheros; el plugin se queda
+   con sus errores y calla lo demás.
+9. **El editor vuelve a pedir los diagnósticos al guardar un `fudic.json`**, como ya hacía con un
+   `.fudapi` o un módulo de términos.

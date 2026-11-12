@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 1 / 30 — `En curso`.
+> **Progreso:** 5 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -33,7 +33,7 @@ código, no el test.
 
 ## Fase 2 — la política
 
-- [ ] **2. `readSuppressions` y `applyPolicy`.**
+- [x] **2. `readSuppressions` y `applyPolicy`.**
   - Los tipos `PolicyLevel`, `Policy`, `Suppression` de §3.10.
   - La lectura de la directiva: códigos, alcance, motivo; `FUD1520`, `FUD1521`, `FUD1522`.
   - El orden de §4.1, el código sobre `warnings`, los errores intocables, `unused`.
@@ -41,7 +41,7 @@ código, no el test.
   - *Depende de:* 1.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/policy.ts`, `src/suppressions.ts`, `src/index.ts`.
-- [ ] **3. `diagnostics` en `fudic.json`.**
+- [x] **3. `diagnostics` en `fudic.json`.**
   - `ProjectConfig.diagnostics`, su lectura y su validación (`FUD0725`, `FUD1520`, `FUD1521` con el
     span de la clave).
   - La política del proyecto dueño de un fichero: el `fudic.json` más cercano hacia arriba.
@@ -54,7 +54,7 @@ código, no el test.
 
 ## Fase 3 — los comentarios y dónde se aplica
 
-- [ ] **5. Cada lector da sus comentarios.**
+- [x] **5. Cada lector da sus comentarios.**
   - `.fud`: los comentarios Razor del marcado, los CSS del `<style>`, los de JS del `@code`.
   - `.fudapi` y `.fudspec`: los `#` que ya cortan sus lectores de líneas.
   - `.css`: los de `rules.ts`.
@@ -63,7 +63,7 @@ código, no el test.
   - *Paquetes:* `compiler`, `api`, `spec`, `typecheck`.
   - *Ficheros:* `compiler/src/lexer/*`, `compiler/src/css/rules.ts`, `api/src/line.ts`,
     `spec/src/line.ts`, `typecheck/src/parse.ts`.
-- [ ] **6. `applyPolicy` en los tres sitios.**
+- [x] **6. `applyPolicy` en los tres sitios.**
   - El informe de `@fudic/typecheck` (build, dev, CLI, MCP), con `FUD1523`.
   - El compilador dentro del plugin de Vite.
   - La publicación del language server; se vuelve a publicar al cambiar `fudic.json`.

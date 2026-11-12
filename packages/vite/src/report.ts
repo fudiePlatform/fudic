@@ -22,7 +22,8 @@ import {
   type Span,
   type WireDiagnostic,
 } from '@fudic/diagnostics';
-import { echoes, relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
+import { CONFIG_FILE } from '@fudic/config';
+import { echoes, governFile, projectPolicies, relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
 
 /**
  * `module` is the file being compiled when the diagnostic is about it: a compiler diagnostic
@@ -113,8 +114,7 @@ export class BuildReporter {
    */
   report(context: ReportContext, diagnostics: readonly FudDiagnostic[], module?: string): void {
     const errors: FudDiagnostic[] = [];
-    for (const diagnostic of diagnostics) {
-      const located = locate(diagnostic, module);
+    for (const located of this.#governed(diagnostics.map((diagnostic) => locate(diagnostic, module)))) {
       if (located.file !== undefined && located.span !== undefined) {
         const file = resolve(this.#root, located.file);
         const key = keyOf(file, located.span.start, located.span.end, located.code);
@@ -139,6 +139,40 @@ export class BuildReporter {
       fudic: { diagnostics: errors.map((e) => wireOf(e, this.#root)) },
     });
     context.error(error);
+  }
+
+  /**
+   * What a person is shown of a batch: each file's diagnostics under the policy of the project it
+   * belongs to and its own `fud-disable` comments — the same answer the check and the editor
+   * give. A library's warnings, infos and hints are left to whoever develops it, who can fix them;
+   * its errors break the app, and are said.
+   *
+   * The `fudic.json` are read again on every batch, so editing one under `vite dev` takes effect
+   * on the next compile. A batch of errors only is passed as it is: an error obeys no policy.
+   */
+  #governed(diagnostics: readonly FudDiagnostic[]): readonly FudDiagnostic[] {
+    if (diagnostics.every((d) => d.severity === 'error')) return diagnostics;
+    const policies = projectPolicies(read);
+    const app = policies.projectOf(resolve(this.#root, CONFIG_FILE));
+    const groups = new Map<string, FudDiagnostic[]>();
+    for (const diagnostic of diagnostics) {
+      const key = diagnostic.file === undefined ? '' : resolve(this.#root, diagnostic.file);
+      groups.set(key, [...(groups.get(key) ?? []), diagnostic]);
+    }
+    const out: FudDiagnostic[] = [];
+    for (const [file, group] of groups) {
+      if (file === '' || group.every((d) => d.severity === 'error')) {
+        out.push(...(file === '' ? governFile('', '', group, app?.config?.diagnostics ?? null) : group));
+        continue;
+      }
+      const project = policies.projectOf(file);
+      if (project !== null && project.root !== app?.root && project.config?.kind === 'lib') {
+        out.push(...group.filter((d) => d.severity === 'error'));
+        continue;
+      }
+      out.push(...governFile(file, read(file) ?? '', group, project?.config?.diagnostics ?? null));
+    }
+    return out;
   }
 }
 

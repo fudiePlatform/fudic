@@ -28,23 +28,27 @@ export interface PolicyResult<D extends FudDiagnostic = FudDiagnostic> {
  * What a file's diagnostics become under its project's policy and its own comments.
  *
  * Pass the file's diagnostics, all of them: a suppression whose code is not among them is
- * reported as `unused`. A diagnostic located in ANOTHER file (one with `file`) obeys the policy,
- * but not these comments, which are not that file's.
+ * reported as `unused`. A diagnostic located in ANOTHER file obeys the policy, but not these
+ * comments, which are not that file's: one is this file's when it names no `file`, or names
+ * `self`, the path of the file the comments were read from.
  */
 export function applyPolicy<D extends FudDiagnostic>(
   diagnostics: readonly D[],
   policy: Policy | null,
   suppressions: readonly Suppression[],
   lines: LineMap,
+  self?: string,
 ): PolicyResult<D> {
   const used = suppressions.map(() => new Set<FudCode>());
   const out: D[] = [];
+  const mine = (file: string | undefined): boolean =>
+    file === undefined || (self !== undefined && slashed(file) === slashed(self));
   for (const diagnostic of diagnostics) {
     if (diagnostic.severity === 'error') {
       out.push(diagnostic);
       continue;
     }
-    const silencer = diagnostic.file === undefined ? silencedBy(diagnostic, suppressions, lines) : -1;
+    const silencer = mine(diagnostic.file) ? silencedBy(diagnostic, suppressions, lines) : -1;
     if (silencer >= 0) {
       used[silencer]!.add(diagnostic.code);
       continue;
@@ -59,6 +63,11 @@ export function applyPolicy<D extends FudDiagnostic>(
     if (codes.length > 0) unused.push({ ...suppression, codes });
   });
   return { diagnostics: out, unused };
+}
+
+/** A path with forward slashes: Windows and POSIX spellings of one file are one file. */
+function slashed(path: string): string {
+  return path.replace(/\\/gu, '/');
 }
 
 /** The index of the first suppression that covers `diagnostic`, or -1. */
@@ -91,6 +100,8 @@ export interface GovernOptions {
    * can be reported (`FUD1523`). A caller that holds only part of them leaves it out.
    */
   readonly complete?: boolean;
+  /** The path of the file, for the diagnostics that name it (see `applyPolicy`). */
+  readonly file?: string;
 }
 
 /**
@@ -106,7 +117,7 @@ export function govern<D extends FudDiagnostic>(
   options: GovernOptions = {},
 ): readonly (D | SourceDiagnostic)[] {
   const read = readSuppressions(comments, lines);
-  const applied = applyPolicy([...diagnostics, ...read.diagnostics], policy, read.suppressions, lines);
+  const applied = applyPolicy([...diagnostics, ...read.diagnostics], policy, read.suppressions, lines, options.file);
   if (options.complete !== true) return applied.diagnostics;
   const unused = applied.unused.map((s) => FUD1523({ span: s.span, codes: s.codes, scope: s.scope }));
   return [...applied.diagnostics, ...applyPolicy(unused, policy, [], lines).diagnostics];

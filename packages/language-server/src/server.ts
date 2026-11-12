@@ -262,9 +262,16 @@ export function createFudicServer(
       // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
       createFudicTagService({ index, stats, configs, apis }),
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
-      createFudspecService({ host: specs, stats }),
+      createFudspecService({ host: specs, stats, policyFor: (path) => configs.policyFor(path) }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
-      createFudapiService({ host: apis, stats, implementations, generated, translations }),
+      createFudapiService({
+        host: apis,
+        stats,
+        implementations,
+        generated,
+        translations,
+        policyFor: (path) => configs.policyFor(path),
+      }),
       // A `fudic.json`: what the build says about it, while it is written (SDD-81).
       createConfigFileService({ stats }),
     ];
@@ -283,6 +290,7 @@ export function createFudicServer(
         ...silenceEchoes(
           redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
           index,
+          (path) => configs.policyFor(path),
         ),
       );
       project = deps.createTypeScriptProject(
@@ -351,6 +359,8 @@ export function createFudicServer(
     let criteria = false;
     // And whether an open `.fudapi` may: another contract, or a dependency of its project.
     let contracts = false;
+    // And whether every open file may: a `fudic.json` changed how its project reports each code.
+    let policy = false;
     // The projects whose `.fudapi` changed on disk: saved, created or deleted. Their types follow.
     const generated = new Set<string>();
     for (const change of changes) {
@@ -380,6 +390,7 @@ export function createFudicServer(
       if (path.endsWith('.css')) configs.sheetChanged();
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
+        policy = true;
         continue;
       }
       if (!path.endsWith('.fud')) continue;
@@ -393,7 +404,7 @@ export function createFudicServer(
     if (criteria) specs.invalidate();
     if (contracts) apis.invalidate();
     for (const project of generated) apis.generate(project);
-    if (criteria || contracts) void server.languageFeatures?.requestRefresh(false);
+    if (criteria || contracts || policy) void server.languageFeatures?.requestRefresh(false);
   });
 
   // What a `.fudapi` generates, for the lenses on its line 1 (SDD-75 §3.2).

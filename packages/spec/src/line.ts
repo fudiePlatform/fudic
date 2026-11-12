@@ -116,6 +116,16 @@ export function* lines(source: string): Generator<readonly [number, number]> {
   yield [start, source.length];
 }
 
+/** Every `#` comment of a `.fudspec`, `#` included: where a `fud-disable` is written. */
+export function specComments(source: string): readonly { readonly span: Span; readonly text: string }[] {
+  const found: { span: Span; text: string }[] = [];
+  for (const [start, end] of lines(source)) {
+    const comment = readLine(source, start, end, []).comment;
+    if (comment !== undefined) found.push({ span: comment, text: source.slice(comment.start, comment.end) });
+  }
+  return found;
+}
+
 /** The words that open a line at column 0: the three headers and `criterion`. */
 export const TOP_LEVEL: ReadonlySet<string> = new Set(['component', 'page', 'flow', 'criterion']);
 

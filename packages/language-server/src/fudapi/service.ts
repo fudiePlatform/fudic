@@ -10,7 +10,8 @@
  */
 
 import { formatApi } from '@fudic/api';
-import { docsUrl, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
+import { docsUrl, type Policy, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
+import { governFile } from '@fudic/typecheck';
 import type { LanguageServicePlugin, SemanticToken } from '@volar/language-service';
 import { DiagnosticSeverity, type Diagnostic as LspDiagnostic } from 'vscode-languageserver-protocol';
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -42,6 +43,8 @@ export interface FudapiServiceContext {
   readonly generated: ApiGenerated;
   /** The catalogs, for the hover over a text (SDD-74 §4.5): its line per locale, — where it is missing. */
   readonly translations?: Translations;
+  /** How the project of a file reports each code; absent, every code as it is. */
+  readonly policyFor?: (path: string) => Policy | null;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -101,7 +104,9 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
           return run('diagnostics', token, () => {
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
-            return generated.check(doc.path, doc.text, doc).map((d) => toLsp(doc, d, host));
+            const found = generated.check(doc.path, doc.text, doc);
+            const policy = deps.policyFor?.(doc.path) ?? null;
+            return governFile(doc.path, doc.text, found, policy, { complete: true }).map((d) => toLsp(doc, d, host));
           });
         },
 

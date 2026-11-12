@@ -9,9 +9,9 @@
  * when one does (`SpecHost.affects`).
  */
 
-import { docsUrl, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
+import { docsUrl, type Policy, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
 import { formatSpec, validateSpec } from '@fudic/spec';
-import { propShapes } from '@fudic/typecheck';
+import { governFile, propShapes } from '@fudic/typecheck';
 import type { LanguageServicePlugin, SemanticToken } from '@volar/language-service';
 import {
   DiagnosticSeverity,
@@ -32,6 +32,8 @@ import { specSemanticTokens } from './semantic-tokens.js';
 export interface FudspecServiceContext {
   readonly host: SpecHost;
   readonly stats: RequestStats;
+  /** How the project of a file reports each code; absent, every code as it is. */
+  readonly policyFor?: (path: string) => Policy | null;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -85,7 +87,8 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
               const spec = specDocumentOf(context, document);
               if (spec === undefined) return undefined;
               const found = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
-              return found.map((d) => toLsp(spec, d, host));
+              const policy = deps.policyFor?.(spec.path) ?? null;
+              return governFile(spec.path, spec.text, found, policy, { complete: true }).map((d) => toLsp(spec, d, host));
             },
             undefined,
           );

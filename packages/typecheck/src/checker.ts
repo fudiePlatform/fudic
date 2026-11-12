@@ -29,6 +29,7 @@ import { FUD0870, FUD0871, type SourceDiagnostic as Diagnostic } from '@fudic/di
 import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
+import { governFile, projectPolicies } from './govern.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
@@ -185,6 +186,8 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     const problems: CheckProblem[] = [];
     /** The problems already reported in a file that is not the `.fud` being collected. */
     const elsewhere = new Map<string, string[]>();
+    // Read again on every check: a `fudic.json` edited in `dev` reports differently at once.
+    const policies = projectPolicies((path) => fs.readFile(path));
     for (const entry of state.index.all()) {
       // A library's file is in the program for its types and is not the author's to fix (§4.2).
       if (entry.external) continue;
@@ -196,10 +199,15 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       // script of its client virtual is always there.
       const sourceFile = program.getSourceFile(entry.path)!;
       const map = state.language.maps.get(root.client, script);
-      const own = [
-        ...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere),
-        ...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere),
-      ];
+      // Everything fudic says of the file, under its project's policy and its own comments.
+      const said = governFile(
+        entry.path,
+        root.document.source,
+        [...fudicDiagnostics(root.document, state.index), ...portableTypeDiagnostics(program, root.document)],
+        policies.policyOf(entry.path),
+        { parsed: root.document, complete: true },
+      );
+      const own = fudicProblems(entry.path, said, elsewhere);
       // One fact, one voice: TypeScript is silent where a fudic error of this file speaks.
       const spoken = own.filter((p) => p.file === entry.path && p.severity === 'error').map((p) => p.span);
       const found = [
@@ -252,8 +260,9 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     // build reports them here, once, with everything else.
     const api = readApiProject(root);
     const specs = specDiagnostics(root, fs, state.index, api, state.components);
-    for (const { file, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
-      problems.push(...fudicProblems(file, diagnostics, elsewhere));
+    for (const { file, source, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
+      const said = governFile(file, source, diagnostics, policies.policyOf(file), { complete: true });
+      problems.push(...fudicProblems(file, said, elsewhere));
     }
     const read = [...api.sources.filter((s) => s.origin === 'app').map((s) => s.path), ...specs.read];
 

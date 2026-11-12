@@ -18,3 +18,4 @@ export {
 export { formatProblem, locateProblem, relativePath } from './format.js';
 export { toPosix } from './paths.js';
 export { echoes } from './one-voice.js';
+export { commentsOf, governFile, projectPolicies, type FudParse, type GovernFileOptions } from './govern.js';

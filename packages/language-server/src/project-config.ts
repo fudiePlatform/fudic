@@ -13,6 +13,7 @@
 import { posix } from 'node:path';
 import { readGuide, type GuidePiece } from '@fudic/compiler';
 import { readProjectConfig, tagOf, type ProjectConfig } from '@fudic/config';
+import type { Policy } from '@fudic/diagnostics';
 import { dependencyChain, owningPackage } from '@fudic/resolve';
 import { toPosix } from '@fudic/typecheck';
 import type { FileSystemScanner } from './types.js';
@@ -81,6 +82,15 @@ export class ProjectConfigs {
    */
   choosableStylesFor(path: string): readonly string[] | null {
     return this.#choiceFor(toPosix(path))?.names ?? null;
+  }
+
+  /**
+   * How the project `path` belongs to reports each code: the `diagnostics` of the NEAREST
+   * `fudic.json` above it, as the build reads it. `null` when no `fudic.json` governs the file,
+   * and then every code is reported as it is.
+   */
+  policyFor(path: string): Policy | null {
+    return this.#nearest(toPosix(path))?.config.diagnostics ?? null;
   }
 
   /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */

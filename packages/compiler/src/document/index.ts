@@ -14,3 +14,4 @@ export type {
 } from './nodes.js';
 export { structureDocument, isComponentLink, isLayoutLink, isSnippetLink, isServerLink } from './structure.js';
 export { alreadyLinked, componentLinkAnchor, componentLinkTag, type LinkAnchor } from './anchor.js';
+export { fudComments, type FudComment } from './comments.js';

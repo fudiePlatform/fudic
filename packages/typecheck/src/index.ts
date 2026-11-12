@@ -70,6 +70,7 @@ export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics, semanticInput } from './fudic-diagnostics.js';
 export { echoes } from './one-voice.js';
+export { commentsOf, governFile, projectPolicies, type FudParse, type GovernFileOptions } from './govern.js';
 
 export { propShapes } from './prop-shapes.js';
 export { portableTypeDiagnostics, isReactive } from './portable-types.js';
