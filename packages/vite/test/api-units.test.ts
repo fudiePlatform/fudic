@@ -134,9 +134,11 @@ describe('ApiProject', () => {
     expect(api.ruleTable()).toEqual([{ url: '/_fudic/rule/lib-a/rules/taken', method: 'POST' }]);
   });
 
-  it('the diagnostics of the app files, and only of those that have some', () => {
+  it('the diagnostics of every app file, the clean ones with none (SDD-83: their comments count)', () => {
     // `_error` declares a function: FUD1010.
-    expect(api.diagnostics().map((f) => f.file)).toEqual([`${root}/src/broken.fudapi`, `${root}/src/routes/_error.fudapi`]);
+    const said = api.diagnostics().filter((f) => f.diagnostics.length > 0);
+    expect(said.map((f) => f.file)).toEqual([`${root}/src/broken.fudapi`, `${root}/src/routes/_error.fudapi`]);
+    expect(api.diagnostics().every((f) => f.file.startsWith(`${root}/src/`))).toBe(true);
   });
 
   it('writes each .d.ts once, and again only when its text changes', () => {

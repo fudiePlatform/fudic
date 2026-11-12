@@ -131,14 +131,18 @@ describe('apiContextOf', () => {
 });
 
 describe('apiDiagnostics', () => {
-  it('only the app files that have something to say: load outside a route is FUD1090', () => {
+  it('every app file, with its text — a clean one too, for its comments (SDD-83): load outside a route is FUD1090', () => {
     const root = project({
       'src/data/d.fudapi': 'load\n  n  i32\n',
       'src/routes/ok.fudapi': 'load\n  n  i32\n',
       'src/routes/ok.fud': PAGE.replace('[id]', 'ok'),
     });
     const found = apiDiagnostics(root);
-    expect(found.map((f) => [f.file.slice(root.length + 1), f.diagnostics.map((d) => d.code)])).toEqual([['src/data/d.fudapi', ['FUD1090']]]);
+    expect(found.map((f) => [f.file.slice(root.length + 1), f.diagnostics.map((d) => d.code)]).sort()).toEqual([
+      ['src/data/d.fudapi', ['FUD1090']],
+      ['src/routes/ok.fudapi', []],
+    ]);
+    expect(found.every((f) => f.source === 'load\n  n  i32\n')).toBe(true);
   });
 });
 

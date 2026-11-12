@@ -212,13 +212,13 @@ describe('the pieces a component adopts (criteria 11, 14, 24)', () => {
     expect(built.warnings.join('\n')).not.toContain('FUD0363');
   });
 
-  it('FUD1440 and FUD1441, once for the component of each entry', () => {
+  it("FUD1441 once for the app's component; the library's FUD1440 is its own developer's (SDD-83 §3.3)", () => {
     const said = built.warnings.join('\n');
-    // ui-card writes an <h2> without adopting it; app-panel adopts h2 and writes none.
+    // app-panel adopts h2 and writes none.
     expect(said.match(/warning FUD1441/gu)).toHaveLength(1);
     expect(said).toMatch(/app-panel\.fud:\d+:\d+ - warning FUD1441: "h2"/u);
-    expect(said.match(/warning FUD1440/gu)).toHaveLength(1);
-    expect(said).toMatch(/ui-card\.fud:\d+:\d+ - warning FUD1440: <h2>/u);
+    // ui-card writes an <h2> without adopting it, but ui-card is libs/ui's: the app does not say it.
+    expect(said).not.toContain('FUD1440');
   });
 });
 

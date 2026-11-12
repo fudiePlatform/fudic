@@ -122,6 +122,8 @@ describe('a package href', () => {
           // SDD-70 §3.10, by default.
           earlyHints: true,
           css: 'inline',
+          // SDD-83 §3.1: no policy, every code as it is.
+          diagnostics: { codes: new Map() },
         },
       },
     });

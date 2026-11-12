@@ -34,7 +34,7 @@ describe('findProjectConfigs', () => {
     const fs = new MemoryFs({ 'fudic.json': config({ id: 'solo' }) }, ROOT);
 
     expect(findProjectConfigs(ROOT, fs)).toEqual([
-      { dir: '.', config: { id: 'solo', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline' } },
+      { dir: '.', config: { id: 'solo', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline', diagnostics: { codes: new Map() } } },
     ]);
   });
 

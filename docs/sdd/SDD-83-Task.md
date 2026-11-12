@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 5 / 30 — `En curso`.
+> **Progreso:** 7 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -48,7 +48,7 @@ código, no el test.
   - *Depende de:* 2.
   - *Paquete:* `config`.
   - *Ficheros:* `src/read.ts`, `src/policy.ts`, `src/index.ts`.
-- [ ] **4. Los tests de la política.** Criterios 1–6 y 10–11 sobre las funciones, sin build.
+- [x] **4. Los tests de la política.** Criterios 1–6 y 10–11 sobre las funciones, sin build.
   - *Depende de:* 3.
   - *Paquetes:* `diagnostics`, `config`.
 
@@ -72,7 +72,7 @@ código, no el test.
   - *Paquetes:* `typecheck`, `vite`, `language-server`.
   - *Ficheros:* `typecheck/src/report.ts`, `typecheck/src/project.ts`, `vite/src/compile.ts`,
     `vite/src/report.ts`, `language-server/src/services/one-voice.ts`, `language-server/src/project-config.ts`.
-- [ ] **7. Los tests de los comentarios.** Criterios 7–9, 12 y 13, y que los tres sitios dan lo mismo.
+- [x] **7. Los tests de los comentarios.** Criterios 7–9, 12 y 13, y que los tres sitios dan lo mismo.
   - *Depende de:* 6.
   - *Paquetes:* `compiler`, `api`, `spec`, `typecheck`, `vite`, `language-server`.
 
