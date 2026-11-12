@@ -7,6 +7,7 @@ import { execFileSync, execSync, spawn, type ChildProcessWithoutNullStreams } fr
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { EXAMPLE } from '../helpers/bench.js';
 import { tempProject, type TempProject } from '../helpers/project.js';
 
 const PACKAGE = fileURLToPath(new URL('../..', import.meta.url));
@@ -184,6 +185,15 @@ describe('the binary — criterion 22', () => {
     expect(existsSync(project.path('node_modules/.fudic-bench'))).toBe(false);
     await expect.poll(() => running(profile), { timeout: 10_000 }).toBe(false);
   }, 90_000);
+
+  it("SDD-82 §8.2.59 — the example's flow: its first line opens it, and the app's own logs never reach stdout", async () => {
+    // The example's server middleware logs every call with `console.info`, in the binary's process.
+    const flow = `${EXAMPLE}/src/flows/alta-de-usuario.fudspec`;
+    const { line, lines } = await launch([flow]);
+    expect(line).toMatchObject({ tag: 'flow-alta-de-usuario', component: flow, criteria: 7 });
+    // Every line was JSON (`launch` parses them) up to the results, so the app had served calls.
+    await expect.poll(() => lines.filter((l) => l['type'] === 'result').length, { timeout: 90_000 }).toBe(7);
+  }, 150_000);
 
   it('with --keep, leaves the folder of pages', async () => {
     project = tempProject('bin-keep');

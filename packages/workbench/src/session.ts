@@ -317,7 +317,8 @@ async function describeCriterion(
       : { name: criterion.fixture, line: lineOf(criterion.propsOffset) };
   const steps = described.map((d) => d.step);
   return {
-    criterion: { id: criterion.id, route: criterion.route, line: lineOf(criterion.offset), props, steps },
+    // A page's or a flow's lives on the app's Vite, not on the shell's server (SDD-82 §8.2.60).
+    criterion: { id: criterion.id, route: (criterion.app?.origin ?? '') + criterion.route, line: lineOf(criterion.offset), props, steps },
     expectations: described.map((d) => d.describe),
   };
 }

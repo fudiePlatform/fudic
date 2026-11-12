@@ -133,8 +133,14 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
   });
 }
 
-/** The real process behind `CliIo`. */
+/**
+ * The real process behind `CliIo`. Its stdout is the protocol's alone: whatever else writes
+ * there — the app's own `console.info`, run by the bench in this same process — goes to stderr,
+ * or the parent would read it as the first line (SDD-82 §8.2.59).
+ */
 export function processIo(): CliIo {
+  const protocol = process.stdout.write.bind(process.stdout);
+  process.stdout.write = process.stderr.write.bind(process.stderr) as typeof process.stdout.write;
   const lines: ((line: string) => void)[] = [];
   let buffered = '';
   process.stdin.setEncoding('utf8');
@@ -147,7 +153,7 @@ export function processIo(): CliIo {
     }
   });
   return {
-    write: (line) => process.stdout.write(`${line}\n`),
+    write: (line) => protocol(`${line}\n`),
     onLine(callback) {
       lines.push(callback);
     },

@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35, con dos fallos abiertos: ver el relevo del 2026-11-12) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
+> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35: los dos fallos del relevo del 2026-11-12, arreglados en SDD §8.2.59–60; falta que Pedro vuelva a probar) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
 
 ## Relevo (2026-11-12, la prueba de Pedro, tarea 35)
 
@@ -29,6 +29,11 @@ sesión tiene que resolver** antes de cerrar la tarea 35:
    (`/__bench/<tag>/…`) y no al Vite de la app, o le falta la cookie `fudic-bench` del criterio.
    Ver dónde construye el shell esa URL (`protocol.ts`/`shell`, mensaje con la URL de «Live») y
    cubrirlo con un test para página y flujo.
+
+**Resuelto (2026-11-12, misma fecha).** 1: el `console.info` del middleware del ejemplo salía por
+stdout antes de la primera línea (SDD §8.2.59), test en `binary.test.ts`. 2: la URL viva era la
+ruta sola, resuelta contra el servidor del banco (SDD §8.2.60), test en `example-green.test.ts`.
+`.vsix` reinstalado; falta la nueva prueba de Pedro para cerrar la tarea 35.
 
 Lo demás de abajo sigue valiendo.
 

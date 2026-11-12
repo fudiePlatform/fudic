@@ -1067,6 +1067,15 @@ Nada.
     del servidor de desarrollo los veía y, si el aviso llegaba con una petición en camino, el
     wrapper leía un contrato vacío y la página respondía el 404 de un `load` sin implementar. Ahora
     solo invalida con un módulo del grafo SSR, que es lo único que puede volver a evaluarse.
+59. **La salida estándar del banco es solo del protocolo** (la prueba de Pedro, tarea 35). Una
+    página o un flujo corren el servidor de la app dentro del proceso del banco, y el `console.info`
+    de su middleware (`[server] GET load 0 ms`) salía por stdout antes de la primera línea: el
+    editor la tomaba por la respuesta y decía «The workbench stopped.». `processIo` reserva stdout
+    para las líneas del protocolo y desvía cualquier otra escritura a stderr.
+60. **«Live» de una página o un flujo abre la URL de la app**, absoluta: `route` del criterio en el
+    mensaje `session` lleva el origen del Vite de la app (o el de su build, sin red), y no la ruta
+    sola, que el iframe resolvía contra el servidor del banco y daba 404. La página viva se abre sin
+    la cookie del criterio: muestra la app de verdad, no la fixture, que acaba con el criterio.
 
 ### 8.3. Pendiente de decidir
 

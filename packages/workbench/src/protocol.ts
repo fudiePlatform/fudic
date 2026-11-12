@@ -54,6 +54,10 @@ export interface DescribedStep {
 
 export interface DescribedCriterion {
   readonly id: string;
+  /**
+   * Where its page opens, the one Live shows: a component's, a path on the shell's server; a
+   * page's or a flow's, absolute, on the app's Vite (or its build, without network).
+   */
   readonly route: string;
   /** 1-based: the line of its `criterion` in the `.fudspec`; 1 without one. */
   readonly line: number;

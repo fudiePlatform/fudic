@@ -333,6 +333,12 @@ describe('main — run', () => {
 });
 
 describe('processIo', () => {
+  // processIo takes stdout over: each test gets it back as it was.
+  const stdoutWrite = process.stdout.write;
+  afterEach(() => {
+    process.stdout.write = stdoutWrite;
+  });
+
   /** The handlers processIo registers on stdin and on the process, by `stdin:<event>`. */
   function hooked(): Record<string, (arg?: unknown) => void> {
     const handlers: Record<string, (arg?: unknown) => void> = {};
@@ -354,6 +360,18 @@ describe('processIo', () => {
     expect(write).toHaveBeenCalledWith('{"a":1}\n');
     expect(exit).toHaveBeenCalledWith(1);
     expect(real.cwd).toBe(process.cwd());
+  });
+
+  it('keeps stdout for the protocol: anything else written there goes to stderr', () => {
+    hooked();
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const real = processIo();
+    process.stdout.write('[server] GET load 0 ms\n');
+    real.write('{"url":"u"}');
+    expect(err).toHaveBeenCalledWith('[server] GET load 0 ms\n');
+    expect(out).toHaveBeenCalledTimes(1);
+    expect(out).toHaveBeenCalledWith('{"url":"u"}\n');
   });
 
   it('is interactive only when stdout is a terminal', () => {

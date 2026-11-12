@@ -89,6 +89,28 @@ describe('examples/basic in the workbench — criterion 30', () => {
   }, 120_000);
 });
 
+describe('examples/basic: Live, from the editor — SDD-82 §8.2.60', () => {
+  it.each(['src/flows/alta-de-usuario.fudspec', 'src/routes/usuarios.fudspec'])(
+    "every criterion of %s opens alive on the app's Vite, not on the shell's server",
+    async (file) => {
+      const opened = await openWorkbench(`${EXAMPLE}/${file}`);
+      if (isFailure(opened)) throw new Error(opened.diagnostic.message);
+      session = opened;
+      shell = await connectShell(opened.url);
+      const shellOrigin = new URL(opened.url).origin;
+
+      const message = await shell.next(isSession, 0, 90_000);
+      expect(message.criteria.length).toBe(opened.criteria);
+      for (const { id, route } of message.criteria) {
+        const live = new URL(route);
+        expect(live.origin, id).not.toBe(shellOrigin);
+        expect((await fetch(live)).status, `${id}: ${route}`).not.toBe(404);
+      }
+    },
+    150_000,
+  );
+});
+
 describe('examples/basic: the pages and the flow of SDD-82 §4.9 — criterion 39', () => {
   const SPECS = [
     'src/routes/usuarios.fudspec',
