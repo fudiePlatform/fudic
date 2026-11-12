@@ -7,6 +7,10 @@
 Cuatro mejoras del código que el compilador emite para el navegador. Son independientes entre
 sí; el orden propuesto está en §5.
 
+Añadidos el **2026-11-12**, tras investigar qué se puede compartir desde una librería: un bug de
+`errorPages` con `base` (§6) y cómo tener una página de error compartida entre apps (§7). No son
+de adelgazar el cliente; se apuntan aquí a petición de Pedro.
+
 ---
 
 ## 1. El `c` raíz, perezoso
@@ -142,3 +146,90 @@ SSR y SW escriben el atributo en el tag del host; el cliente lo actualiza en `u`
 | 2 | `c` raíz perezoso + precarga (§1) | ~25–30 | SDD |
 | 3 | `class:` con `toggleClass` (§3) | ~10–12 | SDD |
 | 4 | Props reflejadas en el host (§4) | ~10–12 | SDD (puede ir con la 3) |
+| — | `errorPages` sin `base` (§6) | ~3 | BUG, independiente; puede ir primero |
+| — | Página de error compartida (§7) | ~5–8 | Tarea de CLI + docs, sin cambio de gramática |
+
+## 6. BUG: `errorPages` navega sin el `base` de la app
+
+### 6.1. Lo que se ve leyendo el código
+
+- `errorUrl` (`packages/http/src/error-pages.ts:44`) devuelve `` `${ERROR_PREFIX}/${status}` ``,
+  es decir `/_fudic/error/500`, sin el `base`. `errorPagesStep` ni siquiera lo recibe.
+- Las llamadas a funciones sí lo aplican: `join(base, …)` en `packages/http/src/contract/fn.ts:170`,
+  con el `base` que trae el spec de la función.
+- El servidor quita el `base` antes de mirar la ruta (`pathOf`, `packages/server/src/server.ts:120`):
+  espera `/admin/_fudic/error/500`.
+
+### 6.2. Consecuencia
+
+Una app publicada con `base` (en `examples/workspace`, `admin` en `/admin/`) manda un 500 de una
+llamada a `/_fudic/error/500`. En un origen compartido esa URL la sirve **otra** app (`tienda`),
+con su diseño y su `_error.fud`. Detrás de un proxy que solo enruta `/admin/*`, es un 404.
+
+Pasa lo mismo con las rutas de `routes 403 /entrar`: se navega a la ruta tal cual, sin `base`.
+Hay que decidir si esa ruta se escribe relativa a la app (y se le pone el `base`) o absoluta.
+
+### 6.3. Por confirmar
+
+Sacado de leer el código, sin ejecutarlo. Primero un test que lo reproduzca: `errorPagesStep` con
+una app de `base: '/admin/'` y una llamada que recibe 500 debe navegar a
+`/admin/_fudic/error/500`. Arreglo previsible: que `errorPagesStep` reciba el `base` (como lo
+recibe `fn`) y use `join(base, …)`.
+
+## 7. Una página de error compartida entre apps
+
+### 7.1. Lo que hay hoy
+
+- **Un layout sí puede vivir en una librería.** Medido en SDD-43 (`SDD-43-medicion.md`,
+  `packages/vite/test/lib-extras-probe.test.ts`): `<link rel="layout" href="@acme/ui/_layout.fud">`
+  se compone como uno propio, `fudic:runtime` incluido.
+- **Una página no.** `FUD0783`: una librería no tiene `routesDir`, ni `base`, ni build propio, así
+  que ninguna URL llega a ella.
+- **`_error.fud` tiene que estar en la raíz de `src/routes/` de cada app.** El descubrimiento busca
+  ese nombre exacto (`packages/vite/src/discover.ts:84`).
+
+Así que lo único que se repite por app es el fichero `_error.fud`. La misma fricción la tendría
+cualquier otra página que se quiera compartir (login, mantenimiento…).
+
+### 7.2. Por qué no vale «una app que solo tiene la página de error»
+
+Se llega a la página de error por dos caminos, y una app aparte solo cubre uno:
+
+| Origen del error | A dónde va | ¿Lo cubre otra app? |
+|---|---|---|
+| Llamada de cliente que falla (500, 409 sin `catches`…) | `errorPages` navega a `/_fudic/error/<status>` | Sí, en el mismo origen, o con `routes` |
+| `load` que lanza `notFound()`, URL inexistente | El servidor de **esa** app pinta su `_error.fud` en la misma respuesta | **No**: no hay redirección |
+
+Cada app seguiría necesitando su `_error.fud`. Hoy, por el bug de §6, las apps con `base` ya caen
+en la de la raíz para las llamadas, pero por accidente y solo en ese camino.
+
+### 7.3. Propuesta: la página es un componente de la librería
+
+El `_error.fud` de cada app se queda en unas pocas líneas que lo cogen todo de la librería:
+
+```html
+<link rel="layout" href="@acme/ui/_layout.fud">
+<link rel="component" href="@acme/ui/error-view.fud">
+
+<error-view .status=@data.status .title=@data.title .detail=@data.detail></error-view>
+```
+
+El diseño, los textos, los tests, la `.fudspec` y la fixture de `error-view` viven en la
+librería, como cualquier componente. No hace falta tocar la gramática ni el plugin.
+
+### 7.4. Lo que la spec tendría que cerrar
+
+1. **Generarlo con el CLI.** Algo como `fudic g error-page --from @acme/ui` en una app, que escribe
+   ese `_error.fud` mínimo. Y en la librería, un generador del componente `error-view` con el
+   contrato de `data` (`{ status: number; title: string; detail?: string }`) ya tipado.
+2. **El tipo de `data` desde la librería.** Que el componente pueda declarar sus props con el tipo
+   que exporta `@fudic/http` (o el que corresponda), para que el editor marque un `_error.fud` que
+   le pase algo mal.
+3. **Idiomas.** Con `locales`, `_error.fud` se compila una vez por idioma (SDD-58 §4.5); comprobar
+   que los textos de `error-view` en la librería entran en `fudic translate` igual que los de la
+   app.
+4. **Un ejemplo.** Añadirlo a `examples/workspace`: `libs/ui` con `_layout.fud` y `error-view`, y
+   las dos apps con su `_error.fud` de tres líneas. Hoy no hay ningún ejemplo de layout en una
+   librería; solo el test de la medición.
+5. **Descartado de momento:** que una app declare en `fudic.json` un `_error.fud` de otro paquete.
+   Ahorra tres líneas a costa de una excepción a `FUD0783` y de una ruta que no está en `routes/`.
