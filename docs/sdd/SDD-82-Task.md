@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 34 / 36 — `Hecho` a falta de la prueba de Pedro (tarea 35: los dos fallos del relevo del 2026-11-12, arreglados en SDD §8.2.59–60; falta que Pedro vuelva a probar) y del merge a `main` (tarea 36, que espera a la prueba). typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
+> **Progreso:** 36 / 36 — `Hecho`: probada por Pedro (§6.1, con los dos fallos de su prueba arreglados en SDD §8.2.59–60) y mergeada a `main` con `--no-ff`. typecheck, test y build en verde; cobertura de §5 al 100 %; el 404 intermitente explicado y corregido (SDD §8.2.58).
 
 ## Relevo (2026-11-12, la prueba de Pedro, tarea 35)
 
@@ -333,9 +333,9 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 - [x] **34. `docs/PENDIENTE.md` e INDEX.** El estado, el registro de progreso y la nota 5 cerrada.
   - *Depende de:* 31, 32.
   - *Paquete:* docs.
-- [ ] **35. La prueba de Pedro.** SDD §6.1, con el `.vsix` de la rama.
+- [x] **35. La prueba de Pedro.** SDD §6.1, con el `.vsix` de la rama.
   - *Depende de:* 33, 34.
-- [ ] **36. Cierre.**
+- [x] **36. Cierre.**
   - `pnpm typecheck`, `pnpm test`, `pnpm build` en verde (criterio 41).
   - Cobertura al 100 % de §5.
   - El 404 intermitente de `preview-e2e` del MCP, explicado y corregido (ver «Pendiente de

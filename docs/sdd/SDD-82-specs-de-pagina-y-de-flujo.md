@@ -1,6 +1,6 @@
 # SDD-82 — Specs de página y de flujo: la `.fudspec` sale del componente
 
-> **Estado:** `Hecho` (2026-11-12), a falta de la prueba de Pedro (§6.1) — [tareas](./SDD-82-Task.md).
+> **Estado:** `Hecho` (2026-11-12), probada por Pedro (§6.1) y mergeada a `main` — [tareas](./SDD-82-Task.md).
 > **Paquetes:** `@fudic/spec` · `@fudic/terms` · `@fudic/workbench` · `@fudic/vite` · `@fudic/http` · `@fudic/api` ·
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
