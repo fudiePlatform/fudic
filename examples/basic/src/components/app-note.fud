@@ -1,0 +1,40 @@
+@code {
+  // Un `<textarea>` que crece con lo que se escribe. `field-sizing: content` aún no está en
+  // todos los navegadores de los últimos 30 meses, así que va dentro de un `@supports`: donde
+  // falta, la nota se queda con su altura mínima y se puede seguir escribiendo.
+  import { signal } from "@fudic/core";
+
+  const text = signal("");
+
+  function write(ev: Event) {
+    text.set((ev.target as HTMLTextAreaElement).value);
+  }
+}
+
+<head>
+  <style>
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 4em;
+      font: inherit;
+      padding: 0.5rem;
+    }
+    @supports (field-sizing: content) {
+      textarea {
+        field-sizing: content;
+      }
+    }
+    small {
+      color: #5f6368;
+    }
+  </style>
+</head>
+
+<app-note>
+  <template shadowrootmode="open">
+    <label>Nota
+      <textarea class="note" placeholder="Escribe varias líneas…" @input=@write></textarea></label>
+    <small>Caracteres: <output class="count">@text().length</output></small>
+  </template>
+</app-note>

@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 27 / 30 — `En curso`.
+> **Progreso:** 28 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -202,7 +202,7 @@ código, no el test.
 
 ## Fase 9 — ejemplo y cierre
 
-- [ ] **28. El ejemplo.**
+- [x] **28. El ejemplo.**
   - `app-calendar-plain` con su `fud-disable`; la nota con `field-sizing` en `@supports`; el menú con
     `popover` y `:state()`; `fudic.json` con `baseline` y `"warnings": "error"` (§4.8).
   - Criterio 37: compila sin warnings.

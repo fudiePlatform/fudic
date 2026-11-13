@@ -1,0 +1,54 @@
+@code {
+  // Un menú con `popover`, que ya está en «widely», y un estado propio del host que se pinta
+  // con `:state(open)`, que no lo está: el proyecto lo permite en `fudic.json` con
+  // `"allow": ["state"]`, a sabiendas. Donde falta, el menú abre igual y el botón no cambia
+  // de color.
+  let list: HTMLElement | null = null;
+  let states: CustomStateSet | null = null;
+
+  function toggled(ev: Event) {
+    const open = (ev as ToggleEvent).newState === "open";
+    if (states === null && list !== null) {
+      const host = (list.getRootNode() as ShadowRoot).host as HTMLElement;
+      states = host.attachInternals().states;
+    }
+    if (open) states?.add("open");
+    else states?.delete("open");
+  }
+}
+
+<head>
+  <style>
+    button {
+      border-radius: 6px;
+    }
+    :host(:state(open)) button {
+      background: #e8710a;
+      color: white;
+    }
+    [popover] {
+      margin: 0;
+      padding: 0.5rem;
+      border: 1px solid #e6e6e6;
+      border-radius: 6px;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<app-menu>
+  <template shadowrootmode="open">
+    <button class="open" popovertarget="menu">Menú</button>
+    <div id="menu" class="menu" popover ref="@list" @toggle=@toggled>
+      <ul>
+        <li><a href="/">Inicio</a></li>
+        <li><a href="/blog">Blog</a></li>
+        <li><a href="/formularios">Formularios</a></li>
+      </ul>
+    </div>
+  </template>
+</app-menu>
