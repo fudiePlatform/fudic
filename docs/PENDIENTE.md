@@ -33,9 +33,9 @@ Aclaradas el 2026-11-05. La primera está desarrollada en «Análisis con sesió
 
 | # | Qué | Tamaño |
 |---|---|---|
-| 1 | Silenciar o subir diagnósticos | Pequeña |
+| 1 | ~~Silenciar o subir diagnósticos~~ — cerrada en SDD-83 | Pequeña |
 | 3 | Cabeceras de seguridad configurables (fuera los avisos de Lighthouse) | Pequeña |
-| 4 | Nivel de Baseline en `fudic.json` | Pequeña o mediana |
+| 4 | ~~Nivel de Baseline en `fudic.json`~~ — cerrada en SDD-83 | Pequeña o mediana |
 | 5 | Fixtures del `load` de las páginas | Mediana |
 | 7 | Generar la hoja de estilos desde la CLI, con el usuario | Mediana |
 | 8 | `fudic.json` en la guía del MCP, como el `sw.json` | Pequeña |
@@ -43,6 +43,9 @@ Aclaradas el 2026-11-05. La primera está desarrollada en «Análisis con sesió
 
 ### 1. Silenciar o subir diagnósticos
 
+> **Cerrada el 2026-11-13**: implementada en SDD-83, pendiente solo de la prueba de Pedro
+> ([SDD-83-Prueba](sdd/SDD-83-Prueba.md)) y del merge.
+>
 > **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
 > con la nota 4.
 
@@ -77,6 +80,9 @@ seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
 
 ### 4. Baseline
 
+> **Cerrada el 2026-11-13**: implementada en SDD-83, pendiente solo de la prueba de Pedro
+> ([SDD-83-Prueba](sdd/SDD-83-Prueba.md)) y del merge.
+>
 > **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
 > con la nota 1. Lo de abajo es el análisis previo; donde no coincida, manda la SDD (el anidamiento
 > CSS sí es «widely», y el corte sale de la fecha de los datos, no del reloj).

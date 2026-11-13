@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 28 / 30 — `En curso`.
+> **Progreso:** 28 / 30 — implementada; queda la prueba de Pedro ([SDD-83-Prueba](./SDD-83-Prueba.md)) y el merge.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -211,14 +211,14 @@ código, no el test.
   - *Ficheros:* `src/components/app-calendar-plain.fud`, `src/components/app-note.fud`,
     `src/components/app-menu.fud`, `fudic.json`.
 - [ ] **29. Docs, `.vsix` y prueba de Pedro.**
-  - README de `@fudic/baseline` y `@fudic/diagnostics`; `docs/PENDIENTE.md` (notas 1 y 4 cerradas) e
-    INDEX (estado y registro).
-  - El `.vsix` de la rama.
-  - SDD §6.1 con ese `.vsix`.
+  - [x] README de `@fudic/baseline` y `@fudic/diagnostics`; `docs/PENDIENTE.md` (notas 1 y 4
+    cerradas) e INDEX (estado y registro).
+  - [x] El `.vsix` de la rama, instalado; la CLI nueva en global y verdaccio arrancado.
+  - [ ] **Pedro:** SDD §6.1 con ese `.vsix`, paso a paso en [SDD-83-Prueba](./SDD-83-Prueba.md).
   - *Depende de:* 27, 28.
   - *Paquetes:* `baseline`, `diagnostics`, `vscode`, docs.
 - [ ] **30. Cierre.**
-  - `pnpm typecheck`, `pnpm test`, `pnpm build` en verde (criterio 38).
-  - Cobertura de §5.
-  - Estado `Hecho` y merge `--no-ff` a `main`.
+  - [x] `pnpm typecheck`, `pnpm test`, `pnpm build` en verde (criterio 38).
+  - [x] Cobertura de §5.
+  - [ ] Tras la prueba de Pedro: estado `Hecho` y merge `--no-ff` a `main`.
   - *Depende de:* 29.

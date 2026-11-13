@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { build, type Rollup } from 'vite';
+import { build, createServer, type Rollup } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -202,5 +202,29 @@ describe('vite build — the sheets a component chooses (SDD-46)', () => {
     await expect(
       buildWith(THEME, { ...SHEETS, 'src/components/s-pick.fud': pick('panel') }, PAGE_WITH_TWO),
     ).rejects.toThrow(/declares none/u);
+  }, 120000);
+});
+
+describe('FUD0742 with no route yet', () => {
+  it('says nothing, so a project that raises warnings to errors still starts (SDD-83)', async () => {
+    // The workbench opening a flow: Vite starts on a routes folder whose pages are written
+    // later. With no route, which components the project defines is unknown, not "none".
+    const root = mkdtempSync(join(tmpdir(), 'fudic-styles-'));
+    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+    mkdirSync(join(root, 'src', 'styles'), { recursive: true });
+    writeFileSync(join(root, 'src', 'styles', 'theme.css'), ':host{--gap:8px}');
+    writeFileSync(
+      join(root, 'fudic.json'),
+      JSON.stringify({ id: 'test', ...THEME, diagnostics: { warnings: 'error' } }),
+    );
+    const server = await createServer({
+      root,
+      logLevel: 'silent',
+      configFile: false,
+      resolve: { alias: { ...runtimeAlias } },
+      server: { middlewareMode: true, ws: false },
+      plugins: [fudic({ liveCheck: false })],
+    });
+    await server.close();
   }, 120000);
 });

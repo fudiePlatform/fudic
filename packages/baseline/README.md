@@ -55,3 +55,24 @@ It keeps the keys of `css`, `html`, `svg`, `mathml`, `api` and `javascript` — 
 ignores a header it does not know — with each repeated status written once, every feature's name and
 redirects, the releases Vite's `build.target` needs, and three indexes: CSS functions by name, CSS
 units (`scripts/units.ts`, by hand), and the DOM interface of each HTML tag.
+
+Two files come out of it: `data.generated.ts` (the date, browsers, features, redirects, units and
+tags) and `table.generated.ts` (the keys, their statuses and the CSS functions, as JSON text the
+judge parses the first time it is asked). `@fudic/baseline/config` exports only what reading a
+`fudic.json` needs — the levels, `feature`, the manifest — and never loads the table, so a process
+that reads a `fudic.json` and judges nothing does not pay for it.
+
+## What fudic emits
+
+`EMITTED` is the manifest of what the runtime and the compiler put in a page on their own:
+Declarative Shadow DOM, `Promise.withResolvers`, `ElementInternals`, `adoptedStyleSheets`… Each entry
+names its key, its feature, its `newly` date and the remedy fudic applies where it is missing, or
+`null` when it has none.
+
+- What fudic emits never warns in the author's code: if the author writes `shadowrootmode`, that is
+  fudic, not them.
+- `FLOOR` is the newest date among the entries with no remedy — `'2024-03-05'` — the oldest browsers
+  fudic runs in. A level that cuts before it is `FUD1525` on the project's `fudic.json`, and
+  `needsNewer(cutoff)` names the features it lacks.
+- A test binds the manifest to the code: anything newer than `widely` that the runtime or the
+  emitted HTML uses has to be in `EMITTED`, and without a remedy it cannot be newer than `FLOOR`.

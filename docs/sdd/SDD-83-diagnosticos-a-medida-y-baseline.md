@@ -1,6 +1,7 @@
 # SDD-83 — Diagnósticos a medida y Baseline
 
-> **Estado:** `Listo` (2026-11-10) — [tareas](./SDD-83-Task.md).
+> **Estado:** `Listo` (2026-11-10) — [tareas](./SDD-83-Task.md). Implementada el 2026-11-13; pendiente de
+> la prueba de Pedro ([SDD-83-Prueba](./SDD-83-Prueba.md)) y del merge.
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/baseline` (nuevo) · `@fudic/config` · `@fudic/compiler` ·
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` (guía) · `examples/basic`
@@ -839,3 +840,12 @@ Nada.
 33. **`resize` avisa en `widely`**: no está en iOS ni en Android. Por eso el ejemplo de §1.3 usa
     `min-height` como alternativa.
 34. **`fudic g lib` también escribe `"baseline": "widely"`**: una lib declara el nivel que promete.
+35. **El menú del ejemplo toma su estado con `attachInternals()` desde el `@code`.** Un componente
+    de fudic no tiene acceso a su `ElementInternals` (solo los controles de formulario), y `:state()`
+    solo casa con un estado del host. El menú lo pide al abrirse, sobre el host de su shadow root; con
+    `"allow": ["state"]` el selector y la API (`states`, `add`, `delete`, que son de la misma feature)
+    dejan de avisar. Los enseña la página nueva `/baseline`, junto a la nota.
+36. **`FUD0742` calla cuando no hay ninguna ruta.** Los componentes de un proyecto se encuentran por
+    las rutas que los enlazan; sin rutas, la respuesta es «no se sabe», no «ninguno». Es el banco al
+    abrir un flujo o la spec de una página: Vite arranca antes de escribir sus páginas. Era un aviso
+    falso que nadie leía, y con `"warnings": "error"` en el ejemplo tumbaba el arranque.

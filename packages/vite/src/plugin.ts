@@ -1357,7 +1357,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // library's own components, and whether this project defines any says nothing about it.
       // Nor a sheet its style guide imports (SDD-79): that one reaches every page through the
       // guide, and a project just created has no component yet.
+      // Nor with no route at all: the components a project defines are found through the
+      // routes that link them, so with none the answer is unknown, not "none". That is the
+      // workbench opening a flow, whose pages are written after Vite starts — and under
+      // `"warnings": "error"` (SDD-83) a false warning there stopped the server.
       if (
+        builds.length > 0 &&
         styleChains !== null &&
         ownSheets(styleChains, root) > 0 &&
         discoverComponents(builds, io).length === 0
