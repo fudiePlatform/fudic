@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 1 / 22 — `En curso`.
+> **Progreso:** 5 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -26,14 +26,14 @@
 
 ## Fase 2 — el lector
 
-- [ ] **2. La tabla de cabeceras y la sintaxis.**
+- [x] **2. La tabla de cabeceras y la sintaxis.**
   - `parseHeaders`: líneas, continuaciones con el separador de cada cabecera, comentarios, bloques de
     `assets.headers`, nombres, repetidas, ASCII (§3.2). `FUD1540`, `FUD1541`.
   - La tabla de cabeceras conocidas, con su separador y su validador (§3.3). `FUD1543`.
   - *Depende de:* 1.
   - *Paquete:* `config`.
   - *Ficheros:* `src/headers/parse.ts`, `src/headers/known.ts`.
-- [ ] **3. La CSP.**
+- [x] **3. La CSP.**
   - Directivas de CSP3, fuentes, `'none'`, la tabla de huecos con `{nonce}` (`FUD1544`, `FUD1546`).
   - Lo que debilita solo si cuenta (§3.4): `FUD1547`.
   - `CspNeed` (directiva, fuente, pieza) y `checkNeeds(csp, needs)`: la directiva efectiva según CSP3;
@@ -41,7 +41,7 @@
   - *Depende de:* 2.
   - *Paquete:* `config`.
   - *Ficheros:* `src/headers/csp.ts`, `src/headers/needs.ts`.
-- [ ] **4. Las demás comprobaciones y `readHeaders`.**
+- [x] **4. Las demás comprobaciones y `readHeaders`.**
   - HSTS, COOP, `Referrer-Policy`, `Cache-Control`, `Permissions-Policy` (`FUD1549`, `FUD1550`).
   - Las cabeceras de fudic (§3.6, `FUD1542`).
   - `HEADERS_FILES`, `HEADERS_TEMPLATES` (§3.5), `readHeaders` con la plantilla para lo que falta y
@@ -49,7 +49,7 @@
   - *Depende de:* 3.
   - *Paquete:* `config`.
   - *Ficheros:* `src/headers/checks.ts`, `src/headers/templates.ts`, `src/headers/read.ts`, `src/index.ts`.
-- [ ] **5. Los tests del lector.** Criterios 3–13, 16, 17 y 20, más `checkNeeds` con necesidades
+- [x] **5. Los tests del lector.** Criterios 3–13, 16, 17 y 20, más `checkNeeds` con necesidades
   inventadas (la parte de config de 10, 13 y 14).
   - *Depende de:* 4.
   - *Paquete:* `config`.

@@ -234,6 +234,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1540({ file: F, problem: 'continuation' }), ' is not a header fudic can continue'],
   [c.FUD1540({ file: F, problem: 'no-path' }), 'needs a path above it'],
   [c.FUD1540({ file: F, problem: 'path' }), 'only assets.headers has paths'],
+  [c.FUD1540({ file: F, problem: 'unreadable', name: 'EACCES' }), `${F} could not be read: EACCES`],
+  [c.FUD1540({ file: F, problem: 'unreadable' }), `${F} could not be read: `],
   [c.FUD1541({ file: F, name: 'X-A', problem: 'repeated' }), 'X-A is written twice'],
   [c.FUD1541({ file: F, name: 'X-A', problem: 'ascii' }), 'outside printable ASCII'],
   [c.FUD1541({ file: F, name: 'X A', problem: 'token' }), '"X A" is not a header name'],

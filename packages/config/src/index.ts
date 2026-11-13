@@ -45,3 +45,26 @@ export {
   type BaselineRead,
 } from './baseline.js';
 export { projectConfigSchema } from './schema.js';
+export type { HeaderEntry, HeadersKind, Piece } from './headers/segments.js';
+export { segmentsOf, nameSpanOf } from './headers/segments.js';
+export { HEADERS_FILES, parseHeaders, type AssetRule, type ParsedHeaders } from './headers/parse.js';
+export { HEADERS_TEMPLATES } from './headers/templates.js';
+export {
+  readHeaders,
+  type HeadersConfig,
+  type HeadersRead,
+  type HeadersSource,
+  type ReadHeadersOptions,
+} from './headers/read.js';
+export { KNOWN_HEADERS, FUDIC_HEADERS, FUDIC_PATHS, type KnownHeader } from './headers/known.js';
+export {
+  CSP_DIRECTIVES,
+  CSP_KEYWORDS,
+  directiveOf,
+  NONCE_SOURCE,
+  parseCsp,
+  PLACEHOLDERS,
+  type CspDirective,
+  type CspPolicy,
+} from './headers/csp.js';
+export { checkNeeds, type CspNeed, type NeedFinding } from './headers/needs.js';

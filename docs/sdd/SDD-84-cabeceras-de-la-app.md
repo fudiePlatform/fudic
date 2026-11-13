@@ -709,4 +709,25 @@ Nada.
 
 ### 8.2. Tomadas al implementar
 
-(vacío)
+1. **La rama sale de `sdd-83-diagnosticos-y-baseline`**, no de `main` (Pedro): las dos se mergean juntas
+   después.
+2. **Un `.headers` que no se puede leer es `FUD1540`** (`problem: 'unreadable'`), con su motivo. No cae a
+   la plantilla, igual que uno roto.
+3. **`parseHeaders` también devuelve los comentarios** y `readHeaders` el texto y los comentarios de cada
+   fichero que existe (`sources`): son lo que necesita `govern` de SDD-83 para aplicar los `fud-disable`.
+4. **Una necesidad dice qué pone la pieza, no qué fuente pide**: `inline-script`, `inline-style`, `script`,
+   `eval` o `policy` (con su nombre). `checkNeeds` decide con la semántica de CSP3 si pasa y, si no, qué
+   fuente añadir: el nonce para un script inline, `'unsafe-inline'` para un estilo (el nonce si hay un hash),
+   `'self'` o el nonce para un `<script src>` según haya `'strict-dynamic'`. Así «el nonce, si la CSP lleva
+   `'strict-dynamic'`» (§3.4) no tiene que estar escrito en cada pieza. Devuelve cada hallazgo con su acción
+   (`add`/`remove`), directiva, fuente y span, para las bombillas.
+5. **`FUD1556` sobre el nonce, directiva por directiva**: un `'nonce-{nonce}'` sobra en una directiva por la
+   que no pasa ninguna necesidad gracias a él (si `'self'` ya deja pasar el `<script src>`, el nonce de esa
+   directiva sobra).
+6. **Las rutas de fudic en `assets.headers`** (`FUD1542`) son `/fudic-sw.js` y `/fudic-routes.json`, los
+   nombres por defecto: el lector no conoce un manifiesto con otro nombre.
+7. **Las líneas en blanco y los comentarios no cortan una cabecera**: un comentario entre las líneas de la
+   CSP (el `fud-disable-next-line` del ejemplo de §3.2) deja la cabecera seguir. En `assets.headers`, la
+   sangría de la primera cabecera de un bloque marca el nivel; más sangrado es continuación.
+8. **Sin CSP en `page.headers` no hay `FUD1547` ni necesidades que comprobar**: quien la borra lo ha
+   decidido, y el navegador deja pasar todo.
