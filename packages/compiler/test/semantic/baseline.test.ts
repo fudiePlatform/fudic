@@ -38,7 +38,12 @@ describe('the judge', () => {
 
   it('names the browsers a key has not reached', () => {
     const found = judgeUse({ name: 'closedby', key: 'html.elements.dialog.closedby', span: { start: 0, end: 1 } }, widely);
-    expect(found?.message).toContain('not yet in every core browser (missing Safari)');
+    expect(found?.message).toContain('not yet in every core browser (missing Safari, Safari on iOS)');
+  });
+
+  it('names a mobile browser by its own name, not the desktop one that has the key', () => {
+    const found = judgeUse({ name: 'resize', key: 'css.properties.resize', span: { start: 0, end: 1 } }, widely);
+    expect(found?.message).toContain('(missing Firefox on Android, Safari on iOS). Chrome 1, Edge 79, Firefox 4, Safari 3');
   });
 
   it('a key that passes, one it does not have, one allowed and one fudic emits say nothing', () => {

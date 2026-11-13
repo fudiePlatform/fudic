@@ -21,6 +21,7 @@ import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { RequestStats } from '../stats.js';
 import { pathToUri } from '../uri.js';
 import { explainActions } from '../services/actions.js';
+import { codeCompletionList, codeHover, hashFileActions, nearbyCodes, type ConfigFile } from '../services/suppressions.js';
 import { typeScriptService } from '../services/ts-service.js';
 import { specCodeActions } from './actions.js';
 import { specCompletions } from './completion.js';
@@ -34,6 +35,8 @@ export interface FudspecServiceContext {
   readonly stats: RequestStats;
   /** How the project of a file reports each code; absent, every code as it is. */
   readonly policyFor?: (path: string) => Policy | null;
+  /** The `fudic.json` the project of a file is declared in, where a code is turned off; absent, none is. */
+  readonly configFileFor?: (path: string) => ConfigFile | undefined;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -78,6 +81,12 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
     },
 
     create(context) {
+      /** Everything said about a `.fudspec` before its policy and its comments. */
+      const found = (spec: SpecDocument) => [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
+      /** What is shown about it: under the project's policy and its own comments. */
+      const shown = (spec: SpecDocument) =>
+        governFile(spec.path, spec.text, found(spec), deps.policyFor?.(spec.path) ?? null, { complete: true });
+
       return {
         provideDiagnostics(document, token) {
           return stats.run(
@@ -86,9 +95,7 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
             () => {
               const spec = specDocumentOf(context, document);
               if (spec === undefined) return undefined;
-              const found = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
-              const policy = deps.policyFor?.(spec.path) ?? null;
-              return governFile(spec.path, spec.text, found, policy, { complete: true }).map((d) => toLsp(spec, d, host));
+              return shown(spec).map((d) => toLsp(spec, d, host));
             },
             undefined,
           );
@@ -103,8 +110,6 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
               if (spec === undefined) return undefined;
               const start = document.offsetAt(range.start);
               const end = document.offsetAt(range.end);
-              // Every code explains itself, as in a `.fud` (SDD-75).
-              const found = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
               const repairs = specCodeActions({
                 spec,
                 host,
@@ -118,7 +123,10 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
                   return program === undefined ? undefined : propShapes(program, path);
                 },
               });
-              return [...repairs, ...explainActions(found, start, end)];
+              const config = deps.configFileFor?.(spec.path);
+              const file = { uri: document.uri, path: spec.path, text: spec.text, ...(config === undefined ? {} : { config }) };
+              // Every code explains itself, as in a `.fud` (SDD-75).
+              return [...repairs, ...hashFileActions(file, shown(spec), start, end), ...explainActions(found(spec), start, end)];
             },
             undefined,
           );
@@ -147,7 +155,9 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
             token,
             () => {
               const spec = specDocumentOf(context, document);
-              return spec === undefined ? undefined : specCompletions(spec, document.offsetAt(position), host);
+              if (spec === undefined) return undefined;
+              const offset = document.offsetAt(position);
+              return codeCompletionList(document, offset, (slot) => nearbyCodes(slot, spec.text, found(spec))) ?? specCompletions(spec, offset, host);
             },
             undefined,
           );
@@ -159,7 +169,9 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
             token,
             () => {
               const spec = specDocumentOf(context, document);
-              return spec === undefined ? undefined : specHover(spec, document.offsetAt(position), host);
+              if (spec === undefined) return undefined;
+              const offset = document.offsetAt(position);
+              return codeHover(document, offset, deps.policyFor?.(spec.path) ?? null) ?? specHover(spec, offset, host);
             },
             undefined,
           );

@@ -263,7 +263,12 @@ export function createFudicServer(
       // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
       createFudicTagService({ index, stats, configs, apis }),
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
-      createFudspecService({ host: specs, stats, policyFor: (path) => configs.policyFor(path) }),
+      createFudspecService({
+        host: specs,
+        stats,
+        policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
+      }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
       createFudapiService({
         host: apis,
@@ -272,6 +277,7 @@ export function createFudicServer(
         generated,
         translations,
         policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
       }),
       // A `fudic.json`: what the build says about it, while it is written (SDD-81).
       createConfigFileService({

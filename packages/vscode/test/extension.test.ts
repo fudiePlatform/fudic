@@ -229,6 +229,19 @@ describe('the status bar', () => {
     expect(uri.scheme).toBe('file');
     expect(uri.path).toBe('/ext/dist/codes/FUD0056.md');
   });
+
+  it('leaves the cursor on the reason of a comment a bulb wrote, and opens webstatus.dev (SDD-83 §3.11)', async () => {
+    await activate(context());
+    const place = state.commandHandlers.get('fudic.placeCursor') as ((uri: string, line: number, character: number) => unknown) | undefined;
+    await place?.('file:///w/src/app-x.fud', 3, 31);
+    const [document, options] = state.shownDocuments.at(-1) as [{ path: string }, { selection: Range }];
+    expect(document.path).toBe('/w/src/app-x.fud');
+    expect(options.selection).toEqual(new Range(3, 31, 3, 31));
+
+    const open = state.commandHandlers.get('fudic.openUrl') as ((url: string) => unknown) | undefined;
+    await open?.('https://webstatus.dev/features/popover');
+    expect(state.external.at(-1)).toBe('https://webstatus.dev/features/popover');
+  });
 });
 
 describe('the commands, through the adapter', () => {

@@ -644,6 +644,9 @@ importers:
       '@fudic/api':
         specifier: workspace:*
         version: link:../api
+      '@fudic/baseline':
+        specifier: workspace:*
+        version: link:../baseline
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler

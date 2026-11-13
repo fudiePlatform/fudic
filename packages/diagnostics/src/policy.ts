@@ -53,7 +53,7 @@ export function applyPolicy<D extends FudDiagnostic>(
       used[silencer]!.add(diagnostic.code);
       continue;
     }
-    const level = levelOf(diagnostic, policy);
+    const level = reportedLevel(diagnostic.code, diagnostic.severity, policy);
     if (level === 'off') continue;
     out.push(level === diagnostic.severity ? diagnostic : relevel(diagnostic, level));
   }
@@ -78,12 +78,17 @@ function silencedBy(diagnostic: FudDiagnostic, suppressions: readonly Suppressio
   );
 }
 
-/** The code's own entry; else, for a warning, the `warnings` entry; else its own severity. */
-function levelOf(diagnostic: FudDiagnostic, policy: Policy | null): PolicyLevel {
-  const own = policy?.codes.get(diagnostic.code);
+/**
+ * How a project reports a code whose own severity is `severity`: the code's own entry; else, for a
+ * warning, the `warnings` entry; else its own severity. An error stays an error, whatever the policy
+ * says. What `applyPolicy` applies, and what the editor shows over a code in a `fud-disable` comment.
+ */
+export function reportedLevel(code: FudCode, severity: Severity, policy: Policy | null): PolicyLevel {
+  if (severity === 'error') return 'error';
+  const own = policy?.codes.get(code);
   if (own !== undefined) return own;
-  if (diagnostic.severity === 'warning' && policy?.warnings !== undefined) return policy.warnings;
-  return diagnostic.severity;
+  if (severity === 'warning' && policy?.warnings !== undefined) return policy.warnings;
+  return severity;
 }
 
 function relevel<D extends FudDiagnostic>(diagnostic: D, level: Severity): D {

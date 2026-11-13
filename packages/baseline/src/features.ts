@@ -31,3 +31,8 @@ export function feature(id: string): FeatureInfo | Moved | undefined {
   const found = FEATURES.find(([featureId]) => featureId === id);
   return found === undefined ? undefined : { kind: 'feature', id, name: found[1] };
 }
+
+/** Every web-features id that is a feature, with its name, in id order: what `allow` may name. */
+export function features(): readonly FeatureInfo[] {
+  return FEATURES.map(([id, name]) => ({ kind: 'feature', id, name }));
+}

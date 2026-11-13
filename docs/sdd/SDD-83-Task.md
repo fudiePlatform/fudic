@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 23 / 30 — `En curso`.
+> **Progreso:** 27 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -176,26 +176,27 @@ código, no el test.
 
 ## Fase 8 — editor, CLI y MCP
 
-- [ ] **24. Bombillas, completado y hover.**
+- [x] **24. Bombillas, completado y hover.**
   - Las bombillas de §3.11, con «Mover a `@supports`» como regla aparte.
   - El completado de códigos en un `fud-disable` y el hover de un código.
   - *Depende de:* 7, 21.
   - *Paquete:* `language-server`.
-  - *Ficheros:* `src/services/actions.ts`, `src/services/suppressions.ts`, `src/services/baseline-actions.ts`,
-    `src/fudapi/service.ts`, `src/fudspec/actions.ts`.
-- [ ] **25. El esquema de `fudic.json`.**
+  - *Ficheros:* `src/services/suppressions.ts`, `src/services/baseline-actions.ts`, `src/services/config-edits.ts`,
+    `src/json-edit.ts`, `src/services/plugin.ts`, `src/services/config-file.ts`, `src/fudapi/service.ts`,
+    `src/fudspec/service.ts` (SDD §8.2.29–30).
+- [x] **25. El esquema de `fudic.json`.**
   - Todas las claves, con los códigos del catálogo y los ids de feature; generado al construir la
     extensión y registrado con `jsonValidation`.
   - *Depende de:* 11.
   - *Paquete:* `vscode`.
-  - *Ficheros:* `package.json`, `scripts/fudic-schema.ts`, `schemas/fudic.schema.json`.
-- [ ] **26. CLI y MCP.**
+  - *Ficheros:* `package.json`, `scripts/fudic-schema.mjs`, `config/src/schema.ts` (SDD §8.2.31).
+- [x] **26. CLI y MCP.**
   - `fudic new` escribe `"baseline": "widely"`.
   - La guía del MCP: «Diagnostics» y «Baseline» en `overview.md` y su copia en español.
   - *Depende de:* 11.
   - *Paquetes:* `cli`, `mcp`.
   - *Ficheros:* `cli/src/templates.ts`, `mcp/guide/overview.md`, `mcp/guide/es/overview.md`.
-- [ ] **27. Los tests del editor, la CLI y el MCP.** Criterios 32–36.
+- [x] **27. Los tests del editor, la CLI y el MCP.** Criterios 32–36.
   - *Depende de:* 24, 25, 26.
   - *Paquetes:* `language-server`, `vscode`, `cli`, `mcp`.
 

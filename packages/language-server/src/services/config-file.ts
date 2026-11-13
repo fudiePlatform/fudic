@@ -31,6 +31,7 @@ import { DiagnosticSeverity, type Diagnostic as LspDiagnostic } from 'vscode-lan
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import type { RequestStats } from '../stats.js';
+import { configFileActions } from './baseline-actions.js';
 import { uriToPath } from '../uri.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { typeScriptService } from './ts-service.js';
@@ -65,12 +66,22 @@ function toLsp(document: TextDocument, d: Omit<FileDiagnostic, 'file'>): LspDiag
 
 const isConfig = (document: TextDocument): boolean => document.uri.endsWith(`/${CONFIG_FILE}`);
 
-/** What the build would say about this `fudic.json`, or `undefined` for any other document. */
+/**
+ * What the build would say about this `fudic.json`, or `undefined` for any other document: what its
+ * reader says, under the file's own policy when it has one, as the build reports it.
+ */
 export function configDiagnostics(document: TextDocument): LspDiagnostic[] | undefined {
+  return readDiagnostics(document)?.map((d) => toLsp(document, d));
+}
+
+/** What the reader says of this `fudic.json`, governed; `undefined` for any other document. */
+function readDiagnostics(document: TextDocument): readonly Omit<FileDiagnostic, 'file'>[] | undefined {
   if (!isConfig(document)) return undefined;
   const text = document.getText();
-  const { diagnostics } = readProjectConfig('', { exists: () => true, read: () => text });
-  return diagnostics.map((d) => toLsp(document, d));
+  const path = uriToPath(URI.parse(document.uri));
+  const { config, diagnostics } = readProjectConfig('', { exists: () => true, read: () => text });
+  const located = diagnostics.map((d) => ({ ...d, file: path }));
+  return governFile(path, text, located, config?.diagnostics ?? null);
 }
 
 /**
@@ -82,6 +93,11 @@ export function projectConfigDiagnostics(
   context: LanguageServiceContext,
   deps: ConfigProjectDeps,
 ): LspDiagnostic[] {
+  return projectFound(document, context, deps).map((d) => toLsp(document, d));
+}
+
+/** `FUD1526` and `FUD1528` of the project, governed, before they become LSP. */
+function projectFound(document: TextDocument, context: LanguageServiceContext, deps: ConfigProjectDeps): readonly Omit<FileDiagnostic, 'file'>[] {
   const text = document.getText();
   const path = uriToPath(URI.parse(document.uri));
   const root = toPosix(dirname(path));
@@ -106,7 +122,7 @@ export function projectConfigDiagnostics(
   const found = projectBaselineDiagnostics(config, () => packageBaselineUses(site, { root, config, fuds: fudsOf(own) }), libraries);
   // A `fudic.json` has no comments: only its own policy says how these are reported, as in the check.
   const located = found.map((d) => ({ ...d, file: path, span: d.span ?? { start: 0, end: 0 } }));
-  return governFile(path, text, located, config.diagnostics).map((d) => toLsp(document, d));
+  return governFile(path, text, located, config.diagnostics);
 }
 
 export function createConfigFileService(deps: {
@@ -116,9 +132,31 @@ export function createConfigFileService(deps: {
 }): LanguageServicePlugin {
   return {
     name: 'fudic-config',
-    capabilities: { diagnosticProvider: { interFileDependencies: false, workspaceDiagnostics: false } },
+    capabilities: {
+      diagnosticProvider: { interFileDependencies: false, workspaceDiagnostics: false },
+      codeActionProvider: { codeActionKinds: ['quickfix'] },
+    },
     create(context) {
       return {
+        provideCodeActions(document, range, _codeActionContext, token) {
+          return deps.stats.run(
+            'codeActions',
+            token,
+            () => {
+              const read = readDiagnostics(document);
+              if (read === undefined) return undefined;
+              const project = deps.project === undefined ? [] : projectFound(document, context, deps.project);
+              const start = document.offsetAt(range.start);
+              const end = document.offsetAt(range.end);
+              const here = [...read, ...project].flatMap((d) =>
+                d.span !== undefined && d.span.start <= end && start <= d.span.end ? [{ code: d.code, span: d.span, message: d.message }] : [],
+              );
+              return configFileActions({ path: uriToPath(URI.parse(document.uri)), text: document.getText() }, here);
+            },
+            undefined,
+          );
+        },
+
         provideDiagnostics(document, token) {
           return deps.stats.run(
             'diagnostics',

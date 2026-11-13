@@ -3,5 +3,8 @@
   font-size: var(--{{project}}-text-xl);
   font-weight: var(--{{project}}-weight-medium);
   line-height: var(--{{project}}-leading-tight);
-  text-wrap: balance;
+}
+
+@supports (text-wrap: balance) {
+  :where(h3) { text-wrap: balance; }
 }

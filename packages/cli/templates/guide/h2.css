@@ -4,5 +4,8 @@
   font-weight: var(--{{project}}-weight-bold);
   line-height: var(--{{project}}-leading-tight);
   letter-spacing: -0.01em;
-  text-wrap: balance;
+}
+
+@supports (text-wrap: balance) {
+  :where(h2) { text-wrap: balance; }
 }

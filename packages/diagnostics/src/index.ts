@@ -29,7 +29,7 @@ export { codeInfo, liveCodes } from './catalog.js';
 export type { Suppression, SourceComment, SuppressionsResult } from './suppressions.js';
 export { readSuppressions } from './suppressions.js';
 export type { PolicyLevel, Policy, PolicyResult, GovernOptions } from './policy.js';
-export { applyPolicy, govern } from './policy.js';
+export { applyPolicy, govern, reportedLevel } from './policy.js';
 
 // ── codes ──────────────────────────────────────────────────────────────────────
 export * from './codes/FUD0001.js';

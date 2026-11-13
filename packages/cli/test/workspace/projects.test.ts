@@ -58,6 +58,7 @@ describe('fudic g app (criterion 4)', () => {
       prefix: 'ad',
       server: 'src/server',
       browser: 'src/browser',
+      baseline: 'widely',
     });
   });
 
@@ -181,7 +182,7 @@ describe('fudic g lib (criterion 5)', () => {
     const fs = workspace();
     await applied(await planLib('ui', libOptions({ prefix: 'ui' }), fs), fs);
 
-    expect(JSON.parse(fs.at('libs/ui/fudic.json'))).toEqual({ kind: 'lib', prefix: 'ui' });
+    expect(JSON.parse(fs.at('libs/ui/fudic.json'))).toEqual({ kind: 'lib', prefix: 'ui', baseline: 'widely' });
   });
 
   it('has an empty src/components and a tsconfig that extends the root', async () => {
@@ -216,7 +217,7 @@ describe('fudic g lib without --prefix (criterion 6)', () => {
     expect(plan.errors).toEqual([]);
     await applied(plan, fs);
 
-    expect(JSON.parse(fs.at('libs/ui/fudic.json'))).toEqual({ kind: 'lib' });
+    expect(JSON.parse(fs.at('libs/ui/fudic.json'))).toEqual({ kind: 'lib', baseline: 'widely' });
     expect(fs.paths()).toContain('libs/ui/package.json');
     expect(fs.paths()).toContain('libs/ui/src/components/.gitkeep');
   });

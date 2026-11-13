@@ -92,7 +92,7 @@
 ```
 
 ```css
-textarea { resize: none; }
+textarea { min-height: 4em; }
 @supports (field-sizing: content) {
   textarea { field-sizing: content; }
 }
@@ -815,3 +815,27 @@ Nada.
     produce código de navegador igual que el SW.
 28. **`browserModules` mira `node_modules` dentro de la raíz del paquete**, no por encima: una lib
     instalada en la app es la raíz de sus propios módulos.
+29. **Las bombillas de silenciar no dejan dos comentarios apilados.** Si encima de la línea ya hay un
+    `fud-disable-next-line`, o en el fichero un `fud-disable`, ganan el código (`FUD1380, FUD1524`):
+    un segundo comentario encima silenciaría la línea del primero. El comentario nuevo toma la
+    sintaxis de la región donde empieza la línea (marcado, `<style>`, `@code`); el cursor va al
+    motivo con un comando del cliente, `fudic.placeCursor`, y «Ver en webstatus.dev» con
+    `fudic.openUrl`. `FUD1520` y `FUD1523` no se silencian: hablan del propio comentario.
+30. **La bombilla de un `FUD1524` lee la clave del mensaje.** Un diagnóstico no lleva datos aparte
+    (decisión de `@fudic/diagnostics`); un test ata el formato del mensaje a quien lo lee.
+31. **El esquema de `fudic.json` lo escribe `@fudic/config`** (`projectConfigSchema`), que conoce
+    todas sus claves, y la extensión lo genera al construirse en `dist/fudic.schema.json` (no se
+    commitea: los códigos y las features cambian con cada versión). Un código de error solo admite
+    `"error"`. El script es `scripts/fudic-schema.mjs`, como los demás de la extensión.
+32. **Bugs de fases anteriores, arreglados aquí.** (a) En el editor, lo que el lector dice de un
+    `fudic.json` no pasaba por su propia política y en el build sí. (b) `web-features` acota algunas
+    fechas (`≤2018-10-02`): se comparaban como más nuevas que cualquiera y `<output>` avisaba con
+    «NaN»; el generador escribe la cota. (c) El mensaje de `FUD1524` nombraba los navegadores
+    móviles como los de escritorio («missing Firefox, Safari» junto a «Firefox 4, Safari 3»); ahora
+    dice «Firefox on Android», «Safari on iOS». (d) La guía que escribe `fudic new` daba nueve
+    `FUD1524` (`text-wrap: balance`, `accent-color`, `::marker`, `resize`, `text-size-adjust`):
+    cada mejora va en su `@supports`, y un test de la CLI pasa el detector por todas las hojas de
+    las plantillas. (e) `FUD1524` no tenía su par de fixtures.
+33. **`resize` avisa en `widely`**: no está en iOS ni en Android. Por eso el ejemplo de §1.3 usa
+    `min-height` como alternativa.
+34. **`fudic g lib` también escribe `"baseline": "widely"`**: una lib declara el nivel que promete.

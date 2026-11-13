@@ -82,3 +82,18 @@ describe('Guide.read', () => {
     expect(result.error.message).toContain(TOPICS.join(', '));
   });
 });
+
+describe('the overview explains the policy and Baseline, in both languages (SDD-83 criterion 36)', () => {
+  it('the two keys of fudic.json, the comments and what to do with a FUD1524', () => {
+    for (const [file, diagnostics] of [['overview.md', '## Diagnostics'], [join('es', 'overview.md'), '## Diagnósticos']] as const) {
+      const text = readFileSync(join(guideDir(), file), 'utf8');
+      expect(text).toContain(diagnostics);
+      expect(text).toContain('## Baseline');
+      expect(text).toContain('"diagnostics": {');
+      expect(text).toContain('"baseline": { "target": "widely", "allow": ["popover"] }');
+      expect(text).toContain('fud-disable-next-line FUD1380');
+      expect(text).toContain('FUD1524');
+      expect(text).toContain('@supports (field-sizing: content)');
+    }
+  });
+});

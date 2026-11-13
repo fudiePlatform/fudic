@@ -3,7 +3,7 @@
  * pieces on their own, then the tool over a client, on what `fudic new` writes.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -248,4 +248,53 @@ describe('fudic_check over a client, on a new app (criterion 12)', () => {
     expect(result.isError).toBe(true);
     expect((result.structuredContent as { diagnostics: { code: string }[] }).diagnostics.map((d) => d.code)).toEqual(['FUD1400']);
   });
+});
+
+describe('fudic_check under the policy of the project (SDD-83 criterion 36)', () => {
+  let app: Awaited<ReturnType<typeof newApp>>;
+
+  const DAYS = [
+    '@code {',
+    '  const days = [1, 2];',
+    '  function pick(n: number): void { console.log(n); }',
+    '}',
+    '<app-days>',
+    '  <template shadowrootmode="open">',
+    '    @foreach (const n of days) key (n) {',
+    '      <button @click=@pick(n)>@n</button>',
+    '    }',
+    '  </template>',
+    '</app-days>',
+    '',
+  ].join('\n');
+
+  beforeAll(async () => {
+    app = await newApp();
+    mkdirSync(join(app.root, 'src', 'components', 'app-days'), { recursive: true });
+    writeFileSync(join(app.root, 'src', 'components', 'app-days', 'app-days.fud'), DAYS);
+  }, 120_000);
+
+  afterAll(() => app.dispose());
+
+  /** The diagnostics of a check, with `diagnostics` as the policy of the app's fudic.json. */
+  const check = async (diagnostics: Record<string, string>): Promise<{ code: string; severity: string; message: string }[]> => {
+    const file = join(app.root, 'fudic.json');
+    const config = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+    writeFileSync(file, JSON.stringify({ ...config, diagnostics }, null, 2));
+    const client = await connect(createServer({ project: openProject(app.root, () => 'b59fa7d'), entry: 'stdio' }));
+    try {
+      const answer = (await client.callTool({ name: 'fudic_check', arguments: {} })).structuredContent as Record<string, unknown>;
+      return answer['diagnostics'] as { code: string; severity: string; message: string }[];
+    } finally {
+      await client.close();
+    }
+  };
+
+  it('a warning as it is, raised to an error with the message saying so, and off', async () => {
+    expect((await check({})).map((d) => [d.code, d.severity])).toEqual([['FUD1380', 'warning']]);
+    const [raised] = await check({ FUD1380: 'error' });
+    expect(raised).toMatchObject({ code: 'FUD1380', severity: 'error' });
+    expect(raised!.message).toMatch(/\(warning by default; error in this project\)$/u);
+    expect(await check({ FUD1380: 'off' })).toEqual([]);
+  }, 240_000);
 });

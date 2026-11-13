@@ -16,6 +16,7 @@ import { baselineContextOf, readProjectConfig, tagOf, type BaselineJudged, type 
 import type { Policy } from '@fudic/diagnostics';
 import { dependencyChain, owningPackage } from '@fudic/resolve';
 import { toPosix } from '@fudic/typecheck';
+import type { ConfigFile } from './services/suppressions.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the snippet proposes when the project declares no prefix — the literal of today. */
@@ -101,6 +102,15 @@ export class ProjectConfigs {
     return baselineContextOf(this.#nearest(toPosix(path))?.config ?? null);
   }
 
+  /**
+   * The `fudic.json` the project of `path` is declared in, with its text: where the bulbs turn a
+   * code off or allow a feature (SDD-83 §3.11). Absent when no usable `fudic.json` governs the file.
+   */
+  configFileFor(path: string): ConfigFile | undefined {
+    const at = this.#nearest(toPosix(path));
+    return at === null ? undefined : { path: `${at.root}/fudic.json`, text: at.text };
+  }
+
   /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */
   guidePiecesFor(path: string): readonly GuidePiece[] {
     return this.#choiceFor(toPosix(path))?.pieces ?? [];
@@ -173,9 +183,10 @@ export class ProjectConfigs {
         break;
       }
       visited.push(dir);
-      if (this.#scanner.readFile(`${dir}/fudic.json`) !== undefined) {
-        const config = this.#read(dir);
-        found = config === null ? null : { root: dir, config };
+      const text = this.#scanner.readFile(`${dir}/fudic.json`);
+      if (text !== undefined) {
+        const config = parse(dir, text);
+        found = config === null ? null : { root: dir, config, text };
         break;
       }
       const up = dir.lastIndexOf('/');
@@ -190,15 +201,21 @@ export class ProjectConfigs {
     // One read, not two: `exists` and `read` would otherwise hit the disk twice for a file
     // this is asked about on every folder of the workspace.
     const source = this.#scanner.readFile(`${root}/fudic.json`);
-    if (source === undefined) return null;
-    return readProjectConfig(root, { exists: () => true, read: () => source }).config;
+    return source === undefined ? null : parse(root, source);
   }
+}
+
+/** What the `fudic.json` of `root` with this text declares; `null` when it is unusable. */
+function parse(root: string, text: string): ProjectConfig | null {
+  return readProjectConfig(root, { exists: () => true, read: () => text }).config;
 }
 
 /** A `fudic.json` read, with the folder it governs. */
 interface ConfigAt {
   readonly root: string;
   readonly config: ProjectConfig;
+  /** The file as it was read, for the bulbs that write in it. */
+  readonly text: string;
 }
 
 /** What a component may name in `shadowrootadoptedstylesheets`, and which of those are pieces. */

@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CancellationToken, type Diagnostic } from 'vscode-languageserver-protocol';
+import { CancellationToken, type CodeAction, type Diagnostic, type TextEdit } from 'vscode-languageserver-protocol';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { configDiagnostics, createConfigFileService } from '../../src/services/config-file.js';
 import { RequestStats } from '../../src/stats.js';
@@ -125,6 +125,26 @@ describe('what the project as a whole says of its Baseline, opening its fudic.js
     expect(whole!.range.start).toEqual({ line: 0, character: 0 });
   });
 
+  it('the bulbs of FUD1526 and FUD1528 leave a file that says nothing of them (criterion 32)', async () => {
+    const fs = memoryFs(FILES);
+    const index = new WorkspaceIndex(fs);
+    index.scan('/p');
+    const cache = new DocumentCache(index);
+    const documents = Object.fromEntries(
+      ['/p/node_modules/@acme/ui/acme-note.fud', '/p/src/app-menu.fud'].map((path) => [URI.file(path).toString(), cache.get(path, 1, FILES[path as keyof typeof FILES])]),
+    );
+    const service = createConfigFileService({ stats: new RequestStats(), project: { index, fs, typescript: ts } }).create(
+      fakeServiceContext(documents, () => undefined, { 'typescript/languageService': emptyService() }),
+    );
+    const FILE = URI.file('/p/fudic.json').toString();
+    const document = json(CONFIG, FILE);
+    const all = { start: document.positionAt(0), end: document.positionAt(CONFIG.length) };
+    const found = (await service.provideCodeActions?.(document, all, { diagnostics: [] }, CancellationToken.None)) as CodeAction[];
+    const after = (title: string) => TextDocument.applyEdits(document, found.find((a) => a.title === title)!.edit!.changes![FILE] as TextEdit[]);
+    expect((await diagnose(after('Allow them in the app'))).map((d) => d.code)).toEqual(['FUD1528']);
+    expect((await diagnose(after('Remove'))).map((d) => d.code)).toEqual(['FUD1526']);
+  });
+
   it('nothing more with no program, or a file that is not usable', async () => {
     expect(await diagnose(CONFIG, false)).toEqual([]);
     expect((await diagnose('{ nope')).map((d) => d.code)).toEqual(['FUD0725']);
@@ -133,5 +153,49 @@ describe('what the project as a whole says of its Baseline, opening its fudic.js
       project: { index: new WorkspaceIndex(memoryFs({})), fs: memoryFs({}), typescript: ts },
     }).create(fakeServiceContext({}, () => undefined));
     expect(await other.provideDiagnostics?.(json('{}', 'file:///p/package.json'), CancellationToken.None)).toBeUndefined();
+  });
+});
+
+describe('the bulbs of a fudic.json (SDD-83 §3.11, criterion 32)', () => {
+  const FILE = URI.file('/p/fudic.json').toString();
+  const plain = () => createConfigFileService({ stats: new RequestStats() }).create(fakeServiceContext({}, () => undefined));
+
+  /** Each bulb over `needle`, with the text it leaves. */
+  async function bulbs(text: string, needle: string): Promise<Record<string, string>> {
+    const document = json(text, FILE);
+    const start = document.positionAt(text.indexOf(needle));
+    const found = (await plain().provideCodeActions?.(document, { start, end: start }, { diagnostics: [] }, CancellationToken.None)) as CodeAction[];
+    return Object.fromEntries(found.map((a) => [a.title, TextDocument.applyEdits(document, a.edit!.changes![FILE] as TextEdit[])]));
+  }
+
+  it('FUD1521: remove the entry that lowers an error, and then it is gone', async () => {
+    const text = '{ "id": "app", "diagnostics": { "FUD0051": "off" } }';
+    const after = (await bulbs(text, '"FUD0051"'))['Remove']!;
+    expect(after).toBe('{ "id": "app", "diagnostics": {} }');
+    expect(configDiagnostics(json(after, FILE))).toEqual([]);
+  });
+
+  it('FUD1525: raise the level, and then it is gone', async () => {
+    const text = '{ "id": "app", "baseline": 2023 }';
+    expect(configDiagnostics(json(text, FILE))!.map((d) => d.code)).toEqual(['FUD1525']);
+    const after = (await bulbs(text, '"baseline"'))['Raise to 2024']!;
+    expect(configDiagnostics(json(after, FILE))).toEqual([]);
+  });
+
+  it('FUD1527: change an id that moved, and then it is gone; or turn it off, which the file obeys', async () => {
+    const text = '{ "id": "app", "baseline": { "allow": ["masonry"] } }';
+    const found = await bulbs(text, '"masonry"');
+    expect(configDiagnostics(json(found['Change to grid-lanes']!, FILE))).toEqual([]);
+    expect(configDiagnostics(json(found['Turn FUD1527 off in the project']!, FILE))).toEqual([]);
+  });
+
+  it('nothing for another document, nor where nothing is said', async () => {
+    const outside = json('{}', 'file:///p/package.json');
+    const zero = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+    expect(await plain().provideCodeActions?.(outside, zero, { diagnostics: [] }, CancellationToken.None)).toBeUndefined();
+    expect(await bulbs('{ "id": "app" }', '"id"')).toEqual({});
+    // Not JSON: the reader points nowhere. A warning away from the cursor: not this bulb's.
+    expect(await bulbs('{ nope', 'nope')).toEqual({});
+    expect(await bulbs('{ "id": "app", "baseline": 2023 }', '"id"')).toEqual({});
   });
 });

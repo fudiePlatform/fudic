@@ -265,6 +265,7 @@ describe('fudic new writes fudic.json', () => {
       prefix: 'app',
       server: 'src/server',
       browser: 'src/browser',
+      baseline: 'widely',
       globalStyles: GUIDE_GLOBALS,
       guide: GUIDE,
     });
@@ -278,10 +279,15 @@ describe('fudic new writes fudic.json', () => {
       kind: 'app',
       server: 'src/server',
       browser: 'src/browser',
+      baseline: 'widely',
       globalStyles: GUIDE_GLOBALS,
       guide: GUIDE,
     });
     expect(contents).not.toContain('prefix');
+  });
+
+  it('writes the Baseline it checks against, the default included, so it shows where to change it (SDD-83 criterion 35)', async () => {
+    expect(await written()).toContain('"baseline": "widely"');
   });
 
   it('refuses to write an id its own reader would reject', async () => {

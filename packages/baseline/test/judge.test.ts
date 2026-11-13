@@ -4,6 +4,7 @@ import {
   cssFunctionKeys,
   cssUnitKey,
   feature,
+  features,
   firstKnown,
   passes,
   status,
@@ -37,6 +38,13 @@ describe('status: what the data says of a key', () => {
   it('judges the key, not the feature: the popover attribute is older than popover', () => {
     expect(status('html.global_attributes.popover')?.newly).toBe('2024-04-16');
     expect(feature('popover')).toEqual({ kind: 'feature', id: 'popover', name: 'Popover' });
+  });
+
+  it('lists every feature, in id order, and no id that moved', () => {
+    const all = features();
+    expect(all).toContainEqual({ kind: 'feature', id: 'popover', name: 'Popover' });
+    expect(all.some((f) => f.id === 'masonry')).toBe(false);
+    expect(all.map((f) => f.id)).toEqual([...all.map((f) => f.id)].sort());
   });
 
   it('gives null and leaves out the browsers that lack a key not in Baseline', () => {

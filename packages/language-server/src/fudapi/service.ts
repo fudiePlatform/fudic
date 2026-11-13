@@ -16,6 +16,7 @@ import type { LanguageServicePlugin, SemanticToken } from '@volar/language-servi
 import { DiagnosticSeverity, type Diagnostic as LspDiagnostic } from 'vscode-languageserver-protocol';
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import { explainActions } from '../services/actions.js';
+import { codeCompletionList, codeHover, hashFileActions, nearbyCodes, type ConfigFile } from '../services/suppressions.js';
 import type { RequestKind, RequestStats } from '../stats.js';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
@@ -45,6 +46,8 @@ export interface FudapiServiceContext {
   readonly translations?: Translations;
   /** How the project of a file reports each code; absent, every code as it is. */
   readonly policyFor?: (path: string) => Policy | null;
+  /** The `fudic.json` the project of a file is declared in, where a code is turned off; absent, none is. */
+  readonly configFileFor?: (path: string) => ConfigFile | undefined;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -98,15 +101,16 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
     create(context) {
       const run = <T>(kind: RequestKind, token: CancellationToken, work: () => T): T | undefined =>
         stats.run<T | undefined>(kind, token, work, undefined);
+      /** What is shown about a `.fudapi`: under the project's policy and its own comments. */
+      const shown = (doc: ApiDocument) =>
+        governFile(doc.path, doc.text, generated.check(doc.path, doc.text, doc), deps.policyFor?.(doc.path) ?? null, { complete: true });
 
       return {
         provideDiagnostics(document, token) {
           return run('diagnostics', token, () => {
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
-            const found = generated.check(doc.path, doc.text, doc);
-            const policy = deps.policyFor?.(doc.path) ?? null;
-            return governFile(doc.path, doc.text, found, policy, { complete: true }).map((d) => toLsp(doc, d, host));
+            return shown(doc).map((d) => toLsp(doc, d, host));
           });
         },
 
@@ -118,7 +122,13 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const diagnostics = generated.check(doc.path, doc.text, doc);
             const start = document.offsetAt(range.start);
             const end = document.offsetAt(range.end);
-            return [...apiRepairs(doc, document.uri, diagnostics, start, end), ...explainActions(diagnostics, start, end)];
+            const config = deps.configFileFor?.(doc.path);
+            const file = { uri: document.uri, path: doc.path, text: doc.text, ...(config === undefined ? {} : { config }) };
+            return [
+              ...apiRepairs(doc, document.uri, diagnostics, start, end),
+              ...hashFileActions(file, shown(doc), start, end),
+              ...explainActions(diagnostics, start, end),
+            ];
           });
         },
 
@@ -137,7 +147,10 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
         provideCompletionItems(document, position, _completionContext, token) {
           return run('completion', token, () => {
             const doc = apiDocumentOf(context, document, host);
-            return doc === undefined ? undefined : apiCompletions(doc, document.offsetAt(position));
+            if (doc === undefined) return undefined;
+            const offset = document.offsetAt(position);
+            const codes = codeCompletionList(document, offset, (slot) => nearbyCodes(slot, doc.text, generated.check(doc.path, doc.text, doc)));
+            return codes ?? apiCompletions(doc, offset);
           });
         },
 
@@ -146,7 +159,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const offset = document.offsetAt(position);
-            return apiHover(doc, offset, host) ?? fileHover(doc, offset) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? ruleHover(doc, offset) ?? textHover(doc, offset, translations);
+            return codeHover(document, offset, deps.policyFor?.(doc.path) ?? null) ?? apiHover(doc, offset, host) ?? fileHover(doc, offset) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? ruleHover(doc, offset) ?? textHover(doc, offset, translations);
           });
         },
 

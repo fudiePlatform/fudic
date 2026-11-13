@@ -443,3 +443,11 @@ describe('the workbench contributions (SDD-32 criterion 23)', () => {
     expect(contributed).toEqual([...Object.values(COMMAND_IDS), 'fudic.runCriterion']);
   });
 });
+
+describe('the schema of fudic.json (SDD-83 §3.11)', () => {
+  it('registers the schema the build writes for every fudic.json, which travels in the .vsix', () => {
+    expect(at(manifest, 'contributes', 'jsonValidation')).toEqual([{ fileMatch: 'fudic.json', url: './dist/fudic.schema.json' }]);
+    expect(at(manifest, 'scripts', 'build')).toContain('node scripts/fudic-schema.mjs');
+    expect(readFileSync(fileURLToPath(new URL('../scripts/verify-vsix.mjs', import.meta.url)), 'utf8')).toContain("'dist/fudic.schema.json'");
+  });
+});

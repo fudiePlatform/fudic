@@ -227,6 +227,47 @@ A **style library** (`fudic_generate { kind: "lib", name: "tokens", stylesOnly: 
 single `tokens.css` and nothing else: design tokens every component of its users adopts. See
 `html-css`.
 
+## Diagnostics
+
+`fudic.json` decides how the project reports each code; `fudic_check` already answers with it
+applied, and a changed severity says so: «(warning by default; error in this project)».
+
+```jsonc
+"diagnostics": { "FUD1380": "off", "FUD1022": "error", "warnings": "error" }
+```
+
+- A code's level is `off`, `hint`, `info`, `warning` or `error`. A code beats `warnings`.
+- An error is never lowered nor silenced: that is `FUD1521`, and the error stays.
+- To silence one place, write a comment with its code AND its reason, in the comment the language
+  already has: `@* fud-disable-next-line FUD1380: why *@` in markup, `/* … */` in a `<style>`,
+  `// …` in `@code`, `# …` in a `.fudapi` or a `.fudspec`. `fud-disable FUDnnnn: why` is the whole
+  file. No code or no reason is `FUD1522`; a comment that silences nothing is `FUD1523`: remove it.
+- Silence only what you checked is right, and say why. Fix the code first.
+
+## Baseline
+
+fudic warns (`FUD1524`) when the HTML, CSS or TS of the project uses something of the browser newer
+than its Baseline: `"widely"` when `fudic.json` says nothing.
+
+```jsonc
+"baseline": "widely"                                // or "newly", or a year: 2024
+"baseline": { "target": "widely", "allow": ["popover"] }
+```
+
+What to do with a `FUD1524`, in this order:
+
+1. CSS: put it under `@supports` in a rule of its own, after a fallback that works without it:
+   `textarea { resize: none; } @supports (field-sizing: content) { textarea { field-sizing: content; } }`.
+   A selector: `@supports selector(:state(open)) { … }`.
+2. TS: test it before using it: `if ('showPopover' in el) el.showPopover();`, `el.showPopover?.()`,
+   `typeof URLPattern === 'function'`.
+3. When the project uses it knowingly, add its web-features id (the one in the message's
+   webstatus.dev link) to `allow`. Never lower the target to quiet it.
+
+What fudic itself emits never warns. `FUD1525` says the level is older than fudic needs: raise it.
+`FUD1526` is a library using features the app does not accept; `FUD1527` an id of `allow` that is
+not a feature or moved; `FUD1528` an id nothing uses.
+
 ## The guide topics
 
 Call `fudic_guide { topic }` before writing a kind of file for the first time.

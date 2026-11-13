@@ -7,6 +7,8 @@
   margin-block: var(--{{project}}-space-1);
 }
 
-:where(ul) > :where(li)::marker {
-  color: var(--{{project}}-muted);
+@supports selector(::marker) {
+  :where(ul) > :where(li)::marker {
+    color: var(--{{project}}-muted);
+  }
 }

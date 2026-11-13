@@ -34,6 +34,7 @@ import {
   ERROR_NAME,
   FIELDS_NAME,
   SUMMARY_NAME,
+  commentSyntaxAt,
   regionAt,
   span,
   type Diagnostic,
@@ -41,7 +42,7 @@ import {
   type Severity,
   type Span,
 } from '@fudic/compiler';
-import { docsUrl } from '@fudic/diagnostics';
+import { docsUrl, type SourceDiagnostic } from '@fudic/diagnostics';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -65,6 +66,19 @@ import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { apiHrefCompletions, hrefCompletions, relCompletions, type ApiFiles } from './href.js';
 import { codeActions } from './actions.js';
+import { baselineFeatureActions, supportsFixes } from './baseline-actions.js';
+import {
+  codeCompletionList,
+  codeHover,
+  CSS_COMMENT,
+  nearbyCodes,
+  RAZOR_COMMENT,
+  SCRIPT_COMMENT,
+  suppressionActions,
+  type CommentDelimiters,
+  type ShownDiagnostic,
+  type SilenceTarget,
+} from './suppressions.js';
 import {
   attributeValueBindingAt,
   brokenValueContextAt,
@@ -285,6 +299,46 @@ function overlaps(a: Range, b: Range): boolean {
   const after = b.end.line < a.start.line ||
     (b.end.line === a.start.line && b.end.character < a.start.character);
   return !before && !after;
+}
+
+/**
+ * The diagnostics of `diagnostics` that are about the file at `path`: a comment bulb writes in the
+ * file it was asked about, and one reported in another file is that file's to silence.
+ */
+export function ownDiagnostics(path: string, diagnostics: readonly SourceDiagnostic[]): SourceDiagnostic[] {
+  return diagnostics.filter((d) => d.file === undefined || d.file === path);
+}
+
+/** The code of a feature newer than the project's Baseline, whose bulbs are this service's. */
+const BASELINE_CODE = 'FUD1524';
+
+/** How a comment is written on a line of its own before `offset` of a `.fud`: the comment of the region it starts in. */
+function fudDelimiters(cached: CachedDocument, offset: number): CommentDelimiters {
+  const syntax = commentSyntaxAt(cached.source, cached.html, offset);
+  if (syntax.line !== undefined) return SCRIPT_COMMENT;
+  return syntax.block[0] === RAZOR_COMMENT.open ? RAZOR_COMMENT : CSS_COMMENT;
+}
+
+/** «Move to `@supports`» and «Wrap in `@supports selector(…)`» for a `FUD1524` inside a `<style>`. */
+function styleSupportsActions(cached: CachedDocument, document: TextDocument, diagnostic: ShownDiagnostic): CodeAction[] {
+  const region = regionAt(cached.source, cached.html, diagnostic.span.start);
+  if (region.kind !== 'css') return [];
+  const body = region.span.start;
+  const css = cached.source.slice(body, region.span.end);
+  const local = { start: diagnostic.span.start - body, end: diagnostic.span.end - body };
+  return supportsFixes(css, local).map((fix) => ({
+    title: fix.title,
+    kind: 'quickfix',
+    diagnostics: [],
+    edit: {
+      changes: {
+        [document.uri]: fix.edits.map((edit) => ({
+          range: rangeOf(document, span(edit.span.start + body, edit.span.end + body)),
+          newText: edit.newText,
+        })),
+      },
+    },
+  }));
 }
 
 /**
@@ -532,12 +586,67 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
     },
 
     create(context) {
+      /** Everything said about a `.fud` before its policy and its comments: what the build reports. */
+      const found = (cached: CachedDocument): readonly Diagnostic[] => {
+        // The names the root template chooses, against the nearest fudic.json. With no
+        // fudic.json governing the file there is nothing to check them against.
+        const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
+        // The typed pass over the program the editor already holds: the same function the
+        // build calls, so the same spans (SDD-61 §4.2).
+        const program = typeScriptService(context)?.getProgram();
+        // What the project asks of the browser, as the build reads it (SDD-83 §3.4).
+        const baseline = deps.configs?.baselineFor(cached.path);
+        return [
+          ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index, baseline)),
+          ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
+          ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
+          ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
+          ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
+        ];
+      };
+
+      /** What is shown about a `.fud`: under the project's policy and the file's own comments, as the build reports it. */
+      const shown = (cached: CachedDocument) =>
+        governFile(cached.path, cached.source, found(cached), deps.configs?.policyFor(cached.path) ?? null, {
+          parsed: cached,
+          complete: true,
+        });
+
+      /** The codes a `fud-disable` comment can name, when the cursor is writing one (SDD-83 §3.11). */
+      const suppressionCodes = (document: TextDocument, position: { line: number; character: number }): CompletionList | undefined => {
+        const cached = fudicDocumentOf(context, document);
+        if (cached === undefined) return undefined;
+        return codeCompletionList(document, document.offsetAt(position), (slot) => nearbyCodes(slot, cached.source, found(cached)));
+      };
+
+      /** Where the comment bulbs of a `.fud` write: the comment of each region, the fudic.json the file obeys. */
+      const silenceTarget = (cached: CachedDocument, document: TextDocument): SilenceTarget => {
+        const config = deps.configs?.configFileFor(cached.path);
+        return {
+          uri: document.uri,
+          path: cached.path,
+          text: cached.source,
+          lineDelimiters: (offset) => fudDelimiters(cached, offset),
+          fileDelimiters: RAZOR_COMMENT,
+          ...(config === undefined ? {} : { config }),
+        };
+      };
+
+      /** The bulbs of a `FUD1524`: its feature allowed, on webstatus.dev and, in a `<style>`, under `@supports`. */
+      const baselineActions = (cached: CachedDocument, document: TextDocument, here: readonly ShownDiagnostic[]): CodeAction[] => {
+        const config = deps.configs?.configFileFor(cached.path);
+        return here
+          .filter((d) => d.code === BASELINE_CODE)
+          .flatMap((d) => [...styleSupportsActions(cached, document, d), ...baselineFeatureActions(d, config)]);
+      };
+
       return {
         provideCompletionItems(document, position, completionContext, token) {
           return stats.run(
             'completion',
             token,
             () =>
+              suppressionCodes(document, position) ??
               completions(
                 context,
                 document,
@@ -674,26 +783,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const cached = fudicDocumentOf(context, document);
               if (cached === undefined) return undefined;
 
-              // The names the root template chooses, against the nearest fudic.json. With no
-              // fudic.json governing the file there is nothing to check them against.
-              const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
-              // The typed pass over the program the editor already holds: the same function the
-              // build calls, so the same spans (SDD-61 §4.2).
-              const program = typeScriptService(context)?.getProgram();
-              // What the project asks of the browser, as the build reads it (SDD-83 §3.4).
-              const baseline = deps.configs?.baselineFor(cached.path);
-              const found = [
-                ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index, baseline)),
-                ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
-                ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
-                ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
-                ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
-              ];
-              // Under the project's policy and the file's own comments, as the build reports it.
-              const policy = deps.configs?.policyFor(cached.path) ?? null;
-              return governFile(cached.path, cached.source, found, policy, { parsed: cached, complete: true }).map(
-                (diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)),
-              );
+              return shown(cached).map((diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)));
             },
             undefined,
           );
@@ -731,6 +821,10 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               if (cached === undefined) return undefined;
 
               const offset = document.offsetAt(position);
+
+              // A code written in a `fud-disable` comment: its title, and how this project reports it.
+              const code = codeHover(document, offset, deps.configs?.policyFor(cached.path) ?? null);
+              if (code !== undefined) return code;
 
               // The `control` attribute NAME, which no other voice can explain: it is not
               // HTML's, so the HTML service has never heard of it, and it is not a prop, so the
@@ -816,7 +910,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // the cache's.
               const typescript = typeScriptService(context);
               const pieces = deps.configs?.guidePiecesFor(cached.path) ?? [];
-              return codeActions({
+              const repairs = codeActions({
                 cached,
                 index,
                 document,
@@ -851,6 +945,10 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 // The guide's pieces, which its two repairs add and remove.
                 pieces,
               });
+              // The comments and Baseline (SDD-83 §3.11), over what is SHOWN here: a comment that
+              // silences nothing, a warning the project raised, a code the comment refuses.
+              const here = ownDiagnostics(cached.path, shown(cached)).filter((d) => overlaps(rangeOf(document, d.span), range));
+              return [...repairs, ...baselineActions(cached, document, here), ...suppressionActions(silenceTarget(cached, document), here)];
             },
             undefined,
           );

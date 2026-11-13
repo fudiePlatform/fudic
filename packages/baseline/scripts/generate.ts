@@ -136,7 +136,10 @@ for (const key of [...keyData.keys()].sort()) {
     supports.push(support);
   }
   const own = keyFeatures.get(key)!;
-  const newly = status.baseline === false ? null : status.baseline_low_date!;
+  // A date the data only bounds (`≤2018-10-02`: some browser's first version is not known) is
+  // written as the bound. The key reached every browser by then, which is all a level asks; kept
+  // with its `≤`, it compared as newer than every date and read as `NaN` 30 months on.
+  const newly = status.baseline === false ? null : status.baseline_low_date!.replace(/^≤/u, '');
   const row = JSON.stringify([own.length === 1 ? own[0] : own, newly, supportIndex.get(support)]);
   if (!statusIndex.has(row)) {
     statusIndex.set(row, statuses.length);

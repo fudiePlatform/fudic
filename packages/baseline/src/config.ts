@@ -6,6 +6,6 @@
 
 export { AS_OF, VERSION } from './data.generated.js';
 export { cutoff, describeTarget, FIRST_YEAR, lastYear, widelyOn, type Target } from './level.js';
-export { feature, type FeatureInfo, type Moved } from './features.js';
+export { feature, features, type FeatureInfo, type Moved } from './features.js';
 export { EMITTED, FLOOR, needsNewer, type EmittedFeature } from './emitted.js';
 export { browsersFor } from './browsers.js';

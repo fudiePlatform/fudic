@@ -113,6 +113,7 @@ describe('fudic new --workspace', () => {
       prefix: 'sh',
       server: 'src/server',
       browser: 'src/browser',
+      baseline: 'widely',
     });
   });
 

@@ -12,6 +12,7 @@ import {
   FUD1380,
   govern,
   LineMap,
+  reportedLevel,
   type FileDiagnostic,
   type FudCode,
   type Policy,
@@ -145,5 +146,16 @@ describe('govern: the four steps of §4.1', () => {
       'FUD1380',
       'FUD1522',
     ]);
+  });
+});
+
+describe('reportedLevel: how the project reports a code', () => {
+  it('the code entry, then `warnings` for a warning, then its own severity; an error stays one', () => {
+    const p = policy({ FUD1380: 'off', FUD0051: 'off' }, 'error');
+    expect(reportedLevel('FUD1380', 'warning', p)).toBe('off');
+    expect(reportedLevel('FUD1022', 'warning', p)).toBe('error');
+    expect(reportedLevel('FUD0480', 'info', p)).toBe('info');
+    expect(reportedLevel('FUD0051', 'error', p)).toBe('error');
+    expect(reportedLevel('FUD1022', 'warning', null)).toBe('warning');
   });
 });

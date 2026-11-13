@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 const REQUIRED = [
   ['the extension bundle', 'dist/extension.cjs'],
   ['the bundled server', 'dist/server.mjs'],
+  ['the schema of fudic.json', 'dist/fudic.schema.json'],
   ['the grammar', 'syntaxes/fudic.tmLanguage.json'],
   ['the language configuration', 'language-configuration.json'],
   ['the light icon', 'icons/fud-light.svg'],

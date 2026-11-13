@@ -55,15 +55,19 @@ const EMITTED_KEYS: ReadonlySet<string> = new Set(
   ),
 );
 
-/** How a core browser is named in a message: the mobile ones go by the desktop name. */
+/**
+ * How a core browser is named in a message. A mobile one goes by its own name: `resize` is in every
+ * desktop browser and missing on iOS and Android, and «missing Firefox, Safari» beside «Firefox 4,
+ * Safari 3» says two things at once.
+ */
 const BROWSER_NAMES: Readonly<Record<CoreBrowser, string>> = {
   chrome: 'Chrome',
-  chrome_android: 'Chrome',
+  chrome_android: 'Chrome on Android',
   edge: 'Edge',
   firefox: 'Firefox',
-  firefox_android: 'Firefox',
+  firefox_android: 'Firefox on Android',
   safari: 'Safari',
-  safari_ios: 'Safari',
+  safari_ios: 'Safari on iOS',
 };
 
 /** The browsers whose first version a message lists: the desktop ones. */
@@ -78,9 +82,7 @@ export function judgeUse(use: BaselineUse, context: BaselineContext): Diagnostic
     const version = found.support[browser];
     return version === undefined ? [] : [`${BROWSER_NAMES[browser]} ${version}`];
   });
-  const missing = [
-    ...new Set(CORE_BROWSERS.filter((browser) => found.support[browser] === undefined).map((b) => BROWSER_NAMES[b])),
-  ];
+  const missing = CORE_BROWSERS.filter((browser) => found.support[browser] === undefined).map((b) => BROWSER_NAMES[b]);
   return FUD1524({
     span: use.span,
     name: use.name,

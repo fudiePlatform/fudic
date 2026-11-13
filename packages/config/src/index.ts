@@ -44,3 +44,4 @@ export {
   type BaselineJudged,
   type BaselineRead,
 } from './baseline.js';
+export { projectConfigSchema } from './schema.js';
