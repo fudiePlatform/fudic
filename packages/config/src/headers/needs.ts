@@ -10,6 +10,7 @@
 
 import { FUD1545, FUD1548, FUD1556, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 import { directiveOf, NONCE_SOURCE, type CspDirective, type CspPolicy } from './csp.js';
+import { HEADERS_FILES } from './parse.js';
 
 /**
  * What one piece of fudic puts in a page or in the Service Worker, and what emits it, in words for
@@ -127,4 +128,38 @@ function judgePolicy(directive: CspDirective | undefined, name: string): Verdict
   const names = directive.sources.map((s) => s.text);
   if (names.includes(name)) return { ok: true, directive, by: name };
   return names.includes('*') ? { ok: true } : { ok: false, directive, source: name };
+}
+
+/** Where the build leaves what its output needs, for the editor (SDD-84 §3.4), from the app's root. */
+export const CSP_NEEDS_FILE = '.fudic/csp-needs.json';
+
+/** The kinds of need a piece declares without a name. */
+const LOADS: ReadonlySet<string> = new Set(['inline-script', 'inline-style', 'script', 'eval']);
+
+/**
+ * What `.fudic/csp-needs.json` says the output of `page.headers` and `sw.headers` needs, by kind.
+ * A file the build has not written yet, or one that does not read, says nothing: the editor keeps
+ * quiet rather than guess (§8.1, decision 24). Never throws.
+ */
+export function readCspNeeds(text: string | undefined): Partial<Record<'page' | 'sw', readonly CspNeed[]>> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text ?? 'null');
+  } catch {
+    return {};
+  }
+  if (typeof parsed !== 'object' || parsed === null) return {};
+  const out: Partial<Record<'page' | 'sw', readonly CspNeed[]>> = {};
+  for (const kind of ['page', 'sw'] as const) {
+    const list = (parsed as Record<string, unknown>)[HEADERS_FILES[kind]];
+    if (Array.isArray(list)) out[kind] = list.filter(isNeed);
+  }
+  return out;
+}
+
+function isNeed(value: unknown): value is CspNeed {
+  if (typeof value !== 'object' || value === null) return false;
+  const need = value as Record<string, unknown>;
+  if (typeof need['piece'] !== 'string') return false;
+  return need['loads'] === 'policy' ? typeof need['policy'] === 'string' : LOADS.has(String(need['loads']));
 }

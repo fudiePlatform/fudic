@@ -41,16 +41,21 @@ describe('buildClientLaunch', () => {
       '**/src/server/**',
       '**/src/browser/**',
       '**/src/pipes/**',
+      // The headers of an app (SDD-84 criterion 33): the Trusted Types a page requires, and what
+      // the build left about what its output needs.
+      '**/*.headers',
+      '**/.fudic/csp-needs.json',
     ]);
   });
 
-  it('selects file-scheme fudic, fudspec, fudapi and css documents and fudic.json only (SDD-52 criterion 26, SDD-60 §4.10, SDD-63 §3.5, SDD-81 criterion 34)', () => {
+  it('selects file-scheme fudic, fudspec, fudapi and css documents fudic.json and the .headers only (SDD-52 criterion 26, SDD-60 §4.10, SDD-63 §3.5, SDD-81 criterion 34, SDD-84 §3.8)', () => {
     expect(buildClientLaunch(settings, '/srv.js', '/lib').documentSelector).toEqual([
       { scheme: 'file', language: 'fudic' },
       { scheme: 'file', language: 'fudspec' },
       { scheme: 'file', language: 'fudapi' },
       { scheme: 'file', language: 'css' },
       { scheme: 'file', pattern: '**/fudic.json' },
+      { scheme: 'file', language: 'fudheaders' },
     ]);
   });
 

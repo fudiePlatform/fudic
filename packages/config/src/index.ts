@@ -57,14 +57,17 @@ export {
   type ReadHeadersOptions,
 } from './headers/read.js';
 export { KNOWN_HEADERS, FUDIC_HEADERS, FUDIC_PATHS, type KnownHeader } from './headers/known.js';
+export { CACHE_CONTROL_DIRECTIVES } from './headers/checks.js';
 export {
   CSP_DIRECTIVES,
   CSP_KEYWORDS,
+  cspOf,
   directiveOf,
   NONCE_SOURCE,
   parseCsp,
   PLACEHOLDERS,
+  SOURCE_LIST_DIRECTIVES,
   type CspDirective,
   type CspPolicy,
 } from './headers/csp.js';
-export { checkNeeds, type CspNeed, type NeedFinding } from './headers/needs.js';
+export { checkNeeds, CSP_NEEDS_FILE, readCspNeeds, type CspNeed, type NeedFinding } from './headers/needs.js';

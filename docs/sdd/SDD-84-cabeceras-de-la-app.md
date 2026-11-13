@@ -373,7 +373,8 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
   - `FUD1545`, `FUD1548` y `FUD1556` salen de `.fudic/csp-needs.json` (§3.4) y se recalculan cuando
     cambia ese fichero o el `.headers`.
 - **CLI**: `fudic new` y `fudic g app` escriben `page.headers` y `assets.headers`, y `sw.headers` salvo
-  con `--no-sw`. `fudic check` valida los tres.
+  con `--no-sw`. La CLI no tiene `fudic check` (SDD-35 lo retiró): la comprobación del proyecto es
+  `fudic_check` (§8.2.24).
 - **MCP**: `fudic_check` devuelve sus diagnósticos. La guía gana el tema `config` (§3.9).
 
 ### 3.9. La guía del MCP: los ficheros del proyecto
@@ -630,8 +631,8 @@ el ejemplo enseñe cómo se añade, y `assets.headers` un bloque para `/fonts/*`
 33. El language server da los diagnósticos de 4–13 y 16–17 en el editor con su span, y completa `script-`
     con las directivas de `script-src`. Tras un build, `FUD1545`, `FUD1548` y `FUD1556` salen también
     en el editor, desde `.fudic/csp-needs.json`.
-34. `fudic check` y `fudic_check` del MCP devuelven los mismos diagnósticos que el build para los tres
-    ficheros, salvo los que necesitan la salida (`FUD1545`, `FUD1548`, `FUD1551`–`FUD1553`, `FUD1556`).
+34. `fudic_check` del MCP devuelve los mismos diagnósticos que el build para los tres ficheros, salvo los
+    que necesitan la salida (`FUD1545`, `FUD1548`, `FUD1551`–`FUD1553`, `FUD1556`).
 35. El README de `@fudic/vite` trae el contrato de §4.4 y la función de sustitución en Node, Go, Java,
     Python, C# y Rust; la de Node es la que usa `@fudic/server`, y un test la compara con el pseudocódigo.
 36. `fudic_guide { topic: "config" }` devuelve el tema, y el test de §3.9 falla si se quita de
@@ -784,3 +785,27 @@ Nada.
     los sumideros de §4.6 `textContent`/`innerText` de un `<script>` y `parseHTMLUnsafe`. La exigencia se
     lee del `page.headers` del proyecto del fichero (su plantilla si no hay), nunca en una lib. En el
     editor `.fud` sale con el resto del detector en la fase 5 (tarea 15).
+24. **No hay `fudic check` en la CLI**: SDD-35 lo retiró, porque lo que el editor marca rompe el build.
+    La comprobación del proyecto es la de `@fudic/typecheck`, y los `.headers` entran en ella con
+    `createProjectChecker({ root, headers: true })`, que pide `fudic_check`. Dev y el build no la piden:
+    ya los dicen al leer los ficheros, y saldrían dos veces. Se informan como el build, sin el `FUD1523` de
+    un comentario que no silencia nada; el editor sí lo enseña, como en un `.fudapi`.
+25. **`CSP_NEEDS_FILE`, `readCspNeeds` y `cspOf` viven en `@fudic/config`**: el build escribe el fichero y el
+    editor lo lee con la misma definición. `readCspNeeds` nunca lanza; una necesidad con una forma que
+    ninguna pieza declara se descarta.
+26. **El completado** ofrece los nombres de la tabla (`Nombre: `), las directivas de CSP3, las fuentes de
+    cada directiva (`'nonce-{nonce}'` solo en `page.headers`; `'script'` en `require-trusted-types-for`,
+    `fudic` en `trusted-types`), los valores cerrados y las directivas de `Cache-Control`. Lee el texto
+    alrededor del cursor y no el parse: la línea que se escribe es la que todavía no parsea.
+27. **«Quitar la línea»** quita la cabecera que empieza en esa línea con sus continuaciones, o el bloque de
+    `assets.headers` cuya ruta está en ella con sus cabeceras; si no, esa línea sola. **«Cambiar por»**
+    propone el valor cerrado más parecido (distancia de edición hasta el 60 % del más largo) y cambia solo
+    el valor, no sus parámetros.
+28. **El lenguaje `fudheaders` reclama los tres nombres con `filenames`**, y el cliente vigila `**/*.headers`
+    y `**/.fudic/csp-needs.json`: un cambio refresca los `.headers` abiertos y los `.fud`, cuyo `FUD1555`
+    depende de `page.headers`. La activación no cambia: toda app tiene algún `.fud`.
+29. **Los campos de `sw.json` que ata el test de la guía** son `SW_CONFIG_FIELDS` y `RESOURCE_RULE_FIELDS` de
+    `@fudic/vite`, comprobados contra `SwConfigFile` en tiempo de compilación: un campo nuevo sin su nombre
+    no compila, y con su nombre y sin documentar falla el test.
+30. **La CLI escribe `/assets/**` tal cual**: el `vite.config.ts` que genera deja `build.assetsDir` en su
+    valor por defecto. El README de la app nueva nombra los tres ficheros.

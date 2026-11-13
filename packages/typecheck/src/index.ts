@@ -103,6 +103,7 @@ export {
   type CheckOptions,
   type ProjectChecker,
 } from './checker.js';
+export { headersDiagnostics } from './headers.js';
 export {
   compareProblems,
   hasErrors,

@@ -150,6 +150,8 @@ describe('activate', () => {
       '**/src/server/**',
       '**/src/browser/**',
       '**/src/pipes/**',
+      '**/*.headers',
+      '**/.fudic/csp-needs.json',
     ]);
   });
 

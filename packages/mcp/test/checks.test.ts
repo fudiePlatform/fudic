@@ -79,7 +79,7 @@ describe('Checks.run', () => {
     expect(await checks.fudic()).toBe(fudic);
     expect(load).toHaveBeenCalledOnce();
     expect(load).toHaveBeenCalledWith(dir!.root);
-    expect(fudic.createProjectChecker).toHaveBeenCalledExactlyOnceWith({ root: dir!.root });
+    expect(fudic.createProjectChecker).toHaveBeenCalledExactlyOnceWith({ root: dir!.root, headers: true });
   });
 
   it('writes .fudic/api before every check, as the build does', async () => {

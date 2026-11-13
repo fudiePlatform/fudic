@@ -37,6 +37,8 @@ export {
   type ConfigIo,
   parseTtl,
   readSwConfig,
+  RESOURCE_RULE_FIELDS,
+  SW_CONFIG_FIELDS,
 } from './swconfig.js';
 export { type PageAnalysis, analyzePage } from './analyze.js';
 export {

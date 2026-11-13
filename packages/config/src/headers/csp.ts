@@ -8,7 +8,7 @@
  */
 
 import { FUD1543, FUD1544, FUD1546, FUD1547, type FileDiagnostic, type Span } from '@fudic/diagnostics';
-import { partsOf, wordsOf, type Piece, type ValueCtx } from './segments.js';
+import { nameSpanOf, partsOf, segmentsOf, wordsOf, type HeaderEntry, type Piece, type ValueCtx } from './segments.js';
 
 /** The placeholders a value may hold; each is filled per response by whoever answers. */
 export const PLACEHOLDERS: readonly string[] = ['nonce'];
@@ -56,6 +56,9 @@ const SOURCE_LISTS: ReadonlySet<string> = new Set([
   'frame-ancestors',
 ]);
 
+/** The directives whose value is a source list, as the editor completes them. */
+export const SOURCE_LIST_DIRECTIVES: readonly string[] = [...SOURCE_LISTS];
+
 /** Every CSP3 directive a browser reads. */
 export const CSP_DIRECTIVES: readonly string[] = [
   ...SOURCE_LISTS,
@@ -95,6 +98,12 @@ export function parseCsp(ctx: Pick<ValueCtx, 'segments' | 'nameSpan'>): CspPolic
     return { name: name!.text.toLowerCase(), span: name!.span, sources };
   });
   return { directives, span: ctx.nameSpan };
+}
+
+/** The `Content-Security-Policy` among `entries`, as written in `text`; undefined when there is none. */
+export function cspOf(text: string, entries: readonly HeaderEntry[]): CspPolicy | undefined {
+  const entry = entries.find((e) => e.name.toLowerCase() === 'content-security-policy');
+  return entry === undefined ? undefined : parseCsp({ segments: segmentsOf(text, entry), nameSpan: nameSpanOf(entry) });
 }
 
 /** The first directive called `name`: a browser ignores a repeated one. */

@@ -42,6 +42,7 @@ import {
 } from './baseline-project.js';
 import { findLibraries } from '@fudic/resolve';
 import { governFile, projectPolicies } from './govern.js';
+import { headersDiagnostics } from './headers.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
@@ -69,6 +70,11 @@ export interface CheckOptions {
   readonly root: string;
   /** The TypeScript to check with. Defaults to the one this package ships (§7). */
   readonly typescript?: typeof ts;
+  /**
+   * Whether the three `.headers` of the app are checked too (SDD-84 §3.8): what `fudic_check` asks.
+   * Off by default, because `dev` already says them as they change, and the build as it reads them.
+   */
+  readonly headers?: boolean;
 }
 
 export interface ProjectChecker {
@@ -350,6 +356,12 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     for (const { file, source, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
       const said = governFile(file, source, diagnostics, policies.policyOf(file), { complete: true });
       problems.push(...fudicProblems(file, said, elsewhere));
+    }
+    // The `.headers` of the app, as the build reads them (SDD-84 §3.8).
+    if (options.headers === true) {
+      for (const said of headersDiagnostics(root, (path) => fs.readFile(path), policies)) {
+        problems.push(...fudicProblems(said.file!, [said], elsewhere));
+      }
     }
     // What the project as a whole says of its Baseline: its libraries, and an `allow` nothing uses.
     problems.push(...projectBaseline(state, site, config, own));

@@ -15,7 +15,7 @@ import { readGuide, type GuidePiece } from '@fudic/compiler';
 import { baselineContextOf, readProjectConfig, tagOf, type BaselineJudged, type ProjectConfig } from '@fudic/config';
 import type { Policy } from '@fudic/diagnostics';
 import { dependencyChain, owningPackage } from '@fudic/resolve';
-import { toPosix } from '@fudic/typecheck';
+import { requiresTrustedTypes, toPosix } from '@fudic/typecheck';
 import type { ConfigFile } from './services/suppressions.js';
 import type { FileSystemScanner } from './types.js';
 
@@ -109,6 +109,23 @@ export class ProjectConfigs {
   configFileFor(path: string): ConfigFile | undefined {
     const at = this.#nearest(toPosix(path));
     return at === null ? undefined : { path: `${at.root}/fudic.json`, text: at.text };
+  }
+
+  /**
+   * The project `path` belongs to: the folder of the NEAREST `fudic.json` above it and what it
+   * declares; `null` when no usable one governs the file.
+   */
+  projectFor(path: string): { readonly root: string; readonly config: ProjectConfig } | null {
+    const at = this.#nearest(toPosix(path));
+    return at === null ? null : { root: at.root, config: at.config };
+  }
+
+  /**
+   * Whether the pages of the project `path` belongs to require Trusted Types (SDD-84 §4.6): its
+   * `page.headers` as it is on disk now, or its template. Never for a library, nor with no project.
+   */
+  requiresTrustedTypesFor(path: string): boolean {
+    return requiresTrustedTypes(this.projectFor(path), (file) => this.#scanner.readFile(file));
   }
 
   /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */

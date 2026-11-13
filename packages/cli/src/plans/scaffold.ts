@@ -8,7 +8,7 @@
  * a copy rather than of the thing it copies.
  */
 
-import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
+import { CONFIG_FILE, HEADERS_FILES, HEADERS_TEMPLATES, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
 import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
 import { API_TYPES_DIR, BROWSER_DIR, COMPONENTS_DIR, DEFAULT_LOCALE, LAYOUTS_DIR, ROUTES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
@@ -206,6 +206,12 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     ...(opts.sw
       ? ([[joinPosix(site.dir, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const)
       : []),
+    // The headers of its pages, of its Service Worker and of its static files (SDD-84 §3.5): the
+    // text a missing file reads as, so what the app serves is in front of its author. The assets
+    // block is Vite's `assetsDir`, which the scaffolded config leaves at its default.
+    [joinPosix(site.dir, HEADERS_FILES.page), HEADERS_TEMPLATES.page],
+    ...(opts.sw ? ([[joinPosix(site.dir, HEADERS_FILES.sw), HEADERS_TEMPLATES.sw]] as const) : []),
+    [joinPosix(site.dir, HEADERS_FILES.assets), HEADERS_TEMPLATES.assets],
     ...(frame.own === null
       ? []
       : ([

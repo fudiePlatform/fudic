@@ -33,8 +33,9 @@ and which guide topics exist.
 | `.fixture.ts` | Named sets of props that the criteria mount the component with (`props base`). Typed against the component's `$Props`. |
 | `.test.ts` | Unit tests (Vitest, in-process DOM): every prop variant, edge values, event details, server functions and their failures. See `testing`. |
 | `.fudlog` | The history of one piece, next to its `.fud`: approvals, test and criteria runs with their result, `done`. It only grows. Written by the tools, never by hand. |
-| `fudic.json` | What a project declares about itself: `kind` (`app` or `lib`), `id`, tag `prefix`, `globalStyles`, `styles`, `locales`, and the `server` and `browser` folders. |
-| `sw.json` | What the Service Worker caches. Delete it for no Service Worker. |
+| `fudic.json` | What a project declares about itself. Every key, its default and an example: see `config`. |
+| `sw.json` | What the Service Worker caches. Delete it for no Service Worker. See `config`. |
+| `page.headers`, `sw.headers`, `assets.headers` | The headers of an app's pages (its CSP among them), of its Service Worker and of its static files. What is in them is what is sent. See `config`. |
 
 Generated files, never edited: `fudic-globals.d.ts`, `src/fudic-env.d.ts`, and everything under
 `.fudic/` (ignored by git; the types generated from each `.fudapi` live in `.fudic/api`).
@@ -63,6 +64,9 @@ app/
 ├── fudic.json            id, kind, prefix, server and browser folders
 ├── package.json          scripts: dev, build, preview, test, spec
 ├── sw.json               Service Worker cache policy
+├── page.headers          the headers of every page: CSP, HSTS, COOP…
+├── sw.headers            the headers of /fudic-sw.js
+├── assets.headers        the cache of the static files, by path
 ├── vite.config.ts        the fudic() plugin; nothing else to configure
 ├── vitest.config.ts      unit tests
 ├── tsconfig.json
@@ -283,4 +287,5 @@ Call `fudic_guide { topic }` before writing a kind of file for the first time.
 | `fudspec` | writing criteria and fixtures |
 | `testing` | writing a `.test.ts` |
 | `html-css` | writing markup or styles: the HTML subset, scoping, tokens |
+| `config` | changing `fudic.json`, `sw.json` or the `.headers` of an app |
 | `FUD0540` (any code) | fixing that diagnostic: what is wrong and how to fix it |

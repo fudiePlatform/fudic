@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 13 / 22 — `En curso`.
+> **Progreso:** 18 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -121,13 +121,13 @@
 
 ## Fase 5 — editor, CLI y MCP
 
-- [ ] **14. El lenguaje `fudheaders`.**
+- [x] **14. El lenguaje `fudheaders`.**
   - `filenames` de los tres ficheros, gramática TextMate, configuración de comentarios.
   - *Depende de:* —.
   - *Paquete:* `vscode`.
   - *Ficheros:* `package.json`, `syntaxes/fudheaders.tmLanguage.json`,
     `language-configuration.fudheaders.json`.
-- [ ] **15. El language server.**
+- [x] **15. El language server.**
   - Diagnósticos con `parseHeaders` y la política; `FUD1545`, `FUD1548` y `FUD1556` desde
     `.fudic/csp-needs.json`; completado, hover con MDN y bombillas (§3.8).
   - `FUD1555` en los `.fud` del editor, junto al detector de Baseline (`fudTrustedTypesDiagnostics`,
@@ -135,22 +135,23 @@
   - *Depende de:* 4, 14.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/headers/service.ts`, `src/headers/actions.ts`, `src/headers/docs.ts`.
-- [ ] **16. CLI.**
+- [x] **16. CLI.**
   - `fudic new` y `fudic g app` escriben los tres ficheros desde `HEADERS_TEMPLATES`, sin `sw.headers`
-    con `--no-sw`, con el `assetsDir` de la app; `fudic check` los valida.
+    con `--no-sw`, con el `assetsDir` de la app. No hay `fudic check` en la CLI: los valida `fudic_check`
+    (SDD §8.2.24).
   - *Depende de:* 4.
   - *Paquete:* `cli`.
-  - *Ficheros:* `src/plans/scaffold.ts`, `src/plans/check.ts`.
-- [ ] **17. MCP.**
-  - `fudic_check` con los tres ficheros.
+  - *Ficheros:* `src/plans/scaffold.ts`, `templates/README.md.tmpl`.
+- [x] **17. MCP.**
+  - `fudic_check` con los tres ficheros: `createProjectChecker({ headers: true })` (SDD §8.2.24).
   - El tema `config` en `guide/config.md` y `guide/es/config.md`; `TOPICS`; `overview.md` remite a él
     (§3.9).
   - El test que ata la guía al esquema de `fudic.json`, a `SwConfigFile` y a `HEADERS_FILES`.
   - *Depende de:* 4.
-  - *Paquete:* `mcp`.
-  - *Ficheros:* `src/guide.ts`, `src/check.ts`, `guide/config.md`, `guide/es/config.md`,
+  - *Paquetes:* `mcp`, `typecheck`.
+  - *Ficheros:* `src/guide.ts`, `src/checks.ts`, `typecheck/src/headers.ts`, `guide/config.md`, `guide/es/config.md`,
     `guide/overview.md`, `guide/es/overview.md`.
-- [ ] **18. Los tests del editor, la CLI y el MCP.** Criterios 2, 21, 33, 34 y 36.
+- [x] **18. Los tests del editor, la CLI y el MCP.** Criterios 2, 21, 33, 34 y 36.
   - *Depende de:* 15, 16, 17.
   - *Paquetes:* `language-server`, `vscode`, `cli`, `mcp`.
 

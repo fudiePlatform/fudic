@@ -39,6 +39,10 @@ export const FILE_EVENTS: readonly string[] = [
   '**/src/browser/**',
   // And a pipe's implementation, beside its contract in the folder of pipes.
   '**/src/pipes/**',
+  // The headers of an app (SDD-84 §3.8): whether its pages require Trusted Types, and what an
+  // open `.headers` says once the build left what its output needs.
+  '**/*.headers',
+  '**/.fudic/csp-needs.json',
 ];
 
 export const buildClientLaunch = (
@@ -61,6 +65,8 @@ export const buildClientLaunch = (
     // And the `fudic.json` of a project, for what the build says about it (SDD-81). By name:
     // any other JSON is none of this server's business.
     { scheme: 'file', pattern: '**/fudic.json' },
+    // And the three `.headers` of an app (SDD-84 §3.8).
+    { scheme: 'file', language: 'fudheaders' },
   ],
   fileEvents: FILE_EVENTS,
   initializationOptions: {

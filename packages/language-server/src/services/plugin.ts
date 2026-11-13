@@ -50,6 +50,7 @@ import type { CachedDocument } from '../document-cache.js';
 import {
   fudBaselineDiagnostics,
   fudicDiagnostics,
+  fudTrustedTypesDiagnostics,
   governFile,
   portableTypeDiagnostics,
   ROOT_CODE_ID,
@@ -600,6 +601,8 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
           ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index, baseline)),
           ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
           ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
+          // A string handed to a sink Trusted Types guards, when the project's pages require them (SDD-84 §4.6).
+          ...(program !== undefined && deps.configs?.requiresTrustedTypesFor(cached.path) === true ? fudTrustedTypesDiagnostics(program, cached) : []),
           ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
           ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
         ];

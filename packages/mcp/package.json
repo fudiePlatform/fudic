@@ -61,6 +61,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@fudic/config": "workspace:*",
     "@fudic/core": "workspace:*",
     "@fudic/di": "workspace:*",
     "@fudic/dom": "workspace:*",

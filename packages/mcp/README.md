@@ -82,7 +82,7 @@ it runs are those of a fudic plan (`pnpm install` after `fudic_new` or `fudic_ad
 | Tool | What it does |
 |---|---|
 | `fudic_status` | Where the project is and the one next step. The first call, always |
-| `fudic_guide` | A topic of the guide (`overview`, `components`, `pages`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow`) or a diagnostic code explained |
+| `fudic_guide` | A topic of the guide (`overview`, `components`, `pages`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow`, `config`) or a diagnostic code explained |
 | `fudic_new` | Creates the app, or a workspace, in the server's folder |
 | `fudic_generate` | `fudic g <kind>`: component, page, layout, spec, api, lib… |
 | `fudic_add` | `fudic add`: di, forms, http, i18n or a library of the workspace |

@@ -88,6 +88,19 @@
           "light": "./icons/fudapi-light.svg",
           "dark": "./icons/fudapi-dark.svg"
         }
+      },
+      {
+        "id": "fudheaders",
+        "aliases": [
+          "Fudic headers",
+          "fudheaders"
+        ],
+        "filenames": [
+          "page.headers",
+          "sw.headers",
+          "assets.headers"
+        ],
+        "configuration": "./language-configuration.fudheaders.json"
       }
     ],
     "grammars": [
@@ -110,6 +123,11 @@
         "language": "fudapi",
         "scopeName": "source.fudapi",
         "path": "./syntaxes/fudapi.tmLanguage.json"
+      },
+      {
+        "language": "fudheaders",
+        "scopeName": "source.fudheaders",
+        "path": "./syntaxes/fudheaders.tmLanguage.json"
       }
     ],
     "commands": [
@@ -352,6 +370,12 @@
         "editor.detectIndentation": false,
         "editor.defaultFormatter": "fudic.fudic-vscode",
         "editor.formatOnSave": true,
+        "editor.wordBasedSuggestions": "off"
+      },
+      "[fudheaders]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
         "editor.wordBasedSuggestions": "off"
       }
     }

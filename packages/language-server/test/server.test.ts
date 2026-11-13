@@ -338,6 +338,22 @@ describe('watched files', () => {
     expect(refreshes).toEqual([false]);
   });
 
+  it('a .headers or the needs the build left asks for a refresh once per batch (SDD-84 §3.8)', () => {
+    const { fake, volar } = setup();
+    const refreshes: boolean[] = [];
+    volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
+    fake.onInitialize?.(params());
+
+    fake.onDidChangeWatchedFiles?.({
+      changes: [
+        { uri: URI.file('/p/page.headers').toString(), type: 2 },
+        { uri: URI.file('/p/.fudic/csp-needs.json').toString(), type: 1 },
+      ],
+    });
+
+    expect(refreshes).toEqual([false]);
+  });
+
   it('leaves the .fudspec catalogs alone for a change that cannot affect them', () => {
     const { fake, server, volar } = setup();
     const refreshes: boolean[] = [];

@@ -39,6 +39,9 @@ const CACHE_DIRECTIVES: ReadonlyMap<string, 'number' | 'fields' | 'flag'> = new 
   ['immutable', 'flag'],
 ]);
 
+/** The response directives of `Cache-Control`, as the editor completes them. */
+export const CACHE_CONTROL_DIRECTIVES: readonly string[] = [...CACHE_DIRECTIVES.keys()];
+
 /** A value that is one of `values`, maybe with parameters after `;` (`same-origin; report-to="x"`). */
 export function oneOf(values: readonly string[]): (ctx: ValueCtx) => readonly FileDiagnostic[] {
   return (ctx) => {

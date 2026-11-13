@@ -22,7 +22,7 @@ import {
 import type { LanguageServicePlugin } from '@volar/language-service';
 import type { SpecFs } from '@fudic/spec';
 import { commentSyntaxOf } from '@fudic/compiler';
-import { CONFIG_FILE } from '@fudic/config';
+import { CONFIG_FILE, CSP_NEEDS_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { silenceLibraryFiles } from './services/read-only.js';
 import { quietAfterShutdown } from './services/shutdown.js';
@@ -42,6 +42,7 @@ import { definitionsWithoutPreview } from './services/no-preview.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
 import { createConfigFileService } from './services/config-file.js';
+import { createHeadersService } from './headers/service.js';
 import { mountApiTypes } from './fudapi/types-mount.js';
 import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
 import { SpecHost } from './fudspec/host.js';
@@ -279,6 +280,14 @@ export function createFudicServer(
         policyFor: (path) => configs.policyFor(path),
         configFileFor: (path) => configs.configFileFor(path),
       }),
+      // The three `.headers` of an app: what the build says of them, and what its output needs (SDD-84).
+      createHeadersService({
+        stats,
+        readFile: (path) => deps.fileSystem.readFile(path),
+        projectFor: (path) => configs.projectFor(path),
+        policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
+      }),
       // A `fudic.json`: what the build says about it, while it is written (SDD-81).
       createConfigFileService({
         stats,
@@ -303,6 +312,7 @@ export function createFudicServer(
           index,
           (path) => configs.policyFor(path),
           (path) => configs.baselineFor(path),
+          (path) => configs.requiresTrustedTypesFor(path),
         ),
       );
       project = deps.createTypeScriptProject(
@@ -377,7 +387,8 @@ export function createFudicServer(
     let criteria = false;
     // And whether an open `.fudapi` may: another contract, or a dependency of its project.
     let contracts = false;
-    // And whether every open file may: a `fudic.json` changed how its project reports each code.
+    // And whether every open file may: a `fudic.json` changed how its project reports each code, or
+    // a `.headers` what its project requires.
     let policy = false;
     // The projects whose `.fudapi` changed on disk: saved, created or deleted. Their types follow.
     const generated = new Set<string>();
@@ -406,6 +417,9 @@ export function createFudicServer(
       tokens.invalidate(path);
       // A sheet may be a style guide or one of its pieces: what a component may adopt follows.
       if (path.endsWith('.css')) configs.sheetChanged();
+      // A `.headers`, or what the build left of its output's needs: what an open `.headers` says, and
+      // whether a `.fud` of the app is held to Trusted Types (SDD-84 §3.8, §4.6).
+      if (path.endsWith('.headers') || path.endsWith(`/${CSP_NEEDS_FILE}`)) policy = true;
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
         policy = true;

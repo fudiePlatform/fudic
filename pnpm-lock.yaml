@@ -769,6 +769,9 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
       '@fudic/core':
         specifier: workspace:*
         version: link:../core

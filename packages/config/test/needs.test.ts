@@ -6,12 +6,17 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  CACHE_CONTROL_DIRECTIVES,
   checkNeeds,
+  CSP_NEEDS_FILE,
+  cspOf as cspAmong,
   HEADERS_TEMPLATES,
   nameSpanOf,
   parseCsp,
   parseHeaders,
+  readCspNeeds,
   segmentsOf,
+  SOURCE_LIST_DIRECTIVES,
   type CspNeed,
   type CspPolicy,
 } from '../src/index.js';
@@ -123,5 +128,53 @@ describe('FUD1556: tomorrow, without touching code (criterion 14)', () => {
     const text = csp("script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'");
     expect(findings('page', text, [polyfill])).toEqual(["FUD1556 remove style-src 'nonce-{nonce}' @'nonce-{nonce}'"]);
     expect(findings('page', csp("script-src 'self' 'nonce-{nonce}'"), [main])).toEqual(["FUD1556 remove script-src 'nonce-{nonce}' @'nonce-{nonce}'"]);
+  });
+});
+
+describe('readCspNeeds (SDD-84 §3.4): what the build left for the editor', () => {
+  it('the needs of each file, the ones of a shape no piece declares dropped', () => {
+    const text = JSON.stringify({
+      'page.headers': [
+        { loads: 'inline-script', piece: 'the style polyfill' },
+        { loads: 'policy', policy: 'fudic', piece: 'the policy' },
+        { loads: 'policy', piece: 'no name' },
+        { loads: 'x', piece: 'p' },
+        { loads: 'eval' },
+        null,
+        'eval',
+      ],
+      'sw.headers': [{ loads: 'eval', piece: 'the linker' }],
+    });
+    expect(readCspNeeds(text)).toEqual({
+      page: [
+        { loads: 'inline-script', piece: 'the style polyfill' },
+        { loads: 'policy', policy: 'fudic', piece: 'the policy' },
+      ],
+      sw: [{ loads: 'eval', piece: 'the linker' }],
+    });
+    expect(CSP_NEEDS_FILE).toBe('.fudic/csp-needs.json');
+  });
+
+  it('nothing from a file that is not there, does not read, or is no object', () => {
+    expect(readCspNeeds(undefined)).toEqual({});
+    expect(readCspNeeds('{ nope')).toEqual({});
+    expect(readCspNeeds('[1]')).toEqual({});
+    expect(readCspNeeds('7')).toEqual({});
+    expect(readCspNeeds('{"page.headers": 1}')).toEqual({});
+  });
+});
+
+describe('cspOf', () => {
+  it('the CSP among the entries, as written; undefined without one', () => {
+    const text = "X-A: 1\ncontent-security-policy:\n  script-src 'self'\n";
+    const { entries } = parseHeaders('page', text);
+    expect(cspAmong(text, entries)!.directives.map((d) => [d.name, d.sources.map((s) => s.text)])).toEqual([['script-src', ["'self'"]]]);
+    expect(cspAmong('X-A: 1\n', parseHeaders('page', 'X-A: 1\n').entries)).toBeUndefined();
+  });
+
+  it('the lists the editor completes from', () => {
+    expect(SOURCE_LIST_DIRECTIVES).toContain('script-src');
+    expect(SOURCE_LIST_DIRECTIVES).not.toContain('sandbox');
+    expect(CACHE_CONTROL_DIRECTIVES).toEqual(expect.arrayContaining(['max-age', 'immutable', 'no-cache']));
   });
 });

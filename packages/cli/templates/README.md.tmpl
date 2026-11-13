@@ -18,6 +18,7 @@ files, served as HTML with Declarative Shadow DOM.
 {{guide}}
 - `fudic.json`: its id, and the tag prefix of its components (`{{prefix}}-`).
 - `sw.json`: what the Service Worker caches; delete it for no Service Worker.
+- `page.headers`, `sw.headers` and `assets.headers`: the headers of its pages (the CSP among them), of its Service Worker and of its static files. What is in them is what is sent.
 - `vite.config.ts`: the dev server and the build. `vitest.config.ts`: the unit tests.
 
 Components go to `{{componentsDir}}/`, one folder each, when you generate them.

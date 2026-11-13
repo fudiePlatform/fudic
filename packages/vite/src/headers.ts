@@ -9,11 +9,10 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
   checkNeeds,
+  CSP_NEEDS_FILE,
+  cspOf,
   HEADERS_FILES,
   HEADERS_TEMPLATES,
-  nameSpanOf,
-  parseCsp,
-  segmentsOf,
   type AssetRule,
   type CspNeed,
   type CspPolicy,
@@ -24,8 +23,7 @@ import {
 import { FUD1551, FUD1552, FUD1553, type FileDiagnostic } from '@fudic/diagnostics';
 import { assetDecisionsFor, globMatches, orderAssetRules, type ManifestHeaders } from '@fudic/transport';
 
-/** Where the build leaves what it emitted needs, for the editor (SDD-84 §3.4). */
-export const CSP_NEEDS_FILE = '.fudic/csp-needs.json';
+export { CSP_NEEDS_FILE };
 
 const CSP = 'content-security-policy';
 const HSTS = 'strict-transport-security';
@@ -60,10 +58,7 @@ export function pageCspOf(headers: ManifestHeaders): string | undefined {
 
 /** The CSP of `kind` as a browser reads it, positioned in its file (or its template), or undefined. */
 export function policyOf(read: HeadersRead, kind: 'page' | 'sw'): CspPolicy | undefined {
-  const entry = read.config[kind].find((e) => e.name.toLowerCase() === CSP);
-  if (entry === undefined) return undefined;
-  const text = read.sources[kind]?.text ?? HEADERS_TEMPLATES[kind];
-  return parseCsp({ segments: segmentsOf(text, entry), nameSpan: nameSpanOf(entry) });
+  return cspOf(read.sources[kind]?.text ?? HEADERS_TEMPLATES[kind], read.config[kind]);
 }
 
 /** What the output of the pages and of the Service Worker needs from each policy. */
