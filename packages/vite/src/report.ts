@@ -170,7 +170,10 @@ export class BuildReporter {
         out.push(...group.filter((d) => d.severity === 'error'));
         continue;
       }
-      out.push(...governFile(file, read(file) ?? '', group, project?.config?.diagnostics ?? null));
+      // Each one located at the file's whole path: a diagnostic of a file read relative to the
+      // root (`page.headers`) is that file's, and its own `fud-disable` comments govern it.
+      const located = group.map((d) => ({ ...d, file }));
+      out.push(...governFile(file, read(file) ?? '', located, project?.config?.diagnostics ?? null));
     }
     return out;
   }

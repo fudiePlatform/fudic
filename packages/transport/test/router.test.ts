@@ -9,8 +9,8 @@ import { compileManifest, type ManifestFile } from '../src/manifest.js';
 import { createLinker } from '../src/linker.js';
 import { createStore, type Store } from '../src/store.js';
 import { createRouter, type Router, type RouterStores } from '../src/router.js';
-import { DEFAULT_CSP, NONCE_TOKEN } from '../src/csp.js';
-import { countingCache, fakeCache, fetchEvent, framedData, readAll } from './helpers.js';
+import { NONCE_TOKEN } from '../src/csp.js';
+import { countingCache, fakeCache, fetchEvent, framedData, readAll, HEADERS } from './helpers.js';
 
 const ORIGIN = 'https://app.test/';
 
@@ -34,7 +34,7 @@ exports.render = function (ctx) {
 const FILE: ManifestFile = {
   build: 'b1',
   base: '/',
-  csp: DEFAULT_CSP,
+  headers: HEADERS,
   routes: [
     // Prerendered at build time. For the Service Worker that is a fact about the BUILD:
     // at runtime it renders like any other route (BUG-02 §3.2).
@@ -272,6 +272,42 @@ describe('createRouter.handle — the synchronous decision', () => {
     expect(html).not.toContain(NONCE_TOKEN);
     expect(html).toContain('nonce="nonce2"');
     expect(response.headers.get('content-security-policy')).toContain("'nonce-nonce2'");
+  });
+
+  it('SDD-84 criterion 23: a page it paints carries page.headers but HSTS', async () => {
+    const h = harness();
+    const r = router(h);
+    await r.warm('/blog/x');
+    const event = fetchEvent(`${ORIGIN}blog/x`);
+    r.handle(event);
+    const response = await event.responded!;
+    expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+    expect(response.headers.get('cross-origin-opener-policy')).toBe('same-origin');
+    expect(response.headers.get('strict-transport-security')).toBeNull();
+  });
+
+  it('SDD-84 criterion 15: without {nonce} in page.headers no nonce is made nor written', async () => {
+    const h = harness();
+    const nonce = vi.fn(() => 'never');
+    const headers = { ...HEADERS, page: { 'Content-Security-Policy': "script-src 'self' 'unsafe-inline'" } };
+    const routes = FILE.routes.map((route) =>
+      route.pattern === '/blog/:slug' ? { ...route, page: { cache: 'persist' as const, ttl: null } } : route,
+    );
+    const r = router(h, { nonce, table: compileManifest({ ...FILE, headers, routes }) });
+    await r.warm('/blog/x');
+    for (let i = 0; i < 2; i += 1) {
+      // The first one renders and persists; the second is served from the page cache.
+      const event = fetchEvent(`${ORIGIN}blog/x`);
+      r.handle(event);
+      const response = await event.responded!;
+      expect(response.headers.get('content-security-policy')).toBe("script-src 'self' 'unsafe-inline'");
+      const html = await readAll(response.body!);
+      expect(html).toContain('<p nonce="">');
+      expect(html).not.toContain(NONCE_TOKEN);
+      await settle();
+    }
+    expect(await h.stores.pages.keys()).toEqual([`${ORIGIN}blog/x`]);
+    expect(nonce).not.toHaveBeenCalled();
   });
 
   it('persists the render only when the route asks for it, under the NAVIGATION url', async () => {

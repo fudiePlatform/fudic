@@ -32,6 +32,11 @@ describe('commentsOf: each file in its own language', () => {
     }
   });
 
+  it('a .headers file: its # lines (SDD-84 §3.2), so a fud-disable silences in the build too', () => {
+    const text = 'Content-Security-Policy:\n  # fud-disable-next-line FUD1547: video CDN\n  script-src https:\n';
+    expect(commentsOf('/p/page.headers', text).map((c) => c.text)).toEqual(['# fud-disable-next-line FUD1547: video CDN']);
+  });
+
   it('anything else has none', () => {
     expect(commentsOf('/p/fudic.json', '{"a": "/* no */"}')).toEqual([]);
   });

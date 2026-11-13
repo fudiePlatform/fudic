@@ -731,3 +731,29 @@ Nada.
    sangría de la primera cabecera de un bloque marca el nivel; más sangrado es continuación.
 8. **Sin CSP en `page.headers` no hay `FUD1547` ni necesidades que comprobar**: quien la borra lo ha
    decidido, y el navegador deja pasar todo.
+9. **`FUD1551` solo en un fichero con hash que declara `sw.json`** (su `shell` o un recurso `cache-first`).
+   Uno sin hash tiene que revalidarse: `no-cache` es lo correcto para él, y si avisara, la plantilla
+   (`/**` con `no-cache`) avisaría en cualquier app con SW. Los chunks que fudic mete en el shell por su
+   cuenta tampoco cuentan: son cosa suya.
+10. **Un fichero «con hash»** es uno del bundle cuyo nombre acaba en `-` y ocho caracteres base64url (el
+    `[hash]` de Vite, el id de build de fudic y las copias enlazadas). Lo de `public/` nunca lo lleva.
+11. **`.fudic/csp-needs.json` guarda las necesidades tal como las declara cada pieza** (`loads`, `piece`),
+    por fichero `.headers`, no la fuente que piden: el editor llama a `checkNeeds` con el texto que tiene
+    delante, que es lo que decide la fuente (decisión 4).
+12. **`ServerApp.files`** (`{ manifest, worker? }`) dice al servidor cuáles son los ficheros propios de
+    fudic: les da sus cabeceras pase lo que pase en `assets.headers`, y `fetch` nunca los toma por una
+    ruta. `staticHeaders` devuelve también los valores `''`: son cabeceras que no deben salir, y
+    `nodeMiddleware` necesita saberlo para quitar la del servidor de estáticos.
+13. **`nodeMiddleware` pregunta primero a `fetch`** y pone las cabeceras de estático solo a lo que no
+    contesta. Antes iba al revés, porque solo había dos rutas; con `/**` casaría cualquier página.
+14. **Sin `Referrer-Policy` en `page.headers` no sale ninguna**, también en el `103`: lo que hay en el
+    fichero es lo que sale. Desaparece `PAGE_REFERRER_POLICY`.
+15. **Sin CSP en `page.headers`, la que escriba `load` se queda**: no hay nada que gane sobre ella. En
+    dev no sale ninguna, tampoco la de `load`: el cliente de Vite no lleva nonce.
+16. **Las necesidades de las páginas viajan en `EmitOutput.needs`** desde la fase 3, vacías hasta que el
+    emit las registre (tarea 11). La parte de extremo a extremo del criterio 10 con el polyfill (que el
+    build nombre el polyfill) se prueba en la fase 4; en la 3, `checkEmitted` con las necesidades de la
+    pieza y `FUD0803` en un build real.
+17. **Un `fud-disable` en un `.headers` silencia también en el build.** El informe comparaba la ruta
+    relativa del diagnóstico (`page.headers`) con la absoluta del fichero y nunca casaban: ahora cada
+    diagnóstico se sitúa en la ruta entera de su fichero antes de aplicar sus comentarios.

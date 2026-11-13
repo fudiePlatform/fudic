@@ -268,6 +268,7 @@ export function emitLayoutModuleMapped(
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
   };
 }
@@ -600,6 +601,7 @@ export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
     ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };

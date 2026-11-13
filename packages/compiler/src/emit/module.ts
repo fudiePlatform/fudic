@@ -29,6 +29,7 @@ import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { FlatSheet, StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
+import type { CspNeed } from '@fudic/config';
 import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
@@ -239,6 +240,11 @@ export interface EmitOutput {
    * the build knows — the runtime the page loads — and writes them into the route manifest.
    */
   readonly hints?: readonly EarlyHint[];
+  /**
+   * What this module puts in a page that a Content-Security-Policy has to let in (SDD-84 §3.4),
+   * declared by the code that writes it. The build compares them with `page.headers`.
+   */
+  readonly needs: readonly CspNeed[];
 }
 
 /** The component's single `<style>` element, if it wrote one (decision 62). */
@@ -631,6 +637,7 @@ export function emitComponentModuleMapped(
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
   };
 }
@@ -843,6 +850,7 @@ export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
     ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };

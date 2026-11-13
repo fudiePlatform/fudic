@@ -120,11 +120,13 @@ describe('the published manifest', () => {
     // they are the server's, not the worker's (SDD-70 §3.10): the budget is measured without them.
     const parsed = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {
       routes: Record<string, unknown>[];
+      headers?: unknown;
     };
     for (const route of parsed.routes) delete route['hints'];
+    // The app's headers (SDD-84) are the app's to size, and do not grow with the route count.
+    delete parsed.headers;
     const bytes = Buffer.byteLength(JSON.stringify(parsed), 'utf8');
-    // The CSP templates alone are ~250 B and do not grow with the route count, so the
-    // budget is about what a ROUTE costs: names, not URLs.
-    expect(bytes).toBeLessThanOrEqual(500);
+    // The budget is about what a ROUTE costs: names, not URLs.
+    expect(bytes).toBeLessThanOrEqual(250);
   });
 });

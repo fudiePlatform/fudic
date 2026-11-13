@@ -158,12 +158,6 @@ export function pageOriginOf(request: Request, base: string, fromCall: boolean):
   return back === undefined ? { path } : { path, back };
 }
 
-/**
- * The `Referrer-Policy` of a page (SDD-73 §3.6): the whole `Referer` within the origin and only
- * the origin outside it. Stated so a stricter default of a server does not leave `back` empty.
- */
-export const PAGE_REFERRER_POLICY = 'strict-origin-when-cross-origin';
-
 const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
 
 /** Text as HTML text: what the minimal page writes. */

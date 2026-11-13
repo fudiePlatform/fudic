@@ -728,6 +728,7 @@ export function emitComponentClientModuleMapped(
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
   };
 }

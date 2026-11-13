@@ -24,8 +24,8 @@ async function load(input: Partial<ServerModuleInput>, chunks: Record<string, st
   const text = emitServerModule({
     base: '/app/',
     locales: [],
-    csp: "script-src 'nonce-{nonce}'",
-    statics: { '/sw.js': { 'cache-control': 'no-cache' } },
+    headers: { page: { 'Content-Security-Policy': "script-src 'nonce-{nonce}'" }, sw: { 'Content-Security-Policy': "script-src 'self' 'unsafe-eval'" }, assets: [] },
+    files: { manifest: '/fudic-routes.json', worker: '/fudic-sw.js' },
     routes: [],
     errorPages: [],
     errorHints: [],
@@ -40,13 +40,13 @@ const page = (name: string): string => `export const name = ${JSON.stringify(nam
 const none = { prerendered: async () => null };
 
 describe('server.mjs', () => {
-  it('carries the app: base, locales, CSP, statics, and fudic.json’s serve as config', async () => {
+  it('carries the app: base, locales, headers, its own files, and fudic.json’s serve as config', async () => {
     const { mod } = await load({ config: { trustProxy: true, uploads: { maxFiles: 3 } } });
     const app = mod.createApp(none);
     expect(app.base).toBe('/app/');
     expect(app.locales).toEqual([]);
-    expect(app.csp).toBe("script-src 'nonce-{nonce}'");
-    expect(app.statics).toEqual({ '/sw.js': { 'cache-control': 'no-cache' } });
+    expect(app.headers.page).toEqual({ 'Content-Security-Policy': "script-src 'nonce-{nonce}'" });
+    expect(app.files).toEqual({ manifest: '/fudic-routes.json', worker: '/fudic-sw.js' });
     expect(mod.config).toEqual({ trustProxy: true, uploads: { maxFiles: 3 } });
   });
 

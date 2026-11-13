@@ -4,7 +4,9 @@
  * `BroadcastChannel`; what Node has no equivalent of is the Cache API and the
  * `FetchEvent`, so those two are faked here — insertion-ordered, like the real one.
  */
-import { DATA_FRAMES_TYPE } from '@fudic/conventions';import { writeFrames } from '@fudic/http/wire/frames';
+import { DATA_FRAMES_TYPE } from '@fudic/conventions';
+import { writeFrames } from '@fudic/http/wire/frames';
+import type { ManifestHeaders } from '../src/headers.js';
 
 /** Drain a byte stream and decode it as UTF-8 text. */
 export async function readAll(stream: ReadableStream<Uint8Array>): Promise<string> {
@@ -196,3 +198,19 @@ export function framedData(json: string, status = 200, headers: Record<string, s
   const { data, layout } = JSON.parse(json) as { data: Record<string, unknown>; layout?: unknown };
   return new Response(writeFrames({}, data, layout), { headers: { 'content-type': DATA_FRAMES_TYPE, ...headers } });
 }
+
+/** The headers of the templates of `@fudic/config` (SDD-84 §3.5), as the manifest carries them. */
+export const HEADERS: ManifestHeaders = {
+  page: {
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'nonce-{nonce}' 'strict-dynamic' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  },
+  sw: { 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'" },
+  assets: [
+    { pattern: '/assets/**', headers: { 'Cache-Control': 'public, max-age=31536000, immutable' } },
+    { pattern: '/**', headers: { 'Cache-Control': 'no-cache' } },
+  ],
+};

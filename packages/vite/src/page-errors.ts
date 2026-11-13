@@ -9,7 +9,6 @@ export {
   classifyError,
   ERROR_PATTERN,
   minimalErrorPage,
-  PAGE_REFERRER_POLICY,
   pageOriginOf,
   problemOfStatus,
   renderErrorPage,

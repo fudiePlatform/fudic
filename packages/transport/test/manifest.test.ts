@@ -8,13 +8,12 @@ import {
   loadManifest,
   type ManifestFile,
 } from '../src/manifest.js';
-import { DEFAULT_CSP } from '../src/csp.js';
-import { fakeCache, varyingCache } from './helpers.js';
+import { fakeCache, varyingCache, HEADERS } from './helpers.js';
 
 const FILE: ManifestFile = {
   build: 'a3f9c1',
   base: '/',
-  csp: DEFAULT_CSP,
+  headers: HEADERS,
   routes: [
     // Ordered by DESCENDING specificity: static before param.
     { pattern: '/blog/new', mode: 'ssg', deps: [] },
@@ -74,10 +73,10 @@ describe('compileManifest', () => {
     expect(table.templateOf('/nope')).toBeNull();
   });
 
-  it('exposes build and csp for the router', () => {
+  it('exposes build and the app’s headers for the router', () => {
     const table = compileManifest(FILE);
     expect(table.build).toBe('a3f9c1');
-    expect(table.csp.sw).toContain('unsafe-eval');
+    expect(table.headers).toBe(HEADERS);
   });
 
   it('SDD-17 §4.7 states what a tag’s hydration chunk imports, base applied', () => {

@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 5 / 22 — `En curso`.
+> **Progreso:** 9 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -56,7 +56,7 @@
 
 ## Fase 3 — el manifiesto, el servidor y el SW
 
-- [ ] **6. `ManifestHeaders` en el transporte.**
+- [x] **6. `ManifestHeaders` en el transporte.**
   - `headers` en lugar de `csp`; fuera `DEFAULT_CSP` y `CspTemplates`; `PLACEHOLDERS`, `wantsNonce`,
     `pageHeadersFor` y `assetHeadersFor` con la regla más específica cabecera por cabecera (§3.7).
   - El router pone `pageHeadersFor` menos HSTS en `servePage` y en `render`, y solo genera nonce con
@@ -65,7 +65,7 @@
   - *Depende de:* 4.
   - *Paquete:* `transport`.
   - *Ficheros:* `src/manifest.ts`, `src/csp.ts`, `src/headers.ts`, `src/router.ts`, `src/index.ts`.
-- [ ] **7. `ServerApp.headers`.**
+- [x] **7. `ServerApp.headers`.**
   - Fuera `csp` y `statics`; `pageHeaders`, `hint` y `staticHeaders` desde `headers` (§3.7, §4.1).
   - Nonce solo con `wantsNonce`; la sustitución es la función de Node del contrato (§4.4).
   - HSTS solo sobre HTTPS, con `trustProxy`.
@@ -74,7 +74,7 @@
   - *Depende de:* 6.
   - *Paquete:* `server`.
   - *Ficheros:* `src/types.ts`, `src/server.ts`, `src/node/index.ts`.
-- [ ] **8. El plugin.**
+- [x] **8. El plugin.**
   - `readHeaders` en `configResolved`, con la política de SDD-83; `headers` en el manifiesto y en
     `emitServerModule`; `FUD0803` contra `page.headers` (§4.2).
   - `FUD1545`, `FUD1548`, `FUD1556` y `FUD1551`–`FUD1553` en `generateBundle` (en dev, al compilar),
@@ -82,12 +82,14 @@
   - Dev: sin CSP de página ni HSTS; `sw.headers` en `/fudic-sw.js`; vigilancia de los tres ficheros
     (§4.5).
   - El contrato de los backends en el README, con la función de sustitución en seis lenguajes (§4.4).
+  - `EmitOutput.needs` y `TransformResult.needs` (vacías hasta la tarea 11), y los `fud-disable` de los
+    `.headers` en el informe del build (SDD §8.2.16–17).
   - *Depende de:* 7.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/plugin.ts`, `src/manifest.ts`, `src/dev.ts`, `src/server-module.ts`,
     `src/diagnostics.ts`, `README.md`.
-- [ ] **9. Los tests de las respuestas.** Criterios 10, 13–15, 18, 19, 22–28 y 35 (los de navegador, en
-  los e2e).
+- [x] **9. Los tests de las respuestas.** Criterios 10, 13–15, 18, 19, 22–28 y 35 (los de navegador, en
+  los e2e). Del 10, la parte del build sin el polyfill (`checkEmitted` y `FUD0803`); el resto, en la 13.
   - *Depende de:* 8.
   - *Paquetes:* `transport`, `server`, `vite`.
 
@@ -113,7 +115,7 @@
   - *Depende de:* 4.
   - *Paquete:* `typecheck`.
   - *Ficheros:* `src/trusted-types.ts`.
-- [ ] **13. Los tests del runtime y el emit.** Criterios 29–31.
+- [ ] **13. Los tests del runtime y el emit.** Criterios 29–31. Y el 10 de extremo a extremo: el build nombra el polyfill.
   - *Depende de:* 10, 11, 12.
   - *Paquetes:* `dom`, `forms`, `compiler`, `typecheck`.
 

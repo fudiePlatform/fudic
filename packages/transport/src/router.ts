@@ -17,7 +17,8 @@
  */
 
 import { coversPath, CSRF_PATH, FN_PREFIX } from '@fudic/conventions';
-import { applyNonce, applyNonceStream, cspFor, newNonce, NONCE_TOKEN } from './csp.js';
+import { applyNonce, applyNonceStream, newNonce, NONCE_TOKEN } from './csp.js';
+import { globMatches, pageHeadersFor, wantsNonce } from './headers.js';
 import { type Linker } from './linker.js';
 import {
   fillParams,
@@ -45,7 +46,10 @@ export interface RenderContext {
   readonly url: URL;
   readonly params: Readonly<Record<string, string>>;
   readonly mode: RouteMode;
-  /** The nonce of THIS response; the chunk passes it to `io` for the polyfill. */
+  /**
+   * The nonce of THIS response; the chunk passes it to `io` for the polyfill. `''` when
+   * `page.headers` asks for none (SDD-84 §4.7): then nothing carries a `nonce` attribute.
+   */
   readonly nonce: string;
   /** Already-resolved data: the SW asks the endpoint, the edge calls `load` in process. */
   readonly data?: unknown;
@@ -206,20 +210,6 @@ class DataUnavailable extends Error {}
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };
 
-/** `/assets/**` → matches `/assets/a/b.png`; `*` does not cross a `/`. */
-function globMatches(pattern: string, pathname: string): boolean {
-  const source = pattern
-    .split('**')
-    .map((part) =>
-      part
-        .split('*')
-        .map((s) => s.replace(/[.+?^${}()|[\]\\]/gu, '\\$&'))
-        .join('[^/]*'),
-    )
-    .join('.*');
-  return new RegExp(`^${source}$`, 'u').test(pathname);
-}
-
 function defaultOrigin(): string {
   return typeof location === 'undefined' ? 'http://fudic.invalid/' : location.href;
 }
@@ -227,6 +217,8 @@ function defaultOrigin(): string {
 export function createRouter(config: RouterConfig): Router {
   const { table, linker, stores } = config;
   const nonceOf = config.nonce ?? newNonce;
+  // No `{nonce}` in `page.headers`, no nonce: none is made and none is written (SDD-84 §4.7).
+  const asksNonce = wantsNonce(table.headers);
   const net = config.net ?? ((request: Request): Promise<Response> => fetch(request));
   const base = config.origin ?? defaultOrigin();
   const abs = (path: string): string => new URL(path, base).href;
@@ -260,21 +252,31 @@ export function createRouter(config: RouterConfig): Router {
   const notMine = (url: URL): boolean => url.pathname.startsWith(fnPrefix) || url.pathname === csrfPath;
 
   /**
+   * The headers of a page this worker paints: all of `page.headers` but HSTS, which a browser
+   * ignores on a response a Service Worker builds (SDD-84 §4.1).
+   */
+  const pageHeaders = (nonce: string | undefined): Headers => {
+    const headers = pageHeadersFor(table.headers, nonce === undefined ? {} : { nonce });
+    headers.delete('strict-transport-security');
+    headers.set('content-type', HTML_HEADERS['content-type']);
+    return headers;
+  };
+
+  /**
    * Serve a page this Service Worker rendered earlier (`page.cache: 'persist'`).
    *
    * Nothing enters `pages` by download; what is there was produced by `render` and
    * carries `NONCE_TOKEN`, not a literal nonce — a reused nonce is not a nonce. So the
    * substitution happens HERE, with the nonce of THIS response (§4.5).
    */
-  const servePage = async (url: string, nonce: string, request: Request): Promise<Response> => {
+  const servePage = async (url: string, nonce: string | undefined, request: Request): Promise<Response> => {
     const cached = await stores.pages.match(url);
     if (cached === undefined) {
       pages.delete(url);
       return net(request); // evicted between the decision and here
     }
-    const headers = new Headers(HTML_HEADERS);
-    headers.set('content-security-policy', cspFor(table.csp.document, nonce));
-    return new Response(applyNonce(await cached.text(), nonce), { headers });
+    const html = await cached.text();
+    return new Response(nonce === undefined ? html : applyNonce(html, nonce), { headers: pageHeaders(nonce) });
   };
 
   /**
@@ -317,7 +319,7 @@ export function createRouter(config: RouterConfig): Router {
     chunkUrl: string,
     params: Readonly<Record<string, string>>,
     url: URL,
-    nonce: string,
+    nonce: string | undefined,
     request: Request,
   ): Promise<Response> => {
     try {
@@ -334,15 +336,13 @@ export function createRouter(config: RouterConfig): Router {
         url,
         params,
         mode: record.mode,
-        nonce: NONCE_TOKEN,
+        nonce: nonce === undefined ? '' : NONCE_TOKEN,
         data,
         // Omitted rather than set to `undefined`: a route whose layout declares only props
         // with defaults resolves none, and `exactOptionalPropertyTypes` makes the two
         // different things.
         ...(layout === undefined ? {} : { layout }),
       };
-      const headers = new Headers(HTML_HEADERS);
-      headers.set('content-security-policy', cspFor(table.csp.document, nonce));
       let stream = chunk.render(ctx);
       if (record.page?.cache === 'persist' && personal !== true) {
         // The surviving shape of SDD-19's incremental mode: render once per concrete
@@ -357,7 +357,7 @@ export function createRouter(config: RouterConfig): Router {
           })
           .catch(() => undefined);
       }
-      return new Response(applyNonceStream(stream, nonce), { headers });
+      return new Response(nonce === undefined ? stream : applyNonceStream(stream, nonce), { headers: pageHeaders(nonce) });
     } catch (error) {
       // The route is alive: it is this URL's data that failed, and the next URL of the
       // pattern still renders here.
@@ -555,7 +555,7 @@ export function createRouter(config: RouterConfig): Router {
       return null; // always the server; its chunk is never even downloaded
     }
 
-    const nonce = nonceOf();
+    const nonce = asksNonce ? nonceOf() : undefined;
     const pageUrl = pageUrlOf(url.pathname);
     if (pages.has(pageUrl)) {
       return servePage(pageUrl, nonce, request);

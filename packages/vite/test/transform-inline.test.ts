@@ -16,7 +16,6 @@ import { transformFud } from '../src/transform.js';
 import { nodeIo } from '../src/io.js';
 import { LinkedAssets } from '../src/linked-assets.js';
 import { policyDeclaresNonce } from '../src/diagnostics.js';
-import { DEFAULT_CSP } from '@fudic/transport';
 
 /** A project on disk: a layout, a route that hydrates, and whatever else is given. */
 function project(
@@ -163,12 +162,9 @@ describe('inlineRuntimeOf — where this render asked for the inline form', () =
  * browser drops the module and nothing connects that silence to the line that caused it.
  */
 describe('policyDeclaresNonce', () => {
-  it('cannot fire today, and that is what makes it worth testing directly', () => {
-    // The document policy is a constant of the framework and declares the nonce, so the
-    // check in the plugin is unreachable as things stand. What is testable is the question
-    // it asks — written where it will keep working the day the policy is the project's,
-    // which is the only reason a build check is worth anything.
-    expect(policyDeclaresNonce(DEFAULT_CSP.document)).toBe(true);
+  it('asks whether the page policy declares the nonce', () => {
+    // The policy is the app's `page.headers` (SDD-84): the template declares the nonce.
+    expect(policyDeclaresNonce("script-src 'nonce-{nonce}' 'strict-dynamic'")).toBe(true);
     expect(policyDeclaresNonce("script-src 'self'")).toBe(false);
     // The TOKEN and not a parsed policy: the token is what the response substitutes, so a
     // policy that never writes it cannot produce a nonce for the page, and no amount of

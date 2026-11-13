@@ -107,8 +107,10 @@ interface OutFile {
 
 let output: OutFile[];
 
-beforeAll(async () => {
+/** The project of these tests on disk, with `extra` files at its root, ready to build. */
+function project(extra: Readonly<Record<string, string>> = {}): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-linked-'));
+  for (const [name, text] of Object.entries(extra)) writeFileSync(join(root, name), text);
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
@@ -134,6 +136,11 @@ beforeAll(async () => {
       dependencies: Object.fromEntries(installed.map((n) => [`@fudic/${n}`, '*'])),
     }),
   );
+  return root;
+}
+
+beforeAll(async () => {
+  const root = project();
 
   const result = (await build({
     root,
@@ -296,4 +303,13 @@ describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates
       expect(chunk.code).not.toContain('__fudic_graph__');
     }
   });
+});
+
+describe('the inline form against page.headers (SDD-84 §3.4, criterion 10)', () => {
+  it('a page policy without the nonce stops the build with FUD0803 on the layout that asks for it', async () => {
+    const root = project({ 'page.headers': "Content-Security-Policy: script-src 'self'\n" });
+    await expect(build({ root, logLevel: 'silent', plugins: [fudic()], build: { write: false, minify: false } })).rejects.toThrow(
+      /FUD0803/u,
+    );
+  }, 240000);
 });

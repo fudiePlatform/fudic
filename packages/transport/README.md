@@ -31,8 +31,10 @@ stay strict.
 - **Router** — `createRouter`: `respondWith` ONLY when it will actually serve; render →
   `Response`, prerendered page from cache, warm behind a cold navigation, and a single
   rescue `fetch` when a chunk fails to link.
-- **CSP** — `newNonce` / `cspFor` / `applyNonce`: a nonce per response, and the
-  `__FUDIC_NONCE__` token that prerendered HTML carries until someone serves it.
+- **Headers** — `ManifestHeaders`, `wantsNonce`, `pageHeadersFor`, `assetHeadersFor`: the app's
+  `page.headers`, `sw.headers` and `assets.headers` as the manifest carries them (SDD-84).
+- **Nonce** — `newNonce` / `applyNonce`: a nonce per response, only when `page.headers` asks for
+  one, and the `__FUDIC_NONCE__` token that prerendered HTML carries until someone serves it.
 - **Main** — `registerRenderServiceWorker(url)` (module SW, `updateViaCache: 'none'`) and
   `notifyLocation()`: the single warm trigger.
 

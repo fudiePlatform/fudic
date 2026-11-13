@@ -422,6 +422,7 @@ export function emitRouteClientModuleMapped(
     code: built.writer.toString(),
     mappings: built.writer.mappings(),
     missingAssets: built.linker.missing(),
+    needs: [],
     diagnostics: built.diagnostics,
   };
 }

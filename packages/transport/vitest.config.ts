@@ -25,6 +25,8 @@ export default defineConfig({
         // defect of BUG-04 could hide here: against a `Map` keyed by URL, it cannot.
         'src/store.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/csp.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // SDD-84: the app's headers as the manifest carries them.
+        'src/headers.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

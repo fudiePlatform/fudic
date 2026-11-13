@@ -34,6 +34,7 @@ function routeBuild(
 const INPUTS: ManifestInputs = {
   build: 'b1',
   base: '/',
+  headers: { page: { 'Content-Security-Policy': "script-src 'nonce-{nonce}'" }, sw: {}, assets: [] },
   serviceWorker: true,
   depsOf: () => ['dep'],
 };
@@ -98,7 +99,7 @@ describe('buildManifest', () => {
       INPUTS,
     );
     expect(file.build).toBe('b1');
-    expect(file.csp.document).toContain('{nonce}');
+    expect(file.headers).toBe(INPUTS.headers);
     expect(file.routes.map((r) => r.pattern)).toEqual(['/about', '/blog/:slug']);
   });
 

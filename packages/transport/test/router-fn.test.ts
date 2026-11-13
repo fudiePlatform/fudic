@@ -11,9 +11,8 @@ import { compileManifest, type ManifestFile } from '../src/manifest.js';
 import { createLinker } from '../src/linker.js';
 import { createStore, type Store } from '../src/store.js';
 import { createRouter, type RouterStores } from '../src/router.js';
-import { DEFAULT_CSP } from '../src/csp.js';
 import { INVALIDATE_MESSAGE } from '../src/index.js';
-import { fakeCache, fetchEvent, framedData, readAll } from './helpers.js';
+import { fakeCache, fetchEvent, framedData, readAll, HEADERS } from './helpers.js';
 
 const ORIGIN = 'https://app.test/';
 
@@ -27,7 +26,7 @@ exports.render = function (ctx) {
 const file = (base: string): ManifestFile => ({
   build: 'b1',
   base,
-  csp: DEFAULT_CSP,
+  headers: HEADERS,
   routes: [
     {
       pattern: '/blog/:slug',
