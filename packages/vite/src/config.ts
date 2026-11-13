@@ -12,7 +12,8 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { CONFIG_FILE, readProjectConfig, type ConfigIo, type ProjectConfig } from '@fudic/config';
+import { resolve } from 'node:path';
+import { buildTargetOf, CONFIG_FILE, readProjectConfig, type ConfigIo, type ProjectConfig } from '@fudic/config';
 import { FUD0726, type FileDiagnostic } from '@fudic/diagnostics';
 
 export interface ProjectResult {
@@ -32,6 +33,22 @@ export function nodeConfigIo(): ConfigIo {
     exists: (path) => existsSync(path),
     read: (path) => readFileSync(path, 'utf8'),
   };
+}
+
+/**
+ * The `build.target` the plugin gives a build whose user named none (SDD-83 §3.9): each core
+ * browser's last release on the date of the project's Baseline — `widely` with no `fudic.json`.
+ * A target the user wrote is theirs, and then this returns nothing.
+ *
+ * Read at `config` time, before Vite resolves anything: the root is the user's, or the cwd.
+ */
+export function baselineTarget(
+  userConfig: { readonly root?: string; readonly build?: { readonly target?: unknown } } | undefined,
+  io: ConfigIo = nodeConfigIo(),
+): { readonly target?: string[] } {
+  if (userConfig?.build?.target !== undefined) return {};
+  const root = resolve(userConfig?.root ?? '.');
+  return { target: [...buildTargetOf(readProjectConfig(root, io).config)] };
 }
 
 /**

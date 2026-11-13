@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 20 / 30 — `En curso`.
+> **Progreso:** 23 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -158,18 +158,19 @@ código, no el test.
 
 ## Fase 7 — librerías y Vite
 
-- [ ] **21. Librerías y avisos del proyecto.**
+- [x] **21. Librerías y avisos del proyecto.**
   - `FUD1526`: los detectores sobre los ficheros de cada lib con el nivel de la app, un aviso por lib.
   - `FUD1528`: un `allow` sin uso.
   - *Depende de:* 20.
   - *Paquetes:* `typecheck`, `language-server`.
-  - *Ficheros:* `typecheck/src/project.ts`, `typecheck/src/baseline-project.ts`.
-- [ ] **22. `build.target` desde el nivel.**
+  - *Ficheros:* `typecheck/src/checker.ts`, `typecheck/src/baseline-project.ts`,
+    `language-server/src/services/config-file.ts`, `config/src/baseline.ts` (SDD §8.2.24–26).
+- [x] **22. `build.target` desde el nivel.**
   - En el `config` del plugin, solo si el usuario no lo ha puesto; lo heredan el SW y el borde.
   - *Depende de:* 10.
   - *Paquete:* `vite`.
-  - *Ficheros:* `src/plugin.ts`, `src/config.ts`, `src/swbuild.ts`, `src/edge.ts`.
-- [ ] **23. Los tests de librerías y Vite.** Criterios 30 y 31.
+  - *Ficheros:* `src/plugin.ts`, `src/config.ts`, `src/nested.ts`, `src/swbuild.ts`, `src/edge.ts`, `src/link.ts`.
+- [x] **23. Los tests de librerías y Vite.** Criterios 30 y 31.
   - *Depende de:* 21, 22.
   - *Paquetes:* `typecheck`, `vite`.
 

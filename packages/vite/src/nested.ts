@@ -23,6 +23,17 @@ export interface NestedOutputOptions {
    * is why this is an inherited option and not a `renderChunk` hook.
    */
   readonly minify: boolean | 'oxc' | 'esbuild' | 'terser';
+  /**
+   * SDD-83 §3.9: the host's resolved `build.target` — the user's, or the one the plugin derived
+   * from the project's Baseline. Absent, a nested build uses Vite's default.
+   */
+  readonly target?: string | readonly string[] | false;
+}
+
+/** The `build.target` a nested build passes on to Vite: the host's, or nothing when it has none. */
+export function nestedTarget(nested: NestedOutputOptions): { readonly target?: string | string[] | false } {
+  if (nested.target === undefined) return {};
+  return { target: typeof nested.target === 'object' ? [...nested.target] : nested.target };
 }
 
 /** One file a nested build produced, with its map when one was asked for. */

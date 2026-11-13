@@ -20,7 +20,7 @@ import { build, type Plugin } from 'vite';
 import { emitSwBootstrap, type SwBootstrapOptions } from './bootstrap.js';
 import { SW_ID, DEV_SW_URL } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
-import { serializeMap, type NestedOutputOptions } from './nested.js';
+import { nestedTarget, serializeMap, type NestedOutputOptions } from './nested.js';
 
 export interface SwBuildResult {
   /** Always `fudic-sw.js`: a Service Worker only controls its own directory and below. */
@@ -93,6 +93,8 @@ export async function buildServiceWorker(
       // a hardcoded `false` — scaffolding left in, which made `build.minify` mean nothing
       // for the one artifact that is re-downloaded on every worker update.
       minify: nested.minify,
+      // The host's target, which the plugin derives from the Baseline (SDD-83 §3.9).
+      ...nestedTarget(nested),
       // Always the plain map when the host wants any: the caller composes `'inline'` and
       // `'hidden'` from it (§4.3), so there is one code path here instead of three.
       sourcemap: nested.sourcemap !== false,

@@ -35,6 +35,7 @@ export { readPolicy, ProjectPolicies, type PolicyRead, type ProjectAt } from './
 export {
   allowedFeatures,
   baselineContextOf,
+  buildTargetOf,
   DEFAULT_BASELINE,
   floorWarning,
   readBaseline,

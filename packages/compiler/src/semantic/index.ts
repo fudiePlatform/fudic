@@ -16,6 +16,7 @@ export type {
 export { ANALYZERS, analyze } from './analyze.js';
 export { judgeUse, judgeUses, type BaselineContext, type BaselineUse } from './baseline.js';
 export { htmlBaselineUses } from './analyzers/baseline-html.js';
+export { styleBaselineUses } from './analyzers/baseline-css.js';
 export { walk, documentRoots, documentCode, type TreeVisitor } from './walk.js';
 export {
   portableRegions,

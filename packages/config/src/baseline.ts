@@ -9,6 +9,7 @@
  */
 
 import {
+  browsersFor,
   cutoff,
   describeTarget,
   feature,
@@ -26,12 +27,16 @@ export interface BaselineConfig {
   readonly target: Target;
   /** The ids of `allow` that allow something, in written order. */
   readonly allow: readonly AllowedId[];
+  /** Where `"baseline"` is written in the file: what `FUD1526` points at. Absent when it is not. */
+  readonly span?: Span;
 }
 
 /** One id of `allow`, as written, and the features it allows: itself, or where it moved or split to. */
 export interface AllowedId {
   readonly id: string;
   readonly features: readonly string[];
+  /** Where the id is written in the file: what `FUD1528` and its bulb point at. */
+  readonly span?: Span;
 }
 
 /** What a project that says nothing asks for. */
@@ -62,6 +67,14 @@ export function baselineContextOf(config: { readonly baseline: BaselineConfig } 
   return { target: baseline.target, allow: allowedFeatures(baseline) };
 }
 
+/**
+ * Vite's `build.target` for what a project asks of the browser (SDD-83 §3.9): each core browser's
+ * last release on the level's date. `widely` when its `fudic.json` says nothing or has none.
+ */
+export function buildTargetOf(config: { readonly baseline: BaselineConfig } | null): readonly string[] {
+  return browsersFor((config?.baseline ?? DEFAULT_BASELINE).target);
+}
+
 /** Reads `baseline`. `idSpan` finds where an id of `allow` is written, for its `FUD1527`. */
 export function readBaseline(value: unknown, idSpan: (id: string) => Span | undefined): BaselineRead {
   const refuse = (malformed: string): BaselineRead => ({ baseline: DEFAULT_BASELINE, malformed, dropped: [] });
@@ -86,15 +99,16 @@ export function readBaseline(value: unknown, idSpan: (id: string) => Span | unde
   const allow: AllowedId[] = [];
   const dropped: FileDiagnostic[] = [];
   for (const id of ids as string[]) {
-    const where = { file: CONFIG_FILE, ...spanOf(idSpan(id)) };
+    const at = spanOf(idSpan(id));
+    const where = { file: CONFIG_FILE, ...at };
     const found = feature(id);
     if (found === undefined) {
       dropped.push(FUD1527({ id, ...where }));
     } else if (found.kind === 'feature') {
-      allow.push({ id, features: [id] });
+      allow.push({ id, features: [id], ...at });
     } else {
       dropped.push(FUD1527({ id, kind: found.kind, to: found.to, ...where }));
-      allow.push({ id, features: found.to });
+      allow.push({ id, features: found.to, ...at });
     }
   }
   return { baseline: { target, allow }, dropped };

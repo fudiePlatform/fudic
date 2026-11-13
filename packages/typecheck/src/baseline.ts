@@ -87,9 +87,10 @@ export function browserModules(
   server: string,
 ): readonly string[] {
   const options = program.getCompilerOptions();
+  // `node_modules` inside `root`, not above it: a library installed in the app is a root of its own.
   const own = (path: string): boolean =>
     path.startsWith(`${root}/`) &&
-    !path.includes('/node_modules/') &&
+    !path.slice(root.length).includes('/node_modules/') &&
     !path.startsWith(`${server}/`) &&
     /\.[cm]?[jt]s$/u.test(path) &&
     !/\.d\.[cm]?ts$/u.test(path);

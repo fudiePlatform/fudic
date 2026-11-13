@@ -130,7 +130,7 @@ import {
 import { checkLinks } from './link-check.js';
 import { checkPeers } from './peer-check.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
-import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
+import { baselineTarget, nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { ProjectStyleChains } from './styles.js';
 import { nodePackageFs } from '@fudic/resolve';
 import { CONFIG_FILE, type ServeConfig } from '@fudic/config';
@@ -844,6 +844,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return {
         appType: 'custom',
         build: {
+          ...baselineTarget(userConfig),
           rollupOptions: {
             // The coordinators are NOT inputs: there is one per combination of pieces and
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
@@ -874,7 +875,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // applied nor reported: the option simply did nothing for these two outputs, and
       // `build.minify` did nothing for them either (BUG-06 §2.2) — the same hole, found
       // twice, which is why the list is now a type and not two ad-hoc fields.
-      nested = { sourcemap: config.build.sourcemap, minify: config.build.minify };
+      nested = { sourcemap: config.build.sourcemap, minify: config.build.minify, target: config.build.target };
       // `write: false` is a build that produces no files (tests, programmatic callers), so
       // the edge artifacts are not written either — they are still materialized for the
       // prerender, which needs them in a temp dir regardless.

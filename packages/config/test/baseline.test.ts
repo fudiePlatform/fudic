@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   allowedFeatures,
   baselineContextOf,
+  buildTargetOf,
   CONFIG_FILE,
   DEFAULT_BASELINE,
   floorWarning,
@@ -27,20 +28,20 @@ describe('baseline in fudic.json', () => {
   it('absent is widely, with nothing allowed (criterion 15)', () => {
     const result = readText('{"id":"shop"}');
     expect(result.diagnostics).toEqual([]);
-    expect(result.config?.baseline).toEqual({ target: 'widely', allow: [] });
-    expect(result.config?.baseline).toEqual(DEFAULT_BASELINE);
+    expect(result.config?.baseline).toMatchObject({ target: 'widely', allow: [] });
+    expect(result.config?.baseline).toMatchObject(DEFAULT_BASELINE);
   });
 
   it('reads a level written short: widely, newly, or a year', () => {
-    expect(read('widely').config?.baseline).toEqual({ target: 'widely', allow: [] });
-    expect(read('newly').config?.baseline).toEqual({ target: 'newly', allow: [] });
-    expect(read(2024).config?.baseline).toEqual({ target: 2024, allow: [] });
+    expect(read('widely').config?.baseline).toMatchObject({ target: 'widely', allow: [] });
+    expect(read('newly').config?.baseline).toMatchObject({ target: 'newly', allow: [] });
+    expect(read(2024).config?.baseline).toMatchObject({ target: 2024, allow: [] });
     expect(read(2015).config?.baseline.target).toBe(2015);
     expect(read(2026).config?.baseline.target).toBe(2026);
   });
 
   it('reads the object form, target widely when it has none', () => {
-    expect(read({ target: 'newly', allow: ['popover', 'state'] }).config?.baseline).toEqual({
+    expect(read({ target: 'newly', allow: ['popover', 'state'] }).config?.baseline).toMatchObject({
       target: 'newly',
       allow: [
         { id: 'popover', features: ['popover'] },
@@ -48,7 +49,7 @@ describe('baseline in fudic.json', () => {
       ],
     });
     expect(read({ allow: ['state'] }).config?.baseline.target).toBe('widely');
-    expect(read({ target: 2024 }).config?.baseline).toEqual({ target: 2024, allow: [] });
+    expect(read({ target: 2024 }).config?.baseline).toMatchObject({ target: 2024, allow: [] });
   });
 
   it.each([
@@ -76,7 +77,7 @@ describe('baseline in fudic.json', () => {
   it('an id that is not a feature is FUD1527 on the id, and allows nothing (criterion 16)', () => {
     const text = '{"id":"shop","baseline":{"target":"widely","allow":["popover","nada"]}}';
     const result = readText(text);
-    expect(result.config?.baseline.allow).toEqual([{ id: 'popover', features: ['popover'] }]);
+    expect(result.config?.baseline.allow).toMatchObject([{ id: 'popover', features: ['popover'] }]);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]).toMatchObject({
       code: 'FUD1527',
@@ -89,7 +90,7 @@ describe('baseline in fudic.json', () => {
 
   it('an id that moved is FUD1527 with where it went, and allows that (criterion 16)', () => {
     const result = read({ allow: ['masonry'] });
-    expect(result.config?.baseline.allow).toEqual([{ id: 'masonry', features: ['grid-lanes'] }]);
+    expect(result.config?.baseline.allow).toMatchObject([{ id: 'masonry', features: ['grid-lanes'] }]);
     expect(result.diagnostics[0]?.message).toBe('"masonry" in "allow" is now "grid-lanes": it is allowed under that id');
   });
 
@@ -122,6 +123,25 @@ describe('baseline in fudic.json', () => {
     expect(escapedAllow.diagnostics[0]?.span).toBeUndefined();
   });
 
+  it('keeps where "baseline" and each id of allow are written, for FUD1526 and FUD1528', () => {
+    const text = '{"id":"shop","baseline":{"allow":["popover","masonry"]}}';
+    const baseline = readText(text).config!.baseline;
+    const at = (word: string) => ({ start: text.indexOf(word), end: text.indexOf(word) + word.length });
+    expect(baseline.span).toEqual(at('"baseline"'));
+    expect(baseline.allow.map((entry) => entry.span)).toEqual([at('"popover"'), at('"masonry"')]);
+  });
+
+  it('buildTargetOf: the level as Vite build.target, widely with no fudic.json (SDD-83 §3.9)', () => {
+    expect(buildTargetOf(null)).toEqual(['chrome124', 'edge124', 'firefox125', 'safari17.4', 'ios17.4']);
+    expect(buildTargetOf({ baseline: { target: 2024, allow: [] } })).toEqual([
+      'chrome131',
+      'edge131',
+      'firefox133',
+      'safari18.2',
+      'ios18.2',
+    ]);
+  });
+
   it('readBaseline and allowedFeatures on their own', () => {
     expect(readBaseline(undefined, () => undefined)).toEqual({ baseline: DEFAULT_BASELINE, dropped: [] });
     expect(allowedFeatures(DEFAULT_BASELINE)).toEqual(new Set());
@@ -135,7 +155,7 @@ describe('the floor: what fudic itself needs (SDD-83 §3.7)', () => {
   it('"baseline": 2023 is one FUD1525 on the key, naming what sets the floor, and the level stands (criterion 27)', () => {
     const text = '{"id":"shop","baseline":2023}';
     const result = readText(text);
-    expect(result.config?.baseline).toEqual({ target: 2023, allow: [] });
+    expect(result.config?.baseline).toMatchObject({ target: 2023, allow: [] });
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]).toMatchObject({
       code: 'FUD1525',

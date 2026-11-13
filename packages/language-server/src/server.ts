@@ -274,7 +274,11 @@ export function createFudicServer(
         policyFor: (path) => configs.policyFor(path),
       }),
       // A `fudic.json`: what the build says about it, while it is written (SDD-81).
-      createConfigFileService({ stats }),
+      createConfigFileService({
+        stats,
+        // And what the project as a whole says of its Baseline, over the program TypeScript holds.
+        ...(withTypeScript ? { project: { index, fs: deps.fileSystem, typescript: typescript.typescript } } : {}),
+      }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,

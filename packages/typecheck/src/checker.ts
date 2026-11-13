@@ -30,8 +30,16 @@ import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { baselineContextOf } from '@fudic/config';
-import { browserModules, fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
-import { BROWSER_DIR, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
+import { fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
+import {
+  packageBaselineUses,
+  packageModules,
+  projectBaselineDiagnostics,
+  type BaselineLibrary,
+  type BaselinePackage,
+  type BaselineSite,
+} from './baseline-project.js';
+import { findLibraries } from '@fudic/resolve';
 import { governFile, projectPolicies } from './govern.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
@@ -182,19 +190,41 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     };
   };
 
+  /** The `.fud` at `path` as the program holds it, projected; undefined when it holds none. */
+  const projectedOf = (state: Mounted, path: string): ProjectedFud | undefined =>
+    (state.language.scripts.get(path)?.generated?.root as FudicVirtualCode | undefined)?.document;
+
+  /** The `.fud` of `paths` the program holds, projected. */
+  const projectedAll = (state: Mounted, paths: Iterable<string>): ProjectedFud[] =>
+    [...paths].flatMap((path) => {
+      const fud = projectedOf(state, toPosix(path));
+      return fud === undefined ? [] : [fud];
+    });
+
   /**
-   * The modules of the project the browser loads (SDD-83 §3.6): what its `.fud`, its `browser`
-   * folder and its pipes import, and those themselves; never what runs in Node, under `server`.
+   * `FUD1526` and `FUD1528` (SDD-83 §3.8, §4.1): what the project's own files and its libraries
+   * use of the browser, against its `fudic.json`. Nothing when the project has none.
    */
-  const browserFiles = (state: Mounted, program: ts.Program, config: ProjectConfig | null): readonly string[] => {
-    const folder = (dir: string): string[] =>
-      typescript.sys.readDirectory(`${root}/${dir}`, ['.ts', '.mts', '.js', '.mjs'], ['**/node_modules/**'], ['**/*']).map(toPosix);
-    const roots = [
-      ...state.index.all().filter((entry) => !entry.external).map((entry) => entry.path),
-      ...folder(config?.browser ?? BROWSER_DIR),
-      ...folder(config?.pipes ?? PIPES_DIR),
-    ];
-    return browserModules(typescript, program, roots, root, `${root}/${config?.server ?? SERVER_DIR}`);
+  const projectBaseline = (
+    state: Mounted,
+    site: BaselineSite,
+    config: ProjectConfig | null,
+    own: BaselinePackage,
+  ): readonly CheckProblem[] => {
+    if (config === null) return [];
+    const libraries: BaselineLibrary[] = findLibraries(root, fs).map((library) => ({
+      name: library.name === '' ? library.root : library.name,
+      uses: () =>
+        packageBaselineUses(site, { root: library.root, config: library.config, fuds: projectedAll(state, library.files) }),
+    }));
+    const file = `${root}/${CONFIG_FILE}`;
+    const found = projectBaselineDiagnostics(config, () => packageBaselineUses(site, own), libraries);
+    // A `fudic.json` has no comments: only its own policy says how these are reported. With no
+    // `"baseline"` written, a `FUD1526` is about the whole file, and starts it.
+    const located = found.map((d) => ({ ...d, file, span: d.span ?? { start: 0, end: 0 } }));
+    // The file is there: its project was read from it.
+    const said = governFile(file, fs.readFile(file)!, located, config.diagnostics);
+    return fudicProblems(file, said, new Map());
   };
 
   const collect = (state: Mounted): CheckReport => {
@@ -282,7 +312,15 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     }
 
     // The modules the browser loads, against the Baseline of their project (SDD-83 §3.6).
-    for (const file of browserFiles(state, program, policies.projectOf(`${root}/${CONFIG_FILE}`)?.config ?? null)) {
+    const config = policies.projectOf(`${root}/${CONFIG_FILE}`)?.config ?? null;
+    const site: BaselineSite = { typescript, program, readFile: (path) => fs.readFile(path) };
+    // The project itself as a package: its own `.fud`, never a library's.
+    const own: BaselinePackage = {
+      root,
+      config,
+      fuds: projectedAll(state, state.index.all().filter((entry) => !entry.external).map((entry) => entry.path)),
+    };
+    for (const file of packageModules(site, own)) {
       const baseline = baselineContextOf(policies.projectOf(file)?.config ?? null);
       const found = moduleBaselineDiagnostics(program, file, baseline);
       const source = program.getSourceFile(file)!.text;
@@ -300,6 +338,9 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       const said = governFile(file, source, diagnostics, policies.policyOf(file), { complete: true });
       problems.push(...fudicProblems(file, said, elsewhere));
     }
+    // What the project as a whole says of its Baseline: its libraries, and an `allow` nothing uses.
+    problems.push(...projectBaseline(state, site, config, own));
+
     const read = [...api.sources.filter((s) => s.origin === 'app').map((s) => s.path), ...specs.read];
 
     const project: ProjectProblem[] = state.commandLine.configFile === undefined ? [FUD0870()] : [];

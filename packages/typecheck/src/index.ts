@@ -82,6 +82,14 @@ export {
   moduleBaselineDiagnostics,
   moduleBaselineUses,
 } from './baseline.js';
+export {
+  packageBaselineUses,
+  packageModules,
+  projectBaselineDiagnostics,
+  type BaselineLibrary,
+  type BaselinePackage,
+  type BaselineSite,
+} from './baseline-project.js';
 
 // The project check (§3.1).
 export {

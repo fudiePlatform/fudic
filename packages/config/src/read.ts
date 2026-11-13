@@ -244,7 +244,8 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       ...(guide === undefined ? {} : { guide }),
       ...(fields['serve'] === undefined ? {} : { serve }),
       diagnostics: policy.policy,
-      baseline: baseline.baseline,
+      // Where `"baseline"` is written, for what the project says of the whole field (`FUD1526`).
+      baseline: baselineKey === undefined ? baseline.baseline : { ...baseline.baseline, span: baselineKey },
     },
     diagnostics: dropped,
   };

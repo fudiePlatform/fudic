@@ -795,3 +795,23 @@ Nada.
     son huecos así. La propiedad ya responde por lo demás, y un valor con fecha
     (`field-sizing: content`) sigue avisando. `ping` sí avisa: Firefox no lo tiene, y el ejemplo
     `vista-errores` lo anuncia.
+24. **Qué es «usar» una feature para `FUD1528`.** Cualquier uso sin proteger de una clave de esa
+    feature, pase o no el nivel, en los ficheros del proyecto o en los de sus librerías: la app
+    permite una feature para quien la escriba. Un paquete se lee entero (el marcado, el `<style>` y
+    el `@code` de sus `.fud`, los módulos que carga el navegador y sus hojas: `globalStyles`,
+    `styles` y la guía con lo que importa), y solo si de ahí puede salir un aviso: sin librerías y
+    sin `allow`, la pasada no cuesta nada. Vive en `@fudic/typecheck` (`baseline-project.ts`) y la
+    llaman el comprobador y el editor al abrir el `fudic.json`, sobre el programa que cada uno tiene.
+25. **Dónde se escriben `FUD1526` y `FUD1528`.** `BaselineConfig.span` guarda dónde está `"baseline"`
+    y `AllowedId.span` dónde está cada id. Sin `"baseline"` escrito, `FUD1526` va al principio del
+    fichero. Los dos pasan por la política del propio `fudic.json` (no tiene comentarios). `FUD1528`
+    es hint y el informe del build solo lleva errores y warnings: se ve en el editor, o en el build
+    si el proyecto lo sube.
+26. **Una lib no impone nada a otra lib.** `FUD1526` solo sale en un proyecto `"kind": "app"`; el
+    nombre de la lib es el de su `package.json`, o su carpeta si no tiene.
+27. **`build.target` en el hook `config`**, leyendo el `fudic.json` de la raíz del usuario (o del cwd)
+    antes de que Vite resuelva nada (`buildTargetOf` de `@fudic/config`). Lo heredan los tres builds
+    anidados por `NestedOutputOptions.target`: el SW, el borde y también el paso de enlace, que
+    produce código de navegador igual que el SW.
+28. **`browserModules` mira `node_modules` dentro de la raíz del paquete**, no por encima: una lib
+    instalada en la app es la raíz de sus propios módulos.
