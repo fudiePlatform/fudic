@@ -50,6 +50,10 @@ Ver «Análisis con sesión» §1.
 
 ### 3. Cabeceras de seguridad configurables
 
+> **Redactada el 2026-11-13** como [SDD-84](sdd/SDD-84-cabeceras-de-la-app.md), junto con la nota 8.
+> Lo de abajo es el análisis previo; donde no coincida, manda la SDD (la configuración no va en
+> `fudic.json`, sino en `page.headers`, `sw.headers` y `assets.headers`).
+
 Lighthouse da 100 % en Buenas prácticas, pero saca avisos que no puntúan en «Confianza y
 seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
 
@@ -251,6 +255,9 @@ Un generador interactivo: el usuario elige o completa tokens, colores, etc. `fud
 hojas en los shadow roots (`packages/mcp/guide/html-css.md:208`). Encaja con la SDD-66.
 
 ### 8. `fudic.json` en el MCP
+
+> **Redactada el 2026-11-13** dentro de [SDD-84](sdd/SDD-84-cabeceras-de-la-app.md) §3.9: el tema
+> `config` de la guía, con `fudic.json`, `sw.json` y los tres `.headers`.
 
 El `sw.json` ya está en la guía (`guide/overview.md`, `guide/pages.md`). El `fudic.json` necesita
 su página o su esquema para que la IA sepa configurarlo, incluidas las claves nuevas de 1, 3 y 4.
