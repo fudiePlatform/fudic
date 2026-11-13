@@ -6,8 +6,8 @@
 
   const text = signal("");
 
-  function write(ev: Event) {
-    text.set((ev.target as HTMLTextAreaElement).value);
+  function write(name: string) {
+    text.set(name);
   }
 }
 
@@ -34,7 +34,11 @@
 <app-note>
   <template shadowrootmode="open">
     <label>Nota
-      <textarea class="note" placeholder="Escribe varias líneas…" @input=@write></textarea></label>
+      <textarea
+        class="note"
+        placeholder="Escribe varias líneas…"
+        @input=@write($value)></textarea>
+    </label>
     <small>Caracteres: <output class="count">@text().length</output></small>
   </template>
 </app-note>
