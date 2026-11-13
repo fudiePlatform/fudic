@@ -19,7 +19,7 @@
 ## Fase 1 — diagnósticos
 
 - [ ] **1. Diagnósticos.**
-  - `FUD1540`–`FUD1555`, cada uno con su función, su `.md` y su línea en `index.ts` (SDD §3.10).
+  - `FUD1540`–`FUD1556`, cada uno con su función, su `.md` y su línea en `index.ts` (SDD §3.10).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/codes/FUD154*.{ts,md}`, `src/codes/FUD155*.{ts,md}`, `src/index.ts`.
@@ -34,11 +34,13 @@
   - *Paquete:* `config`.
   - *Ficheros:* `src/headers/parse.ts`, `src/headers/known.ts`.
 - [ ] **3. La CSP.**
-  - Directivas de CSP3, fuentes, `'none'`, `{nonce}` (`FUD1544`, `FUD1546`).
-  - Lo que exige fudic y lo que debilita solo si cuenta (§3.4): `FUD1545`, `FUD1547`, `FUD1548`.
+  - Directivas de CSP3, fuentes, `'none'`, la tabla de huecos con `{nonce}` (`FUD1544`, `FUD1546`).
+  - Lo que debilita solo si cuenta (§3.4): `FUD1547`.
+  - `CspNeed` (directiva, fuente, pieza) y `checkNeeds(csp, needs)`: la directiva efectiva según CSP3;
+    `FUD1545`/`FUD1548` para lo que no pasa y `FUD1556` para lo que fudic ya no pide.
   - *Depende de:* 2.
   - *Paquete:* `config`.
-  - *Ficheros:* `src/headers/csp.ts`.
+  - *Ficheros:* `src/headers/csp.ts`, `src/headers/needs.ts`.
 - [ ] **4. Las demás comprobaciones y `readHeaders`.**
   - HSTS, COOP, `Referrer-Policy`, `Cache-Control`, `Permissions-Policy` (`FUD1549`, `FUD1550`).
   - Las cabeceras de fudic (§3.6, `FUD1542`).
@@ -47,21 +49,25 @@
   - *Depende de:* 3.
   - *Paquete:* `config`.
   - *Ficheros:* `src/headers/checks.ts`, `src/headers/templates.ts`, `src/headers/read.ts`, `src/index.ts`.
-- [ ] **5. Los tests del lector.** Criterios 3–15 y 18.
+- [ ] **5. Los tests del lector.** Criterios 3–13, 16, 17 y 20, más `checkNeeds` con necesidades
+  inventadas (la parte de config de 10, 13 y 14).
   - *Depende de:* 4.
   - *Paquete:* `config`.
 
 ## Fase 3 — el manifiesto, el servidor y el SW
 
 - [ ] **6. `ManifestHeaders` en el transporte.**
-  - `headers` en lugar de `csp`; fuera `DEFAULT_CSP` y `CspTemplates`; `pageHeadersFor` y
-    `assetHeadersFor` con la regla más específica cabecera por cabecera (§3.7).
-  - El router pone `pageHeadersFor` menos HSTS en `servePage` y en `render` (§4.3).
+  - `headers` en lugar de `csp`; fuera `DEFAULT_CSP` y `CspTemplates`; `PLACEHOLDERS`, `wantsNonce`,
+    `pageHeadersFor` y `assetHeadersFor` con la regla más específica cabecera por cabecera (§3.7).
+  - El router pone `pageHeadersFor` menos HSTS en `servePage` y en `render`, y solo genera nonce con
+    `wantsNonce` (§4.3).
+  - El linker declara su necesidad (`'unsafe-eval'`) junto a `new Function` (§3.4).
   - *Depende de:* 4.
   - *Paquete:* `transport`.
   - *Ficheros:* `src/manifest.ts`, `src/csp.ts`, `src/headers.ts`, `src/router.ts`, `src/index.ts`.
 - [ ] **7. `ServerApp.headers`.**
   - Fuera `csp` y `statics`; `pageHeaders`, `hint` y `staticHeaders` desde `headers` (§3.7, §4.1).
+  - Nonce solo con `wantsNonce`; la sustitución es la función de Node del contrato (§4.4).
   - HSTS solo sobre HTTPS, con `trustProxy`.
   - Las cabeceras de `page.headers` ganan a lo que escribe `load`.
   - `nodeMiddleware`: lo de fudic gana al servidor de estáticos del host (§4.4).
@@ -71,15 +77,17 @@
 - [ ] **8. El plugin.**
   - `readHeaders` en `configResolved`, con la política de SDD-83; `headers` en el manifiesto y en
     `emitServerModule`; `FUD0803` contra `page.headers` (§4.2).
-  - `FUD1551`–`FUD1553` en `generateBundle`.
+  - `FUD1545`, `FUD1548`, `FUD1556` y `FUD1551`–`FUD1553` en `generateBundle` (en dev, al compilar),
+    con las necesidades de las páginas y del bundle del SW; `.fudic/csp-needs.json` (§4.2).
   - Dev: sin CSP de página ni HSTS; `sw.headers` en `/fudic-sw.js`; vigilancia de los tres ficheros
     (§4.5).
-  - El contrato de los backends en el README (§4.4).
+  - El contrato de los backends en el README, con la función de sustitución en seis lenguajes (§4.4).
   - *Depende de:* 7.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/plugin.ts`, `src/manifest.ts`, `src/dev.ts`, `src/server-module.ts`,
     `src/diagnostics.ts`, `README.md`.
-- [ ] **9. Los tests de las respuestas.** Criterios 16, 17 y 20–26 (los de navegador, en los e2e).
+- [ ] **9. Los tests de las respuestas.** Criterios 10, 13–15, 18, 19, 22–28 y 35 (los de navegador, en
+  los e2e).
   - *Depende de:* 8.
   - *Paquetes:* `transport`, `server`, `vite`.
 
@@ -94,6 +102,8 @@
 - [ ] **11. El nonce en el emit.**
   - `$nonce` en `<script type="module" src>`, en cada `<link rel="modulepreload">` del head y en el
     `<script type="importmap">` del autor (§4.7).
+  - Cada sitio que escribe algo inline registra su necesidad en el resultado de la compilación
+    (§3.4, §4.7).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/parts.ts`, `src/emit/page-sheets.ts`, el emit de los `<script>` de datos.
@@ -103,7 +113,7 @@
   - *Depende de:* 4.
   - *Paquete:* `typecheck`.
   - *Ficheros:* `src/trusted-types.ts`.
-- [ ] **13. Los tests del runtime y el emit.** Criterios 27–29.
+- [ ] **13. Los tests del runtime y el emit.** Criterios 29–31.
   - *Depende de:* 10, 11, 12.
   - *Paquetes:* `dom`, `forms`, `compiler`, `typecheck`.
 
@@ -116,7 +126,8 @@
   - *Ficheros:* `package.json`, `syntaxes/fudheaders.tmLanguage.json`,
     `language-configuration.fudheaders.json`.
 - [ ] **15. El language server.**
-  - Diagnósticos con `parseHeaders` y la política; completado, hover con MDN y bombillas (§3.8).
+  - Diagnósticos con `parseHeaders` y la política; `FUD1545`, `FUD1548` y `FUD1556` desde
+    `.fudic/csp-needs.json`; completado, hover con MDN y bombillas (§3.8).
   - *Depende de:* 4, 14.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/headers/service.ts`, `src/headers/actions.ts`, `src/headers/docs.ts`.
@@ -135,7 +146,7 @@
   - *Paquete:* `mcp`.
   - *Ficheros:* `src/guide.ts`, `src/check.ts`, `guide/config.md`, `guide/es/config.md`,
     `guide/overview.md`, `guide/es/overview.md`.
-- [ ] **18. Los tests del editor, la CLI y el MCP.** Criterios 2, 19 y 31–33.
+- [ ] **18. Los tests del editor, la CLI y el MCP.** Criterios 2, 21, 33, 34 y 36.
   - *Depende de:* 15, 16, 17.
   - *Paquetes:* `language-server`, `vscode`, `cli`, `mcp`.
 
@@ -149,7 +160,7 @@
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `page.headers`, `sw.headers`, `assets.headers`, sus e2e.
 - [ ] **20. Lighthouse.**
-  - Criterio 30 sobre `vite preview` del ejemplo con HTTPS. Lo que salga se arregla aquí.
+  - Criterio 32 sobre `vite preview` del ejemplo con HTTPS. Lo que salga se arregla aquí.
   - *Depende de:* 19.
 - [ ] **21. Docs, `.vsix` y prueba de Pedro.**
   - README de `config`, `server` y `transport`. SDD-32, BUG-07, BUG-42, IDEA-07 e INDEX, donde citen
@@ -159,7 +170,7 @@
   - SDD §6.1 con ese `.vsix`.
   - *Depende de:* 18, 20.
 - [ ] **22. Cierre.**
-  - `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e en verde (criterio 34).
+  - `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e en verde (criterio 37).
   - Cobertura de §5.
   - Estado `Hecho` y merge `--no-ff` a `main`.
   - *Depende de:* 21.

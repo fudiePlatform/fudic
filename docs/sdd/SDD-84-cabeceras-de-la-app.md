@@ -122,8 +122,13 @@ X-Custom: anything
   (`FUD1541`).
 - **Nombres sin distinguir mayúsculas.** Se envían tal como se escriben.
 - **Valores en ASCII imprimible.** Un carácter fuera de ese rango es `FUD1541`.
-- **`{nonce}`** es el nonce de cada respuesta. Solo vale dentro de `'nonce-{nonce}'` y solo en
-  `page.headers` (`FUD1546`).
+- **Huecos: `{nombre}`.** Un nombre entre llaves es un hueco que quien responde sustituye en cada
+  respuesta. Hoy hay uno: **`{nonce}`**, el nonce de esa respuesta. Solo vale en `page.headers`, y
+  dentro de la CSP solo como `'nonce-{nonce}'`. Otro nombre entre llaves, o `{nonce}` en otro sitio,
+  es `FUD1546`. Un hueco nuevo en el futuro es una entrada más en la tabla de huecos del lector y una
+  línea más en el contrato de los backends (§4.4).
+- **Si `page.headers` no tiene `{nonce}`, no hay nonce**: ni el servidor ni el SW lo generan, y el HTML
+  no lleva atributos `nonce`.
 
 **`assets.headers`: toda regla lleva ruta.**
 
@@ -166,13 +171,39 @@ tabla del lector: una cabecera nueva es una línea de esa tabla.
 
 ### 3.4. Lo que fudic exige y lo que avisa
 
-**`page.headers`:**
+**Lo que fudic necesita no está escrito en el código como una CSP.** El fichero es la única
+política. Cada pieza que emite fudic declara lo que necesita, en el código que lo provoca:
 
-- `script-src` (o `default-src` si no hay `script-src`) tiene que llevar `'nonce-{nonce}'`. Sin el
-  nonce, el polyfill de estilos, el runtime inline y los `<style>` de fudic no corren: `FUD1545`
-  (error) sobre la directiva, o sobre `Content-Security-Policy` si falta entera. `FUD0803` sigue
-  saltando sobre el layout que pide `?inline`, y desde esta SDD puede hacerlo: compara con la CSP de
-  `page.headers`.
+| Pieza | Declara | Dónde |
+|---|---|---|
+| El polyfill de estilos (`<script>` inline) | `script-src`: el nonce | `compiler/src/emit/polyfill.ts` |
+| El runtime inline (`?inline`) | `script-src`: el nonce | `compiler/src/emit/parts.ts` |
+| Los `<style>` y `<style type="module">` | `style-src`: el nonce o `'unsafe-inline'` | `compiler/src/emit/parts.ts` |
+| `<script src>`, `modulepreload`, `importmap` | `script-src`: el nonce, si la CSP lleva `'strict-dynamic'` | `compiler/src/emit/parts.ts` |
+| El linker del SW (`new Function`) | `script-src` de `sw.headers`: `'unsafe-eval'` | `transport/src/linker.ts` |
+| La policy de Trusted Types | `trusted-types`: `fudic`, si hay `require-trusted-types-for` | `dom/src/trusted.ts` |
+
+El build junta las necesidades de lo que **de verdad emitió** y las compara con el fichero, según
+la semántica de CSP3 (directiva efectiva, `default-src` como respaldo, `'unsafe-inline'` ignorado
+con nonce). Si mañana el SW admite `import()` y el linker deja de evaluar, su necesidad desaparece
+con él, y el `'unsafe-eval'` de `sw.headers` pasa a ser `FUD1556`, con la bombilla que lo quita. Lo
+mismo con el nonce el día que no haga falta el polyfill. No hay que tocar ningún otro código.
+
+- **Algo que se emitió y la CSP no lo deja pasar**: `FUD1545` (error) en `page.headers`, o `FUD1548`
+  (warning) en `sw.headers`, sobre la directiva efectiva y diciendo qué pieza lo necesita.
+  `FUD1548` es un warning porque sin `'unsafe-eval'` `canLink()` da `false` y la app se sirve sin SW:
+  es legal, aunque rara vez sea lo que se quiere. `FUD0803` sigue saltando sobre el layout que pide
+  `?inline`, y ahora puede hacerlo: compara con `page.headers`.
+- **Algo que la CSP permite para fudic y ya nada necesita**: `FUD1556` (hint), con bombilla. Solo se
+  mira lo que fudic declara (`{nonce}`, `'unsafe-eval'` en `sw.headers`, `fudic` en `trusted-types`):
+  nunca lo que el usuario añada para lo suyo.
+- Estas tres comprobaciones necesitan la salida: salen en el build y en dev. El build y dev escriben
+  las necesidades que juntaron en `.fudic/csp-needs.json`, y el editor las lee de ahí para enseñar los
+  tres códigos en los `.headers` con su bombilla. Sin ese fichero (sin compilar todavía), el editor
+  no los enseña.
+
+**`page.headers`, mientras se escribe:**
+
 - **Una fuente debilita solo si el navegador la usa** (`FUD1547`, warning):
   - `'unsafe-eval'` en `script-src`;
   - `*`, un esquema (`https:`, `http:`, `data:`) o un host en `script-src` **sin `'strict-dynamic'`**
@@ -182,14 +213,6 @@ tabla del lector: una cabecera nueva es una línea de esa tabla.
 
   Así la plantilla, que lleva `'unsafe-inline' https:` como respaldo para navegadores viejos detrás de
   `'strict-dynamic'`, no avisa.
-- `require-trusted-types-for 'script'` sin `fudic` en `trusted-types` (si `trusted-types` está): la
-  policy del runtime no se puede crear, `FUD1545`.
-
-**`sw.headers`:**
-
-- `script-src` sin `'unsafe-eval'`, o con `require-trusted-types-for`: el SW no puede enlazar,
-  `canLink()` da `false` y la app se sirve sin SW. `FUD1548` (warning): es legal, pero rara vez es lo
-  que se quiere.
 
 **`assets.headers`** (solo en el build, porque necesita la salida y `sw.json`):
 
@@ -319,8 +342,12 @@ export interface ManifestHeaders {
   readonly assets: readonly { readonly pattern: string; readonly headers: Readonly<Record<string, string>> }[];
 }
 
-/** The page headers of one response: `{nonce}` filled. */
-export function pageHeadersFor(headers: ManifestHeaders, nonce: string): Headers;
+/** The placeholders of a header value, by name; today only `nonce`. */
+export const PLACEHOLDERS: readonly string[];
+/** Whether the page headers ask for a nonce: some value holds `{nonce}`. */
+export function wantsNonce(headers: ManifestHeaders): boolean;
+/** The page headers of one response, every `{name}` filled from `values`. */
+export function pageHeadersFor(headers: ManifestHeaders, values: { readonly nonce?: string }): Headers;
 /** What `assets` says for `path` (without `base`): the winner per name, the empty ones dropped. */
 export function assetHeadersFor(headers: ManifestHeaders, path: string): Readonly<Record<string, string>>;
 ```
@@ -339,9 +366,12 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
   - **Completado**: nombres de cabecera de la tabla, directivas de CSP, palabras clave y valores
     cerrados (COOP, `Referrer-Policy`, directivas de `Cache-Control`).
   - **Hover**: qué hace la cabecera o la directiva, con enlace a MDN.
-  - **Bombillas**: las de SDD-83 para silenciar (el comentario con `#`), «Añadir `'nonce-{nonce}'`» en
-    `FUD1545`, «Añadir `'unsafe-eval'`» en `FUD1548`, «Quitar la línea» en `FUD1542` y `FUD1546`, y
-    «Cambiar por `<valor>`» en `FUD1543` cuando hay un valor cerrado parecido.
+  - **Bombillas**: las de SDD-83 para silenciar (el comentario con `#`); «Añadir `<fuente>`» en
+    `FUD1545` y `FUD1548`, con lo que pide la pieza; «Quitar `<fuente>`» en `FUD1556`; «Quitar la
+    línea» en `FUD1542` y `FUD1546`; y «Cambiar por `<valor>`» en `FUD1543` cuando hay un valor cerrado
+    parecido.
+  - `FUD1545`, `FUD1548` y `FUD1556` salen de `.fudic/csp-needs.json` (§3.4) y se recalculan cuando
+    cambia ese fichero o el `.headers`.
 - **CLI**: `fudic new` y `fudic g app` escriben `page.headers` y `assets.headers`, y `sw.headers` salvo
   con `--no-sw`. `fudic check` valida los tres.
 - **MCP**: `fudic_check` devuelve sus diagnósticos. La guía gana el tema `config` (§3.9).
@@ -368,10 +398,10 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
 | `FUD1542` | error | A header fudic sends itself | §3.6 |
 | `FUD1543` | error | A value the header does not accept | §3.3; valor vacío fuera de `assets.headers` |
 | `FUD1544` | warning | A CSP directive that does not exist | Directiva desconocida: el navegador la ignora |
-| `FUD1545` | error | The page policy stops fudic's own scripts | §3.4: sin `'nonce-{nonce}'`, o Trusted Types sin `fudic` |
-| `FUD1546` | error | A nonce that is not per response | Un nonce literal, `{nonce}` fuera de `'nonce-{nonce}'`, o un nonce en `sw.headers` o `assets.headers` |
+| `FUD1545` | error | The page policy blocks what fudic emits | §3.4: una necesidad de lo emitido que `page.headers` no deja pasar |
+| `FUD1546` | error | A placeholder that is not one | Un nonce literal, un `{nombre}` que no es un hueco, `{nonce}` fuera de `'nonce-{nonce}'` o fuera de `page.headers` |
 | `FUD1547` | warning | The page policy lets more in than it needs | §3.4 |
-| `FUD1548` | warning | The Service Worker cannot link its chunks | §3.4 |
+| `FUD1548` | warning | The Service Worker policy blocks its linker | §3.4: la necesidad del linker que `sw.headers` no deja pasar |
 | `FUD1549` | warning | This referrer policy leaves `back` empty | `no-referrer`, `origin`, `strict-origin` |
 | `FUD1550` | warning | HSTS preload without what it requires | `preload` con `max-age` < 31536000 o sin `includeSubDomains` |
 | `FUD1551` | warning | The Service Worker downloads this file twice | §3.4 |
@@ -379,8 +409,9 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
 | `FUD1553` | hint | A rule that matches no file | §3.4 |
 | `FUD1554` | warning | A headers file that applies to nothing | En una lib, o `sw.headers` sin `sw.json` |
 | `FUD1555` | warning | Trusted Types will block this assignment | §4.6 |
+| `FUD1556` | hint | The policy allows what fudic no longer needs | §3.4: `{nonce}`, `'unsafe-eval'` en `sw.headers` o `fudic` en `trusted-types` sin pieza que lo pida |
 
-`FUD1556`–`FUD1559` quedan libres.
+`FUD1557`–`FUD1559` quedan libres.
 
 ---
 
@@ -407,7 +438,11 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
 - El plugin lee los tres ficheros con `readHeaders` en `configResolved`, informa de sus diagnósticos
   con la política aplicada y escribe `headers` en el manifiesto. El servidor generado (`emitServerModule`)
   los lleva en `ServerApp.headers`.
-- `FUD1551`–`FUD1553` salen en `generateBundle`, cuando se conocen la salida y `sw.json`.
+- `FUD1545`, `FUD1548`, `FUD1556` y `FUD1551`–`FUD1553` salen en `generateBundle`, cuando se conocen
+  la salida y `sw.json`. Las necesidades del SW vienen del bundle de `fudic-sw.js` (lo que declara el
+  linker); las de las páginas, de cada compilación (§4.7). En dev, al compilar cada página.
+- El build y dev escriben `.fudic/csp-needs.json`: por fichero `.headers`, cada necesidad con su
+  directiva, su fuente y la pieza que la pide.
 - **Un error en un `.headers` corta el build**, como cualquier error. El fichero erróneo no se sustituye
   por su plantilla: si el usuario cree que ha cambiado algo, no puede salir otra cosa sin avisar.
 
@@ -427,11 +462,20 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
   `@fudic/vite` (el contrato de SDD-73 §3.2) gana estas líneas:
 
   ```
-  on a page:        the headers of manifest.headers.page, {nonce} filled
-  on its 103:       of those, Content-Security-Policy and Referrer-Policy
+  on a page:
+    if some value of manifest.headers.page holds "{nonce}":
+      nonce = 16 random bytes, base64url, new for THIS response
+      every "{nonce}" in those values    -> nonce
+      every "__FUDIC_NONCE__" in the HTML -> nonce   (prerendered pages, and streams chunk by chunk)
+    send the headers of manifest.headers.page
+  on its 103:       of those, Content-Security-Policy and Referrer-Policy, same nonce
   on /fudic-sw.js:  manifest.headers.sw
   on a static file: for each name, the most specific rule of manifest.headers.assets; '' = none
   ```
+
+  Sustituir es reemplazar un texto fijo por otro: cabe en una línea en cualquier lenguaje, sin
+  plantillas ni expresiones regulares. El README da la función en Go, Java, Python, C# y Rust junto a
+  la de Node.
 
 ### 4.5. Desarrollo
 
@@ -462,26 +506,34 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
 
 ### 4.7. El emit
 
+- **El nonce solo si se pide.** Sin `{nonce}` en `page.headers`, `io.nonce` no existe y `$nonce` es
+  `''`: el HTML no lleva atributos `nonce` ni el token `__FUDIC_NONCE__`. El emit ya escribe
+  `$nonce` condicional; lo nuevo es que el servidor y el SW solo lo generan con `wantsNonce`.
 - `writeRuntimeTags` pone `$nonce` en `<script type="module" src>` y en cada
   `<link rel="modulepreload">` que escribe en el head. Con `'strict-dynamic'`, lo que no lleva nonce
   no carga. Sin `'strict-dynamic'`, el nonce sobra y no molesta.
+- Cada sitio del emit que escribe algo inline registra su necesidad (§3.4) en el resultado de la
+  compilación, junto al código que lo escribe. El build las junta por página.
 - Un `<script type="importmap">` del autor sale con `$nonce`. Un `application/ld+json`, no: no se
   ejecuta y la CSP no lo mira.
 - Las precargas de la cabecera `Link` y del `103` no llevan nonce ni lo necesitan: según CSP3,
-  `'strict-dynamic'` deja pasar las peticiones que no inserta el parser. El criterio 20 lo comprueba
+  `'strict-dynamic'` deja pasar las peticiones que no inserta el parser. El criterio 22 lo comprueba
   en Chrome.
 
 ### 4.8. El ejemplo
 
 `examples/basic` gana sus tres ficheros. `page.headers` lleva una fuente de imágenes de fuera, para que
 el ejemplo enseñe cómo se añade, y `assets.headers` un bloque para `/fonts/*`. Lighthouse sobre
-`vite preview` del ejemplo no da avisos en «Confianza y seguridad» (criterio 30).
+`vite preview` del ejemplo no da avisos en «Confianza y seguridad» (criterio 32).
 
 ---
 
 ## 5. Invariantes
 
 - **Lo que hay en el fichero es lo que sale**, más las cabeceras de fudic (§3.6) y nada más.
+- **Ninguna CSP en el código.** Lo que fudic necesita lo declara la pieza que lo provoca, y se compara
+  con lo que se emitió. Cambiar o quitar esa pieza cambia lo que se exige sin tocar nada más.
+- **Sin `{nonce}` no hay nonce**: ni se genera ni se escribe.
 - **Una fuente: `HEADERS_TEMPLATES`.** La CLI y la falta de fichero dan el mismo texto.
 - **Las mismas cabeceras de página** desde el servidor y desde el SW, salvo HSTS en el SW.
 - **El lector nunca lanza.** Un fichero ilegible o roto es un diagnóstico con span.
@@ -517,68 +569,77 @@ el ejemplo enseñe cómo se añade, y `assets.headers` un bloque para `/fonts/*`
 8. `Cross-Origin-Opener-Policy: same-site` es `FUD1543`, con la bombilla «Cambiar por `same-origin`».
    `Cache-Control: max-age=mucho` también es `FUD1543`. Un valor vacío en `page.headers`, también.
 9. `script-srcc 'self'` es `FUD1544`.
-10. `script-src 'self'` sin nonce es `FUD1545`, con la bombilla «Añadir `'nonce-{nonce}'`». Con un
-    layout que pide `?inline`, también sale `FUD0803`. Con `trusted-types otra`, también es
-    `FUD1545`.
-11. `'nonce-abc123'`, un `{nonce}` en `img-src https://{nonce}.x` o un `'nonce-{nonce}'` en
+10. Con una página que hidrata (lleva el polyfill inline), `script-src 'self'` sin nonce da `FUD1545`
+    en el build, nombrando el polyfill, y en el editor con la bombilla «Añadir `'nonce-{nonce}'`». Con
+    un layout que pide `?inline`, también sale `FUD0803`. Con `require-trusted-types-for` y
+    `trusted-types otra`, también es `FUD1545`, nombrando la policy.
+11. `'nonce-abc123'`, `{nonce}` en `img-src https://{nonce}.x`, `{otro}` o un `'nonce-{nonce}'` en
     `sw.headers` son `FUD1546`.
 12. `script-src 'nonce-{nonce}' https:` es `FUD1547`; con `'strict-dynamic'` delante, no. La plantilla
     no da ningún diagnóstico. Quitar `frame-ancestors` es `FUD1547`.
-13. `sw.headers` sin `'unsafe-eval'` es `FUD1548`, y el SW de esa app no se registra como renderizador
-    (`canLink()` falso).
-14. `Referrer-Policy: no-referrer` es `FUD1549`.
-15. `max-age=86400; preload` es `FUD1550`.
-16. Con `sw.json` precargando `/assets/**` y `/assets/**` con `no-cache`, el build da `FUD1551`.
-17. `immutable` en `/**` da `FUD1552` sobre la regla, nombrando un fichero sin hash del build (el
+13. `sw.headers` sin `'unsafe-eval'` es `FUD1548`, nombrando el linker, y el SW de esa app no se
+    registra como renderizador (`canLink()` falso).
+14. **Mañana sin tocar código.** En un test, con el linker declarando que no necesita nada,
+    `'unsafe-eval'` en `sw.headers` da `FUD1556` con la bombilla «Quitar `'unsafe-eval'`», y ningún
+    otro fichero cambia. Lo mismo con una app sin páginas que hidraten y `{nonce}` en `page.headers`.
+15. Con `page.headers` sin `{nonce}` y `script-src 'self' 'unsafe-inline'`, el HTML no lleva ningún
+    atributo `nonce` ni el token `__FUDIC_NONCE__`, la respuesta no genera nonce y no sale `FUD1545`.
+16. `Referrer-Policy: no-referrer` es `FUD1549`.
+17. `max-age=86400; preload` es `FUD1550`.
+18. Con `sw.json` precargando `/assets/**` y `/assets/**` con `no-cache`, el build da `FUD1551`.
+19. `immutable` en `/**` da `FUD1552` sobre la regla, nombrando un fichero sin hash del build (el
     favicon). `/nada/**` da `FUD1553`.
-18. Un `page.headers` en una lib es `FUD1554`. Un `sw.headers` en una app sin `sw.json`, también.
-19. `# fud-disable-next-line FUD1547: …` encima de la directiva la silencia; `"FUD1547": "error"` en
+20. Un `page.headers` en una lib es `FUD1554`. Un `sw.headers` en una app sin `sw.json`, también.
+21. `# fud-disable-next-line FUD1547: …` encima de la directiva la silencia; `"FUD1547": "error"` en
     `diagnostics` corta el build (SDD-83).
 
 **Las respuestas**
 
-20. Una página servida por preview lleva la CSP de `page.headers` con un nonce nuevo por respuesta, la
+22. Una página servida por preview lleva la CSP de `page.headers` con un nonce nuevo por respuesta, la
     `Referrer-Policy`, el COOP y, sobre HTTPS, HSTS. En Chrome no hay violaciones de CSP en consola, la
     página hidrata, y las `modulepreload` del `103` y de la cabecera `Link` se usan (DevTools: sin
     segunda petición del módulo).
-21. La misma página pintada por el SW lleva las mismas cabeceras menos HSTS, con su
+23. La misma página pintada por el SW lleva las mismas cabeceras menos HSTS, con su
     `Referrer-Policy`.
-22. El `103` lleva la CSP (con el mismo nonce que la respuesta final) y la `Referrer-Policy`, y nada
+24. El `103` lleva la CSP (con el mismo nonce que la respuesta final) y la `Referrer-Policy`, y nada
     más de `page.headers`.
-23. `/fudic-sw.js` lleva `sw.headers`, `no-cache` y `Service-Worker-Allowed`, en dev, en preview y con
+25. `/fudic-sw.js` lleva `sw.headers`, `no-cache` y `Service-Worker-Allowed`, en dev, en preview y con
     `nodeMiddleware` detrás de Express.
-24. En preview, `/assets/x-<hash>.js` lleva `immutable`, `/favicon.ico` lleva `no-cache` y un bloque
+26. En preview, `/assets/x-<hash>.js` lleva `immutable`, `/favicon.ico` lleva `no-cache` y un bloque
     `/legacy.js` con `Cache-Control:` vacío lo deja sin `Cache-Control`, aunque `sirv` quisiera poner
     el suyo.
-25. Un `X-Custom: 1` en `page.headers` sale en las páginas y no en los datos, las funciones ni los
+27. Un `X-Custom: 1` en `page.headers` sale en las páginas y no en los datos, las funciones ni los
     estáticos.
-26. En dev no hay CSP de página ni HSTS; el resto de `page.headers`, sí. Cambiar `page.headers` cambia
+28. En dev no hay CSP de página ni HSTS; el resto de `page.headers`, sí. Cambiar `page.headers` cambia
     la respuesta siguiente sin reiniciar.
 
 **El runtime y el emit**
 
-27. Con Trusted Types activo, una vista con HTML en crudo y un formulario con su resumen de errores
+29. Con Trusted Types activo, una vista con HTML en crudo y un formulario con su resumen de errores
     pintan sin violaciones. `trustedTypes.createPolicy` se llama una vez por página aunque haya dos
     piezas que la usen.
-28. El `<script type="module" src>`, cada `<link rel="modulepreload">` del head y un
+30. El `<script type="module" src>`, cada `<link rel="modulepreload">` del head y un
     `<script type="importmap">` del autor llevan el nonce de la respuesta. Un `application/ld+json`,
     no.
-29. `el.innerHTML = texto` en un `@code` de cliente da `FUD1555`. Con un `TrustedHTML`, no. Con
+31. `el.innerHTML = texto` en un `@code` de cliente da `FUD1555`. Con un `TrustedHTML`, no. Con
     `require-trusted-types-for` fuera de `page.headers`, tampoco. En `src/server`, tampoco.
 
 **Lighthouse, editor y MCP**
 
-30. Lighthouse sobre `vite preview` de `examples/basic` (HTTPS): sin avisos en «Confianza y seguridad».
-31. El language server da los diagnósticos de 4–15 en el editor con su span, y completa `script-`
-    con las directivas de `script-src`.
-32. `fudic check` y `fudic_check` del MCP devuelven los mismos diagnósticos que el build para los tres
-    ficheros (sin `FUD1551`–`FUD1553`, que son del build).
-33. `fudic_guide { topic: "config" }` devuelve el tema, y el test de §3.9 falla si se quita de
+32. Lighthouse sobre `vite preview` de `examples/basic` (HTTPS): sin avisos en «Confianza y seguridad».
+33. El language server da los diagnósticos de 4–13 y 16–17 en el editor con su span, y completa `script-`
+    con las directivas de `script-src`. Tras un build, `FUD1545`, `FUD1548` y `FUD1556` salen también
+    en el editor, desde `.fudic/csp-needs.json`.
+34. `fudic check` y `fudic_check` del MCP devuelven los mismos diagnósticos que el build para los tres
+    ficheros, salvo los que necesitan la salida (`FUD1545`, `FUD1548`, `FUD1551`–`FUD1553`, `FUD1556`).
+35. El README de `@fudic/vite` trae el contrato de §4.4 y la función de sustitución en Node, Go, Java,
+    Python, C# y Rust; la de Node es la que usa `@fudic/server`, y un test la compara con el pseudocódigo.
+36. `fudic_guide { topic: "config" }` devuelve el tema, y el test de §3.9 falla si se quita de
     `config.md` una clave del esquema, un campo de `sw.json` o el nombre de un `.headers`.
 
 **Cierre**
 
-34. `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e (`dev`, `preview`, `nosw`) en verde, con la
+37. `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e (`dev`, `preview`, `nosw`) en verde, con la
     cobertura de §5.
 
 ---
@@ -634,6 +695,17 @@ Nada.
     `.headers`.
 20. **Los docs que citan los avisos de Lighthouse** (SDD-32, BUG-07, BUG-42, IDEA-07, INDEX) se
     corrigen donde ya no aplican.
+21. **La CSP que fudic necesita vive en el fichero, no en el código** (Pedro). Si mañana un SW admite
+    `import()`, o se llega a un consenso sobre las hojas adoptadas sin el polyfill, el cambio está en
+    la plantilla y en la pieza que deja de necesitarlo, nunca en una lista de exigencias aparte. Por eso
+    cada pieza declara lo suyo y el build compara con lo que de verdad emitió.
+22. **Huecos `{nombre}` con un único hueco hoy: `{nonce}`** (Pedro). Sustituir un texto fijo cabe en una
+    línea en cualquier backend. La sintaxis deja sitio a otros huecos sin cambiar el formato.
+23. **El token del HTML sigue siendo `__FUDIC_NONCE__`**, distinto del de las cabeceras: `{nonce}` en el
+    texto de una página podría ser contenido del autor. Son dos reemplazos, y el contrato los nombra
+    juntos.
+24. **Las necesidades llegan al editor por `.fudic/csp-needs.json`.** El editor no compila la app, y sin
+    ese fichero no puede saber qué se emite. Calla antes que adivinar.
 
 ### 8.2. Tomadas al implementar
 
