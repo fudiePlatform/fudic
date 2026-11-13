@@ -31,6 +31,7 @@ import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { baselineContextOf } from '@fudic/config';
 import { fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
+import { fudTrustedTypesDiagnostics, moduleTrustedTypesDiagnostics, requiresTrustedTypes } from './trusted-types.js';
 import {
   packageBaselineUses,
   packageModules,
@@ -237,6 +238,14 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     const elsewhere = new Map<string, string[]>();
     // Read again on every check: a `fudic.json` edited in `dev` reports differently at once.
     const policies = projectPolicies((path) => fs.readFile(path));
+    // Whether a file's pages require trusted types (SDD-84 §4.6), once per project.
+    const trusted = new Map<string, boolean>();
+    const requiresTrusted = (file: string): boolean => {
+      const project = policies.projectOf(file);
+      if (project === null) return false;
+      if (!trusted.has(project.root)) trusted.set(project.root, requiresTrustedTypes(project, (path) => fs.readFile(path)));
+      return trusted.get(project.root)!;
+    };
     for (const entry of state.index.all()) {
       // A library's file is in the program for its types and is not the author's to fix (§4.2).
       if (entry.external) continue;
@@ -258,6 +267,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
           ...fudicDiagnostics(root.document, state.index, baseline),
           ...portableTypeDiagnostics(program, root.document),
           ...fudBaselineDiagnostics(program, root.document, baseline),
+          ...(requiresTrusted(entry.path) ? fudTrustedTypesDiagnostics(program, root.document) : []),
         ],
         policies.policyOf(entry.path),
         { parsed: root.document, complete: true },
@@ -322,7 +332,10 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     };
     for (const file of packageModules(site, own)) {
       const baseline = baselineContextOf(policies.projectOf(file)?.config ?? null);
-      const found = moduleBaselineDiagnostics(program, file, baseline);
+      const found = [
+        ...moduleBaselineDiagnostics(program, file, baseline),
+        ...(requiresTrusted(file) ? moduleTrustedTypesDiagnostics(program, file) : []),
+      ];
       const source = program.getSourceFile(file)!.text;
       // A module with nothing to say and no `fud-disable` is not read for its comments.
       if (found.length === 0 && !source.includes('fud-disable')) continue;

@@ -15,7 +15,7 @@ export {
 } from './assets.js';
 export { sheetKey } from './parts.js';
 export type { EarlyHint, SheetSite, SheetUse } from './page-sheets.js';
-export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
+export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline, HEAD_NEEDS } from './parts.js';
 export {
   resolveComponents,
   resolveDocument,

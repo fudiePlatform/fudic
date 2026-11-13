@@ -48,6 +48,10 @@ const PIECES: Readonly<Record<string, string>> = {
   browser: 'bundle/browser.ts',
   cursor: 'src/cursor.ts',
   emit: 'src/emit.ts',
+  // SDD-84 §4.6: the `fudic` Trusted Types policy. State that must not exist twice — a second
+  // `createPolicy('fudic')` throws under the directive — so the adapter and `@fudic/forms` both
+  // reach this one piece instead of carrying a copy each.
+  trusted: 'src/trusted.ts',
 };
 
 /**
@@ -63,16 +67,16 @@ const PIECES: Readonly<Record<string, string>> = {
  * to be REACHABLE, which is the entry in `bundle/` and not this table. `dom.ts` is types only
  * and does not survive the transform.
  *
- * None of today's three pieces reaches another, so the crossing this table describes does not
- * happen yet. It is here because the rule is about the package's future and not its present:
- * the day `emit` needs the adapter, the import has to leave as a URL rather than put a second
- * copy of `browser` on the origin.
+ * `browser` reaches `trusted`, and that crossing is the reason the table exists: the policy is
+ * state, and a second copy inside the adapter would be a second `createPolicy('fudic')` the day
+ * `@fudic/forms` paints a summary on the same page (SDD-84 §4.6).
  */
 const FRONTIERS: Readonly<Record<string, string>> = {
   'src/browser.ts': 'browser',
   'src/ns.ts': 'browser',
   'src/cursor.ts': 'cursor',
   'src/emit.ts': 'emit',
+  'src/trusted.ts': 'trusted',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

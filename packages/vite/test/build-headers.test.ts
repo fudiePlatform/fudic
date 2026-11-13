@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { build, type Rollup } from 'vite';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { HEADERS_TEMPLATES } from '@fudic/config';
 import { NONCE_TOKEN } from '@fudic/transport';
 import { fudic } from '../src/index.js';
@@ -40,7 +40,10 @@ async function buildApp(files: Readonly<Record<string, string>>, write = false):
   mkdirSync(join(root, 'public'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'public', 'favicon.ico'), '');
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(root, name), text);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, name)), { recursive: true });
+    writeFileSync(join(root, name), text);
+  }
   const warnings: string[] = [];
   const result = (await build({
     root,
@@ -121,6 +124,26 @@ describe('vite build — the headers of the app (SDD-84)', () => {
 
   it('an error in a .headers stops the build, and the file never falls back to its template', async () => {
     await expect(buildApp({ 'page.headers': 'Content-Type: text/plain\n' })).rejects.toThrow(/FUD1542/u);
+  });
+
+  it('criterion 10: a page that hydrates names the polyfill against a policy without the nonce, and the policy against `trusted-types`', async () => {
+    const counter = [
+      // Hydrates (a hookup), is styled (the polyfill) and has an `@raw` the client rewrites (the policy).
+      "@code {\n  let n = 0;\n  function mas(): void { n += 1; }\n}",
+      '<head><style>p { color: red; }</style></head>',
+      '<x-count><template shadowrootmode="open"><button @click="@mas">+1</button><div>@raw(null)</div></template></x-count>',
+    ].join('\n');
+    const page = [
+      '<!DOCTYPE html><html><head><link rel="component" href="../components/x-count.fud"><title>c</title>',
+      '<script src="fudic:runtime"></script></head><body><x-count></x-count></body></html>',
+    ].join('\n');
+    const failure = buildApp({
+      'src/routes/count.fud': page,
+      'src/components/x-count.fud': counter,
+      'page.headers': "Content-Security-Policy:\n  script-src 'self'\n  require-trusted-types-for 'script'\n  trusted-types otra\n",
+    });
+    await expect(failure).rejects.toThrow(/script-src blocks the style polyfill: it needs 'nonce-\{nonce\}'/u);
+    await expect(failure).rejects.toThrow(/trusted-types blocks the Trusted Types policy of fudic: it needs fudic/u);
   });
 
   it('a .headers silenced by its own fud-disable says nothing (criterion 21, the build’s part)', async () => {

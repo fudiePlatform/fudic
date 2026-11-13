@@ -44,13 +44,56 @@ export function fudBaselineDiagnostics(
 
 /** What the `@code` of `document` uses of the browser, unguarded, with its spans on the `.fud`. */
 export function fudBaselineUses(program: ts.Program, document: ProjectedFud): readonly BaselineUse[] {
+  const code = fudCode(program, document);
+  return code === undefined ? [] : new Detector(code.site).uses(code.statements);
+}
+
+/** The code of a file as a detector reads it: its statements, and where the program holds them. */
+export interface CodeSite {
+  readonly site: Site;
+  readonly statements: readonly OxcNode[];
+}
+
+/** The `@code` of `document`, or undefined when the program has no client code of it. */
+export function fudCode(program: ts.Program, document: ProjectedFud): CodeSite | undefined {
   const file = program.getSourceFile(document.path);
   const client = document.virtuals.find((virtual) => virtual.languageId !== 'css');
-  if (file === undefined || client === undefined) return [];
+  if (file === undefined || client === undefined) return undefined;
   const js = document.js.result;
   const statements = document.js.code.flatMap((id) => js.ast(id) as readonly OxcNode[]);
-  const site: Site = { program, file, at: (span) => generatedRange(client.mappings, span), source: js.mapSpan };
-  return new Detector(site).uses(statements);
+  return { site: { program, file, at: (span) => generatedRange(client.mappings, span), source: js.mapSpan }, statements };
+}
+
+/** The module `fileName` of the program, or undefined when it is not in it. */
+export function moduleCode(program: ts.Program, fileName: string): CodeSite | undefined {
+  const file = program.getSourceFile(fileName);
+  if (file === undefined) return undefined;
+  const batch = new JsBatch(file.text);
+  const id = batch.add('module-statements', { start: 0, end: file.text.length });
+  const js = batch.parse().value;
+  return { site: { program, file, at: (span) => [span.start, span.end], source: js.mapSpan }, statements: js.ast(id) as readonly OxcNode[] };
+}
+
+/** The node of the program written exactly where `node` is, or undefined when it was not copied as written. */
+export function tsNodeAt(site: Site, node: OxcNode): ts.Node | undefined {
+  const range = site.at(site.source(node.start, node.end));
+  if (range === undefined) return undefined;
+  const [start, end] = range;
+  const file = site.file;
+  let found: ts.Node | undefined;
+  const visit = (candidate: ts.Node): void => {
+    if (candidate.getStart(file) > start || candidate.getEnd() < end) return;
+    if (candidate.getStart(file) === start && candidate.getEnd() === end) found = candidate;
+    candidate.forEachChild(visit);
+  };
+  file.forEachChild(visit);
+  return found;
+}
+
+/** Whether every declaration of `symbol` is in the `lib` of TypeScript: the browser's, not a package's. */
+export function fromLibrary(program: ts.Program, symbol: ts.Symbol): boolean {
+  const declarations = symbol.declarations ?? [];
+  return declarations.length > 0 && declarations.every((d) => program.isSourceFileDefaultLibrary(d.getSourceFile()));
 }
 
 /** Every `FUD1524` of the module `fileName` of the program, on it. */
@@ -64,13 +107,8 @@ export function moduleBaselineDiagnostics(
 
 /** What the module `fileName` of the program uses of the browser, unguarded. */
 export function moduleBaselineUses(program: ts.Program, fileName: string): readonly BaselineUse[] {
-  const file = program.getSourceFile(fileName);
-  if (file === undefined) return [];
-  const batch = new JsBatch(file.text);
-  const id = batch.add('module-statements', { start: 0, end: file.text.length });
-  const js = batch.parse().value;
-  const site: Site = { program, file, at: (span) => [span.start, span.end], source: js.mapSpan };
-  return new Detector(site).uses(js.ast(id) as readonly OxcNode[]);
+  const code = moduleCode(program, fileName);
+  return code === undefined ? [] : new Detector(code.site).uses(code.statements);
 }
 
 /**
@@ -111,8 +149,8 @@ export function browserModules(
   return [...found].sort();
 }
 
-/** Where the detector reads: the program's file, and how a span of the code crosses into it. */
-interface Site {
+/** Where a detector reads: the program's file, and how a span of the code crosses into it. */
+export interface Site {
   readonly program: ts.Program;
   readonly file: ts.SourceFile;
   /** The generated range of a span of the source; undefined when it was not copied as written. */
@@ -172,7 +210,7 @@ class Detector {
     if (node['computed'] === true || property.type !== 'Identifier') return;
     const name = property['name'] as string;
     const found = this.#symbol(property);
-    if (found === undefined || !this.#fromLibrary(found.symbol) || this.#guarded(node, name, ancestors)) return;
+    if (found === undefined || !fromLibrary(this.site.program, found.symbol) || this.#guarded(node, name, ancestors)) return;
     const types = this.#typeNames((found.at.parent as ts.PropertyAccessExpression).expression);
     // `#fromLibrary` asked for at least one declaration.
     const declaring = found.symbol.declarations!.map((d) => (d.parent as { readonly name?: ts.Identifier }).name?.text);
@@ -193,7 +231,7 @@ class Detector {
       return;
     }
     const found = this.#symbol(node);
-    if (found === undefined || (found.symbol.flags & VALUE) === 0 || !this.#fromLibrary(found.symbol)) return;
+    if (found === undefined || (found.symbol.flags & VALUE) === 0 || !fromLibrary(this.site.program, found.symbol)) return;
     const name = node['name'] as string;
     const constructed = parent.type === 'NewExpression' && parent['callee'] === node;
     const candidates = constructed
@@ -209,33 +247,11 @@ class Detector {
 
   // ── The checker ──
 
-  /** The node of the program written exactly where `node` is. */
-  #tsNode(node: OxcNode): ts.Node | undefined {
-    const range = this.site.at(this.site.source(node.start, node.end));
-    if (range === undefined) return undefined;
-    const [start, end] = range;
-    const file = this.site.file;
-    let found: ts.Node | undefined;
-    const visit = (candidate: ts.Node): void => {
-      if (candidate.getStart(file) > start || candidate.getEnd() < end) return;
-      if (candidate.getStart(file) === start && candidate.getEnd() === end) found = candidate;
-      candidate.forEachChild(visit);
-    };
-    file.forEachChild(visit);
-    return found;
-  }
-
   /** The node of the program at `node` and its symbol; undefined when either is missing. */
   #symbol(node: OxcNode): { readonly at: ts.Node; readonly symbol: ts.Symbol } | undefined {
-    const at = this.#tsNode(node);
+    const at = tsNodeAt(this.site, node);
     const symbol = at === undefined ? undefined : this.#checker.getSymbolAtLocation(at);
     return symbol === undefined ? undefined : { at: at!, symbol };
-  }
-
-  /** Whether every declaration of `symbol` is in the `lib` of TypeScript: the browser's, not a package's. */
-  #fromLibrary(symbol: ts.Symbol): boolean {
-    const declarations = symbol.declarations ?? [];
-    return declarations.length > 0 && declarations.every((d) => this.site.program.isSourceFileDefaultLibrary(d.getSourceFile()));
   }
 
   /** The names of the type of `receiver` and of its base types: `HTMLDivElement`, `HTMLElement`, `Element`… */
@@ -385,6 +401,6 @@ function readAs(name: string): string {
   return name.endsWith('Constructor') && name.length > 'Constructor'.length ? name.slice(0, -'Constructor'.length) : name;
 }
 
-function isNode(value: unknown): value is OxcNode {
+export function isNode(value: unknown): value is OxcNode {
   return typeof value === 'object' && value !== null && typeof (value as { type?: unknown }).type === 'string';
 }

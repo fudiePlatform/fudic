@@ -757,3 +757,30 @@ Nada.
 17. **Un `fud-disable` en un `.headers` silencia también en el build.** El informe comparaba la ruta
     relativa del diagnóstico (`page.headers`) con la absoluta del fichero y nunca casaban: ahora cada
     diagnóstico se sitúa en la ruta entera de su fichero antes de aplicar sus comentarios.
+18. **También los `<script>` de código del head del autor llevan el nonce**, no solo su `importmap`: con
+    `'strict-dynamic'` un `<script src="./analytics.js">` del layout no cargaría sin él. JSON-LD y cualquier
+    `type` que no sea JavaScript, no. Un `type` interpolado se trata como código. Con un atributo
+    interpolado el nonce entra por la misma maquinaria de atributos.
+19. **El `importmap` declara `inline-script`, no `script`**: es un script inline, y `'self'` no lo deja
+    pasar. Con nonce pasa; sin nonce, solo con `'unsafe-inline'`.
+20. **Las necesidades del head viven en `HEAD_NEEDS` (`compiler/src/emit/parts.ts`)** y las del polyfill
+    en `POLYFILL_NEEDS` (`polyfill.ts`). Cada escritor devuelve lo que escribió (`writeHeadElements`,
+    `writeSharedHead`, `guideOf`/`planPageSheets`) y el módulo lo junta en `EmitOutput.needs`. El layout
+    apunta lo de su propio head; la ruta, lo de sus hojas, su guía, su head y su runtime según la forma
+    del marcador de su layout (`runtimeFormOf`). El `<script>` que registra el SW lo apunta el plugin
+    (`HEAD_NEEDS.boot`) cuando hay `sw.json`: el compilador no sabe si lo hay.
+21. **La necesidad de Trusted Types la apunta el emit del cliente** (`EmitOutput.needs` del `?client` de un
+    componente o de una ruta) cuando pinta HTML: un `@raw` o el resumen de un formulario. Solo lo que
+    hidrata pasa por la policy, así que una página N1 con `@raw` no la pide. La declaración vive en
+    `dom/src/trusted.ts` (`TRUSTED_TYPES_NEEDS`), y por eso `@fudic/compiler` depende de `@fudic/dom`
+    (sin dependencias propias). El plugin junta las necesidades de los `?client` con las de las páginas.
+22. **`dom/trusted` es una pieza del runtime** y `dom/browser` la importa por URL; `@fudic/forms` la
+    alcanza por un shim de `@fudic/dom`, como ya hacía con `@fudic/core`. Es la «lista de fronteras» de la
+    tarea 10: una sola copia de la policy en el origen. `examples/pieces-bench` la anota como pieza con
+    estado.
+23. **`FUD1555` por tipo, mirando debajo de los casts**: un valor de un tipo `TrustedHTML`,
+    `TrustedScript` o `TrustedScriptURL` no avisa aunque se escriba `as unknown as string` (lo que exige el
+    `lib.dom` de TypeScript, que tipa `innerHTML` como `string`). `any` no avisa: no se sabe. Se suman a
+    los sumideros de §4.6 `textContent`/`innerText` de un `<script>` y `parseHTMLUnsafe`. La exigencia se
+    lee del `page.headers` del proyecto del fichero (su plantilla si no hay), nunca en una lib. En el
+    editor `.fud` sale con el resto del detector en la fase 5 (tarea 15).

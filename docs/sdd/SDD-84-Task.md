@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 9 / 22 — `En curso`.
+> **Progreso:** 13 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -95,13 +95,13 @@
 
 ## Fase 4 — runtime y emit
 
-- [ ] **10. La policy `fudic`.**
+- [x] **10. La policy `fudic`.**
   - `trusted.ts` en `dom`, frontera de las piezas; `htmlOf` y el resumen de errores de `forms` pasan
     por ella (§4.6).
   - *Depende de:* —.
   - *Paquetes:* `dom`, `forms`, `vite` (lista de fronteras).
   - *Ficheros:* `dom/src/trusted.ts`, `dom/src/browser.ts`, `forms/src/dom/summary.ts`.
-- [ ] **11. El nonce en el emit.**
+- [x] **11. El nonce en el emit.**
   - `$nonce` en `<script type="module" src>`, en cada `<link rel="modulepreload">` del head y en el
     `<script type="importmap">` del autor (§4.7).
   - Cada sitio que escribe algo inline registra su necesidad en el resultado de la compilación
@@ -109,13 +109,13 @@
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/parts.ts`, `src/emit/page-sheets.ts`, el emit de los `<script>` de datos.
-- [ ] **12. `FUD1555`.**
+- [x] **12. `FUD1555`.**
   - En el detector de código de navegador de SDD-83, por tipo, solo con `require-trusted-types-for`
     en `page.headers` (§4.6).
   - *Depende de:* 4.
   - *Paquete:* `typecheck`.
   - *Ficheros:* `src/trusted-types.ts`.
-- [ ] **13. Los tests del runtime y el emit.** Criterios 29–31. Y el 10 de extremo a extremo: el build nombra el polyfill.
+- [x] **13. Los tests del runtime y el emit.** Criterios 29–31. Y el 10 de extremo a extremo: el build nombra el polyfill.
   - *Depende de:* 10, 11, 12.
   - *Paquetes:* `dom`, `forms`, `compiler`, `typecheck`.
 
@@ -130,6 +130,8 @@
 - [ ] **15. El language server.**
   - Diagnósticos con `parseHeaders` y la política; `FUD1545`, `FUD1548` y `FUD1556` desde
     `.fudic/csp-needs.json`; completado, hover con MDN y bombillas (§3.8).
+  - `FUD1555` en los `.fud` del editor, junto al detector de Baseline (`fudTrustedTypesDiagnostics`,
+    con `requiresTrustedTypes` del proyecto del fichero; SDD §8.2.23).
   - *Depende de:* 4, 14.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/headers/service.ts`, `src/headers/actions.ts`, `src/headers/docs.ts`.

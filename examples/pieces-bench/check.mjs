@@ -147,6 +147,7 @@ const EXCEPTIONS = {
     { piece: 'di/token', why: 'No siblings, and identity IS the object: a second copy would be a second set of tokens that compare unequal to the first.' },
     { piece: 'di/ambient', why: 'State that must not exist twice: the one variable `resolve` and `seed` read the installed container through.' },
     { piece: 'core/owner', why: 'State that must not exist twice: `owned` collects what `own` registers, from `effect`, `task` and every route chunk.' },
+    { piece: 'dom/trusted', why: 'State that must not exist twice: the `fudic` Trusted Types policy, which `dom/browser` and `forms/summary` both paint through; a second `createPolicy("fudic")` throws under the directive (SDD-84 §4.6).' },
     { piece: 'core/pipe', why: 'SDD-71 §4.3: what the presets share. Merged into one preset, every other preset would download that one.' },
     { piece: 'core/date', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },
     { piece: 'core/list', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },

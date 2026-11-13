@@ -39,6 +39,7 @@ export default defineConfig({
     // Dev-time source resolution of the sibling package: no build coupling.
     alias: [
       { find: '@fudic/core', replacement: fileURLToPath(new URL('../core/src/index.ts', import.meta.url)) },
+      { find: '@fudic/dom', replacement: fileURLToPath(new URL('../dom/src/index.ts', import.meta.url)) },
       // What `impl/` imports, as an app's plugin would serve it: the module generated from
       // `fudapi/rules.fudapi` (kept in step by a test of @fudic/api), over this package's source.
       { find: /^fudic:@fudic\/forms\/rules$/u, replacement: fileURLToPath(new URL('./test/generated/rules.browser.ts', import.meta.url)) },

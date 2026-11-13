@@ -22,12 +22,14 @@ import {
   asksInline,
   deliveredSheet,
   fixedSheetHref,
+  HEAD_NEEDS,
   hasIcon,
   linkWithHref,
   prunableHref,
   sheetKey,
 } from './parts.js';
 import { compactStyleCss } from './css-compact.js';
+import type { CspNeed } from '@fudic/config';
 import type { StyleNode } from '../css/index.js';
 import { compactProjectCss, projectAdoptOf, projectCss, type ProjectStyle } from './project-styles.js';
 import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
@@ -100,6 +102,8 @@ export interface PageSheets {
   readonly layout: ReadonlyMap<string, string>;
   /** What an element of the entry's own `<head>` becomes, or `null` to write it as ever. */
   readonly own: (el: ElementNode) => string | null;
+  /** What these elements put in the page that a CSP has to let in (SDD-84 §3.4). */
+  readonly needs: readonly CspNeed[];
   /** The project's sheets, pruned; one no component of this page adopts is not here. */
   readonly projectStyles: readonly ProjectStyle[] | undefined;
   readonly uses: readonly SheetUse[];
@@ -109,15 +113,19 @@ export interface PageSheets {
   readonly guide: string | null;
 }
 
-/** The guide expression of a page: the pruned one when it prunes, the whole guides when not. */
+/**
+ * The guide expression of a page — the pruned one when it prunes, the whole guides when not —
+ * and what it needs from the page's CSP.
+ */
 export function guideOf(
   graph: DocumentGraph,
   options: EmitOptions,
   linker: AssetLinker,
   sheets: PageSheets | null,
-): string | null {
-  if (sheets !== null) return sheets.guide;
-  return pageGuide(graph, options, linker, (i) => compactProjectCss(options.guides![i]!.sheet.css)).expr;
+): { readonly expr: string | null; readonly needs: readonly CspNeed[] } {
+  if (sheets !== null) return { expr: sheets.guide, needs: sheets.needs };
+  const guide = pageGuide(graph, options, linker, (i) => compactProjectCss(options.guides![i]!.sheet.css));
+  return { expr: guide.expr, needs: guide.needs };
 }
 
 /**
@@ -131,14 +139,16 @@ export function pageGuide(
   options: EmitOptions,
   linker: AssetLinker,
   cssOf: (index: number) => string,
-): { readonly expr: string | null; readonly hints: readonly EarlyHint[] } {
+): { readonly expr: string | null; readonly hints: readonly EarlyHint[]; readonly needs: readonly CspNeed[] } {
   const parts: string[] = [];
   const hints: EarlyHint[] = [];
+  let embeds = false;
   (options.guides ?? []).forEach((guide, i) => {
     const css = cssOf(i);
     if (css === '') return;
     const url = linker.sheetRef(guide.spec, linker.cssLinked(css));
     if (url === null) {
+      embeds = true;
       parts.push(`'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'`);
       return;
     }
@@ -150,7 +160,7 @@ export function pageGuide(
     const href = linker.maybeRef(options.icon, 'head') ?? JSON.stringify(options.icon);
     parts.push(`'<link rel="icon" href="' + ${href} + '">'`);
   }
-  return { expr: parts.length === 0 ? null : parts.join(' + '), hints };
+  return { expr: parts.length === 0 ? null : parts.join(' + '), hints, needs: embeds ? HEAD_NEEDS.embeddedSheet : [] };
 }
 
 const isFrameworkLink = (el: ElementNode): boolean =>
@@ -253,7 +263,7 @@ function sheetElement(
   css: string,
   linker: AssetLinker,
   componentSheet: EmitOptions['componentSheet'],
-): { readonly expr: string; readonly url?: string } {
+): { readonly expr: string; readonly url?: string; readonly embeds?: true } {
   if (css === '') return { expr: "''" };
   // `css: "link"` (SDD-73 §3.5): a `<style>` leaves the page as a file of its own, with the
   // author's attributes (`media`) on the `<link>` that names it, and an `?inline` sheet stays
@@ -264,7 +274,7 @@ function sheetElement(
     return { expr: JSON.stringify(`<link rel="stylesheet" href="${url}"${attrs}>`), url };
   }
   if (componentSheet === undefined && asksInline(sheet.href)) {
-    return { expr: `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'` };
+    return { expr: `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'`, embeds: true };
   }
   // A static file has no import bindings: every `url()` in it is written as its final URL.
   const url = linker.sheetRef(sheet.spec, linker.cssLinked(css));
@@ -378,5 +388,6 @@ export function planPageSheets(
     uses,
     hints: [...guide.hints, ...hints],
     guide: guide.expr,
+    needs: guide.needs.length > 0 || elements.some((e) => e.embeds === true) ? HEAD_NEEDS.embeddedSheet : [],
   };
 }

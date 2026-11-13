@@ -18,6 +18,8 @@
  */
 
 import type { HtmlContent } from '../html/index.js';
+import type { CspNeed } from '@fudic/config';
+import { TRUSTED_TYPES_NEEDS } from '@fudic/dom';
 import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, NOTHING_AHEAD, renderPass, type Tail } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
@@ -163,7 +165,7 @@ class ComposeWalker {
 function buildRouteClientModule(
   graph: DocumentGraph,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } | null {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[]; needs: readonly CspNeed[] } | null {
   if (!isReactiveRoute(graph)) return null;
   const source = graph.entrySource;
   const half = entryHalf(graph)!;
@@ -350,7 +352,13 @@ function buildRouteClientModule(
   closeOwned(w, owns);
   w.dedent();
   w.line('};');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...emitDiagnostics] };
+  return {
+    writer: w,
+    linker,
+    diagnostics: [...code.diagnostics, ...emitDiagnostics],
+    // What the walk painted through the `fudic` Trusted Types policy needs from the CSP (SDD-84 §4.6).
+    needs: hookup.paintsHtml ? TRUSTED_TYPES_NEEDS : [],
+  };
 }
 
 /**
@@ -422,7 +430,7 @@ export function emitRouteClientModuleMapped(
     code: built.writer.toString(),
     mappings: built.writer.mappings(),
     missingAssets: built.linker.missing(),
-    needs: [],
+    needs: built.needs,
     diagnostics: built.diagnostics,
   };
 }

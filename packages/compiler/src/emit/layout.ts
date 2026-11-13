@@ -56,7 +56,11 @@ import {
   writeOpenTag,
   writeRuntimeTags,
   writeSharedHead,
+  runtimeFormOf,
+  runtimeNeeds,
+  uniqueNeeds,
 } from './parts.js';
+import type { CspNeed } from '@fudic/config';
 
 /** The slots object a layout receives, and the `$dom`/parent names its callbacks use. */
 const SLOTS = 'route';
@@ -121,7 +125,7 @@ function buildLayoutModule(
   graph: DocumentGraph,
   layout: ResolvedLayout,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[]; needs: readonly CspNeed[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(
     options.linkAssets ?? false,
@@ -171,7 +175,7 @@ function buildLayoutModule(
             ? `${SLOTS}.sheet(${JSON.stringify(sheetKey(0, ordinal++))})`
             : null
       : undefined;
-  writeHeadElements(
+  const needs = writeHeadElements(
     source,
     doc.head,
     {
@@ -242,7 +246,7 @@ function buildLayoutModule(
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: code.diagnostics };
+  return { writer: w, linker, diagnostics: code.diagnostics, needs };
 }
 
 /** Emit the module of the graph's layout. */
@@ -260,7 +264,7 @@ export function emitLayoutModuleMapped(
   layout: ResolvedLayout,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker, diagnostics } = buildLayoutModule(graph, layout, options);
+  const { writer, linker, diagnostics, needs } = buildLayoutModule(graph, layout, options);
   // Its `@code` DOES reach a reader now (SDD-40): it declares the layout's props, and what
   // else it holds is `FUD0700`. Its markup is still static (SDD-39 §7), so there is no
   // client half to split and nothing else comes out of the extraction.
@@ -268,7 +272,7 @@ export function emitLayoutModuleMapped(
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    needs: [],
+    needs: uniqueNeeds(needs),
     diagnostics,
   };
 }
@@ -285,6 +289,7 @@ function buildRouteModule(
   linker: AssetLinker;
   diagnostics: readonly Diagnostic[];
   sheets: PageSheets | null;
+  needs: readonly CspNeed[];
 } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(
@@ -306,7 +311,11 @@ function buildRouteModule(
   // project's guide. Before the linker's imports are flushed, like the guide below.
   const sheets = planPageSheets(graph, options, linker);
   // The style guides and the icon, built now for the same reason as the project's sheets.
-  const guideExpr = guideOf(graph, options, linker, sheets);
+  const guide = guideOf(graph, options, linker, sheets);
+  const guideExpr = guide.expr;
+  // What this route puts in its page that the CSP has to let in (SDD-84 §3.4), as each writer
+  // says: the sheets and the guide, its head contributions, the shared head and its runtime.
+  const needs: CspNeed[] = [...guide.needs, ...(sheets?.needs ?? [])];
   // The project's guide (SDD-42), built before anything flushes the linker's imports —
   // compacting a sheet can register one, and a binding imported after the flush is a
   // module that does not parse.
@@ -406,14 +415,16 @@ function buildRouteModule(
 
   const headW = new CodeWriter();
   if (route.head !== undefined) {
-    writeHeadElements(
-      source,
-      route.head,
-      { skip: new Set<HtmlContent>(), linker, ...(sheets === null ? {} : { sheet: sheets.own }) },
-      headW,
+    needs.push(
+      ...writeHeadElements(
+        source,
+        route.head,
+        { skip: new Set<HtmlContent>(), linker, ...(sheets === null ? {} : { sheet: sheets.own }) },
+        headW,
+      ),
     );
   }
-  writeSharedHead(headW, moduled.size > 0, projectStylesLine !== null);
+  needs.push(...writeSharedHead(headW, moduled.size > 0, projectStylesLine !== null));
 
 
   const w = new CodeWriter();
@@ -479,6 +490,8 @@ function buildRouteModule(
   writeRuntimeTags(runtimeFileW, hydrates, 'file', alternates, parted);
   const runtimeInlineW = new CodeWriter();
   writeRuntimeTags(runtimeInlineW, hydrates, 'inline', alternates, parted);
+  // Which of the two the page really carries is its layout's marker: the one this route records.
+  needs.push(...runtimeNeeds(hydrates, runtimeFormOf(graph.layouts.map((l) => l.doc.head))));
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   // The fourth parameter is what `export function layout(ctx, data)` resolved: the union of
@@ -586,7 +599,7 @@ function buildRouteModule(
   w.line(`}, ${ioc}, ${PROPS});`);
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets, needs };
 }
 
 /** Emit the module of a route: `page(data, io)` composed with its layout chain. */
@@ -596,12 +609,12 @@ export function emitRouteModule(graph: DocumentGraph, options: EmitOptions = {})
 
 /** As `emitRouteModule`, plus the output↔source mappings and missing assets. */
 export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker, diagnostics, sheets } = buildRouteModule(graph, options);
+  const { writer, linker, diagnostics, sheets, needs } = buildRouteModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    needs: [],
+    needs: uniqueNeeds(needs),
     diagnostics,
     ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };

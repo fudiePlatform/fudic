@@ -56,6 +56,7 @@ import {
   routeInParts,
 } from './client.js';
 import {
+  HEAD_NEEDS,
   INLINE_QUERY,
   IOC_SUFFIX,
   RUNTIME_MARKER,
@@ -398,10 +399,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   const pageNeeds = new Map<string, readonly CspNeed[]>();
   /**
    * Everything the output needs, gathered: each page's, and the Service Worker's — what its
-   * linker declares, as the worker bundles it (SDD-84 §3.4) — when the app has one.
+   * linker declares, as the worker bundles it (SDD-84 §3.4) — when the app has one. With a worker
+   * every page also carries the tag that registers it, which the compiler writes and only this
+   * host knows is not empty.
    */
   const emittedNeeds = (): EmittedNeeds => ({
-    page: [...pageNeeds.values()].flat(),
+    page: [...pageNeeds.values()].flat().concat(swConfig === null ? [] : HEAD_NEEDS.boot),
     ...(swConfig === null ? {} : { sw: LINKER_NEEDS }),
   });
   let writeToDisk = true;
@@ -1766,6 +1769,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const chunk = transformFudClient(path, fudIo, projectStyles, linked, sourceLabel());
         if (chunk === null) {
           return null;
+        }
+        // What the hydrating half paints through the `fudic` policy (SDD-84 §4.6): only a component
+        // that hydrates has a client chunk, so only then is the policy's name needed.
+        pageNeeds.set(`${pageHintKey(path, locale)}?client`, chunk.needs);
+        if (isDev) {
+          writeCspNeeds(root, emittedNeeds());
+          await report(this, checkEmitted(appHeaders, { page: chunk.needs }).filter((d) => d.severity !== 'hint'));
         }
         // Every diagnostic of the chunk, positioned, and none of them twice (SDD-35 §4.4):
         // this path used to drop the emit's own, so a `@client` that did not compile shipped.

@@ -64,3 +64,13 @@ export const STYLE_POLYFILL = `(function () {
     pending.clear();
   }, { once: true });
 })();`;
+
+/**
+ * What the polyfill needs from the page's CSP (SDD-84 §3.4), declared beside it: it is an inline
+ * `<script>`, so the nonce of the response. The day a browser floor adopts sheets without it and
+ * the emit stops writing it, this list goes with it and `{nonce}` stops being needed for it.
+ * Structurally a `CspNeed` of `@fudic/config`.
+ */
+export const POLYFILL_NEEDS: readonly { readonly loads: 'inline-script'; readonly piece: string }[] = [
+  { loads: 'inline-script', piece: 'the style polyfill' },
+];

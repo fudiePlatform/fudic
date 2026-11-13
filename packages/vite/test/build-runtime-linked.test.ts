@@ -235,7 +235,7 @@ describe('a build that links the published runtime', () => {
     // them would buy back for every page the bytes that phase removed.
     const html = output.find((o) => o.fileName === 'index.html');
     const preloaded = [
-      ...String(html?.source ?? '').matchAll(/rel="modulepreload" href="([^"]+)"/gu),
+      ...String(html?.source ?? '').matchAll(/rel="modulepreload"(?: nonce="[^"]*")? href="([^"]+)"/gu),
     ].map(([, url]) => url);
 
     expect(preloaded.length).toBeGreaterThan(0);
@@ -269,7 +269,7 @@ describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates
   const html = (name: string): string =>
     String(output.find((o) => o.fileName === name)?.source ?? '');
   const preloads = (name: string): string[] =>
-    [...html(name).matchAll(/<link rel="modulepreload" href="([^"]+)">/gu)].map((m) => m[1]!);
+    [...html(name).matchAll(/<link rel="modulepreload"(?: nonce="[^"]*")? href="([^"]+)">/gu)].map((m) => m[1]!);
 
   it('names the eager chunk and its whole graph, each once, and nothing for a lazy page', () => {
     const file = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {

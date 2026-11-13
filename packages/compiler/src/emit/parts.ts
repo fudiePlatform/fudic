@@ -20,6 +20,41 @@ import { compactStyleCss } from './css-compact.js';
 import { isLiteralText, literalText } from './runs.js';
 import type { ExtractedCode, Reactive } from './oxc-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
+import type { CspNeed } from '@fudic/config';
+import { POLYFILL_NEEDS } from './polyfill.js';
+
+/**
+ * What each thing a document's head carries needs from the page's CSP (SDD-84 §3.4), declared
+ * beside the code that writes it. The emit records the ones it really wrote in its output, and the
+ * build compares them with `page.headers`: a thing that stops being written stops being needed.
+ *
+ * - The runtime's tags and the `modulepreload`s of its pieces load scripts of the app: `'self'`
+ *   lets them in, or the nonce under `'strict-dynamic'`.
+ * - The registration of the Service Worker is one more of those, written only when the app has a
+ *   worker — which the host knows and the compiler does not, so the host records it.
+ * - What goes INSIDE the page — the runtime with `?inline`, the import map, a `<style>` — is let in
+ *   by the nonce of the response.
+ */
+export const HEAD_NEEDS = {
+  boot: [{ loads: 'script', piece: 'the Service Worker registration' }],
+  runtime: [{ loads: 'script', piece: 'the runtime and its preloads' }],
+  inlineRuntime: [{ loads: 'inline-script', piece: 'the inline runtime' }],
+  styleModules: [{ loads: 'inline-style', piece: 'the style modules' }],
+  headStyle: [{ loads: 'inline-style', piece: 'a <style> of the head' }],
+  embeddedSheet: [{ loads: 'inline-style', piece: 'an embedded stylesheet' }],
+  headScript: [{ loads: 'script', piece: 'a <script src> of the head' }],
+  importMap: [{ loads: 'inline-script', piece: 'the import map' }],
+} as const satisfies Readonly<Record<string, readonly CspNeed[]>>;
+
+/** Each need once, in the order first met: what an emit output carries. */
+export function uniqueNeeds(needs: readonly CspNeed[]): readonly CspNeed[] {
+  const seen = new Map<string, CspNeed>();
+  for (const need of needs) {
+    const key = JSON.stringify(need);
+    if (!seen.has(key)) seen.set(key, need);
+  }
+  return [...seen.values()];
+}
 
 export const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
 
@@ -184,7 +219,11 @@ export function headEmbedsAsset(head: ElementNode, linker: AssetLinker): boolean
   return head.children.some(
     (child) =>
       child.type === 'element' &&
-      (inlineStyleExpr(child, linker) !== null || child.name === 'style'),
+      (inlineStyleExpr(child, linker) !== null ||
+        child.name === 'style' ||
+        // A script of its own the page runs, or its import map (SDD-84 §4.7). The marker is not
+        // one: it is the route's slot, written into the route's module.
+        (headScriptNeeds(child) !== null && runtimeMarkerForm(child) === null)),
   );
 }
 
@@ -223,14 +262,43 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     );
     if (binding === null) continue; // linking off, already-final URL, or missing file
     return (
-      JSON.stringify(source.slice(el.span.start, first.span.start)) +
+      openingText(source, el, first.span.start) +
       ` + ${binding} + ` +
       JSON.stringify(source.slice(last.span.end, el.span.end))
     );
   }
   // The element ALONE: no indent, no newline around it (BUG-07 §4.2). Whitespace between
   // the children of `<head>` is dropped by the parser before the tree exists.
-  return JSON.stringify(source.slice(el.span.start, el.span.end));
+  return openingText(source, el, el.span.end);
+}
+
+/**
+ * The source of `el` from its start up to `end`, as a JS string expression — with the response's
+ * nonce right after the tag name when `el` is a `<script>` the page runs or its import map
+ * (SDD-84 §4.7). Under `'strict-dynamic'` a script the parser meets without it does not load,
+ * whatever its URL, and an inline import map is refused by any policy without `'unsafe-inline'`.
+ */
+function openingText(source: string, el: ElementNode, end: number): string {
+  const text = source.slice(el.span.start, end);
+  if (headScriptNeeds(el) === null) return JSON.stringify(text);
+  const tag = 1 + el.name.length;
+  return `${JSON.stringify(text.slice(0, tag))} + $nonce + ${JSON.stringify(text.slice(tag))}`;
+}
+
+/** The `type` of a script the browser runs: none, `module`, or a JavaScript MIME type. */
+const CODE_TYPE = /^(?:|module|(?:text|application)\/(?:x-)?(?:java|ecma)script)$/u;
+
+/**
+ * What a `<script>` of a head needs from the page's CSP (SDD-84 §3.4), or `null` for an element
+ * that is not one the browser runs or reads as its import map — JSON-LD is read by whoever reads
+ * the page, never run, and a policy does not look at it. A `type` that is not written down, or is
+ * interpolated, is code: what is not known is given the nonce rather than left to be refused.
+ */
+export function headScriptNeeds(el: ElementNode): readonly CspNeed[] | null {
+  if (el.name.toLowerCase() !== 'script') return null;
+  const type = literalAttr(el, 'type')?.trim().toLowerCase();
+  if (type === 'importmap') return HEAD_NEEDS.importMap;
+  return type === undefined || CODE_TYPE.test(type) ? HEAD_NEEDS.headScript : null;
 }
 
 /**
@@ -333,6 +401,21 @@ export function inlineRuntimeMarker(head: ElementNode): Span | null {
   return null;
 }
 
+/**
+ * The form of the runtime marker of a chain of heads — the first one that has a marker — or
+ * `null` when none has one, and then the page loads no runtime at all. What a route asks of its
+ * layouts to know what its runtime slot really writes (SDD-84 §3.4).
+ */
+export function runtimeFormOf(heads: readonly ElementNode[]): RuntimeForm | null {
+  for (const head of heads) {
+    for (const child of head.children) {
+      const form = child.type === 'element' ? runtimeMarkerForm(child) : null;
+      if (form !== null) return form;
+    }
+  }
+  return null;
+}
+
 /** The sink an opening tag is written into, one `$open` per block. */
 const OPEN = '$open';
 
@@ -344,7 +427,13 @@ const OPEN = '$open';
  * `writeElementAttrs` writes `$dom.setAttr(…)`, so the sink is a `$dom` of one method in a
  * block of its own; what it leaves is `$open`, the tag up to and including its `>`.
  */
-export function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, linker: AssetLinker): void {
+export function writeOpenTag(
+  w: CodeWriter,
+  source: string,
+  el: ElementNode,
+  linker: AssetLinker,
+  nonce = false,
+): void {
   w.line(`let ${OPEN} = '<${el.name}';`);
   w.line('{');
   w.indent();
@@ -358,6 +447,8 @@ export function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, lin
   writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);
   w.dedent();
   w.line('}');
+  // The response's nonce, on a head script the page runs or its import map (SDD-84 §4.7).
+  if (nonce) w.line(`${OPEN} += $nonce;`);
   w.line(`${OPEN} += '>';`);
 }
 
@@ -378,7 +469,7 @@ function writeInterpolatedHeadElement(
 ): void {
   w.line('{');
   w.indent();
-  writeOpenTag(w, source, el, linker);
+  writeOpenTag(w, source, el, linker, headScriptNeeds(el) !== null);
   w.line(`head += ${OPEN} + ${JSON.stringify(source.slice(el.openSpan.end, el.span.end))};`);
   w.dedent();
   w.line('}');
@@ -446,6 +537,9 @@ export function writeRuntimeTags(
   alternates = false,
   parted = false,
 ): void {
+  // Every tag carries the response's nonce (SDD-84 §4.7): under `'strict-dynamic'` a script the
+  // parser meets without it does not load, and a `modulepreload` without it is not used. Without
+  // `'strict-dynamic'` it is one attribute nobody reads; without a nonce at all, `$nonce` is `''`.
   // A page that goes out in parts (SDD-70 §3.5) runs its runtime `async`: a plain module waits
   // for the whole document, and the parts are the point. Any other page keeps its tag.
   const main = parted ? '<script type="module" async' : '<script type="module"';
@@ -461,7 +555,7 @@ export function writeRuntimeTags(
   w.line("if (io.runtime.boot !== '') {");
   w.indent();
   w.line(
-    "head += '<script type=\"module\" src=\"' + io.runtime.boot + '\"></script>';",
+    "head += '<script type=\"module\"' + $nonce + ' src=\"' + io.runtime.boot + '\"></script>';",
   );
   w.dedent();
   w.line('}');
@@ -469,9 +563,9 @@ export function writeRuntimeTags(
     // One `<link>` per piece THIS route names, so the browser opens every connection while
     // it is still reading the head instead of discovering them inside the coordinator.
     w.line(
-      "head += io.runtime.pieces.map(function (u) { return '<link rel=\"modulepreload\" href=\"' + u + '\">'; }).join('');",
+      "head += io.runtime.pieces.map(function (u) { return '<link rel=\"modulepreload\"' + $nonce + ' href=\"' + u + '\">'; }).join('');",
     );
-    w.line(`head += '${main} src="' + io.runtime.main + '"></script>';`);
+    w.line(`head += '${main}' + $nonce + ' src="' + io.runtime.main + '"></script>';`);
   }
   if (hydrates && form === 'inline') {
     // The nonce, because an inline module is exactly what a strict `script-src` refuses
@@ -486,7 +580,7 @@ export function writeRuntimeTags(
     w.dedent();
     w.line('} else {');
     w.indent();
-    w.line(`head += '${main} src="' + io.runtime.main + '"></script>';`);
+    w.line(`head += '${main}' + $nonce + ' src="' + io.runtime.main + '"></script>';`);
     w.dedent();
     w.line('}');
   }
@@ -504,7 +598,7 @@ export function writeSharedHead(
   w: CodeWriter,
   hasStyles: boolean,
   hasProjectStyles: boolean,
-): void {
+): readonly CspNeed[] {
   // Nothing to adopt, nothing to adopt it WITH (BUG-31 §T3, widened by SDD-42 §4.4).
   // `COMPONENTS` holds the styled components of the graph and only those, and
   // `PROJECT_STYLES` the project's own; with both empty there is no sheet to register, no
@@ -515,7 +609,7 @@ export function writeSharedHead(
   // widened. An app whose components bring no rule of their own and that leans entirely on
   // the project's guide used to emit the sheet and have no browser without native support
   // adopt it.
-  if (!hasStyles && !hasProjectStyles) return;
+  if (!hasStyles && !hasProjectStyles) return [];
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';");
@@ -538,6 +632,17 @@ export function writeSharedHead(
   w.line(
     "head += COMPONENTS.map(function (c) { return '<style type=\"module\"' + $nonce + ' specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('');",
   );
+  return [...POLYFILL_NEEDS, ...HEAD_NEEDS.styleModules];
+}
+
+/**
+ * What the runtime tags of a page need from its CSP (SDD-84 §3.4): nothing when the page does not
+ * hydrate, the scripts of the app when it loads the runtime as a file, and the nonce when it
+ * carries it inside. The registration of the worker is the host's to record (`HEAD_NEEDS.boot`).
+ */
+export function runtimeNeeds(hydrates: boolean, form: RuntimeForm | null): readonly CspNeed[] {
+  if (!hydrates || form === null) return [];
+  return form === 'file' ? HEAD_NEEDS.runtime : HEAD_NEEDS.inlineRuntime;
 }
 
 /**
@@ -585,7 +690,10 @@ export function writeHeadElements(
     readonly onGuide?: () => void;
   },
   w: CodeWriter,
-): void {
+): readonly CspNeed[] {
+  // What the elements written here need from the page's CSP (SDD-84 §3.4): the caller adds them
+  // to its output. A pruned sheet and the runtime marker are recorded by whoever writes them.
+  const needs: CspNeed[] = [];
   let injected = false;
   let guided = options.onGuide === undefined;
   const guide = (): void => {
@@ -615,6 +723,7 @@ export function writeHeadElements(
     const style = headStyleExpr(source, child, options.linker);
     if (style !== null) {
       w.line(`head += ${style};`);
+      needs.push(...HEAD_NEEDS.headStyle);
       continue;
     }
     const form = options.onRuntime === undefined ? null : runtimeMarkerForm(child);
@@ -624,14 +733,17 @@ export function writeHeadElements(
       w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
     } else if (interpolatesAttrs(child)) {
       writeInterpolatedHeadElement(w, source, child, options.linker);
+      needs.push(...(headScriptNeeds(child) ?? []));
     } else {
       w.line(`head += ${headElementExpr(source, child, options.linker)};`);
+      needs.push(...(inlineStyleExpr(child, options.linker) === null ? (headScriptNeeds(child) ?? []) : HEAD_NEEDS.embeddedSheet));
     }
   }
   // A layout whose `@RenderHead()` sits deeper than a direct child of `<head>` (or none at
   // all, FUD0425): the route's contributions still go out, at the end of the head.
   guide();
   if (!injected && options.onInject !== undefined) options.onInject();
+  return needs;
 }
 
 /** A `<style>`, or a `<link>` whose `rel` names a stylesheet: what the guide goes before. */

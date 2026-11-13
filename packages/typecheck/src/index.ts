@@ -83,6 +83,12 @@ export {
   moduleBaselineUses,
 } from './baseline.js';
 export {
+  fudTrustedTypesDiagnostics,
+  moduleTrustedTypesDiagnostics,
+  requiresTrustedTypes,
+  type TrustedTypesProject,
+} from './trusted-types.js';
+export {
   packageBaselineUses,
   packageModules,
   projectBaselineDiagnostics,

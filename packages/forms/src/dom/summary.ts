@@ -14,6 +14,7 @@
  */
 
 import { effect } from '@fudic/core';
+import { trustedHtmlOf } from '@fudic/dom';
 import { summaryOf } from '../summary-markup.js';
 import type { AnyForm } from '../types.js';
 import type { Cleanup } from './types.js';
@@ -36,7 +37,9 @@ export function bindSummary(
   return undo([
     effect(() => {
       const html = summaryOf(node, summary.id, links);
-      if (summary.innerHTML !== html) summary.innerHTML = html;
+      // Compared as text, written through the `fudic` policy: under Trusted Types a plain string
+      // is refused (SDD-84 §4.6). Every message in it was escaped by `summaryOf`.
+      if (summary.innerHTML !== html) summary.innerHTML = trustedHtmlOf(html);
     }),
     on(summary, 'click', (event) => {
       const field = targetOf(summary, event);

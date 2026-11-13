@@ -11,6 +11,7 @@ import { NS, type Ns } from './ns.js';
 import { type DomClient, type LiveProperty } from './dom.js';
 import { guardUrl } from './url.js';
 import { htmlOf } from './html.js';
+import { trustedHtmlOf } from './trusted.js';
 import { attrsDiff } from './attrs.js';
 
 export const browserDom: DomClient<Node> = {
@@ -33,7 +34,8 @@ export const browserDom: DomClient<Node> = {
     (el as Element).setAttribute(name, guardUrl((el as Element).localName, name, value));
   },
   setHtml(el: Node, value: unknown): void {
-    (el as Element).innerHTML = htmlOf(value);
+    // Through the `fudic` policy: under Trusted Types a plain string is refused (SDD-84 §4.6).
+    (el as Element).innerHTML = trustedHtmlOf(htmlOf(value));
   },
   setAttrs(el: Node, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void {
     const element = el as Element;

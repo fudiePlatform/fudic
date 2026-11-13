@@ -5,7 +5,10 @@
     "declaration": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // The build resolves @fudic/dom through its published types (node_modules → dist), built first
+    // by the topological `pnpm -r build`. Source `paths` is for typecheck and tests, never for emit.
+    "paths": {}
   },
   "include": ["src"]
 }

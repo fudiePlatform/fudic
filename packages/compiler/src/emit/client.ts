@@ -17,6 +17,8 @@
  */
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
+import type { CspNeed } from '@fudic/config';
+import { TRUSTED_TYPES_NEEDS } from '@fudic/dom';
 import { spaceModeOf } from './space.js';
 import { CodeWriter, type MappedPart } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
@@ -194,7 +196,7 @@ function buildComponentClientModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[]; needs: readonly CspNeed[] } {
   const linker = new AssetLinker(
     options.linkAssets ?? false,
     options.assetExists,
@@ -576,7 +578,13 @@ function buildComponentClientModule(
   // The emit's own diagnostics travel with `@code`'s: a binding that cannot be subscribed
   // (FUD0291) is as much a fact about this
   // file as a `@code` that does not parse, and the emit does not stop for any of them (§5).
-  return { writer: w, linker, diagnostics: [...diagnostics, ...emitDiagnostics] };
+  return {
+    writer: w,
+    linker,
+    diagnostics: [...diagnostics, ...emitDiagnostics],
+    // What the walk painted through the `fudic` Trusted Types policy needs from the CSP (SDD-84 §4.6).
+    needs: hookup.paintsHtml ? TRUSTED_TYPES_NEEDS : [],
+  };
 }
 
 /**
@@ -723,12 +731,12 @@ export function emitComponentClientModuleMapped(
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker, diagnostics } = buildComponentClientModule(graph, comp, options);
+  const { writer, linker, diagnostics, needs } = buildComponentClientModule(graph, comp, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    needs: [],
+    needs: needs,
     diagnostics,
   };
 }
