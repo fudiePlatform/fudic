@@ -4,8 +4,8 @@
 > **Paquetes:** `@fudic/config` · `@fudic/diagnostics` · `@fudic/transport` · `@fudic/server` ·
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
-> **Rama:** `sdd-84-cabeceras`, desde `main`, con SDD-83 ya mergeada.
-> **Progreso:** 0 / 22 — `Listo`.
+> **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
+> **Progreso:** 1 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -18,7 +18,7 @@
 
 ## Fase 1 — diagnósticos
 
-- [ ] **1. Diagnósticos.**
+- [x] **1. Diagnósticos.**
   - `FUD1540`–`FUD1556`, cada uno con su función, su `.md` y su línea en `index.ts` (SDD §3.10).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
