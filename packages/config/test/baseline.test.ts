@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   allowedFeatures,
+  baselineContextOf,
   CONFIG_FILE,
   DEFAULT_BASELINE,
   floorWarning,
@@ -124,6 +125,9 @@ describe('baseline in fudic.json', () => {
   it('readBaseline and allowedFeatures on their own', () => {
     expect(readBaseline(undefined, () => undefined)).toEqual({ baseline: DEFAULT_BASELINE, dropped: [] });
     expect(allowedFeatures(DEFAULT_BASELINE)).toEqual(new Set());
+    expect(baselineContextOf(null)).toEqual({ target: 'widely', allow: new Set() });
+    const allowed = { target: 2024, allow: [{ id: 'popover', features: ['popover'] }] } as const;
+    expect(baselineContextOf({ baseline: allowed })).toEqual({ target: 2024, allow: new Set(['popover']) });
   });
 });
 

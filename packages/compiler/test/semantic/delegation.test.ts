@@ -667,13 +667,13 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
   it('and the compiler that produced them cannot reach TypeScript at all', async () => {
     // The strongest form the promise of §4.5 can take in a test: the package that decides
     // these codes declares no dependency a checker could arrive through. Its runtime
-    // dependencies are the parser and three packages of plain data and functions (diagnostics,
-    // the ICU subset and catalog of SDD-58, and the reader of fudic.json whose sheet-name
-    // pattern SDD-79 shares), none of which reaches a checker either.
+    // dependencies are the parser and four packages of plain data and functions (the Baseline
+    // data of SDD-83, diagnostics, the ICU subset and catalog of SDD-58, and the reader of
+    // fudic.json whose sheet-name pattern SDD-79 shares), none of which reaches a checker either.
     const manifest: { dependencies: Record<string, string> } = (
       await import('../../package.json', { with: { type: 'json' } })
     ).default;
-    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/config', '@fudic/diagnostics', '@fudic/i18n', 'oxc-parser']);
+    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/baseline', '@fudic/config', '@fudic/diagnostics', '@fudic/i18n', 'oxc-parser']);
     const i18n: { dependencies: Record<string, string> } = (
       await import('../../../i18n/package.json', { with: { type: 'json' } })
     ).default;

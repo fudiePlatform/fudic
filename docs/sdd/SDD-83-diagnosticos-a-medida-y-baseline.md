@@ -319,8 +319,9 @@ export function needsNewer(cutoff: string): readonly string[];
   suelo sin declararlo con remedio, falla.
 
 Lo que el autor elige en su `<template>` raíz y fudic solo copia (`shadowrootclonable`,
-`shadowrootserializable`, `shadowrootreferencetarget`) no está en el manifiesto: avisa como cualquier
-atributo suyo.
+`shadowrootserializable`) no está en el manifiesto: avisa como cualquier atributo suyo.
+`shadowrootreferencetarget` sí está, con remedio: un control de formulario lleva por script el nombre
+y la descripción de su host al campo donde el navegador no tiene el puente (§8.2, decisión 18).
 
 ### 3.8. Librerías
 
@@ -764,3 +765,33 @@ Nada.
     así un control de formulario y un autor con `shadowrootdelegatesfocus` pasan por el mismo sitio.
     Además del foco, una pulsación dirigida al host (lo que un `<label>` reenvía a su control) lleva
     el foco dentro: hay motores que reenvían la pulsación sin mover el foco.
+17. **Qué del manifiesto calla en el código del autor.** Lo que fudic necesita sin remedio (lo cubre
+    el suelo, y un nivel por debajo es `FUD1525`) y el HTML del `<template>` raíz, cuyo remedio corre
+    sobre lo que diga el template. Lo que tiene un remedio del propio runtime sí avisa cuando lo
+    escribe el autor: nada remedia su llamada. Por eso `requestIdleCallback()` en el `@code` avisa
+    (criterio 22) y `Promise.withResolvers()` no.
+18. **`shadowrootreferencetarget` entra en el manifiesto, con remedio.** El autor lo escribe, pero
+    `FudicControlElement` lo suple por script (el puente de la decisión 132); sin esto, toda app con
+    controles de formulario avisaría, contra el criterio 25.
+19. **Dos huecos de los datos, al manifiesto.** El test de §4.7 encontró en el runtime
+    `customElements.get` y `Response.formData`: están en todos los navegadores, pero a `web-features`
+    3.45.0 le falta la versión de uno y no los da por Baseline. Entran sin fecha y sin remedio: no
+    suben el suelo y no avisan en el código del autor.
+20. **La mitad HTML de §4.7, en `examples/basic`.** `@fudic/typecheck` no depende de un build ni del
+    plugin de Vite, que es quien sirve una página. El ejemplo pinta con `renderToHtml` un formulario con
+    controles, un calendario delegado y un contador hidratado; lo que el autor escribió en sus `.fud`
+    es suyo y el resto, más nuevo que `widely`, tiene que estar en `EMITTED`.
+21. **Los detectores, por sitio.** El HTML y el CSS del `.fud` son dos analizadores del compilador
+    que solo juzgan si quien llama da el nivel (`SemanticInput.baseline`): el comprobador, el editor y
+    `fudic_check` lo dan siempre, `widely` sin `fudic.json`. El TS mira el `@code` del `.fud` y los
+    módulos del proyecto que el navegador carga (lo que importan los `.fud`, la carpeta `browser` y
+    los pipes, nunca `server`), sobre el árbol de Oxc y preguntando al comprobador el símbolo de cada
+    nodo. `baselineContextOf` vive en `@fudic/config`: la usan el comprobador, el plugin y el editor.
+22. **Una condición que prueba un nombre también lo protege a él**, en cualquier sentido:
+    `typeof X === 'undefined'` en un `if (…) return` no avisa de `X`. Y la rama derecha de un `||` cuya
+    izquierda dice que falta (`typeof X === 'undefined' || X()`) va protegida.
+23. **Una palabra clave de valor sin fecha no avisa.** `cursor: pointer` salía como no Baseline
+    porque a los datos les falta Safari en iOS, donde no hay cursor; casi todos los valores sin fecha
+    son huecos así. La propiedad ya responde por lo demás, y un valor con fecha
+    (`field-sizing: content`) sigue avisando. `ping` sí avisa: Firefox no lo tiene, y el ejemplo
+    `vista-errores` lo anuncia.

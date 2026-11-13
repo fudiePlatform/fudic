@@ -50,6 +50,18 @@ export function allowedFeatures(baseline: BaselineConfig): ReadonlySet<string> {
   return new Set(baseline.allow.flatMap((entry) => entry.features));
 }
 
+/** What a detector is judged against: the level and the features allowed, for `judgeUses` of `@fudic/compiler`. */
+export interface BaselineJudged {
+  readonly target: Target;
+  readonly allow: ReadonlySet<string>;
+}
+
+/** What a project asks of the browser, from what its `fudic.json` says: `widely` when it says nothing or has none. */
+export function baselineContextOf(config: { readonly baseline: BaselineConfig } | null): BaselineJudged {
+  const baseline = config?.baseline ?? DEFAULT_BASELINE;
+  return { target: baseline.target, allow: allowedFeatures(baseline) };
+}
+
 /** Reads `baseline`. `idSpan` finds where an id of `allow` is written, for its `FUD1527`. */
 export function readBaseline(value: unknown, idSpan: (id: string) => Span | undefined): BaselineRead {
   const refuse = (malformed: string): BaselineRead => ({ baseline: DEFAULT_BASELINE, malformed, dropped: [] });

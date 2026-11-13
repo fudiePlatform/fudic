@@ -11,7 +11,15 @@ import type { LanguageServiceContext, LanguageServicePlugin } from '@volar/langu
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Policy, Span } from '@fudic/diagnostics';
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
-import { echoes, fudicDiagnostics, governFile, portableTypeDiagnostics, type FudicVirtualCode } from '@fudic/typecheck';
+import type { BaselineJudged } from '@fudic/config';
+import {
+  echoes,
+  fudBaselineDiagnostics,
+  fudicDiagnostics,
+  governFile,
+  portableTypeDiagnostics,
+  type FudicVirtualCode,
+} from '@fudic/typecheck';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import { isFudSourceUri } from '../uri.js';
@@ -41,9 +49,14 @@ function spoken(
   cached: CachedDocument,
   index: WorkspaceIndex,
   policy: Policy | null,
+  baseline: BaselineJudged | undefined,
 ): Span[] {
   const program = typeScriptService(context)?.getProgram();
-  const found = [...fudicDiagnostics(cached, index), ...(program === undefined ? [] : portableTypeDiagnostics(program, cached))];
+  const found = [
+    ...fudicDiagnostics(cached, index, baseline),
+    ...(program === undefined ? [] : portableTypeDiagnostics(program, cached)),
+    ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
+  ];
   return governFile(cached.path, cached.source, found, policy, { parsed: cached })
     .filter((d) => d.severity === 'error' && (d.file === undefined || d.file === cached.path))
     .map((d) => d.span);
@@ -51,12 +64,14 @@ function spoken(
 
 /**
  * Every TypeScript service, with its diagnostics of a `.fud` minus those fudic already says.
- * `policyFor` is how the project of a file reports each code; absent, every code as it is.
+ * `policyFor` is how the project of a file reports each code; absent, every code as it is. `baselineFor`
+ * is what it asks of the browser: a `FUD1524` the project raises to an error speaks too.
  */
 export function silenceEchoes(
   plugins: readonly LanguageServicePlugin[],
   index: WorkspaceIndex,
   policyFor: (path: string) => Policy | null = () => null,
+  baselineFor: (path: string) => BaselineJudged | undefined = () => undefined,
 ): LanguageServicePlugin[] {
   return plugins.map((plugin) => ({
     ...plugin,
@@ -70,7 +85,7 @@ export function silenceEchoes(
           const found = await inner(document, token);
           const at = clientOf(context, document);
           if (found == null || at === undefined) return found;
-          const speaks = spoken(context, at.cached, index, policyFor(at.cached.path));
+          const speaks = spoken(context, at.cached, index, policyFor(at.cached.path), baselineFor(at.cached.path));
           return found.filter((diagnostic) => {
             const start = mapToSource(at.client, document.offsetAt(diagnostic.range.start), 'verification');
             const end = mapToSource(at.client, document.offsetAt(diagnostic.range.end), 'verification');

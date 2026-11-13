@@ -5,7 +5,7 @@
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-83-diagnosticos-y-baseline`, desde `main`.
-> **Progreso:** 15 / 30 — `En curso`.
+> **Progreso:** 20 / 30 — `En curso`.
 
 **Una sesión, por tandas** (Pedro, 2026-11-12). Se implementan varias fases seguidas, con un commit
 por fase; después se escriben los tests de cada una, en orden, y la tanda se cierra con typecheck,
@@ -127,13 +127,13 @@ código, no el test.
 
 ## Fase 6 — los detectores
 
-- [ ] **16. El detector HTML.**
+- [x] **16. El detector HTML.**
   - Un analizador del compilador: elementos, atributos, valores literales, eventos (§3.6, §4.3).
   - Salta lo del manifiesto y lo que `allow` permite; crea `FUD1524`.
   - *Depende de:* 11, 14.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/semantic/analyzers/baseline-html.ts`, `src/semantic/analyze.ts`.
-- [ ] **17. El detector CSS.**
+- [x] **17. El detector CSS.**
   - `rules.ts` gana las declaraciones con su span.
   - Propiedades, valores, funciones, selectores, `&`, at-rules, unidades; la pila de `@supports`
     (§3.6, §4.4).
@@ -142,19 +142,19 @@ código, no el test.
   - *Paquetes:* `compiler`, `vite`.
   - *Ficheros:* `compiler/src/css/rules.ts`, `compiler/src/css/baseline.ts`, `vite/src/guide.ts`,
     `vite/src/styles.ts`.
-- [ ] **18. El detector TS.**
+- [x] **18. El detector TS.**
   - Lo que corre en el navegador (§3.6); las candidatas por el tipo del receptor; la protección
     (§4.5).
   - *Depende de:* 11, 14.
   - *Paquete:* `typecheck`.
   - *Ficheros:* `src/baseline.ts`, `src/checker.ts`, `src/report.ts`.
-- [ ] **19. Los tests de los detectores.** Criterios 18–26.
+- [x] **19. Los tests de los detectores.** Criterios 18–26.
   - *Depende de:* 16, 17, 18.
   - *Paquetes:* `compiler`, `vite`, `typecheck`.
-- [ ] **20. El test que ata el manifiesto.** Criterio 28 (§4.7).
+- [x] **20. El test que ata el manifiesto.** Criterio 28 (§4.7).
   - *Depende de:* 19.
-  - *Paquete:* `typecheck`.
-  - *Ficheros:* `test/emitted.test.ts`.
+  - *Paquetes:* `typecheck` (el runtime), `examples/basic` (el HTML que sale; §8.2, decisión 20).
+  - *Ficheros:* `typecheck/test/emitted.test.ts`, `examples/basic/src/baseline-emitted.test.ts`.
 
 ## Fase 7 — librerías y Vite
 

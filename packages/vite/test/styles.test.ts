@@ -28,6 +28,24 @@ const EMPTY = { global: [], optional: [], errors: [], warnings: [] };
 const theme = (path: string) => [{ name: 'theme', path }];
 
 describe('readStyles', () => {
+  it('judges each sheet against the project’s Baseline: FUD1524 on the file it is written in (SDD-83 criterion 21)', () => {
+    const result = readStyles(
+      '/p',
+      { ...CONFIG, styles: theme('src/note.css') },
+      io({ '/p/src/note.css': 'textarea { field-sizing: content; }' }),
+    );
+    expect(result.warnings.map((d) => [d.code, d.file, d.span?.start])).toEqual([
+      ['FUD1524', 'src/note.css', 11],
+      ['FUD1524', 'src/note.css', 25],
+    ]);
+    const allowed = readStyles(
+      '/p',
+      { ...CONFIG, styles: theme('src/note.css'), baseline: { target: 'widely', allow: [{ id: 'field-sizing', features: ['field-sizing'] }] } },
+      io({ '/p/src/note.css': 'textarea { field-sizing: content; }' }),
+    );
+    expect(allowed.warnings).toEqual([]);
+  });
+
   it('is empty for a project with no fudic.json at all', () => {
     expect(readStyles('/p', null, io({}))).toEqual(EMPTY);
   });

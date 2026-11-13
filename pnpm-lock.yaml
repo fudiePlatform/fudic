@@ -60,6 +60,12 @@ importers:
       '@axe-core/playwright':
         specifier: 4.13.0
         version: 4.13.0(playwright-core@1.62.0)
+      '@fudic/baseline':
+        specifier: workspace:*
+        version: link:../../packages/baseline
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../../packages/compiler
       '@fudic/server':
         specifier: workspace:*
         version: link:../../packages/server
@@ -362,6 +368,9 @@ importers:
 
   packages/compiler:
     dependencies:
+      '@fudic/baseline':
+        specifier: workspace:*
+        version: link:../baseline
       '@fudic/config':
         specifier: workspace:*
         version: link:../config
@@ -997,6 +1006,9 @@ importers:
       '@fudic/api':
         specifier: workspace:*
         version: link:../api
+      '@fudic/baseline':
+        specifier: workspace:*
+        version: link:../baseline
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler

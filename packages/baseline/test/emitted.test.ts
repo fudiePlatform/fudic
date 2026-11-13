@@ -33,7 +33,8 @@ describe('EMITTED', () => {
 
 describe('FLOOR', () => {
   it('is exactly the newest newly date among the entries with no remedy (§4.7, step 4)', () => {
-    const needed = EMITTED.filter((e) => e.remedy === null).map((e) => e.newly!);
+    // An entry the data gives no date sets no floor: it is in every browser but for a gap of the data.
+    const needed = EMITTED.filter((e) => e.remedy === null && e.newly !== null).map((e) => e.newly!);
     expect(FLOOR).toBe(needed.sort().at(-1));
     expect(FLOOR).toBe('2024-03-05');
   });

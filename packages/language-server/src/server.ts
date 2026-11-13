@@ -292,6 +292,7 @@ export function createFudicServer(
           redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
           index,
           (path) => configs.policyFor(path),
+          (path) => configs.baselineFor(path),
         ),
       );
       project = deps.createTypeScriptProject(

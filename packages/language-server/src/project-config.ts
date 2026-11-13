@@ -12,7 +12,7 @@
 
 import { posix } from 'node:path';
 import { readGuide, type GuidePiece } from '@fudic/compiler';
-import { readProjectConfig, tagOf, type ProjectConfig } from '@fudic/config';
+import { baselineContextOf, readProjectConfig, tagOf, type BaselineJudged, type ProjectConfig } from '@fudic/config';
 import type { Policy } from '@fudic/diagnostics';
 import { dependencyChain, owningPackage } from '@fudic/resolve';
 import { toPosix } from '@fudic/typecheck';
@@ -91,6 +91,14 @@ export class ProjectConfigs {
    */
   policyFor(path: string): Policy | null {
     return this.#nearest(toPosix(path))?.config.diagnostics ?? null;
+  }
+
+  /**
+   * What the project `path` belongs to asks of the browser (SDD-83 §3.4): the `baseline` of the
+   * NEAREST `fudic.json` above it, as the build reads it; `widely` when none says otherwise.
+   */
+  baselineFor(path: string): BaselineJudged {
+    return baselineContextOf(this.#nearest(toPosix(path))?.config ?? null);
   }
 
   /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */

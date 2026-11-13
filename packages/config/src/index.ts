@@ -34,10 +34,12 @@ export { tagOf } from './tag.js';
 export { readPolicy, ProjectPolicies, type PolicyRead, type ProjectAt } from './policy.js';
 export {
   allowedFeatures,
+  baselineContextOf,
   DEFAULT_BASELINE,
   floorWarning,
   readBaseline,
   type AllowedId,
   type BaselineConfig,
+  type BaselineJudged,
   type BaselineRead,
 } from './baseline.js';

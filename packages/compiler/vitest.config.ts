@@ -70,6 +70,11 @@ export default defineConfig({
         // The style guide (SDD-79): reading it, and what a component adopts of it.
         'src/css/guide.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/emit/guide-adoption.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The detectors of Baseline and the judge's side of them (SDD-83).
+        'src/semantic/baseline.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/semantic/analyzers/baseline-html.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/semantic/analyzers/baseline-css.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/css/baseline.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

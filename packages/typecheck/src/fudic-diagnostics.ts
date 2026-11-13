@@ -21,6 +21,7 @@ import {
   SnippetRegistry,
   type ComponentRegistry,
   type Diagnostic,
+  type BaselineContext,
   type ResolveIo,
   type SemanticInput,
 } from '@fudic/compiler';
@@ -68,9 +69,10 @@ function apisOf(document: ProjectedFud): SemanticInput['apis'] {
 /**
  * What the semantic pass is handed for the document already parsed. With an `index` that reads
  * modules, the path of the file and its project's modules too: what the server cut follows into
- * a store (SDD-61 §4.1).
+ * a store (SDD-61 §4.1). With a `baseline`, what its project asks of the browser: the
+ * markup and the `<style>` are judged against it (SDD-83 §3.6).
  */
-export function semanticInput(document: ProjectedFud, index?: LinkIndex): SemanticInput {
+export function semanticInput(document: ProjectedFud, index?: LinkIndex, baseline?: BaselineContext): SemanticInput {
   const apis = apisOf(document);
   return {
     source: document.source,
@@ -80,13 +82,18 @@ export function semanticInput(document: ProjectedFud, index?: LinkIndex): Semant
     components: registryOf(document),
     path: document.path,
     ...(apis === undefined ? {} : { apis }),
+    ...(baseline === undefined ? {} : { baseline }),
     ...(index?.module === undefined ? {} : { readModule: (specifier, importer) => index.module!(importer, specifier) }),
   };
 }
 
 /** The semantic pass over the document already parsed. */
-export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex): readonly Diagnostic[] {
-  return analyze(semanticInput(document, index)).diagnostics;
+export function semanticDiagnostics(
+  document: ProjectedFud,
+  index?: LinkIndex,
+  baseline?: BaselineContext,
+): readonly Diagnostic[] {
+  return analyze(semanticInput(document, index, baseline)).diagnostics;
 }
 
 /**
@@ -138,12 +145,12 @@ function channelDiagnostics(document: ProjectedFud, index: LinkIndex): readonly 
  * `$`.
  *
  * The type errors are NOT here — they come from TypeScript over the projection, mapped back
- * by Volar.
+ * by Volar. With a `baseline`, the markup and the `<style>` against it; without, they are not judged.
  */
-export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
+export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex, baseline?: BaselineContext): readonly Diagnostic[] {
   return [
     ...document.diagnostics,
-    ...semanticDiagnostics(document, index),
+    ...semanticDiagnostics(document, index, baseline),
     ...snippetDiagnostics(document, index),
     ...channelDiagnostics(document, index),
     ...hrefDiagnostics(document, index),

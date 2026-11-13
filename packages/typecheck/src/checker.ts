@@ -29,6 +29,9 @@ import { FUD0870, FUD0871, type SourceDiagnostic as Diagnostic } from '@fudic/di
 import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
+import { baselineContextOf } from '@fudic/config';
+import { browserModules, fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
+import { BROWSER_DIR, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { governFile, projectPolicies } from './govern.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
@@ -45,6 +48,7 @@ import {
 } from './report.js';
 import type { FudicVirtualCode } from './virtual-code.js';
 import type { ComponentInfo, PropField } from '@fudic/spec';
+import { CONFIG_FILE, type ProjectConfig } from '@fudic/config';
 import { propShapes } from './prop-shapes.js';
 import { portableTypeDiagnostics } from './portable-types.js';
 import { apiDiagnostics, readApiProject } from './api-project.js';
@@ -178,6 +182,21 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     };
   };
 
+  /**
+   * The modules of the project the browser loads (SDD-83 §3.6): what its `.fud`, its `browser`
+   * folder and its pipes import, and those themselves; never what runs in Node, under `server`.
+   */
+  const browserFiles = (state: Mounted, program: ts.Program, config: ProjectConfig | null): readonly string[] => {
+    const folder = (dir: string): string[] =>
+      typescript.sys.readDirectory(`${root}/${dir}`, ['.ts', '.mts', '.js', '.mjs'], ['**/node_modules/**'], ['**/*']).map(toPosix);
+    const roots = [
+      ...state.index.all().filter((entry) => !entry.external).map((entry) => entry.path),
+      ...folder(config?.browser ?? BROWSER_DIR),
+      ...folder(config?.pipes ?? PIPES_DIR),
+    ];
+    return browserModules(typescript, program, roots, root, `${root}/${config?.server ?? SERVER_DIR}`);
+  };
+
   const collect = (state: Mounted): CheckReport => {
     const program = state.service.getProgram();
     if (program === undefined) throw new Error('TypeScript built no program');
@@ -199,11 +218,17 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       // script of its client virtual is always there.
       const sourceFile = program.getSourceFile(entry.path)!;
       const map = state.language.maps.get(root.client, script);
+      // What the project asks of the browser: `widely` when its `fudic.json` says nothing (SDD-83 §3.4).
+      const baseline = baselineContextOf(policies.projectOf(entry.path)?.config ?? null);
       // Everything fudic says of the file, under its project's policy and its own comments.
       const said = governFile(
         entry.path,
         root.document.source,
-        [...fudicDiagnostics(root.document, state.index), ...portableTypeDiagnostics(program, root.document)],
+        [
+          ...fudicDiagnostics(root.document, state.index, baseline),
+          ...portableTypeDiagnostics(program, root.document),
+          ...fudBaselineDiagnostics(program, root.document, baseline),
+        ],
         policies.policyOf(entry.path),
         { parsed: root.document, complete: true },
       );
@@ -254,6 +279,17 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
           message: typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
         });
       }
+    }
+
+    // The modules the browser loads, against the Baseline of their project (SDD-83 §3.6).
+    for (const file of browserFiles(state, program, policies.projectOf(`${root}/${CONFIG_FILE}`)?.config ?? null)) {
+      const baseline = baselineContextOf(policies.projectOf(file)?.config ?? null);
+      const found = moduleBaselineDiagnostics(program, file, baseline);
+      const source = program.getSourceFile(file)!.text;
+      // A module with nothing to say and no `fud-disable` is not read for its comments.
+      if (found.length === 0 && !source.includes('fud-disable')) continue;
+      const said = governFile(file, source, found, policies.policyOf(file), { complete: true });
+      problems.push(...fudicProblems(file, said, elsewhere));
     }
 
     // What the parser and the validator say of each `.fudapi` of the app and each `.fudspec`: the

@@ -46,7 +46,14 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
-import { fudicDiagnostics, governFile, portableTypeDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
+import {
+  fudBaselineDiagnostics,
+  fudicDiagnostics,
+  governFile,
+  portableTypeDiagnostics,
+  ROOT_CODE_ID,
+  type FudicVirtualCode,
+} from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import { rangeOf as fileRangeOf } from '../fudapi/document.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -673,9 +680,12 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // The typed pass over the program the editor already holds: the same function the
               // build calls, so the same spans (SDD-61 §4.2).
               const program = typeScriptService(context)?.getProgram();
+              // What the project asks of the browser, as the build reads it (SDD-83 §3.4).
+              const baseline = deps.configs?.baselineFor(cached.path);
               const found = [
-                ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
+                ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index, baseline)),
                 ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
+                ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
                 ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
                 ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
               ];
@@ -812,7 +822,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 document,
                 range,
                 diagnostics: [
-                  ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
+                  ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index, deps.configs?.baselineFor(cached.path))),
                   ...guidePieceDiagnostics(cached, pieces),
                 ],
                 rangeOf,

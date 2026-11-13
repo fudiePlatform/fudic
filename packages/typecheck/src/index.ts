@@ -74,6 +74,14 @@ export { commentsOf, governFile, projectPolicies, type FudParse, type GovernFile
 
 export { propShapes } from './prop-shapes.js';
 export { portableTypeDiagnostics, isReactive } from './portable-types.js';
+export { baselineContextOf } from '@fudic/config';
+export {
+  browserModules,
+  fudBaselineDiagnostics,
+  fudBaselineUses,
+  moduleBaselineDiagnostics,
+  moduleBaselineUses,
+} from './baseline.js';
 
 // The project check (§3.1).
 export {

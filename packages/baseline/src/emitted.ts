@@ -48,6 +48,13 @@ export const EMITTED: readonly EmittedFeature[] = [
     remedy: 'the host delegates the focus by script when it hydrates',
   },
   {
+    key: 'html.elements.template.shadowrootreferencetarget',
+    feature: 'referencetarget',
+    newly: null,
+    when: 'the bridge of a form control (decision 132), written on its root template',
+    remedy: 'the control relays the name and the description of its host to the field by script',
+  },
+  {
     key: 'api.ElementInternals',
     feature: 'form-associated-custom-elements',
     newly: '2023-03-27',
@@ -73,6 +80,23 @@ export const EMITTED: readonly EmittedFeature[] = [
     feature: 'constructed-stylesheets',
     newly: '2023-03-27',
     when: 'the shared sheets of a component created on the client',
+    remedy: null,
+  },
+  // Two the data does not call Baseline although every core browser ships them: the data lacks a
+  // version for one browser of each (Safari for the first, Chrome for the second). With no date they
+  // set no floor; listed, the author's own call is not warned of for a gap of the data (SDD-83 §4.7).
+  {
+    key: 'api.CustomElementRegistry.get',
+    feature: 'autonomous-custom-elements',
+    newly: null,
+    when: 'hydration looks up the class of each component',
+    remedy: null,
+  },
+  {
+    key: 'api.Response.formData',
+    feature: 'fetch-formdata',
+    newly: null,
+    when: 'a server function that answers with multipart data',
     remedy: null,
   },
   {

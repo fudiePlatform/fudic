@@ -769,7 +769,7 @@ function present(checker: ts.TypeChecker, type: ts.Type): ts.Type {
  * Where a `.fud` span is in the projection: both ends inside stretches copied one to one that
  * allow a diagnostic. `undefined` for anything that was not copied as written.
  */
-function generatedRange(mappings: readonly Mapping[], at: Span): readonly [number, number] | undefined {
+export function generatedRange(mappings: readonly Mapping[], at: Span): readonly [number, number] | undefined {
   const start = mappings.find((m) => copied(m) && m.sourceOffset <= at.start && at.start < m.sourceOffset + m.sourceLength);
   const end = mappings.find((m) => copied(m) && m.sourceOffset < at.end && at.end <= m.sourceOffset + m.sourceLength);
   if (start === undefined || end === undefined) return undefined;
