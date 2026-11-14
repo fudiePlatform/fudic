@@ -1,0 +1,18 @@
+# The headers of every page: what the server sends and what the Service Worker paints.
+# The 103 Early Hints carry only the Content-Security-Policy and the Referrer-Policy.
+# {nonce} is the nonce of each response: fudic writes it on its own scripts and styles.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'nonce-{nonce}' 'strict-dynamic' 'unsafe-inline' https:
+  style-src 'self' 'unsafe-inline'
+  # An image source from outside: one more host at the end of the directive.
+  img-src 'self' data: https://images.example.com
+  object-src 'none'
+  base-uri 'none'
+  frame-ancestors 'none'
+  require-trusted-types-for 'script'
+  trusted-types fudic
+Referrer-Policy: strict-origin-when-cross-origin
+Cross-Origin-Opener-Policy: same-origin
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload

@@ -116,12 +116,13 @@ export interface BuiltFile {
 
 /**
  * Whether a file the bundle produced carries a hash in its name: its stem ends in `-` and eight
- * characters of base64url — Vite's `[hash]`, fudic's build id and the linked copies alike.
+ * characters of base64url — Vite's `[hash]`, fudic's build id and the linked copies alike. The hash is
+ * followed only by extensions: a sourcemap (`x-1a2B3c4D.js.map`) is as hashed as its chunk, and a
+ * dot before it (`di-owner.ioc-1a2B3c4D.js`) is part of the stem.
  */
 export function isHashedName(fileName: string): boolean {
   const name = fileName.slice(fileName.lastIndexOf('/') + 1);
-  const dot = name.lastIndexOf('.');
-  return /-[\w-]{8}$/u.test(dot <= 0 ? name : name.slice(0, dot));
+  return /-[\w-]{8}(?:\.[a-z\d]+)*$/iu.test(name);
 }
 
 /** What the Service Worker precaches or keeps cache-first, by path without `base`. */

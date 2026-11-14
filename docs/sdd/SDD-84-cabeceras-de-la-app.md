@@ -809,3 +809,16 @@ Nada.
     no compila, y con su nombre y sin documentar falla el test.
 30. **La CLI escribe `/assets/**` tal cual**: el `vite.config.ts` que genera deja `build.assetsDir` en su
     valor por defecto. El README de la app nueva nombra los tres ficheros.
+31. **El registro del SW pasa por la policy `fudic`.** Con `require-trusted-types-for 'script'`,
+    `navigator.serviceWorker.register(url)` exige un `TrustedScriptURL`: sin él, el SW no se registra
+    nunca (lo destapó el e2e de la tarea 19). La policy gana `createScriptURL` (sin sanear, como
+    `createHTML`), `@fudic/dom` exporta `trustedScriptUrlOf` y el arranque la usa. Como el arranque es
+    su propio bundle con su propia copia del módulo, **la policy se guarda en el realm**
+    (`Symbol.for('fudic.trusted-types')`), no en el módulo: la primera copia que corre la crea y las
+    demás la encuentran, y `createPolicy` se sigue llamando una vez. `HEAD_NEEDS.boot` declara también
+    la necesidad de la policy.
+32. **«Con hash» admite puntos en el nombre y extensiones dobles**: el hash va seguido solo de
+    extensiones (`x-1a2B3c4D.js.map`, `di-owner.ioc-1a2B3c4D.js`). Sin esto, `/assets/**` con
+    `immutable` daba `FUD1552` sobre los sourcemaps del ejemplo.
+33. **`FUD1554` mira el fichero `sw.json`, no el build**: un segundo build con `sw: false` (el `nosw`
+    del ejemplo) sigue sirviendo la app cuyo worker configura `sw.headers`.

@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 18 / 22 — `En curso`.
+> **Progreso:** 19 / 22 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -157,7 +157,7 @@
 
 ## Fase 6 — ejemplo y cierre
 
-- [ ] **19. El ejemplo.**
+- [x] **19. El ejemplo.**
   - Los tres ficheros de `examples/basic` con una fuente de imágenes de fuera y un bloque `/fonts/*`
     (§4.8).
   - Los e2e de cabeceras en `preview` y `nosw`.
@@ -165,13 +165,13 @@
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `page.headers`, `sw.headers`, `assets.headers`, sus e2e.
 - [ ] **20. Lighthouse.**
-  - Criterio 32 sobre `vite preview` del ejemplo con HTTPS. Lo que salga se arregla aquí.
+  - Criterio 32 sobre `vite preview` del ejemplo con HTTPS. Lo que salga se arregla aquí. Lo pasa Pedro en su prueba (paso 4); el e2e `headers.spec.ts` ya comprueba que no hay violaciones de CSP ni de Trusted Types.
   - *Depende de:* 19.
 - [ ] **21. Docs, `.vsix` y prueba de Pedro.**
   - README de `config`, `server` y `transport`. SDD-32, BUG-07, BUG-42, IDEA-07 e INDEX, donde citen
-    avisos de Lighthouse que ya no aplican. `docs/PENDIENTE.md` (notas 3 y 8 cerradas) e INDEX
+    avisos de Lighthouse que ya no aplican (revisados: ninguno cita los de «Confianza y seguridad»; READMEs hechos). `docs/PENDIENTE.md` (notas 3 y 8 cerradas) e INDEX
     (estado y registro).
-  - El `.vsix` de la rama.
+  - El `.vsix` de la rama. Construido e instalado. Guía de la prueba: [SDD-84-Prueba](./SDD-84-Prueba.md).
   - SDD §6.1 con ese `.vsix`.
   - *Depende de:* 18, 20.
 - [ ] **22. Cierre.**

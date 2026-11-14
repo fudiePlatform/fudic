@@ -1,0 +1,6 @@
+# The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
+# 'unsafe-eval' is what lets it link the route chunks: without it the app is served without it.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'self' 'unsafe-eval'

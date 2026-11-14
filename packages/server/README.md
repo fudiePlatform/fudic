@@ -1,7 +1,7 @@
 # @fudic/server
 
 Serves a fudic app from a `Request` to a `Response`: pages, their data, the redirect to a
-locale, `_error.fud`, the CSP with its nonce, the `103`, functions, remote rules and the CSRF
+locale, `_error.fud`, the headers of `page.headers` with their nonce, the `103`, functions, remote rules and the CSRF
 token. The same code answers in dev, in `vite preview` and behind any adapter (SDD-81). Its main
 entry needs only `Request`, `Response` and `crypto`: Node, Deno, Bun or the edge.
 
@@ -18,8 +18,9 @@ const response = await server.fetch(request);   // null: not the app's (a static
 - `fetch(request, hooks?)` answers, or `null` for what the host serves itself. `hooks.earlyHints`
   is called once, before the answer, with what a `103` may say.
 - `notFound(request)` paints `_error.fud` as a `404` for a navigation nothing answered: the host
-  calls it after its own files. `staticHeaders(request)` gives the extra headers of the app's own
-  static files (the manifest, the worker).
+  calls it after its own files. `staticHeaders(request)` gives the headers of a static file: the rule of `assets.headers` that
+  wins for each name (`''` = remove the host's), and for the manifest and the worker the headers of
+  fudic (`no-cache`, and `sw.headers` on the worker), whatever `assets.headers` says (SDD-84).
 
 Options of `createServer`:
 

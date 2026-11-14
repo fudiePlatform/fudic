@@ -34,25 +34,43 @@ export const TRUSTED_TYPES_NEEDS: readonly {
 }[] = [{ loads: 'policy', policy: POLICY_NAME, piece: 'the Trusted Types policy of fudic' }];
 
 /** The part of a Trusted Types policy this module uses. */
-interface HtmlPolicy {
+interface FudicPolicy {
   createHTML(text: string): unknown;
+  createScriptURL(url: string): unknown;
 }
 
 /** The part of `window.trustedTypes` this module uses: not in TypeScript's `lib.dom` yet. */
 interface PolicyFactory {
-  createPolicy(name: string, rules: { createHTML(text: string): string }): HtmlPolicy;
+  createPolicy(
+    name: string,
+    rules: { createHTML(text: string): string; createScriptURL(url: string): string },
+  ): FudicPolicy;
 }
 
-/** The policy, once created; `null` where the browser has no Trusted Types. */
-let policy: HtmlPolicy | null | undefined;
+/**
+ * Where the policy lives once created: on the realm, not in this module. The always-on boot that
+ * registers the Service Worker is its own bundle with its own copy of this file, and the runtime
+ * piece has another; a second `createPolicy('fudic')` throws under the directive, so whichever copy
+ * runs first creates it and every other one finds it here.
+ */
+const REALM_KEY = Symbol.for('fudic.trusted-types');
 
-/** The policy of this realm, created on first use and only then. */
-function policyOf(): HtmlPolicy | null {
-  if (policy === undefined) {
-    const factory = (globalThis as { trustedTypes?: PolicyFactory }).trustedTypes;
-    policy = factory === undefined ? null : factory.createPolicy(POLICY_NAME, { createHTML: (text) => text });
+interface Realm {
+  trustedTypes?: PolicyFactory;
+  [REALM_KEY]?: FudicPolicy | null;
+}
+
+/** The policy of this realm, created on first use and only then; `null` without Trusted Types. */
+function policyOf(): FudicPolicy | null {
+  const realm = globalThis as Realm;
+  if (!(REALM_KEY in realm)) {
+    const factory = realm.trustedTypes;
+    realm[REALM_KEY] =
+      factory === undefined
+        ? null
+        : factory.createPolicy(POLICY_NAME, { createHTML: (text) => text, createScriptURL: (url) => url });
   }
-  return policy;
+  return realm[REALM_KEY] ?? null;
 }
 
 /**
@@ -63,4 +81,13 @@ function policyOf(): HtmlPolicy | null {
 export function trustedHtmlOf(html: string): string {
   const current = policyOf();
   return current === null ? html : (current.createHTML(html) as string);
+}
+
+/**
+ * `url` as `navigator.serviceWorker.register` accepts it under Trusted Types: the third door of the
+ * policy, and the only script URL fudic hands the browser itself — its own worker.
+ */
+export function trustedScriptUrlOf(url: string): string {
+  const current = policyOf();
+  return current === null ? url : (current.createScriptURL(url) as string);
 }

@@ -17,6 +17,7 @@ import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
 import { compactProjectCss } from './project-styles.js';
 import { compactStyleCss } from './css-compact.js';
+import { TRUSTED_TYPES_NEEDS } from '@fudic/dom';
 import { isLiteralText, literalText } from './runs.js';
 import type { ExtractedCode, Reactive } from './oxc-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
@@ -36,7 +37,8 @@ import { POLYFILL_NEEDS } from './polyfill.js';
  *   by the nonce of the response.
  */
 export const HEAD_NEEDS = {
-  boot: [{ loads: 'script', piece: 'the Service Worker registration' }],
+  // The registration hands the browser the worker's URL through the `fudic` policy (SDD-84 §4.6).
+  boot: [{ loads: 'script', piece: 'the Service Worker registration' }, ...TRUSTED_TYPES_NEEDS],
   runtime: [{ loads: 'script', piece: 'the runtime and its preloads' }],
   inlineRuntime: [{ loads: 'inline-script', piece: 'the inline runtime' }],
   styleModules: [{ loads: 'inline-style', piece: 'the style modules' }],

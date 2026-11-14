@@ -227,3 +227,12 @@ describe('the pieces of the decision', () => {
     expect(uniqueNeeds([...HEAD_NEEDS.runtime, ...POLYFILL_NEEDS, ...HEAD_NEEDS.runtime])).toEqual([...HEAD_NEEDS.runtime, ...POLYFILL_NEEDS]);
   });
 });
+
+describe('the Service Worker registration (SDD-84 §4.6)', () => {
+  it('needs a script and the fudic policy: it hands the worker URL through it', () => {
+    expect(HEAD_NEEDS.boot).toEqual([
+      { loads: 'script', piece: 'the Service Worker registration' },
+      { loads: 'policy', policy: 'fudic', piece: 'the Trusted Types policy of fudic' },
+    ]);
+  });
+});

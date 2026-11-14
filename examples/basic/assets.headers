@@ -1,0 +1,12 @@
+# The headers of the app's static files, by path without the base.
+# The most specific path wins, header by header. An empty value sends nothing.
+
+/**
+  Cache-Control: no-cache
+
+/assets/**
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts change rarely and have no hash in their name: a week, then revalidate.
+/fonts/*
+  Cache-Control: public, max-age=604800, must-revalidate

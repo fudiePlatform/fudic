@@ -124,6 +124,9 @@ describe('assets.headers against the build (§3.4)', () => {
     ]);
     expect(isHashedName('assets/x-routes')).toBe(false);
     expect(isHashedName('.hidden-12345678')).toBe(true);
+    expect(isHashedName('assets/app-adjuntos-CXRWQ5TD.js.map')).toBe(true);
+    expect(isHashedName('assets/h/di-owner.ioc-Cgv3q_WR.js')).toBe(true);
+    expect(isHashedName('logo.svg')).toBe(false);
   });
 
   it('the template says nothing', () => {

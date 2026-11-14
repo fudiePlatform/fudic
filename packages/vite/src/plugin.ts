@@ -202,7 +202,7 @@ import {
   PAGE_NAME_PREFIX,
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
-import { runtimeUrls, type RuntimeEntries } from './constants.js';
+import { runtimeUrls, SW_CONFIG_FILE, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 
@@ -394,7 +394,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let appHeaders: HeadersRead = { config: { page: [], sw: [], assets: [] }, diagnostics: [], sources: {} };
   const readAppHeaders = (): HeadersRead =>
-    readHeaders(root, nodeConfigIo(), { kind: project.config?.kind ?? 'app', sw: swConfig !== null });
+    readHeaders(root, nodeConfigIo(), {
+      kind: project.config?.kind ?? 'app',
+      // The file, not this build: a second shape with `sw: false` (SDD-17 §4.7.1) still serves the app
+      // whose worker `sw.headers` is for.
+      sw: swConfig !== null || existsSync(join(root, SW_CONFIG_FILE)),
+    });
   /** What each page's emit put in it that a CSP has to let in, by page and locale (§4.7). */
   const pageNeeds = new Map<string, readonly CspNeed[]>();
   /**

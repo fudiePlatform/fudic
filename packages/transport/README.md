@@ -20,7 +20,7 @@ with `'unsafe-eval'`. A Service Worker does not inherit the document's CSP, so d
 stay strict.
 
 - **Manifest** — `compileManifest` / `loadManifest(url, cache)`: the single route
-  contract (`build`, `csp`, `routes` with mode, chunk, topological `deps`, data endpoint
+  contract (`build`, `headers`, `routes` with mode, chunk, topological `deps`, data endpoint
   and policies). Read from the SW's own cache, never the network, so the fetch decision
   can be synchronous.
 - **Linker** — `createLinker` / `canLink`: `exports`/`require` modules evaluated once,
