@@ -607,11 +607,17 @@ export class ClientMarkupEmitter {
       once: (expr, write) => this.#applyValue([expr], write),
       bound: (expr, write) => this.#applyValue([expr], write),
       live: (expr, write) => this.#applyValue([expr], write, false, true),
-      // A native spread. `h` writes nothing — the server painted the attributes — but it does
-      // record which objects painted them, or the first update would not know which attributes
-      // are the spread's to take off.
-      diff: (expr, write) => {
-        const slot = this.#applyValue([expr], ($v) => write($v, '$o'), true);
+      // A native spread, or `class=@expr`. `h` writes nothing — the server painted it — but it
+      // does record the value that painted it, or the first update would not know which
+      // attributes, or which tokens, are this write's to take off.
+      //
+      // The `rewrites` writes behind it are its element's `class:` toggles, and their slots are
+      // the next ones: forgetting what they last wrote makes them run again, in the same pass,
+      // right after the swap (SDD-85 §4.5, rule 5).
+      diff: (expr, write, rewrites = 0) => {
+        const next = this.#writes;
+        const forget = Array.from({ length: rewrites }, (_, i) => ` $w[${next + 1 + i}] = undefined;`).join('');
+        const slot = this.#applyValue([expr], ($v) => write($v, '$o') + forget, true);
         this.#adopt.line(`$w[${slot}] = ${expr};`);
       },
     };

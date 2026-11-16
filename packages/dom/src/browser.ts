@@ -56,9 +56,13 @@ export const browserDom: DomClient<Node> = {
     applyClass(element, diff.class);
   },
   toggleClass(el: Node, token: string, on: boolean): void {
-    (el as Element).classList.toggle(token, on);
+    // Only a change is written, for the reason `applyClass` gives: the first pass of a created
+    // element toggles every `class:` that is off, and a browser leaves the list alone for those
+    // while happy-dom writes `class=""` — the tests would see a tree no browser builds.
+    const list = (el as Element).classList;
+    if (list.contains(token) !== on) list.toggle(token, on);
   },
-  swapClass(el: Node, next: string, prev: string): void {
+  swapClass(el: Node, next: unknown, prev: unknown): void {
     applyClass(el as Element, classDiff(next, prev));
   },
   removeAttr(el: Node, name: string): void {

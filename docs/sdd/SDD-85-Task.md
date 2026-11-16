@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 7 / 34 — `En curso`.
+> **Progreso:** 11 / 34 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -65,24 +65,24 @@
 
 ## Fase 2 — compilador: las clases
 
-- [ ] **8. La clase estática, como literal.**
+- [x] **8. La clase estática, como literal.**
   - `setAttr(el, 'class', 'a b')` sin `filter` ni `join`, en el servidor y en el cliente. Los tokens
     que tienen su propio `class:` se quitan del literal (SDD §4.5, regla 1).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/attrs.ts`.
-- [ ] **9. `class:` con `toggleClass`.**
+- [x] **9. `class:` con `toggleClass`.**
   - Al pintar en el servidor, al crear y en cada cambio en el cliente; nada al hidratar (SDD §4.5).
   - *Depende de:* 4, 8.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/attrs.ts`, `src/emit/markup-client.ts`, `src/emit/block.ts`.
-- [ ] **10. `class=@expr` con `swapClass`.**
+- [x] **10. `class=@expr` con `swapClass`.**
   - Guardando el valor anterior para el siguiente cambio; orden de §4.5 regla 2; con `class:` en el
     mismo elemento, regla 5.
   - *Depende de:* 4, 8.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/attrs.ts`.
-- [ ] **11. Tests de emit de las clases.**
+- [x] **11. Tests de emit de las clases.**
   - Criterios 19, 23, 24 y 25 sobre el código emitido y su ejecución en el servidor.
   - *Depende de:* 8–10.
   - *Paquete:* `compiler`.

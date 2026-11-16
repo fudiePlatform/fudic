@@ -122,7 +122,15 @@ describe('§6.1 — the `<html>` is interpolated, not sliced out of the source',
   it('emits the opening tag through the attribute machinery', () => {
     // The shortcut is gone: no `JSON.stringify` of the author's own tag text.
     expect(sources.layout).not.toContain('<html lang=\\"@culture\\">');
-    expect(sources.layout).toContain("let $open = '<html';");
+    expect(sources.layout).toContain('const $el = $dom.element("html");');
+  });
+
+  it('writes its class list token by token, as any other element does (SDD-85 §4.5)', async () => {
+    const dark = chain(
+      layoutSource({ code: 'const { dark } = props<{ dark: boolean }>();', html: 'class="app" class:dark="@dark"' }),
+    );
+    expect(await render(dark, { dark: true })).toContain('<html class="app dark">');
+    expect(await render(dark, { dark: false })).toContain('<html class="app">');
     expect(sources.layout).toContain("yield '<!DOCTYPE html>' + $open + '<head>' + head + '</head>';");
   });
 

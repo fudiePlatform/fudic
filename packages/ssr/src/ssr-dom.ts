@@ -308,7 +308,7 @@ export class SsrDom implements Dom<SsrNode> {
   toggleClass(el: SsrNode, token: string, on: boolean): void {
     applyClass(asImpl(el), on ? { remove: [], add: [token] } : { remove: [token], add: [] });
   }
-  swapClass(el: SsrNode, next: string, prev: string): void {
+  swapClass(el: SsrNode, next: unknown, prev: unknown): void {
     applyClass(asImpl(el), classDiff(next, prev));
   }
   removeAttr(el: SsrNode, name: string): void {

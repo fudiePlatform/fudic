@@ -249,11 +249,12 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       '@code {\n  const { on } = props<{ on: boolean }>();\n}\n' +
         '<x-cls>\n  <template shadowrootmode="open"><b class:hot="@on"></b></template>\n</x-cls>\n',
     );
-    // The composition is a value now — a `class:` binding can move — so it rides `$a()`.
-    // The condition goes through `crossingExpr` (BUG-32 T4), which is what puts the inner
-    // pair of parentheses there and what reads a signal as `on()` when `on` is one.
-    expect(src).toContain(`$v = [((on)) && "hot"].filter(Boolean).join(' ');`);
-    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
+    // A `class:` binding can move, so it rides `$a()`, and it toggles its own token and nothing
+    // else (SDD-85 §4.5). The condition goes through `crossingExpr` (BUG-32 T4), which is what
+    // puts the inner pair of parentheses there and what reads a signal as `on()` when `on` is one.
+    expect(src).toContain(`$v = !!((on));`);
+    expect(src).toContain(`$dom.toggleClass($n0, "hot", $v);`);
+    expect(src).not.toContain('filter(Boolean)');
   });
 
   it('keeps whitespace verbatim where the browser would, and drops nothing', () => {
@@ -392,7 +393,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
   it('routes every value write through $a(), the single place a value reaches a node (§6.3)', () => {
     expect(src).toContain('const $a = () => {');
     expect(src).toContain('$dom.setText($n5, $v);');
-    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
+    expect(src).toContain(`$dom.toggleClass($n0, "highlight", $v);`);
     // The fabricate body creates the node and nothing else: the value is `$a`'s.
     expect(src).toContain('$n5 = $dom.text(\'\');');
     expect(between('c: () => {', 'h: () => {')).not.toContain('setText');
@@ -488,7 +489,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
         '</template>\n</x-clsif>\n',
     );
     const block = src2.slice(src2.indexOf('const $b0 ='), src2.indexOf('const $q0 ='));
-    expect(block).toContain(`$dom.setAttr($n1, 'class', $v);`);
+    expect(block).toContain(`$dom.toggleClass($n1, "hot", $v);`);
     // `on` decides the branch AND is read inside it, so it travels both ways.
     expect(src2).toContain('const $b0 = ($parent, $anchor, on) => {');
   });

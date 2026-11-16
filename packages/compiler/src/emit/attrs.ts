@@ -27,6 +27,7 @@ import {
   type Binding,
   type ComponentDeclaredProps,
 } from '../binding/index.js';
+import { classTokens } from '@fudic/dom';
 import type { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { freeReferences, type FragmentAst } from './scope.js';
@@ -458,24 +459,6 @@ export function componentPropsExpr(
 }
 
 /**
- * Whether any attribute of this element becomes a write that depends on an EXPRESSION —
- * an interpolated value, or a `class:` binding folded into `class`.
- *
- * The client emit asks before it walks: a write of that kind belongs to `$a()`, which
- * create and update both call (BUG-12 §3.3), and a construct that holds one has to have
- * its condition replicated there. A purely literal attribute is markup, and markup is
- * fabricated once.
- */
-export function hasValueAttrs(source: string, el: ElementNode, host: HostContext): boolean {
-  return el.attributes.some((attr) => {
-    const b = classifyAttribute(attr, source).value;
-    if (b.type === 'class') return true;
-    const written = attributeOf(b);
-    return written !== null && !written.value.every((p) => p.type === 'attribute-text');
-  });
-}
-
-/**
  * Where the writes of one element land. Two methods and not one because the two branches
  * disagree about what a value costs: the server body runs once, so it can drop the
  * expression straight into the statement, while `$a()` runs again on every update and has
@@ -495,9 +478,15 @@ export interface ValueSink {
   bound(expr: string, write: (value: string) => string): void;
   /**
    * A write that needs what it wrote LAST as well as the value — a native spread, which has to
-   * take off the attributes its objects no longer write. `prev` is `undefined` the first time.
+   * take off the attributes its objects no longer write, and `class=@expr`, which takes off the
+   * tokens its value no longer has. `prev` is `undefined` the first time.
+   *
+   * `rewrites` is how many of the value writes that come RIGHT AFTER this one have to run again
+   * whenever this one does: the `class:` toggles of the same element, so a token the swap took
+   * off goes back on when its toggle says so (SDD-85 §4.5, rule 5). A sink that writes once
+   * already runs them after it, and ignores it.
    */
-  diff(expr: string, write: (value: string, prev: string) => string): void;
+  diff(expr: string, write: (value: string, prev: string) => string, rewrites?: number): void;
   /**
    * A write that runs on every pass, never filtered by what it wrote last: a live property of a
    * control (SDD-74 §4.4), which compares with the DOM instead. Only a sink that repeats has one.
@@ -522,8 +511,13 @@ export function inlineSink(w: CodeWriter): ValueSink {
 }
 
 /**
- * Write the statements for one element's attributes. `class` is composed LAST, from the
- * static base plus every `class:` binding, so a single attribute carries the lot.
+ * Write the statements for one element's attributes.
+ *
+ * The class list is written token by token (SDD-85 §4.5): a static `class="a b"` is a literal
+ * like any other attribute, minus the tokens a `class:` of the element owns (rule 1); then
+ * `class=@expr` swaps its tokens (`swapClass`) and each `class:x=@cond` toggles its own
+ * (`toggleClass`), in that order and in source order (rule 2). None of them writes the whole
+ * attribute, so a class some other code added survives every change.
  *
  * `fixed` takes what is known at build time; `values` takes what depends on an expression.
  * They are the same writer on the server and two different bodies on the client, which is
@@ -543,9 +537,15 @@ export function writeElementAttrs(
   host: HostContext,
   values: ValueSink = inlineSink(fixed),
 ): void {
-  const slice = (sp: Span): string => source.slice(sp.start, sp.end);
-  let baseClass: string | undefined;
-  const classExprs: string[] = [];
+  const toggles = classToggles(source, el, host);
+  const toggled = new Set(toggles.map((t) => t.token));
+  // The toggles go right behind the swap when there is one, and at the end when there is none.
+  const writeToggles = (): void => {
+    for (const { token, condition } of toggles) {
+      values.once(`!!(${condition})`, ($v) => `$dom.toggleClass(${v}, ${JSON.stringify(token)}, ${$v});`);
+    }
+  };
+  let swapped = false;
   let spread = false;
   for (const attr of el.attributes) {
     // The `fields` of a summary is the compiler's, and it never reaches the HTML (decision 131).
@@ -558,23 +558,16 @@ export function writeElementAttrs(
       spread = true;
       continue;
     }
-    if (b.type === 'class') {
-      // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this
-      // from the raw source text made a `class:red="@rojo"` test the signal OBJECT, which is
-      // always truthy — the class went on at the first render and `rojo.set(false)` never took
-      // it off. Decision 151 applies here as much as to an attribute; the fallback for anything
-      // that is not a bare reactive is the very text this used to slice.
-      const condition = crossingExpr(source, attr, [b.value], host.signals);
-      classExprs.push(`(${condition}) && ${JSON.stringify(b.className)}`);
-      continue;
-    }
     const written = attributeOf(b);
     if (written === null) continue; // event / bus / ref, and `.prop` on a native tag
     const isStatic = written.value.every((p) => p.type === 'attribute-text');
     if (isStatic) {
       const literal = written.value.map((p) => attrText(p as AttributeText)).join('');
-      if (written.name === 'class') baseClass = literal;
-      else if (linker.enabled && isAssetAttr(el.name, written.name)) {
+      if (written.name === 'class') {
+        // In its place, like any other literal; what is left once the toggled tokens are out.
+        const kept = staticClass(literal, toggled);
+        if (kept !== null) fixed.line(`$dom.setAttr(${v}, 'class', ${JSON.stringify(kept)});`);
+      } else if (linker.enabled && isAssetAttr(el.name, written.name)) {
         // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
         // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
         const binding = linker.maybeRef(literal);
@@ -585,6 +578,18 @@ export function writeElementAttrs(
           `$dom.setAttr(${v}, ${JSON.stringify(written.name)}, ${JSON.stringify(literal)});`,
         );
       }
+    } else if (written.name === 'class') {
+      // `class=@expr`, and a `class="card @(x)"` that mixes in a literal: one value, written
+      // by tokens, in its place — where the server always wrote it. Its value goes over as it
+      // is: `swapClass` reads a string or a number as its text and anything else as no token,
+      // which is decision 21's omitted falsy attribute said of a class list.
+      //
+      // The toggles right behind it, so a token both write ends up as its toggle says
+      // (rule 5): on every pass where the swap runs, the toggles run again.
+      const swap = crossingExpr(source, attr, written.value, host.signals);
+      values.diff(swap, ($v, prev) => `$dom.swapClass(${v}, ${$v}, ${prev});`, toggles.length);
+      writeToggles();
+      swapped = true;
     } else {
       // interpolated: omit when falsy (boolean attributes, decision 21), else set. A sink
       // that repeats also has to CLEAR it: a value that turned falsy on an update would
@@ -616,23 +621,53 @@ export function writeElementAttrs(
       );
     }
   }
-  if (baseClass !== undefined || classExprs.length > 0) {
-    const arr = [baseClass !== undefined ? JSON.stringify(baseClass) : null, ...classExprs].filter(
-      (x) => x !== null,
-    );
-    const expr = `[${arr.join(', ')}].filter(Boolean).join(' ')`;
-    // No `class:` binding means nothing in there can move: it is a literal, spelled long.
-    if (classExprs.length === 0) fixed.line(`$dom.setAttr(${v}, 'class', ${expr});`);
-    else values.once(expr, ($v) => `$dom.setAttr(${v}, 'class', ${$v});`);
+  // With no swap, the toggles go last: after every literal, the static class included (rule 2).
+  if (!swapped) writeToggles();
+}
+
+/**
+ * The element's `class:` bindings, in source order: the token each one owns — the ones a static
+ * `class` gives up (rule 1) — and its condition.
+ *
+ * Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this from the
+ * raw source text made a `class:red="@rojo"` test the signal OBJECT, which is always truthy — the
+ * class went on at the first render and `rojo.set(false)` never took it off. Decision 151 applies
+ * here as much as to an attribute; the fallback for anything that is not a bare reactive is the
+ * very text this used to slice.
+ */
+function classToggles(
+  source: string,
+  el: ElementNode,
+  host: HostContext,
+): readonly { readonly token: string; readonly condition: string }[] {
+  const toggles: { readonly token: string; readonly condition: string }[] = [];
+  for (const attr of el.attributes) {
+    const b = classifyAttribute(attr, source).value;
+    if (b.type === 'class') {
+      toggles.push({ token: b.className, condition: crossingExpr(source, attr, [b.value], host.signals) });
+    }
   }
+  return toggles;
+}
+
+/**
+ * What a static `class` writes once the tokens a `class:` owns are out (SDD-85 §4.5, rule 1):
+ * the literal as written when it gives up none — `class=""` included — the tokens left when it
+ * gives up some, and `null`, nothing to write, when it gives up all of them.
+ */
+export function staticClass(literal: string, toggled: ReadonlySet<string>): string | null {
+  const tokens = classTokens(literal);
+  const kept = tokens.filter((token) => !toggled.has(token));
+  if (kept.length === tokens.length) return literal;
+  return kept.length === 0 ? null : kept.join(' ');
 }
 
 /**
  * `<input ...resto>`: the spreads of a NATIVE element, as one write of all their objects in
  * order (`$dom.setAttrs`), which writes the attributes sorted by name. On a component the same
  * `...` hands props over and never reaches here as attributes. What the element writes
- * explicitly — a plain attribute, or the `class`
- * a `class:` composes — is left out of the spread wherever it sits, as an explicit `.prop` wins
+ * explicitly — a plain attribute, or the `class` it
+ * writes by any of its three forms — is left out of the spread wherever it sits, as an explicit `.prop` wins
  * over a props spread.
  */
 function writeSpreadAttrs(source: string, el: ElementNode, v: string, fixed: CodeWriter, values: ValueSink): void {

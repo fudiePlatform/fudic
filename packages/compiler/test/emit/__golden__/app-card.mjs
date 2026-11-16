@@ -8,7 +8,8 @@ export function render($dom, $shadow, props, $ioc) {
   $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
   const $n0 = $dom.element("article");
-  $dom.setAttr($n0, 'class', ["card", ((variant === 'highlight')) && "highlight"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', "card");
+  $dom.toggleClass($n0, "highlight", !!((variant === 'highlight')));
   const $n1 = $dom.element("header");
   const $n2 = $dom.element("h2");
   const $n3 = $dom.text(String((title) ?? '')); $dom.append($n2, $n3);
@@ -18,7 +19,7 @@ export function render($dom, $shadow, props, $ioc) {
   if (expanded()) {
     const $n5 = $dom.text(" "); $dom.append($n0, $n5);
     const $n6 = $dom.element("div");
-    $dom.setAttr($n6, 'class', ["body"].filter(Boolean).join(' '));
+    $dom.setAttr($n6, 'class', "body");
     const $n7 = $dom.element("slot");
     $dom.append($n6, $n7);
     $dom.append($n0, $n6);

@@ -114,8 +114,12 @@ Dos métodos nuevos en el contrato, implementados por `browserDom` y por `SsrDom
 /** Puts `token` in the element's class list when `on`, takes it out otherwise. */
 toggleClass(el: N, token: string, on: boolean): void;
 /** Takes out the tokens of `prev` that are not in `next`, and puts in the ones of `next`. */
-swapClass(el: N, next: string, prev: string): void;
+swapClass(el: N, next: unknown, prev: unknown): void;
 ```
+
+`swapClass` recibe el valor tal cual y lo lee con `classText` (exportada por `@fudic/dom`): un
+string, un número o un bigint es su texto; cualquier otra cosa (`true`, `false`, `null`,
+`undefined`, un objeto) no pone ningún token. Es la regla de la `class` de un spread (§8.2, 8).
 
 | | Navegador | Servidor y SW |
 |---|---|---|
@@ -438,3 +442,23 @@ Nada.
 7. **Deuda saldada de paso:** `@fudic/ssr` tenía umbrales 95/95/90 y sin `coverage.include`; ahora
    100 en las cuatro métricas con el denominador anclado al paquete. `@fudic/testing` tenía su copia
    del escape y ahora usa la de `@fudic/dom`.
+8. **`swapClass` toma el valor sin convertir** (fase 2). `class=@expr` pasa su valor como lo hace
+   un `attr=@valor` solo, y `classText` decide en `@fudic/dom` qué texto escribe: la misma regla
+   que la `class` de un spread, en un solo sitio. Si no, el compilador tendría que emitir la
+   conversión en cada elemento, y `false` acabaría como la clase `"false"`.
+9. **`toggleClass` del navegador solo escribe si cambia algo** (fase 2). Por lo mismo que la
+   decisión 4: el primer pase de un elemento creado apaga todos los `class:` que están en falso, y
+   happy-dom creaba `class=""` donde un navegador no toca la lista.
+10. **Cada forma de `class` se escribe en su sitio** (fase 2). La clase estática va donde la
+    escribió el autor, como en la plantilla; `class=@expr` también, con sus `class:` justo detrás;
+    sin `class=@expr`, los `class:` van al final. Antes la composición ponía `class` siempre la
+    última: la fila `c-corte` de la suite de conformidad cambia (`<a class="catalogo" href>`).
+11. **La regla 5 se cumple también en los cambios** (fase 2). Cuando el swap se ejecuta, olvida lo
+    que escribieron los `class:` de su elemento, que van justo detrás y se vuelven a aplicar en el
+    mismo pase: si `class=@expr` quita un token que un `class:` activo pide, vuelve a ponerse.
+12. **La etiqueta de apertura de `<html>` y de un elemento del `<head>` interpolado se escribe con
+    el `SsrDom` de verdad** (fase 2): `io.createDom()`, los atributos con el mismo código y el
+    primer trozo de `io.serialize`. Antes era un `$dom` falso de un método, que no tenía
+    `toggleClass` / `swapClass` ni `setAttrs`, y repetía a mano las reglas de clases.
+13. **Deuda saldada de paso** (fase 2): `hasValueAttrs` no lo usaba nadie y se borra; el script de
+    goldens del compilador no regeneraba `app-calendar`.

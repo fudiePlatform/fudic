@@ -5,7 +5,9 @@ export function render($dom, $shadow, props, $ioc) {
   let { tone } = props ?? {}; tone ??= ('neutral');
   $dom.state($shadow, [tone]);
   const $n0 = $dom.element("span");
-  $dom.setAttr($n0, 'class', ["badge", ((tone === 'success')) && "success", ((tone === 'warning')) && "warning"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', "badge");
+  $dom.toggleClass($n0, "success", !!((tone === 'success')));
+  $dom.toggleClass($n0, "warning", !!((tone === 'warning')));
   const $n1 = $dom.text(" "); $dom.append($n0, $n1);
   const $n2 = $dom.element("slot");
   $dom.append($n0, $n2);

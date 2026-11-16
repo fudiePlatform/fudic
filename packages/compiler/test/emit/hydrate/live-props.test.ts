@@ -214,10 +214,10 @@ describe('criterion 8: the view puts back what the user moved', () => {
 describe('criterion 9: what the server paints', () => {
   it('input and option: the attribute an interpolated value always wrote; textarea its text, select the selected option', () => {
     expect(serverShadowHtml(graph, 'x-live', {})).toBe(
-      '<input type="checkbox" class="box">' +
-        '<input value="Ana" class="name">' +
+      '<input class="box" type="checkbox">' +
+        '<input class="name" value="Ana">' +
         '<textarea class="note">Ana</textarea>' +
-        '<select class="pick"><option value="a">a</option><option value="b" selected="" class="b">b</option></select>' +
+        '<select class="pick"><option value="a">a</option><option class="b" value="b" selected="">b</option></select>' +
         '<select class="city"><option value="mad">Madrid</option><option value="bcn" selected="">Barcelona</option></select>' +
         '<textarea class="lines">\n\nsegunda</textarea>' +
         '<span class="tick">0</span>',

@@ -34,6 +34,19 @@ describe('browserDom classes: only their own tokens move', () => {
     expect(el.getAttribute('class')).toBe('card extra');
   });
 
+  it('a toggle that changes nothing does not touch the attribute, as a browser does', () => {
+    const el = dom.element('div') as Element;
+    dom.toggleClass(el, 'activo', false);
+    expect(el.hasAttribute('class')).toBe(false);
+    dom.toggleClass(el, 'activo', true);
+    const seen: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => seen.push(...records));
+    observer.observe(el, { attributes: true });
+    dom.toggleClass(el, 'activo', true);
+    expect(observer.takeRecords().concat(seen)).toEqual([]);
+    observer.disconnect();
+  });
+
   it('swapClass takes out what the new text no longer has and puts in the new, splitting on ASCII white space', () => {
     const el = dom.element('div') as Element;
     dom.swapClass(el, 'a\tb', '');
@@ -46,6 +59,13 @@ describe('browserDom classes: only their own tokens move', () => {
     const el = dom.element('div') as Element;
     dom.swapClass(el, 'a', '');
     dom.swapClass(el, '', 'a');
+    expect(el.getAttribute('class')).toBe('');
+  });
+
+  it('takes the value as it comes: what is not text writes no token', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a', undefined);
+    dom.swapClass(el, null, 'a');
     expect(el.getAttribute('class')).toBe('');
   });
 

@@ -63,10 +63,11 @@ export interface Dom<N> {
   toggleClass(el: N, token: string, on: boolean): void;
   /**
    * Take out the tokens of `prev` that are not in `next` and put in the ones of `next`:
-   * `class=@expr` and the `class` of a spread. `prev` is `''` the first time. Tokens are split
-   * on ASCII white space, as the browser splits them.
+   * `class=@expr` and the `class` of a spread. `prev` is `''` (or `undefined`) the first time. Each
+   * side is read by `classText` — a string, a number or a bigint is its text, anything else writes
+   * no token — and split on ASCII white space, as the browser splits a class list.
    */
-  swapClass(el: N, next: string, prev: string): void;
+  swapClass(el: N, next: unknown, prev: unknown): void;
   removeAttr(el: N, name: string): void;
   /**
    * Write a live property of a control — `checked`, `value`, `selected` — from `name=@expr`

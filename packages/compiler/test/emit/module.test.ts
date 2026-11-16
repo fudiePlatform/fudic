@@ -50,17 +50,25 @@ describe('emitComponentModule — a leaf component (app-badge)', () => {
     expect(ops).toContain('element');
     expect(ops).toContain('append');
 
+    // The static class is a literal, and each `class:` toggles its own token (SDD-85 §4.5).
     const classCall = calls.find((c) => c.op === 'setAttr' && c.args[1] === 'class');
-    expect(classCall).toBeDefined();
-    expect(classCall!.args[2]).toBe('badge success'); // base + conditional resolved at runtime
+    expect(classCall!.args[2]).toBe('badge');
+    const toggles = calls.filter((c) => c.op === 'toggleClass').map((c) => c.args.slice(1));
+    expect(toggles).toEqual([
+      ['success', true],
+      ['warning', false],
+    ]);
   });
 
   it("defaults props<T>() when omitted (tone → 'neutral')", () => {
     const { render } = evalLeafModule(src);
     const { dom, calls } = recordingDom();
     render(dom, { $node: 'shadow' }, {}); // no props
-    const classCall = calls.find((c) => c.op === 'setAttr' && c.args[1] === 'class');
-    expect(classCall!.args[2]).toBe('badge'); // neither success nor warning
+    const toggles = calls.filter((c) => c.op === 'toggleClass').map((c) => c.args.slice(1));
+    expect(toggles).toEqual([
+      ['success', false],
+      ['warning', false],
+    ]); // neither success nor warning
   });
 });
 

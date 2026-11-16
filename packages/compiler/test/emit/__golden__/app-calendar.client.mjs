@@ -34,7 +34,7 @@ customElements.define("app-calendar", class extends FudicElement {
             $n2 = $dom.text(" ");
             $r.push($n2);
             $n3 = $dom.element("div");
-            $dom.setAttr($n3, 'class', ["cell"].filter(Boolean).join(' '));
+            $dom.setAttr($n3, 'class', "cell");
             $t0.set($n3, () => day);
             $dom.append($n3, $dom.text(" "));
             $n5 = $dom.element("span");
@@ -108,7 +108,7 @@ customElements.define("app-calendar", class extends FudicElement {
       return {
         c: () => {
           $n0 = $dom.element("div");
-          $dom.setAttr($n0, 'class', ["grid"].filter(Boolean).join(' '));
+          $dom.setAttr($n0, 'class', "grid");
           $dom.append($n0, $dom.text(" "));
           for (const day of days) {
             const $i = $b0($n0, null, day);

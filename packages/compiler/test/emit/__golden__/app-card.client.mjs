@@ -29,7 +29,7 @@ customElements.define("app-card", class extends FudicElement {
             $n6 = $dom.text(" ");
             $r.push($n6);
             $n7 = $dom.element("div");
-            $dom.setAttr($n7, 'class', ["body"].filter(Boolean).join(' '));
+            $dom.setAttr($n7, 'class', "body");
             $n9 = $dom.element("slot");
             $dom.append($n7, $n9);
             $r.push($n7);
@@ -160,8 +160,8 @@ customElements.define("app-card", class extends FudicElement {
       };
       const $a = () => {
         let $v;
-        $v = ["card", ((variant === 'highlight')) && "highlight"].filter(Boolean).join(' ');
-        if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
+        $v = !!((variant === 'highlight'));
+        if ($v !== $w[0]) { $w[0] = $v; $dom.toggleClass($n0, "highlight", $v); }
         $v = String((title) ?? '');
         if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n5, $v); }
       };
@@ -170,6 +170,7 @@ customElements.define("app-card", class extends FudicElement {
       return {
         c: () => {
           $n0 = $dom.element("article");
+          $dom.setAttr($n0, 'class', "card");
           $n1 = $dom.element("header");
           $n4 = $dom.element("h2");
           $n5 = $dom.text('');

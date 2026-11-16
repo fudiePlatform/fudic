@@ -30,13 +30,13 @@ export function* page(data, io, $ioc) {
   if (data.items.length === 0) {
     const $n3 = $dom.text(" "); $dom.append($body, $n3);
     const $n4 = $dom.element("p");
-    $dom.setAttr($n4, 'class', ["empty"].filter(Boolean).join(' '));
+    $dom.setAttr($n4, 'class', "empty");
     const $n5 = $dom.text("No hay elementos todavía."); $dom.append($n4, $n5);
     $dom.append($body, $n4);
   } else {
     const $n6 = $dom.text(" "); $dom.append($body, $n6);
     const $n7 = $dom.element("section");
-    $dom.setAttr($n7, 'class', ["grid"].filter(Boolean).join(' '));
+    $dom.setAttr($n7, 'class', "grid");
     for (const item of data.items) {
       const $n8 = $dom.element("app-card");
       $dom.claim($n8);

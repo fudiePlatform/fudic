@@ -4,8 +4,20 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { classDiff, classTokens } from '../src/classes.js';
+import { classDiff, classText, classTokens } from '../src/classes.js';
 import * as api from '../src/index.js';
+
+describe('classText', () => {
+  it('a string, a number or a bigint is its text', () => {
+    expect(classText('a b')).toBe('a b');
+    expect(classText(1)).toBe('1');
+    expect(classText(2n)).toBe('2');
+  });
+
+  it('anything else writes no token, as an attribute of a spread', () => {
+    for (const value of [true, false, null, undefined, {}, () => 'a']) expect(classText(value)).toBe('');
+  });
+});
 
 describe('classTokens', () => {
   it('splits on ASCII white space, in order, without empties or repeats', () => {
@@ -27,8 +39,14 @@ describe('classDiff', () => {
     expect(classDiff('a', '')).toEqual({ remove: [], add: ['a'] });
   });
 
+  it('reads each side by classText: the first time, `prev` may be undefined', () => {
+    expect(classDiff('a', undefined)).toEqual({ remove: [], add: ['a'] });
+    expect(classDiff(false, 'a b')).toEqual({ remove: ['a', 'b'], add: [] });
+  });
+
   it('is exported from the package entry', () => {
     expect(api.classDiff).toBe(classDiff);
     expect(api.classTokens).toBe(classTokens);
+    expect(api.classText).toBe(classText);
   });
 });

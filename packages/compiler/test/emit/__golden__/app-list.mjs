@@ -5,14 +5,14 @@ export function render($dom, $shadow, props, $ioc) {
   let { rows, empty } = props ?? {}; rows ??= ([]); empty ??= ('Sin elementos');
   $dom.state($shadow, [rows, empty]);
   const $n0 = $dom.element("ul");
-  $dom.setAttr($n0, 'class', ["list"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', "list");
   const $n1 = $dom.text(" "); $dom.append($n0, $n1);
   let $n2 = false;
   for (const row of rows) {
     $n2 = true;
     const $n3 = $dom.text(" "); $dom.append($n0, $n3);
     const $n4 = $dom.element("li");
-    $dom.setAttr($n4, 'class', ["row"].filter(Boolean).join(' '));
+    $dom.setAttr($n4, 'class', "row");
     const $n5 = $dom.text(" "); $dom.append($n4, $n5);
     const $n6 = $dom.element("span");
     const $n7 = $dom.text(String((row.label) ?? '')); $dom.append($n6, $n7);
@@ -21,7 +21,7 @@ export function render($dom, $shadow, props, $ioc) {
     for (const mark of row.tags) {
       const $n9 = $dom.text(" "); $dom.append($n4, $n9);
       const $n10 = $dom.element("span");
-      $dom.setAttr($n10, 'class', ["tag"].filter(Boolean).join(' '));
+      $dom.setAttr($n10, 'class', "tag");
       const $n11 = $dom.text(String((mark) ?? '')); $dom.append($n10, $n11);
       $dom.append($n4, $n10);
       const $n12 = $dom.text(" "); $dom.append($n4, $n12);
@@ -33,7 +33,7 @@ export function render($dom, $shadow, props, $ioc) {
   if (!$n2) {
     const $n15 = $dom.text(" "); $dom.append($n0, $n15);
     const $n16 = $dom.element("li");
-    $dom.setAttr($n16, 'class', ["empty"].filter(Boolean).join(' '));
+    $dom.setAttr($n16, 'class', "empty");
     const $n17 = $dom.text(String((empty) ?? '')); $dom.append($n16, $n17);
     $dom.append($n0, $n16);
     const $n18 = $dom.text(" "); $dom.append($n0, $n18);

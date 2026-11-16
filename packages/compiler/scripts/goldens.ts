@@ -39,7 +39,7 @@ function write(name: string, source: string): void {
 
 // The same list `golden.test.ts` locks: a fixture missing here is a golden nobody
 // regenerates, which the test then reports as a codegen drift months later.
-for (const tag of ['app-actions', 'app-badge', 'app-button', 'app-card', 'app-list']) {
+for (const tag of ['app-actions', 'app-badge', 'app-button', 'app-calendar', 'app-card', 'app-list']) {
   const component = graph.components.get(tag)!;
   write(`${tag}.mjs`, emitComponentModule(graph, component));
   write(`${tag}.client.mjs`, emitComponentClientModule(graph, component));

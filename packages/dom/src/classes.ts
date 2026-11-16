@@ -10,6 +10,16 @@
 /** The ASCII white space a browser splits a class list on. */
 const WHITE_SPACE = /[\t\n\f\r ]+/u;
 
+/**
+ * The class text a value writes, by the rule an attribute of a spread follows: a string, a number
+ * or a bigint is its text, and anything else — `true`, `false`, `null`, `undefined`, an object —
+ * writes no token. It is what lets `class=@expr` hand its value over as it is, the way a lone
+ * `attr=@value` does, and an absent value mean «no class of mine».
+ */
+export function classText(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' ? String(value) : '';
+}
+
 /** The tokens of a class list, in order, without empties or repeats. */
 export function classTokens(list: string): string[] {
   return [...new Set(list.split(WHITE_SPACE).filter((token) => token !== ''))];
@@ -21,8 +31,8 @@ export interface ClassDiff {
   readonly add: readonly string[];
 }
 
-/** The tokens of `prev` that `next` no longer has, and the tokens of `next`. */
-export function classDiff(next: string, prev: string): ClassDiff {
-  const add = classTokens(next);
-  return { remove: classTokens(prev).filter((token) => !add.includes(token)), add };
+/** The tokens of `prev` that `next` no longer has, and the tokens of `next`; each read by `classText`. */
+export function classDiff(next: unknown, prev: unknown): ClassDiff {
+  const add = classTokens(classText(next));
+  return { remove: classTokens(classText(prev)).filter((token) => !add.includes(token)), add };
 }

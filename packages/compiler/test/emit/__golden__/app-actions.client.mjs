@@ -55,7 +55,7 @@ customElements.define("app-actions", class extends FudicElement {
             $n2 = $dom.text(" ");
             $r.push($n2);
             $n3 = $dom.element("li");
-            $dom.setAttr($n3, 'class', ["row"].filter(Boolean).join(' '));
+            $dom.setAttr($n3, 'class', "row");
             $dom.append($n3, $dom.text(" "));
             $n5 = $dom.element("span");
             $n12 = $dom.text('');
@@ -63,32 +63,32 @@ customElements.define("app-actions", class extends FudicElement {
             $dom.append($n3, $n5);
             $dom.append($n3, $dom.text(" "));
             $n6 = $dom.element("button");
-            $dom.setAttr($n6, 'class', ["none"].filter(Boolean).join(' '));
+            $dom.setAttr($n6, 'class', "none");
             $dom.append($n6, $dom.text("-"));
             $dom.append($n3, $n6);
             $dom.append($n3, $dom.text(" "));
             $n7 = $dom.element("button");
-            $dom.setAttr($n7, 'class', ["event"].filter(Boolean).join(' '));
+            $dom.setAttr($n7, 'class', "event");
             $dom.append($n7, $dom.text("e"));
             $dom.append($n3, $n7);
             $dom.append($n3, $dom.text(" "));
             $n8 = $dom.element("button");
-            $dom.setAttr($n8, 'class', ["data"].filter(Boolean).join(' '));
+            $dom.setAttr($n8, 'class', "data");
             $dom.append($n8, $dom.text("d"));
             $dom.append($n3, $n8);
             $dom.append($n3, $dom.text(" "));
             $n9 = $dom.element("button");
-            $dom.setAttr($n9, 'class', ["both"].filter(Boolean).join(' '));
+            $dom.setAttr($n9, 'class', "both");
             $dom.append($n9, $dom.text("ed"));
             $dom.append($n3, $n9);
             $dom.append($n3, $dom.text(" "));
             $n10 = $dom.element("button");
-            $dom.setAttr($n10, 'class', ["reversed"].filter(Boolean).join(' '));
+            $dom.setAttr($n10, 'class', "reversed");
             $dom.append($n10, $dom.text("de"));
             $dom.append($n3, $n10);
             $dom.append($n3, $dom.text(" "));
             $n11 = $dom.element("button");
-            $dom.setAttr($n11, 'class', ["bare"].filter(Boolean).join(' '));
+            $dom.setAttr($n11, 'class', "bare");
             $dom.append($n11, $dom.text("x"));
             $dom.append($n3, $n11);
             $dom.append($n3, $dom.text(" "));
@@ -156,7 +156,7 @@ customElements.define("app-actions", class extends FudicElement {
       return {
         c: () => {
           $n0 = $dom.element("ul");
-          $dom.setAttr($n0, 'class', ["list"].filter(Boolean).join(' '));
+          $dom.setAttr($n0, 'class', "list");
           $dom.append($n0, $dom.text(" "));
           for (const row of rows) {
             const $i = $b0($n0, null, row);

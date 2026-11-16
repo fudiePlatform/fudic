@@ -32,7 +32,7 @@ customElements.define("app-list", class extends FudicElement {
             $n8 = $dom.text(" ");
             $r.push($n8);
             $n9 = $dom.element("span");
-            $dom.setAttr($n9, 'class', ["tag"].filter(Boolean).join(' '));
+            $dom.setAttr($n9, 'class', "tag");
             $n11 = $dom.text('');
             $dom.append($n9, $n11);
             $r.push($n9);
@@ -93,7 +93,7 @@ customElements.define("app-list", class extends FudicElement {
           $n2 = $dom.text(" ");
           $r.push($n2);
           $n3 = $dom.element("li");
-          $dom.setAttr($n3, 'class', ["row"].filter(Boolean).join(' '));
+          $dom.setAttr($n3, 'class', "row");
           $dom.append($n3, $dom.text(" "));
           $n5 = $dom.element("span");
           $n7 = $dom.text('');
@@ -168,7 +168,7 @@ customElements.define("app-list", class extends FudicElement {
           $n12 = $dom.text(" ");
           $r.push($n12);
           $n13 = $dom.element("li");
-          $dom.setAttr($n13, 'class', ["empty"].filter(Boolean).join(' '));
+          $dom.setAttr($n13, 'class', "empty");
           $n15 = $dom.text('');
           $dom.append($n13, $n15);
           $r.push($n13);
@@ -225,7 +225,7 @@ customElements.define("app-list", class extends FudicElement {
     return {
       c: () => {
         $n0 = $dom.element("ul");
-        $dom.setAttr($n0, 'class', ["list"].filter(Boolean).join(' '));
+        $dom.setAttr($n0, 'class', "list");
         $dom.append($n0, $dom.text(" "));
         for (const row of rows) {
           const $i = $b0($n0, null, row);

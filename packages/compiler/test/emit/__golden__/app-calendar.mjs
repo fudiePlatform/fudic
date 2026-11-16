@@ -5,12 +5,12 @@ export function render($dom, $shadow, props, $ioc) {
   let { days } = props ?? {}; days ??= ([]);
   $dom.state($shadow, [days]);
   const $n0 = $dom.element("div");
-  $dom.setAttr($n0, 'class', ["grid"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', "grid");
   const $n1 = $dom.text(" "); $dom.append($n0, $n1);
   for (const day of days) {
     const $n2 = $dom.text(" "); $dom.append($n0, $n2);
     const $n3 = $dom.element("div");
-    $dom.setAttr($n3, 'class', ["cell"].filter(Boolean).join(' '));
+    $dom.setAttr($n3, 'class', "cell");
     const $n4 = $dom.text(" "); $dom.append($n3, $n4);
     const $n5 = $dom.element("span");
     const $n6 = $dom.text(String((day.n) ?? '')); $dom.append($n5, $n6);
