@@ -5,7 +5,7 @@
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-84-cabeceras`, desde `sdd-83-diagnosticos-y-baseline` (Pedro mergea las dos a `main`).
-> **Progreso:** 19 / 22 — `En curso`.
+> **Progreso:** 22 / 22 — `Hecho` (2026-11-16).
 
 **El orden manda en tres puntos.**
 
@@ -164,18 +164,25 @@
   - *Depende de:* 9, 13, 16.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `page.headers`, `sw.headers`, `assets.headers`, sus e2e.
-- [ ] **20. Lighthouse.**
+- [x] **20. Lighthouse.**
   - Criterio 32 sobre `vite preview` del ejemplo con HTTPS. Lo que salga se arregla aquí. Lo pasa Pedro en su prueba (paso 4); el e2e `headers.spec.ts` ya comprueba que no hay violaciones de CSP ni de Trusted Types.
   - *Depende de:* 19.
-- [ ] **21. Docs, `.vsix` y prueba de Pedro.**
+- [x] **21. Docs, `.vsix` y prueba de Pedro.**
   - README de `config`, `server` y `transport`. SDD-32, BUG-07, BUG-42, IDEA-07 e INDEX, donde citen
     avisos de Lighthouse que ya no aplican (revisados: ninguno cita los de «Confianza y seguridad»; READMEs hechos). `docs/PENDIENTE.md` (notas 3 y 8 cerradas) e INDEX
     (estado y registro).
   - El `.vsix` de la rama. Construido e instalado. Guía de la prueba: [SDD-84-Prueba](./SDD-84-Prueba.md).
   - SDD §6.1 con ese `.vsix`.
   - *Depende de:* 18, 20.
-- [ ] **22. Cierre.**
-  - `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e en verde (criterio 37).
+- [x] **22. Cierre.**
+  - `pnpm typecheck`, `pnpm test`, `pnpm build` y los e2e en verde (criterio 37). Al pasarlos salieron
+    cuatro cosas, cerradas aquí: `headers/actions.ts` del language server escribía tres códigos a mano
+    (ahora la tabla `HEADER_REPAIRS`, admitida en `house.test.ts`); el presupuesto del manifiesto pasa
+    de 250 a 260 B por el chunk `trusted` que nombra todo componente que hidrata; los e2e buscaban
+    `<script type="module" src` y ya va el `nonce` en medio; y la sonda de `/delegacion`, un `<script>`
+    del cuerpo, no cargaba bajo `'strict-dynamic'` y pasa al `<head>`, donde lleva nonce. `page-maps`
+    parsea el HTML servido en una página en blanco, fuera de Trusted Types. De paso, tres e2e que
+    SDD-82 dejó atrás (el resumen del formulario repite el error del campo; `/entrar` cambió su texto).
   - Cobertura de §5.
   - Estado `Hecho` y merge `--no-ff` a `main`.
   - *Depende de:* 21.

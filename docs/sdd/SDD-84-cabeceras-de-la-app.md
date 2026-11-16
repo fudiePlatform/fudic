@@ -1,6 +1,7 @@
 # SDD-84 — Las cabeceras de la app
 
-> **Estado:** `Listo` (2026-11-13) — [tareas](./SDD-84-Task.md).
+> **Estado:** `Hecho` (2026-11-16), probada por Pedro (§6 criterio 1, [SDD-84-Prueba](./SDD-84-Prueba.md))
+> y mergeada a `main` a través de la 83 — [tareas](./SDD-84-Task.md).
 > **Paquetes:** `@fudic/config` · `@fudic/diagnostics` · `@fudic/transport` · `@fudic/server` ·
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`

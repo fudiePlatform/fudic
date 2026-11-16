@@ -23,6 +23,8 @@
 | 3 | Dos specs de dev server de `@fudic/vite` fallan de forma intermitente en `pnpm test` | SDD-37 | Abierto |
 | 4 | El e2e usa **puertos fijos** y `reuseExistingServer`, así que dos worktrees se miden entre sí sin avisar | SDD-37 y SDD-38, a la vez | Abierto |
 | ~~5~~ | ~~Un `<link rel="component">` dentro del `<head>` de una ruta con layout ni registra el componente ni se borra~~ | BUG-40 | **Arreglado** el mismo día: es `FUD0438` (SDD-21), error en build y en editor |
+| 6 | `examples/basic/src/routes/usuarios.test.ts` no pasa `tsc`: un contrato con argumentos no encaja en `ServerFunction<never, unknown>` | Cierre de SDD-84 | Abierto |
+| 7 | `spec-run-e2e` de `@fudic/mcp` falla a veces en la suite completa y pasa solo | Cierre de SDD-83 y de SDD-84 | Abierto |
 
 ---
 
@@ -214,3 +216,39 @@ editor, por el mismo camino que cualquier diagnóstico estructural—, y `writeH
 deja de escribir un enlace de framework **en cualquier rol**, para que un build que se
 recupere del error no lo publique igualmente. La línea de `layout.ts` sigue pasando un `skip`
 vacío, y ya da igual.
+
+---
+
+## 6. `usuarios.test.ts` del ejemplo no pasa `tsc`
+
+**Visto:** 2026-11-16, cerrando SDD-84. No es de SDD-84: sale igual en la rama de SDD-83.
+
+**Síntoma.** `npx tsc --noEmit -p .` dentro de `examples/basic`:
+
+```
+src/routes/usuarios.test.ts(315,50): error TS2345: Argument of type 'Contract<SearchCtx, readonly Person[],
+{ readonly q: string; }> & Linkable<{ readonly q: string; }>' is not assignable to parameter of type
+'ServerFunction<never, unknown>'.
+  Types of parameters 'args' and 'args' are incompatible.
+    Type 'undefined' is not assignable to type '{ readonly q: string; }'.
+```
+
+Nadie lo ve porque el ejemplo no tiene script de `typecheck` y `pnpm typecheck` solo recorre los
+paquetes. Vitest lo ejecuta sin mirar tipos, y pasa.
+
+**Por dónde empezar.** O el helper de test que recibe la función declara `ServerFunction<never, …>`
+cuando debería aceptar cualquier argumento, o el `Contract` de una función con argumentos dejó de
+ser asignable a él. Y conviene que el ejemplo gane un `typecheck` para que no vuelva a pasar callado.
+
+## 7. `spec-run-e2e` del MCP, intermitente
+
+**Visto:** 2026-11-13 (cierre de SDD-83) y 2026-11-16 (cierre de SDD-84).
+
+**Síntoma.** En `pnpm coverage` completo, `packages/mcp/test/spec-run-e2e.test.ts` › «the flow, by
+its name» devuelve `{ pass: 0, fail: 0, error: 1 }` en vez de `{ pass: 1, fail: 0, error: 0 }`.
+Lanzado solo (`npx vitest run test/spec-run-e2e.test.ts`), pasan los 3 tests. Las dos veces fue el
+mismo test y el mismo resumen.
+
+**Por dónde empezar.** Es el único que ejecuta un flujo con el servidor de verdad dentro del banco
+en esta suite. Lo primero es guardar el `error` que devuelve en vez de solo el resumen: hoy el test
+no dice qué falló.

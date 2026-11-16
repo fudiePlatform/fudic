@@ -564,7 +564,7 @@ function closureOf(route: string): ReadonlyMap<string, string> {
 /** The module scripts a prerendered route loads — the boot and the runtime entry. */
 function entriesOf(route: string): readonly string[] {
   const html = readFileSync(join(DIST, route, 'index.html'), 'utf8');
-  return [...html.matchAll(/<script type="module" src="([^"]+)"/gu)].map((m) => m[1]!);
+  return [...html.matchAll(/<script type="module"[^>]* src="([^"]+)"/gu)].map((m) => m[1]!);
 }
 
 /**

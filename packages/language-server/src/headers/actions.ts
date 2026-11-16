@@ -28,6 +28,9 @@ export interface HeadersFile {
   readonly findings: readonly NeedFinding[];
 }
 
+/** The codes these bulbs read: a line to remove, and a value to change. */
+const HEADER_REPAIRS = { ownHeader: 'FUD1542', unknownPlaceholder: 'FUD1546', badValue: 'FUD1543' } as const;
+
 /** The bulbs of the diagnostics of `file` shown between `start` and `end`. */
 export function headersActions(file: HeadersFile, shown: readonly ShownDiagnostic[], start: number, end: number): CodeAction[] {
   const doc = TextDocument.create(file.uri, 'fudheaders', 0, file.text);
@@ -39,8 +42,10 @@ export function headersActions(file: HeadersFile, shown: readonly ShownDiagnosti
   });
   const out: CodeAction[] = [];
   for (const d of shown.filter((d) => d.span.start <= end && start <= d.span.end)) {
-    if (d.code === 'FUD1542' || d.code === 'FUD1546') out.push(action('Remove the line', lineExtent(file, d.span.start), ''));
-    if (d.code === 'FUD1543') {
+    if (d.code === HEADER_REPAIRS.ownHeader || d.code === HEADER_REPAIRS.unknownPlaceholder) {
+      out.push(action('Remove the line', lineExtent(file, d.span.start), ''));
+    }
+    if (d.code === HEADER_REPAIRS.badValue) {
       const change = closestValue(file, d.span);
       if (change !== undefined) out.push(action(`Change to ${change.value}`, change.span, change.value));
     }

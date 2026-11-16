@@ -126,7 +126,8 @@ describe('the published manifest', () => {
     // The app's headers (SDD-84) are the app's to size, and do not grow with the route count.
     delete parsed.headers;
     const bytes = Buffer.byteLength(JSON.stringify(parsed), 'utf8');
-    // The budget is about what a ROUTE costs: names, not URLs.
-    expect(bytes).toBeLessThanOrEqual(250);
+    // The budget is about what a ROUTE costs: names, not URLs. A hydrating component also names
+    // the `trusted` chunk, the one `fudic` Trusted Types policy its runtime paints through (SDD-84).
+    expect(bytes).toBeLessThanOrEqual(260);
   });
 });

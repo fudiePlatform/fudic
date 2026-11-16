@@ -120,7 +120,8 @@ test.describe('/usuarios', () => {
     await open(page, 'pepe');
     await row(page, 'Marta').getByLabel('Activo').click();
     await expect(page).toHaveURL(/\/entrar$/u);
-    await expect(page.getByText('El servidor no reconoce tu sesión.')).toBeVisible();
+    // `/entrar` says it in its own words since SDD-82: the server does not know that name.
+    await expect(page.getByText('el servidor no lo conoce')).toBeVisible();
   });
 
   test('a toggle with a session reaches the server and survives a reload', async ({ page }) => {
@@ -299,7 +300,8 @@ test.describe('user-form', () => {
     await open(page, 'ana');
     await fill(page, 'Otra', 'ana@fudic.dev');
     await Promise.all([saved(page, 422), submit(page)]);
-    await expect(form(page).getByText('Ese email ya lo usa otra persona.')).toBeVisible();
+    // On its field, and again in the form's summary (SDD-82): the field is what is asserted.
+    await expect(form(page).locator('small.error', { hasText: 'Ese email ya lo usa otra persona.' })).toBeVisible();
     await expect(row(page, 'Otra')).toHaveCount(0);
   });
 
