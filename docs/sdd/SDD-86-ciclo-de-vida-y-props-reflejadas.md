@@ -4,17 +4,18 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 15 (`c` / `h` / `u` / `r` y `FudicElement`), 17 (la cascada de hidratación en
-> postorden), 28 (los snippets), 34 (`FudicControlElement`), 68 (`owned` y la limpieza de `r`), 85
-> (crear clonando). SDD-85 tiene que estar en `main` antes de empezar.
+> postorden), 20 (navegar sustituye el documento), 28 (los snippets), 34 (`FudicControlElement`), 39
+> (la mitad de cliente de una ruta), 68 (`owned` y la limpieza de `r`), 85 (crear clonando). SDD-85
+> tiene que estar en `main` antes de empezar.
 > **Rango de diagnósticos:** `FUD1560`–`FUD1569` (nuevo). Usados: `FUD1560`–`FUD1562`.
 > **Decisiones de gramática:** ninguna. Los hooks son funciones intrínsecas de `@code`, como `props`.
 > **Origen:** [IDEA-08](./ideas/IDEA-08-adelgazar-el-cliente.md) §4, y lo hablado con Pedro el
 > 2026-11-16. Con esta SDD la IDEA-08 queda cerrada.
 > **Rama sugerida:** `sdd-86-ciclo-de-vida`, desde `main`.
 >
-> **Qué cambia en una frase.** El `@code` de un componente puede pedir que se ejecute código suyo en
-> cada momento de la vida del componente en el navegador (antes y después de hidratar, antes y después
-> de crear, al conectarse, al desconectarse y al destruirse), y reflejar una prop en un atributo del
+> **Qué cambia en una frase.** El `@code` de un componente, de una ruta, de una página o de un layout
+> puede pedir que se ejecute código suyo en cada momento de su vida en el navegador (antes y después de
+> hidratar, antes y después de crear, al conectarse, al desconectarse y al destruirse), y reflejar una prop en un atributo del
 > host queda probado y documentado como lo que ya es: un atributo con una expresión en el propio tag.
 
 ---
@@ -39,6 +40,11 @@
   atributos) que no llama a `super`.
 - **Un `effect` o un `task` creado en `@code` se limpia en `r`** (SDD-68). No hay una forma de que el
   autor limpie lo suyo.
+- **Una ruta hidrata pero no se crea.** Su chunk de cliente es el de un componente sin `c`, con el
+  `<body>` como `$root` ([route-client.ts](../../packages/compiler/src/emit/route-client.ts)). Navegar
+  sustituye el documento (SDD-20), así que una ruta, su layout y una página se van cuando se va el
+  documento: en `pagehide`. Si el navegador la guarda en la bfcache, vuelve con `pageshow` sin haberse
+  destruido.
 - **Reflejar una prop en el host ya funciona.** El tag de identidad acepta atributos con expresión
   (BUG-32): `<app-card variant="@variant">`. Con una expresión sola, `true` escribe el atributo vacío,
   `false`, `null` y `undefined` lo quitan, y cualquier otro valor se escribe con `String(v)`
@@ -48,8 +54,9 @@
 
 ### 1.2. Objetivo
 
-1. El autor ejecuta código propio en cada momento de la vida del componente en el navegador, sin
-   tocar la clase del elemento.
+1. El autor ejecuta código propio en cada momento de la vida de un componente en el navegador, sin
+   tocar la clase del elemento, y en cada momento de la vida de una ruta, una página o un layout.
+   Por ejemplo: leer de IndexedDB el estado de un store al hidratar la página y guardarlo al irse.
 2. Lo que se crea en un hook se limpia con el mismo patrón que `effect`: devolviendo una función.
 3. El servidor y el Service Worker no ejecutan ni ven ningún hook.
 4. Funciona igual en un componente `formassociated`.
@@ -94,7 +101,8 @@ onDispose(fn: (host: HTMLElement) => void): void;
 
 - **`fn`** es la función del autor: lo que quiere que se ejecute en ese momento. Se la pasa al hook y
   fudic la llama cuando toca.
-- **`host`** es el elemento del propio componente (`<app-card>`), el mismo para todos los hooks.
+- **`host`** es el elemento del propio componente (`<app-card>`), el mismo para todos los hooks. En
+  una ruta, una página o un layout es el `<body>`, su `$root`.
 - **Lo que devuelve `fn`**, cuando el hook lo admite, es su limpieza:
   - la de `onConnect` se ejecuta en la siguiente desconexión;
   - la de `afterHydrate` y `afterCreate`, al destruirse el componente.
@@ -126,9 +134,10 @@ en que se escribieron.
 
 | Dónde | Resultado |
 |---|---|
-| Sentencia de nivel superior del `@code` de un componente | Válido |
+| Sentencia de nivel superior del `@code` de un componente | Válido, los siete |
+| Sentencia de nivel superior del `@code` de una ruta, una página o un layout | Válido, menos `beforeCreate` y `afterCreate` |
 | Dentro de una función, un handler, un `if`, un bucle o un callback | `FUD1560` |
-| En el `@code` de una ruta, una página o un layout | `FUD1561` |
+| `beforeCreate` o `afterCreate` en una ruta, una página o un layout | `FUD1561` |
 | Una declaración o un import con el nombre de un hook | `FUD1562` |
 
 ### 3.3. Los diagnósticos
@@ -136,7 +145,7 @@ en que se escribieron.
 | Código | Severidad | Título | Cuándo |
 |---|---|---|---|
 | `FUD1560` | error | Lifecycle hook outside the top level of `@code` | La llamada no es una sentencia de nivel superior del `@code` |
-| `FUD1561` | error | Lifecycle hook in a file that is not a component | La llamada está en una ruta, una página o un layout: no hay host |
+| `FUD1561` | error | A create hook in a file that is never created | `beforeCreate` o `afterCreate` en una ruta, una página o un layout: siempre vienen del servidor |
 | `FUD1562` | error | A declaration hides a lifecycle hook | El `@code` declara o importa un nombre que es el de un hook |
 
 Cada uno es un fichero en `packages/diagnostics/src/codes/`, con su `.md` y su línea en `index.ts`,
@@ -153,8 +162,8 @@ on?(): void;
 off?(): void;
 ```
 
-Solo los emite un componente que usa `onConnect` u `onDisconnect`. `c`, `h`, `u` y `r` no cambian
-de firma.
+Solo los emite un componente o una ruta que usa `onConnect` u `onDisconnect`. `c`, `h`, `u` y `r` no
+cambian de firma.
 
 ### 3.5. `hooks` en `@fudic/core`
 
@@ -241,6 +250,32 @@ misma tarea. Se ejecutan `onDisconnect` y `onConnect`, en ese orden, y **no** `o
 depende de estar en el documento se limpia y se rehace, y lo que dura toda la vida del componente se
 mantiene.
 
+**Una ruta, una página o un layout.** Su `@code` y sus hooks viven en el chunk de la ruta, que es el
+que hidrata el documento compuesto. Sus momentos son los del documento:
+
+| Hook | Cuándo |
+|---|---|
+| `beforeHydrate` | Antes de que el controlador de la ruta adopte el `<body>` |
+| `afterHydrate` | Después de adoptar y enganchar |
+| `onConnect` | Justo después de `afterHydrate`, y otra vez en cada `pageshow` con `persisted === true` (la página vuelve de la bfcache) |
+| `onDisconnect` | En cada `pagehide` |
+| `onDispose` | En `pagehide` con `persisted === false`, después de `onDisconnect`: la página no va a volver |
+
+La bfcache es a una página lo que un movimiento de `@foreach` a un componente: se va y vuelve sin
+destruirse. Una ruta que se hidrata con el primer gesto (SDD-39) ejecuta sus hooks en ese momento; si
+el usuario se va antes del gesto, ninguno se ha registrado y no se ejecuta ninguno.
+
+El arranque de la ruta en `@fudic/core` ([install.ts](../../packages/core/src/hydrate/install.ts))
+llama a `on()` del controlador justo después de `h()` y registra en `window` un listener de `pagehide`
+(`off()`, y `r()` si `persisted === false`) y otro de `pageshow` (`on()` si `persisted === true`).
+Solo los registra si el controlador tiene `on` / `off`, o si usa `onDispose`.
+
+**Un trabajo asíncrono al irse.** En `pagehide` el navegador no espera a ninguna promesa. Una
+transacción de IndexedDB o un `fetch` empezados en `onDisconnect` u `onDispose` de una ruta pueden no
+terminar, sobre todo en móvil. Para un estado que no se puede perder, se guarda cuando cambia (un
+`effect`) y el `onDisconnect` queda como último intento. La guía lo dice con el ejemplo de §4.9. En un
+componente que sale de una página que sigue viva, ese límite no existe.
+
 ### 4.2. Conectar, sin repetir
 
 `hooks().on` y `off` son idempotentes: `on` con el componente ya conectado no hace nada, y `off` con el
@@ -287,11 +322,17 @@ hidratar.
 
 Si el `@code` no usa ningún hook, el emit no cambia en ningún byte.
 
+**Rutas, páginas y layouts.** Lo mismo en su chunk de cliente
+([route-client.ts](../../packages/compiler/src/emit/route-client.ts)), sin `c` y con `$root` como host.
+El `@code` del layout y el de la ruta comparten el controlador de la ruta: sus hooks se registran en el
+mismo `$hk`, primero los del layout y después los de la ruta.
+
 **Servidor y Service Worker.** Las sentencias que llaman a un hook se quitan de su salida, enteras,
 con su argumento: lo que hay dentro suele leer el DOM o APIs del navegador, que allí no existen.
 
 **Nivel.** Una llamada a un hook es una sentencia de nivel superior que se ejecuta, así que
-`clientRuns` ya hace que el componente hidrate. No hace falta tocar la regla; se fija con un test.
+`clientRuns` ya hace que el componente hidrate, y que la ruta lleve chunk de cliente. No hace falta
+tocar la regla; se fija con un test para los dos.
 
 ### 4.6. `FudicElement` y `FudicControlElement`
 
@@ -310,8 +351,9 @@ con su argumento: lo que hay dentro suele leer el DOM o APIs del navegador, que 
   a `props`. Una `fn` con una firma que no encaja, o una limpieza que no es una función, es un error de
   TypeScript, como cualquier otro.
 - **Snippets.** Siete entradas nuevas en el catálogo de SDD-28
-  ([snippets.ts](../../packages/language-server/src/services/snippets.ts)), con ámbito `code-block` y rol
-  `component`, una por hook. Su etiqueta es el nombre del hook:
+  ([snippets.ts](../../packages/language-server/src/services/snippets.ts)), con ámbito `code-block`, una
+  por hook. `beforeCreate` y `afterCreate` llevan el rol `component`; las otras cinco, los roles
+  `component`, `route`, `page` y `layout`. Su etiqueta es el nombre del hook:
 
 | Snippet | Escribe |
 |---|---|
@@ -341,11 +383,38 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
 - `packages/mcp/guide/components.md` y `packages/mcp/guide/es/components.md` ganan dos secciones: el
   ciclo de vida, con la tabla de §3.1, el orden de §4.1 y el ejemplo de `ResizeObserver`; y las props
   reflejadas, con §3.6 y la nota de §4.8.
+- `packages/mcp/guide/pages.md` y `packages/mcp/guide/es/pages.md` ganan la sección del ciclo de vida
+  de una ruta, con la tabla de §4.1, la bfcache, el límite de lo asíncrono en `pagehide` y el ejemplo
+  del store en IndexedDB:
+
+```ts
+// stores/carrito.ts
+export const items = signal<Item[]>([]);
+```
+
+```ts
+@code {
+  import { effect } from '@fudic/core';
+  import { items } from '../stores/carrito';
+
+  afterHydrate(async () => {
+    items.set(await leer('carrito'));
+    effect(() => guardar('carrito', items()));
+  });
+
+  onDisconnect(() => {
+    guardar('carrito', items());
+  });
+}
+```
 - `examples/basic` gana el componente `ciclo-demo` y la ruta `/ciclo`. El componente usa los siete
   hooks y escribe en una lista visible qué hook se ejecutó y en qué orden, y refleja su prop `estado`
   en el host (`estado="@estado"`), con un `:host([estado="activo"])` que cambia el borde. La ruta lo
   pinta una vez desde el servidor y otra dentro de un `@if`, con botones para abrir y cerrar el `@if`,
   cambiar `estado` y reordenar dos instancias en un `@foreach` con clave.
+- La ruta `/ciclo` usa también sus propios hooks con el store del ejemplo de arriba: un contador cuyo
+  valor se lee de IndexedDB en `afterHydrate`, se guarda con un `effect` y otra vez en `onDisconnect`.
+  Recargar la página lo conserva.
 - IDEA-08 queda cerrada: su §4 apunta a esta SDD.
 
 ---
@@ -355,8 +424,11 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
 - **Un componente sin hooks emite lo mismo que hoy.** Ningún golden de un componente sin hooks cambia.
 - **El servidor no ve un hook.** Ninguna salida de servidor ni de Service Worker contiene una llamada
   a un hook ni el código de su argumento.
-- **Un hook solo se registra en el nivel superior del `@code` de un componente.** Cualquier otro sitio
-  es un diagnóstico.
+- **Un hook solo se registra en el nivel superior de un `@code`.** Cualquier otro sitio es un
+  diagnóstico, y `beforeCreate` / `afterCreate` solo en un componente.
+- **La página sigue entrando en la bfcache.** El framework escucha `pagehide` y `pageshow`, que son los
+  eventos compatibles con ella, y nunca `unload` ni `beforeunload`. Y solo los escucha en una ruta que
+  usa `onConnect`, `onDisconnect` u `onDispose`.
 - **`onConnect` y `onDisconnect` se alternan.** Nunca hay dos `onConnect` sin un `onDisconnect` entre
   ellos, ni al revés.
 - **`onDispose` se ejecuta una vez**, y nunca en un movimiento.
@@ -376,7 +448,7 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
    `beforeHydrate`, `afterHydrate`, `onConnect`. Abrir el `@if` lista `beforeCreate`, `afterCreate`,
    `onConnect` en la instancia nueva; cerrarlo lista `onDisconnect`, `onDispose`. Reordenar las filas
    lista `onDisconnect`, `onConnect` y ningún `onDispose`. Cambiar `estado` cambia el atributo del
-   host y el borde. La consola, sin errores.
+   host y el borde. El contador de la ruta, recargando, conserva su valor. La consola, sin errores.
 
 **Los hooks**
 
@@ -408,15 +480,16 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
     Worker, y se pinta igual que sin ellos.
 17. Un componente que solo usa `afterHydrate` no emite `on` ni `off`.
 18. `FUD1560` con un hook dentro de una función, de un handler y de un `if`, con el span en la llamada.
-19. `FUD1561` con un hook en una ruta, una página y un layout.
+19. `FUD1561` con `beforeCreate` y con `afterCreate` en una ruta, una página y un layout; ningún
+    diagnóstico con los otros cinco hooks en esos tres ficheros.
 20. `FUD1562` con `const afterHydrate = …` y con `import { onConnect } from '…'`.
 
 **El editor**
 
 21. `afterHydrate((host) => host.dataset.x = '1')` no da errores de tipos; `afterHydrate(42)` sí;
     `onConnect(() => 42)` sí.
-22. Dentro del `@code` de un componente se ofrecen los siete snippets; en el de una ruta, ninguno; fuera
-    de `@code`, ninguno.
+22. Dentro del `@code` de un componente se ofrecen los siete snippets; en el de una ruta, una página o
+    un layout, los cinco que no son de crear; fuera de `@code`, ninguno.
 
 **Las props reflejadas**
 
@@ -427,9 +500,21 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
     (literal del tag de identidad) y `variant` con el valor de la prop, como el servidor.
 25. `variant="@obj"` con un objeto, en el tag de identidad, es un error de tipos en el editor.
 
+**Rutas, páginas y layouts**
+
+26. Una ruta con hooks ejecuta, en este orden: el código de nivel superior (el del layout y luego el
+    suyo), `beforeHydrate`, `afterHydrate`, `onConnect`. `host` es el `<body>`.
+27. Navegar a otra página ejecuta `onDisconnect` y, si la página no entra en la bfcache, `onDispose`.
+28. Ir a otra página y volver atrás restaura la página desde la bfcache (`pageshow` con
+    `persisted === true`), ejecuta `onDisconnect` al irse y `onConnect` al volver, ningún `onDispose`, y
+    el estado de sus signals es el que tenía.
+29. Una ruta sin hooks de salida no registra ningún listener de `pagehide` ni de `pageshow`, y una ruta
+    con ellos no registra nunca `unload` ni `beforeunload`.
+30. Una ruta con un `@code` que solo tiene `afterHydrate(() => {})` lleva chunk de cliente.
+
 **Cierre**
 
-26. `pnpm typecheck`, `pnpm build`, la cobertura de los paquetes tocados al 100 % en lo nuevo, y los e2e
+31. `pnpm typecheck`, `pnpm build`, la cobertura de los paquetes tocados al 100 % en lo nuevo, y los e2e
     de `examples/basic` en verde.
 
 ---
@@ -454,7 +539,9 @@ Nada.
 4. **La limpieza se devuelve**, como en `effect`. Lo de `onConnect` se limpia al desconectar; lo de
    `afterHydrate` / `afterCreate`, al destruir.
 5. **`fn` recibe el host.** El `@code` no tenía otra forma de llegar a su propio elemento.
-6. **Solo en componentes.** Una ruta, una página o un layout no tienen host ni `connectedCallback`.
+6. **También en rutas, páginas y layouts** (Pedro, con el caso del store en IndexedDB). No tienen host
+   ni `connectedCallback`, pero hidratan y se van: sus momentos son los del documento. Solo
+   `beforeCreate` y `afterCreate` les están prohibidos, porque una ruta siempre viene del servidor.
 7. **`on` y `off` solo se emiten si hacen falta.** Un componente sin `onConnect` ni `onDisconnect` no
    paga nada por ellos.
 8. **`FudicControlElement` llama a `super.connectedCallback()` primero**, como ya hace en
@@ -464,3 +551,8 @@ Nada.
    use; no hay una regla de quién lo escribe.
 10. **El nombre del atributo reflejado lo elige el autor.** Los efectos de un atributo nativo se
     explican en la guía, sin diagnóstico.
+11. **`pagehide` y `pageshow`, nunca `unload` ni `beforeunload`.** Los dos primeros son los eventos
+    compatibles con la bfcache; `unload` la desactiva en Chrome y Safari. Un `pagehide` con
+    `persisted === true` es un movimiento (sale y volverá); con `false`, la destrucción.
+12. **Lo asíncrono al irse no se promete.** El navegador no espera a nadie en `pagehide`. El framework
+    no intenta alargar la vida de la página: la guía enseña a guardar cuando el dato cambia.

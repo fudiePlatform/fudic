@@ -4,15 +4,16 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 0 / 24 — `Listo`.
+> **Progreso:** 0 / 28 — `Listo`.
 
 **El orden manda en tres puntos.**
 
 - **El runtime antes que el emit.** El emit llama a `hooks()` y a `on` / `off` del controlador.
 - **Los diagnósticos antes que el emit.** El emit da por hecho que cada llamada a un hook es una
-  sentencia de nivel superior del `@code` de un componente, y eso solo lo garantiza el análisis.
-- **El golden sin hooks se fija antes de tocar el emit** (tarea 9). Es lo que prueba que un componente
-  que no usa hooks sale igual, byte a byte.
+  sentencia de nivel superior de un `@code`, y que `beforeCreate` / `afterCreate` solo están en un
+  componente. Eso solo lo garantiza el análisis.
+- **El golden sin hooks se fija antes de tocar el emit** (tarea 10). Es lo que prueba que un
+  componente o una ruta que no usan hooks salen igual, byte a byte.
 
 ---
 
@@ -26,14 +27,15 @@
     `src/codes/FUD1562.ts` · `.md`, `src/index.ts`.
 - [ ] **2. Los hooks en `ExtractedCode`.**
   - Una lista de los hooks que usa el `@code` (`hooks: readonly HookUse[]`, con el tipo de hook, el
-    span de la llamada y si es sentencia de nivel superior), leída del AST de Oxc como `props`.
+    span de la llamada y si es sentencia de nivel superior), leída del AST de Oxc como `props`. Para
+    componentes, rutas, páginas y layouts.
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/oxc-code.ts`, `test/emit/oxc-code-hooks.test.ts`.
 - [ ] **3. El analizador `lifecycle`.**
-  - `FUD1560` fuera del nivel superior, `FUD1561` en un fichero que no es componente, `FUD1562` en una
-    declaración o un import con el nombre de un hook (SDD §3.2). El span, en la llamada o en la
-    declaración.
+  - `FUD1560` fuera del nivel superior; `FUD1561` con `beforeCreate` / `afterCreate` en una ruta, una
+    página o un layout; `FUD1562` en una declaración o un import con el nombre de un hook (SDD §3.2).
+    El span, en la llamada o en la declaración.
   - Registrado en `analyze.ts`. Al 100 % (criterios 18, 19, 20).
   - *Depende de:* 1, 2.
   - *Paquete:* `compiler`.
@@ -72,93 +74,114 @@
   - *Depende de:* 6.
   - *Paquete:* `forms`.
   - *Ficheros:* `src/element.ts`, `test/dom/element.test.ts`.
+- [ ] **8. La ruta escucha `pagehide` y `pageshow`.**
+  - Tras `h()` del controlador de la ruta, `on()`. Si el controlador tiene `on` / `off` o usa
+    `onDispose`: `pagehide` → `off()`, y `r()` con `persisted === false`; `pageshow` con
+    `persisted === true` → `on()`. Nunca `unload` ni `beforeunload` (SDD §4.1, criterio 29).
+  - Tests: la ruta sin hooks de salida no registra nada; `pagehide` persistido y no persistido;
+    `pageshow` persistido.
+  - *Depende de:* 4, 5.
+  - *Paquete:* `core`.
+  - *Ficheros:* `src/hydrate/install.ts`, `test/hydrate/route-lifecycle.test.ts`.
 
 ## Fase 3 — El emit
 
-- [ ] **8. Fixture `app-lifecycle.fud`.**
+- [ ] **9. Fixtures `app-lifecycle.fud` y `ruta-ciclo.fud`.**
   - Un componente con los siete hooks, un `ref`, `role="group"` y `variant="@variant"` en su tag de
-    identidad, y un `@foreach` con clave de hijos que también usan hooks. Es el que usan las tareas
-    siguientes.
+    identidad, y un `@foreach` con clave de hijos que también usan hooks.
+  - Una ruta con layout, los dos con hooks (los cinco permitidos).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
-  - *Ficheros:* `fixtures/app-lifecycle.fud`.
-- [ ] **9. Golden sin hooks, fijado.**
+  - *Ficheros:* `fixtures/app-lifecycle.fud`, `fixtures/ruta-ciclo.fud`, `fixtures/_ciclo-layout.fud`.
+- [ ] **10. Golden sin hooks, fijado.**
   - Antes de tocar el emit, un test que compara la salida de cliente y de servidor de todos los fixtures
-    sin hooks con sus goldens. Tiene que seguir en verde al acabar la fase (criterio 15).
+    sin hooks, componentes y rutas, con sus goldens. Tiene que seguir en verde al acabar la fase
+    (criterio 15).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/lifecycle-untouched.test.ts`.
-- [ ] **10. El cliente registra y ejecuta.**
+- [ ] **11. El componente registra y ejecuta.**
   - `const $hk = $hooks();` dentro del `$owned`, antes del código del autor; cada llamada reescrita a
     `$hk.add("…", fn)` con el mapa de fuentes en la llamada; `run` de `before*` / `after*` en `h` y en
     `c`, el `after*` después de `$s()`; `$hk.dispose(host)` como primera línea de `r`; el host guardado
     al principio de la factoría (SDD §4.5).
   - Golden de `app-lifecycle`.
-  - *Depende de:* 2, 4, 8.
+  - *Depende de:* 2, 4, 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `src/emit/markup-client.ts`,
     `test/emit/__golden__/app-lifecycle.client.mjs`, `test/emit/lifecycle.test.ts`.
-- [ ] **11. `on` y `off`, solo si hacen falta.**
-  - Emitidos solo con `onConnect` u `onDisconnect` (criterio 17).
-  - *Depende de:* 10.
+- [ ] **12. La ruta registra y ejecuta.**
+  - Lo mismo en el chunk de la ruta, sin `c` y con `$root` como host; los hooks del layout y después
+    los de la ruta, en el mismo `$hk` (SDD §4.5).
+  - Golden de `ruta-ciclo`.
+  - *Depende de:* 11.
+  - *Paquete:* `compiler`.
+  - *Ficheros:* `src/emit/route-client.ts`, `test/emit/__golden__/ruta-ciclo.client.mjs`,
+    `test/emit/route-lifecycle.test.ts`.
+- [ ] **13. `on` y `off`, solo si hacen falta.**
+  - Emitidos solo con `onConnect` u `onDisconnect`, en componentes y en rutas (criterio 17).
+  - *Depende de:* 11, 12.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `test/emit/lifecycle.test.ts`.
-- [ ] **12. El servidor y el SW no ven los hooks.**
+- [ ] **14. El servidor y el SW no ven los hooks.**
   - Las sentencias de hook se quitan, enteras, de la salida de servidor y de SW (criterio 16).
-  - Golden de servidor de `app-lifecycle`, igual que el del mismo componente sin hooks.
-  - *Depende de:* 2, 8.
+  - Goldens de servidor de `app-lifecycle` y `ruta-ciclo`, iguales que los de los mismos ficheros sin
+    hooks.
+  - *Depende de:* 2, 9.
   - *Paquete:* `compiler`.
-  - *Ficheros:* `src/emit/module.ts`, `src/emit/markup.ts`,
-    `test/emit/__golden__/app-lifecycle.server.mjs`, `test/emit/lifecycle.test.ts`.
-- [ ] **13. Un hook hidrata.**
-  - Test de nivel: un `@code` con solo `afterHydrate(() => {})` hace el componente hidratable
-    (criterio 14). Sin cambios en `level.ts`.
+  - *Ficheros:* `src/emit/module.ts`, `src/emit/markup.ts`, `src/emit/layout.ts`,
+    `test/emit/__golden__/app-lifecycle.server.mjs`, `test/emit/__golden__/ruta-ciclo.server.mjs`,
+    `test/emit/lifecycle.test.ts`.
+- [ ] **15. Un hook hidrata.**
+  - Test de nivel: un `@code` con solo `afterHydrate(() => {})` hace hidratable el componente y da
+    chunk de cliente a la ruta (criterios 14 y 30). Sin cambios en `level.ts`.
   - *Depende de:* 2.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/level.test.ts`.
-- [ ] **14. Los hooks de punta a punta.**
+- [ ] **16. Los hooks de punta a punta.**
   - Con el harness de hidratación del compilador: el orden al hidratar y al crear, los `ref` en
     `beforeHydrate` / `afterHydrate` / `onDispose`, el movimiento sin `onDispose`, tres
     `afterHydrate` en orden, el que lanza, el host en `fn`, el hijo antes que el padre (criterios
-    2–10).
-  - *Depende de:* 6, 10, 11.
+    2–10); el orden de una ruta con layout y su `host` (criterio 26).
+  - *Depende de:* 6, 8, 11, 12, 13.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/hydrate/lifecycle.test.ts`.
 
 ## Fase 4 — El editor
 
-- [ ] **15. Las firmas.**
+- [ ] **17. Las firmas.**
   - Los siete hooks declarados en `globals.ts`, junto a `props` (SDD §3.1, §4.7). Tests de tipos del
     criterio 21.
   - *Depende de:* —.
   - *Paquete:* `language-core`.
   - *Ficheros:* `src/globals.ts`, `test/lifecycle-types.test.ts`.
-- [ ] **16. Los snippets.**
-  - Siete entradas con ámbito `code-block` y rol `component` (SDD §4.7). Tests del criterio 22.
+- [ ] **18. Los snippets.**
+  - Siete entradas con ámbito `code-block`: los de crear con rol `component`; los otros cinco con
+    `component`, `route`, `page` y `layout` (SDD §4.7). Tests del criterio 22.
   - *Depende de:* —.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/services/snippets.ts`, `test/services/snippets.test.ts`.
-- [ ] **17. El README de la extensión.**
+- [ ] **19. El README de la extensión.**
   - La tabla de los snippets del ciclo de vida, junto a la de los `<link>`.
-  - *Depende de:* 16.
+  - *Depende de:* 18.
   - *Paquete:* `vscode`.
   - *Ficheros:* `README.md`.
 
 ## Fase 5 — Las props reflejadas
 
-- [ ] **18. El host en el servidor, al hidratar y al actualizar.**
+- [ ] **20. El host en el servidor, al hidratar y al actualizar.**
   - Criterio 23: el servidor escribe; `h` no reescribe; `u` cambia, vacía con `true` y quita con
     `false`, `null` y `undefined`; `0` es `"0"`.
-  - *Depende de:* 8.
+  - *Depende de:* 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/hydrate/host-reflect.test.ts`.
-- [ ] **19. El host al crear.**
+- [ ] **21. El host al crear.**
   - Criterio 24: creado desde un `@foreach`, el host lleva `role="group"` y `variant` como en el
     servidor. Si falta alguno, se arregla en el emit de `emitHost`.
-  - *Depende de:* 8.
+  - *Depende de:* 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/hydrate/host-reflect.test.ts`, y `src/emit/markup-client.ts` si hace falta.
-- [ ] **20. El tipo en el editor.**
+- [ ] **22. El tipo en el editor.**
   - Criterio 25: un objeto en un atributo con expresión del tag de identidad es error de tipos.
   - *Depende de:* —.
   - *Paquete:* `language-core`.
@@ -166,27 +189,40 @@
 
 ## Fase 6 — Guía, ejemplo y cierre
 
-- [ ] **21. La guía.**
+- [ ] **23. La guía de componentes.**
   - Secciones «ciclo de vida» y «props reflejadas», con la nota de los atributos nativos (SDD §4.8,
     §4.9), en inglés y en español.
-  - *Depende de:* 10, 18.
+  - *Depende de:* 11, 20.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/components.md`, `guide/es/components.md`.
-- [ ] **22. El ejemplo `/ciclo`.**
-  - `ciclo-demo` y la ruta `/ciclo` (SDD §4.9), con su e2e del criterio 1, y el test de `mount` del
-    criterio 13.
-  - *Depende de:* 10, 11, 19.
+- [ ] **24. La guía de páginas.**
+  - El ciclo de vida de una ruta: la tabla de §4.1, la bfcache, el límite de lo asíncrono en
+    `pagehide` y el ejemplo del store en IndexedDB (SDD §4.9), en inglés y en español.
+  - *Depende de:* 8, 12.
+  - *Paquete:* `mcp`.
+  - *Ficheros:* `guide/pages.md`, `guide/es/pages.md`.
+- [ ] **25. El ejemplo `/ciclo`.**
+  - `ciclo-demo` y la ruta `/ciclo` con su contador en IndexedDB (SDD §4.9), con su e2e del criterio 1,
+    y el test de `mount` del criterio 13.
+  - *Depende de:* 11, 12, 13, 21.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/components/ciclo-demo.fud`, `src/components/ciclo-demo.test.ts`,
-    `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
-- [ ] **23. Un componente que se hidrata por interacción.**
+    `src/stores/contador.ts`, `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
+- [ ] **26. La bfcache, de verdad.**
+  - En el e2e: ir de `/ciclo` a otra página y volver atrás restaura desde la bfcache, con
+    `onDisconnect` / `onConnect`, sin `onDispose` y con el estado intacto; navegar sin volver ejecuta
+    `onDispose` (criterios 27, 28).
+  - *Depende de:* 25.
+  - *Paquete:* `examples/basic`.
+  - *Ficheros:* `tests/ciclo.spec.ts`.
+- [ ] **27. Un componente que se hidrata por interacción.**
   - Criterio 11, en el e2e: ningún hook antes de la interacción.
-  - *Depende de:* 22.
+  - *Depende de:* 25.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
-- [ ] **24. Cierre.**
+- [ ] **28. Cierre.**
   - IDEA-08 §4 apunta a esta SDD; `INDEX.md` con el estado y el registro.
   - `pnpm typecheck`, `pnpm build`, cobertura al 100 % en lo nuevo, e2e de `examples/basic` en verde
-    (criterio 26).
+    (criterio 31).
   - *Depende de:* todas.
   - *Ficheros:* `docs/sdd/ideas/IDEA-08-adelgazar-el-cliente.md`, `docs/sdd/INDEX.md`.
