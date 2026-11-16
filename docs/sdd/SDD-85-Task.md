@@ -248,6 +248,26 @@ Decidido con Pedro el 2026-11-16: no se pasa a la fase 5 sin arreglarlos, y de r
   `core/src/hydrate/scope.ts`, `live.ts`; `di/src/page.ts`; `compiler/src/emit/client.ts`,
   `module.ts`, `markup-client.ts`; `examples/basic/src/create-equivalence.test.ts`.
 
+## Antes de la fase 5 — dos pruebas de `@fudic/cli` en rojo
+
+Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abiertas.
+
+- [ ] **F4. `fudic new` → `vite build` falla** (`cli/test/new-build.test.ts`, «fudic new → vite
+  build (§6.1)»). El error: `Rolldown failed to resolve import "@fudic/dom" from
+  ".../src/components/app-button/app-button.fud?client"`. Causa: desde la fase 3 el chunk de
+  cliente de todo componente importa `template as $template` de `@fudic/dom` (SDD §3.1, §4.1), y
+  la app que genera `fudic new` no declara `@fudic/dom` como dependencia; pnpm no expone
+  dependencias fantasma. Arreglo esperado: que la app generada pueda resolver `@fudic/dom` sin
+  que el usuario lo añada a mano — o la plantilla de `fudic new` lo declara, o el plugin de vite
+  lo resuelve desde sus propias dependencias como ya hace con las piezas del runtime (SDD-45).
+  Decidir cuál con el código delante y anotarlo en §8.2. Comprobar después si la tarea 26 de la
+  fase 5 sigue igual o ya queda cubierta.
+- [ ] **F5. El workspace generado no construye** (`cli/test/workspace/e2e.test.ts`, «a generated
+  workspace builds (criterion 13)»). Probablemente la misma causa que F4: verificarlo con su
+  salida antes de suponerlo, y arreglarlo con el mismo criterio.
+- [ ] **F6. Cierre de F4–F5.** `pnpm --filter @fudic/cli coverage` en verde y sin bajar del suelo
+  actual; un commit `fix(sdd-85): …` con este Task actualizado.
+
 ## Fase 5 — vite, core y testing
 
 - [ ] **26. La pieza en el manifiesto.**
