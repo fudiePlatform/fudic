@@ -180,6 +180,9 @@ describe('fudic g lib (criterion 5)', () => {
     // each other. The devDependency is what lets the library be built on its own.
     expect(pkg['peerDependencies']).toMatchObject({ '@fudic/core': expect.any(String) });
     expect(pkg['devDependencies']).toMatchObject({ '@fudic/core': expect.any(String) });
+    // The same for `@fudic/dom`: the chunk imports its template from there (SDD-85).
+    expect(pkg['peerDependencies']).toMatchObject({ '@fudic/dom': expect.any(String) });
+    expect(pkg['devDependencies']).toMatchObject({ '@fudic/dom': expect.any(String) });
     expect(pkg['dependencies']).toBeUndefined();
   });
 

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 25 / 34 — `En curso`.
+> **Progreso:** 25 / 34 (F1–F6 hechas) — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -252,7 +252,7 @@ Decidido con Pedro el 2026-11-16: no se pasa a la fase 5 sin arreglarlos, y de r
 
 Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abiertas.
 
-- [ ] **F4. `fudic new` → `vite build` falla** (`cli/test/new-build.test.ts`, «fudic new → vite
+- [x] **F4. `fudic new` → `vite build` falla** (`cli/test/new-build.test.ts`, «fudic new → vite
   build (§6.1)»). El error: `Rolldown failed to resolve import "@fudic/dom" from
   ".../src/components/app-button/app-button.fud?client"`. Causa: desde la fase 3 el chunk de
   cliente de todo componente importa `template as $template` de `@fudic/dom` (SDD §3.1, §4.1), y
@@ -261,11 +261,12 @@ Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abi
   que el usuario lo añada a mano — o la plantilla de `fudic new` lo declara, o el plugin de vite
   lo resuelve desde sus propias dependencias como ya hace con las piezas del runtime (SDD-45).
   Decidir cuál con el código delante y anotarlo en §8.2. Comprobar después si la tarea 26 de la
-  fase 5 sigue igual o ya queda cubierta.
-- [ ] **F5. El workspace generado no construye** (`cli/test/workspace/e2e.test.ts`, «a generated
+  fase 5 sigue igual o ya queda cubierta. **Resuelto:** la plantilla ya lo declaraba; faltaba el alias en
+  las pruebas (SDD §8.2, decisión 37). La tarea 26 sigue igual.
+- [x] **F5. El workspace generado no construye** (`cli/test/workspace/e2e.test.ts`, «a generated
   workspace builds (criterion 13)»). Probablemente la misma causa que F4: verificarlo con su
   salida antes de suponerlo, y arreglarlo con el mismo criterio.
-- [ ] **F6. Cierre de F4–F5.** `pnpm --filter @fudic/cli coverage` en verde y sin bajar del suelo
+- [x] **F6. Cierre de F4–F5.** `pnpm --filter @fudic/cli coverage` en verde y sin bajar del suelo
   actual; un commit `fix(sdd-85): …` con este Task actualizado.
 
 ## Fase 5 — vite, core y testing

@@ -588,3 +588,10 @@ Nada.
     el `register` de su módulo IoC (importado de `./<fichero>.fud?ioc`). `containerOf` acepta ya
     un contenedor. `di-owner`, `di-panel` y `di-badge` entran en la prueba de equivalencia del
     ejemplo, más una que comprueba que el panel y la insignia ven el mismo `Cart`.
+37. **La app que genera `fudic new` ya declaraba `@fudic/dom`** (antes de la fase 5, F4–F5). La
+    plantilla de `package.json` de una app lo lleva en `dependencies` y la de una librería en
+    `peerDependencies` y `devDependencies`, igual que `@fudic/core`. Lo que fallaba eran las dos
+    pruebas de `@fudic/cli` que construyen el proyecto generado: sustituyen `pnpm install` por
+    alias a los `dist` del workspace, y no tenían el de `@fudic/dom`. Se añade el alias y
+    `projects.test.ts` comprueba que la librería lo declara como peer, que es la guarda que un
+    alias no puede dar. La tarea 26 sigue igual: va de publicar la pieza, no de resolver el import.
