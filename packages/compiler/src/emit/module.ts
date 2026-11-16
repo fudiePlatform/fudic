@@ -539,6 +539,9 @@ function buildComponentModule(
     // Numbered and recorded in the same step, because the map the browser rebuilds the chain
     // from is written while this walk happens (SDD-38 §4.2).
     w.line(`const $own = $ioc.child(${JSON.stringify(comp.tag)});`);
+    // And written on its host: what the browser creates inside its view later — a row of a block
+    // of a component it renders — finds the container through it (SDD-85, `core/hydrate/scope.ts`).
+    w.line(`$dom.setAttr($dom.host($shadow), 'data-fud-ioc', String($own.index));`);
     // From here down this component resolves from the container it owns, so a `provide` and
     // an `inject` of the same token in one `@code` meet — which is §1's property 2 read from
     // the inside.

@@ -137,7 +137,7 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
 
   it('creates a child host without opening its shadow, and raises it with its props', () => {
     expect(src).toContain('<app-button data-fud-adopt="app-button"> <!----> </app-button>');
-    expect(src).toContain('$live($n3, ["ghost"]);');
+    expect(src).toContain('$live($n3, ["ghost"], $shadow);');
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
   });

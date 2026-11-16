@@ -209,6 +209,9 @@ function buildComponentClientModule(
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
   // the route's IoC module rather than inside it (SDD-38 §4.5).
   const injects = di.some((d) => d.kind === 'inject');
+  // An owner whose providers run in the browser: an instance of it the browser creates opens its
+  // own container for its view, with them in it (SDD-85, `core/hydrate/scope.ts`).
+  const provides = codeOf(comp).providers.body.length > 0;
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -224,6 +227,8 @@ function buildComponentClientModule(
   const changeable = new Set([...propNames(props), ...mutable]);
   const fileSheets = sheetUrlsOf(graph, options, linker);
   const scope = {
+    // What this view creates resolves its services through this component (SDD-85).
+    creator: '$shadow',
     childProps: (tag: string): readonly Prop[] | undefined => {
       const child = graph.components.get(tag);
       return child === undefined ? undefined : codeOf(child).props;
@@ -415,16 +420,22 @@ function buildComponentClientModule(
     ...(usage.creates ? ['live as $live'] : []),
     // Only a factory that runs code of its author has anything of its own to tear down.
     ...(owns ? ['owned as $owned'] : []),
+    // Where an instance with no node of the page's tree resolves its services from.
+    ...(provides ? ['ownScope as $ownScope'] : injects ? ['scopeOf as $scopeOf'] : []),
   ];
   const core = [...(formAssociated ? [] : ['FudicElement']), ...channels].join(', ');
   if (!formAssociated || channels.length > 0) w.line(`import { ${core} } from '@fudic/core';`);
   if (formAssociated) w.line("import { FudicControlElement } from '@fudic/forms/element';");
-  if (injects) {
+  if (injects || provides) {
     // The two halves of resolving on this side: the helper the rewrite named, and the page's
     // tree, which turns the node the payload carried into the container it stands for.
-    w.line(`import { injectFrom } from '@fudic/di';`);
+    const di = [...(injects ? ['injectFrom'] : []), ...(provides ? ['createChild as $createChild'] : [])];
+    w.line(`import { ${di.join(', ')} } from '@fudic/di';`);
     w.line(`import { containerOf as $container } from '@fudic/di/page';`);
   }
+  // And an owner's providers, from the IoC module beside it (SDD-38 §4.5): the same `register`
+  // the page runs for a painted instance, run by an instance the browser created.
+  if (provides) w.line(`import { register as $register } from './${comp.path.replace(/^.*[\\/]/u, '')}?ioc';`);
   // The bind functions this walk actually called, and no others. It is §6.7 made structural:
   // the chunk of a component with one text field names `bindText` and does not mention the
   // other five — not their names, not their modules. Sorted so the line is stable.
@@ -470,7 +481,16 @@ function buildComponentClientModule(
   w.line(declaration(props, cells, injects));
   // Before the neutral zone, because that is where the injections are written and `$ioc` is
   // what they resolve from.
-  if (injects) w.line(`const $ioc = $container(${iocName(props, cells)});`);
+  //
+  // An instance with no node — one the browser created — resolves from the scope of the view that
+  // created it, and an owner opens its own for its view, as the server's `render` does (SDD-85).
+  const host = '$dom.host($shadow)';
+  if (provides) {
+    const open = `$ownScope(${host}, ($o) => { const $c = $createChild($container($o), ${JSON.stringify(comp.tag)}); $register($c); return $c; })`;
+    w.line(injects ? `const $ioc = $container(${open});` : `${open};`);
+  } else if (injects) {
+    w.line(`const $ioc = $container(${iocName(props, cells)} ?? $scopeOf(${host}));`);
+  }
   // The host, materialized ONLY where something reads it (§4.4). A component with no bus
   // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
   // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.

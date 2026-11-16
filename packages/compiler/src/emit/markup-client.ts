@@ -302,6 +302,12 @@ export interface ClientBodies {
 export interface ClientScope {
   childProps(tag: string): readonly Prop[] | undefined;
   /**
+   * The shadow root of the component whose view creates a child, handed to `live` so the child
+   * resolves its services through it (SDD-85, `core/hydrate/scope.ts`). A route has none: what
+   * it creates is in the page's own view.
+   */
+  readonly creator?: string;
+  /**
    * What a child declares about one of its props — the other half of `childProps`, and the
    * one that decides the FORM of the crossing (props-spec decision 153). Two questions about
    * the same child because they are asked at different moments: the order when the tuple is
@@ -1588,7 +1594,8 @@ export class ClientMarkupEmitter {
     // download. The adopt path stays untouched: those instances came from the server and
     // belong to the cascade.
     this.#usage.creates = true;
-    this.#create.mappedLine(here(el.openSpan.start), `$live(${v}, [${initial}]);`);
+    const from = this.#scope.creator === undefined ? '' : `, ${this.#scope.creator}`;
+    this.#create.mappedLine(here(el.openSpan.start), `$live(${v}, [${initial}]${from});`);
 
     // A value that moves only with the ROW is renewed when the row moved, and then only — the
     // update pass below already covers it when something else of the host moves too. No

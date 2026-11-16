@@ -1,7 +1,7 @@
 # SDD-85 — Crear clonando una plantilla, y las clases sin pisar
 
 > **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-85-Task.md).
-> **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
+> **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` · `@fudic/di` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 14 (el contrato `Dom<N>`), 15 (los tres caminos `c` / `h` / `u` y el cursor de
 > elementos), 30 (los bloques como funciones), 45 (las piezas del runtime), 61 (los spreads), 70
@@ -576,3 +576,15 @@ Nada.
     (`hoist.ts`); un patrón va entre paréntesis y sin su tipo. Solo las declaraciones de primer
     nivel del `@{ }`: un bloque `{ }` del autor dentro sigue siendo suyo. Prueba:
     `hydrate/inline-scope.test.ts`.
+36. **Un dueño de servicio creado en el navegador da su contenedor a su vista** (Pedro, 2026-11-16,
+    antes de la fase 5; fallo previo, y matiza SDD-38 §4.5, que daba la raíz a todo lo creado en
+    el navegador). El navegador sigue la cadena del servidor: la VISTA que pinta un host, no el
+    DOM donde está, hasta el primer dueño (`core/hydrate/scope.ts`). `live(host, props, $shadow)`
+    apunta quién creó cada host (el clon de un bloque es un fragmento, fuera de todo árbol); un
+    host pintado está en la vista del host de su shadow root; el servidor escribe en el host de
+    cada dueño su nodo del árbol de la página (`data-fud-ioc`). Un componente que inyecta y no
+    trae nodo en su payload resuelve con `scopeOf`; un dueño cuyos proveedores corren en el
+    navegador, creado aquí, abre con `ownScope` un contenedor hijo del de su vista y lo llena con
+    el `register` de su módulo IoC (importado de `./<fichero>.fud?ioc`). `containerOf` acepta ya
+    un contenedor. `di-owner`, `di-panel` y `di-badge` entran en la prueba de equivalencia del
+    ejemplo, más una que comprueba que el panel y la insignia ven el mismo `Cart`.

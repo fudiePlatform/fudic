@@ -55,8 +55,12 @@ let tree: readonly Container[] | null = null;
  *
  * A page whose route declares no provider publishes no map, so the tree is built here, once,
  * with the root alone.
+ *
+ * And a container itself, as it is: what an owner the browser created opened for its view
+ * (SDD-85). Its instances resolve from it, and it is in no tree the server published.
  */
-export function containerOf(node?: number): Container {
+export function containerOf(node?: number | Container): Container {
+  if (typeof node === 'object') return node;
   if (tree === null) buildTree([-1], NOTHING);
   const built = tree as readonly Container[];
   return built[node ?? 0] ?? (built[0] as Container);

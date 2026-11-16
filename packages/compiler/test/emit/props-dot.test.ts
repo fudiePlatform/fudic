@@ -88,7 +88,7 @@ describe('a `.prop` on a component host reaches the CHILD, not the host (BUG-32 
 
   it('still hands it to the child cell on the client', () => {
     const { client } = outputs('<app-badge .tone="info"></app-badge>');
-    expect(client).toMatch(/\$live\(\$n\d+, \["info"\]\);/u);
+    expect(client).toMatch(/\$live\(\$n\d+, \["info"\], \$shadow\);/u);
   });
 
   it('writes no attribute for an interpolated value either, and drops the omit-if-falsy branch', () => {

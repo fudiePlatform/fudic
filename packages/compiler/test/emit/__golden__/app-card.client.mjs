@@ -228,7 +228,7 @@ customElements.define("app-card", class extends FudicElement {
               $x0 = $q;
             }
             $n3 = $c1; $c1 = $dom.nextElementSibling($c1);
-            $live($n3, ["ghost"]);
+            $live($n3, ["ghost"], $shadow);
             {
               const $q = $q1();
               const $i = $f1($q, null);

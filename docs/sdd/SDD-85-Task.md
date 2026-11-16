@@ -243,8 +243,10 @@ Decidido con Pedro el 2026-11-16: no se pasa a la fase 5 sin arreglarlos, y de r
 - [x] **F3. Lo que declara un `@{ }` lo ve el cliente.** La declaración sube al cierre (SDD §8.2,
   decisión 35). *Ficheros:* `compiler/src/emit/hoist.ts`, `markup-client.ts`;
   `test/emit/hydrate/inline-scope.test.ts`.
-- [ ] **F2. Un dueño de servicio creado en el navegador da su contenedor a sus hijos.** Pendiente de
-  decidir con Pedro: SDD-38 dice que un componente creado en el navegador solo ve la raíz.
+- [x] **F2. Un dueño de servicio creado en el navegador da su contenedor a su vista.** La cadena de
+  la vista del servidor, también en el navegador (SDD §8.2, decisión 36). *Ficheros:*
+  `core/src/hydrate/scope.ts`, `live.ts`; `di/src/page.ts`; `compiler/src/emit/client.ts`,
+  `module.ts`, `markup-client.ts`; `examples/basic/src/create-equivalence.test.ts`.
 
 ## Fase 5 — vite, core y testing
 

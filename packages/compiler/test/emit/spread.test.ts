@@ -141,8 +141,8 @@ describe('the emitted text', () => {
   });
 
   it('the client fabricates the child with a dense payload in the child´s order', () => {
-    expect(client).toContain('$live($n0, [(fijo).id, (fijo).nombre, (fijo).precio, (fijo).etiqueta]);');
-    expect(client).toContain('$live($n2, [(p).id, (p).nombre, (p).precio, "oferta"]);');
+    expect(client).toContain('$live($n0, [(fijo).id, (fijo).nombre, (fijo).precio, (fijo).etiqueta], $shadow);');
+    expect(client).toContain('$live($n2, [(p).id, (p).nombre, (p).precio, "oferta"], $shadow);');
   });
 
   it('the row renews its child only when a parameter really changed', () => {

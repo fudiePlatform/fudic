@@ -22,6 +22,11 @@
  */
 
 import { pageElements, tagDefiner, type ElementRegistry } from './registry.js';
+import { createdBy } from './scope.js';
+
+// What an instance created here resolves its services from travels with this piece: every chunk
+// that creates reaches it, and so does every chunk that injects (SDD-85).
+export { ownScope, scopeOf, SCOPE_ATTR } from './scope.js';
 
 /** What an upgraded instance offers a parent: entry point 2 (SDD-15 §3.7). */
 interface FabricatedHost extends Element {
@@ -49,11 +54,14 @@ const raised = new WeakSet<Element>();
  * Synchronous when the tag is already defined — which is the common case, because the page
  * that fabricates the second instance of a tag already downloaded it for the first — and a
  * download otherwise. `props` is the positional array `c` takes, in the child's declared
- * prop order, with `$dom` and `$shadow` left to `FudicElement` itself.
+ * prop order, with `$dom` and `$shadow` left to `FudicElement` itself. `from` is the shadow
+ * root of the component that created it, when one did (`scope.ts`).
  */
-export function live(host: Element, props: readonly unknown[]): void {
+export function live(host: Element, props: readonly unknown[], from?: ShadowRoot): void {
   if (raised.has(host)) return;
   raised.add(host);
+  // The view that created it: what it resolves its services from goes through that one.
+  if (from !== undefined) createdBy(host, from.host);
   const tag = host.localName;
   const registry = pageElements();
   if (registry.get(tag) !== undefined) {

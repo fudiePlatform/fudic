@@ -41,13 +41,14 @@ function walk(parent: ParentNode, depth: number, out: string[]): void {
     }
     const el = node as Element;
     // The order of the attributes is not compared (SDD-85 §8.2, decision 22), nor `data-fud-id`,
-    // which only an instance the page painted carries, nor an emptied `class=""` (§4.5, rule 3).
+    // which only an instance the page painted carries — nor `data-fud-ioc`, its node of the page's
+    // container tree, for the same reason — nor an emptied `class=""` (§4.5, rule 3).
     // And the `tabindex` the runtime gives a host whose shadow root should delegate focus and does
     // not (SDD-83 §4.6): happy-dom's declarative shadow roots never do, its `attachShadow` does.
     const init = (el as Element & { shadowInit?: () => ShadowRootInit }).shadowInit?.();
     const delegates = init?.delegatesFocus === true;
     const attrs = [...el.attributes]
-      .filter((a) => a.name !== 'data-fud-id' && !(a.name === 'class' && a.value === ''))
+      .filter((a) => a.name !== 'data-fud-id' && a.name !== 'data-fud-ioc' && !(a.name === 'class' && a.value === ''))
       .filter((a) => !(delegates && a.name === 'tabindex'))
       .map((a) => `${a.name}=${JSON.stringify(a.value)}`)
       .sort();
@@ -110,14 +111,17 @@ const INSIDE: Readonly<Record<string, string>> = {
   'app-input': 'app-form',
   'signal-display': 'signal-counter',
   'signal-grandchild': 'signal-counter',
+  // What injects the `Cart` its owner provides: compared inside the owner, where it gets it.
+  'di-panel': 'di-owner',
+  'di-badge': 'di-owner',
 };
 
 /**
- * The owner of a service, and what injects it: the provider of a component lives in its IoC
- * module, which only a page that painted the owner loads (SDD-38 §4.5), so an owner created in
- * the browser hands its subtree no container. Not this SDD's: it was so with the old `c` too.
+ * The services an instance shows are the ones it resolved: one object each, numbered as it is
+ * built. Two mounts build two, so the numbers are not compared — that the panel and the badge
+ * of ONE mount show the same `Cart` is, by the test of the owner below.
  */
-const OWNED = new Set(['di-owner', 'di-panel', 'di-badge']);
+const numbered = (text: string): string => text.replace(/\b(Cart|Logger)#\d+/gu, '$1#n');
 
 describe('criterion 8 — what the browser creates is what the server paints', () => {
   test('every component that lives only inside another is inside it', () => {
@@ -128,13 +132,25 @@ describe('criterion 8 — what the browser creates is what the server paints', (
   });
 
   for (const [file, module] of Object.entries(modules)) {
-    if (module.tag in INSIDE || OWNED.has(module.tag)) continue;
+    if (module.tag in INSIDE) continue;
     for (const props of PROPS[module.tag] ?? [{}]) {
       test(`${file.slice('./components/'.length)} ${JSON.stringify(props)}`, async () => {
         const painted = await mount(module, { props });
         const created = await mount(module, { props, via: 'client' });
-        expect(tree(created.root)).toBe(tree(painted.root));
+        expect(numbered(tree(created.root))).toBe(numbered(tree(painted.root)));
       });
     }
   }
+
+  // An owner created in the browser opens a container of its own, with its providers in it, and
+  // what its view creates resolves from it — as the server's does (SDD-85, decision 36).
+  test('an owner created in the browser hands its own Cart to everything it renders', async () => {
+    const owner = Object.values(modules).find((m) => m.tag === 'di-owner')!;
+    const { root } = await mount(owner, { via: 'client' });
+    const panel = root.querySelector('di-panel')!.shadowRoot!;
+    const badge = panel.querySelector('di-badge')!.shadowRoot!;
+    const cart = panel.querySelector('[data-id="cart"]')!.textContent;
+    expect(cart).toMatch(/^Cart#\d+$/u);
+    expect(badge.querySelector('[data-id="badge-cart"]')!.textContent).toBe(cart);
+  });
 });
