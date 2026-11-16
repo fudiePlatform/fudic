@@ -19,7 +19,11 @@
  *    context (`& "`); a comment neutralizes an inner `-->`.
  */
 
+import { escapeAttr, escapeText } from '@fudic/dom';
 import { type SsrNode, type SsrNodeImpl, asImpl } from './tree.js';
+
+/** The escaping lives in `@fudic/dom`, where the compiler writes templates with it too. */
+export { escapeAttr, escapeText };
 
 /** https://html.spec.whatwg.org/#void-elements */
 const VOID_ELEMENTS = new Set([
@@ -175,16 +179,6 @@ function textOf(n: SsrNodeImpl): string {
 
 /** The marker the emit puts on a host whose sheets are files; consumed, never written. */
 const SHEETS_ATTR = 'data-fud-sheets';
-
-/** Escape for text context: `& < >`. */
-export function escapeText(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/** Escape for attribute-value context: `& "`. */
-export function escapeAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
 
 /** Neutralize an inner `-->` so anchor comments (`<!--fud:if-->`) cannot break out. */
 export function neutralizeComment(s: string): string {

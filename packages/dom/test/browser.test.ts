@@ -21,6 +21,41 @@ describe('browserDom construction', () => {
   });
 });
 
+describe('browserDom classes: only their own tokens move', () => {
+  it('toggleClass puts a token in and takes it out, and a class added some other way stays', () => {
+    const el = dom.element('div') as Element;
+    dom.setAttr(el, 'class', 'card');
+    dom.toggleClass(el, 'activo', true);
+    el.classList.add('extra');
+    dom.toggleClass(el, 'activo', false);
+    dom.toggleClass(el, 'activo', true);
+    expect(el.getAttribute('class')).toBe('card extra activo');
+    dom.toggleClass(el, 'activo', false);
+    expect(el.getAttribute('class')).toBe('card extra');
+  });
+
+  it('swapClass takes out what the new text no longer has and puts in the new, splitting on ASCII white space', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a\tb', '');
+    el.classList.add('extra');
+    dom.swapClass(el, ' b\n c ', 'a\tb');
+    expect([...el.classList]).toEqual(['b', 'extra', 'c']);
+  });
+
+  it('the last token gone leaves an empty attribute, as the browser does', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a', '');
+    dom.swapClass(el, '', 'a');
+    expect(el.getAttribute('class')).toBe('');
+  });
+
+  it('a swap that changes nothing does not touch the attribute', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, '', '');
+    expect(el.hasAttribute('class')).toBe(false);
+  });
+});
+
 describe('browserDom mutation', () => {
   it('sets and removes attributes', () => {
     const el = dom.element('button') as Element;

@@ -52,6 +52,9 @@ const PIECES: Readonly<Record<string, string>> = {
   // `createPolicy('fudic')` throws under the directive — so the adapter and `@fudic/forms` both
   // reach this one piece instead of carrying a copy each.
   trusted: 'src/trusted.ts',
+  // What a component or a block creates in the browser is a clone of the HTML the compiler
+  // wrote, parsed through the `fudic` policy: it reaches `trusted`, and never carries a copy.
+  template: 'src/template.ts',
 };
 
 /**
@@ -77,6 +80,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/cursor.ts': 'cursor',
   'src/emit.ts': 'emit',
   'src/trusted.ts': 'trusted',
+  'src/template.ts': 'template',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

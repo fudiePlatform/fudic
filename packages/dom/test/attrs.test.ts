@@ -16,6 +16,9 @@ import * as api from '../src/index.js';
 const of = (objects: readonly unknown[], except: readonly string[] = [], tag = 'input'): Record<string, string> =>
   Object.fromEntries(attrsOf(tag, objects, except));
 
+/** A spread that writes no class changes none. */
+const NO_CLASS = { remove: [], add: [] };
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -112,17 +115,31 @@ describe('attrsDiff — from what was written to what is', () => {
         ['b', ''],
       ],
       remove: [],
+      class: NO_CLASS,
     });
   });
 
   it('only what changed its text is set; what is no longer written is removed', () => {
     const prev = [{ placeholder: 'A', required: true, maxlength: 20 }];
     const next = [{ placeholder: 'B', required: false, maxlength: 20 }];
-    expect(attrsDiff('input', next, prev, [])).toEqual({ set: [['placeholder', 'B']], remove: ['required'] });
+    expect(attrsDiff('input', next, prev, [])).toEqual({ set: [['placeholder', 'B']], remove: ['required'], class: NO_CLASS });
   });
 
   it('the except list is honoured on both sides: an explicit attribute is never removed', () => {
-    expect(attrsDiff('input', [{}], [{ title: 'x' }], ['title'])).toEqual({ set: [], remove: [] });
+    expect(attrsDiff('input', [{}], [{ title: 'x' }], ['title'])).toEqual({ set: [], remove: [], class: NO_CLASS });
+  });
+
+  it('the class goes apart, token by token, whatever case its key is written in', () => {
+    const prev = [{ class: 'a b', id: 'x' }];
+    expect(attrsDiff('div', [{ Class: 'b c' }, { class: 'd' }], prev, [])).toEqual({
+      set: [],
+      remove: ['id'],
+      class: { remove: ['a'], add: ['b', 'c', 'd'] },
+    });
+  });
+
+  it('an element with a class of its own leaves the spread no class to write', () => {
+    expect(attrsDiff('div', [{ class: 'a' }], undefined, ['class'])).toEqual({ set: [], remove: [], class: NO_CLASS });
   });
 
   it('re-reads the previous URLs without warning again', () => {
@@ -130,7 +147,7 @@ describe('attrsDiff — from what was written to what is', () => {
     const bad = [{ href: 'javascript:x' }];
     attrsDiff('a', bad, undefined, []);
     const before = warn.mock.calls.length;
-    expect(attrsDiff('a', [{}], bad, [])).toEqual({ set: [], remove: ['href'] });
+    expect(attrsDiff('a', [{}], bad, [])).toEqual({ set: [], remove: ['href'], class: NO_CLASS });
     expect(warn.mock.calls.length).toBe(before);
   });
 
@@ -155,5 +172,20 @@ describe('browserDom.setAttrs', () => {
     expect(el.hasAttribute('required')).toBe(false);
     expect(el.getAttribute('maxlength')).toBe('20');
     expect(el.getAttribute('class')).toBe('mine');
+  });
+
+  it('writes the class of the spread token by token: a class added some other way stays', () => {
+    const el = dom.element('div') as Element;
+    const first = [{ class: 'a b' }];
+    dom.setAttrs(el, first, undefined, []);
+    el.classList.add('extra');
+    dom.setAttrs(el, [{ class: 'b c' }], first, []);
+    expect([...el.classList]).toEqual(['b', 'extra', 'c']);
+  });
+
+  it('a spread with no class gives the element no class attribute', () => {
+    const el = dom.element('div') as Element;
+    dom.setAttrs(el, [{ id: 'x' }], undefined, []);
+    expect(el.hasAttribute('class')).toBe(false);
   });
 });

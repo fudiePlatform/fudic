@@ -179,6 +179,41 @@ describe('SsrDom tree mutation', () => {
   });
 });
 
+describe('SsrDom classes: a list of tokens written as `class`', () => {
+  it('toggleClass puts tokens behind the static ones, in the order they come, and takes them out', () => {
+    const d = new SsrDom();
+    const el = d.element('div');
+    d.setAttr(el, 'id', 'x');
+    d.setAttr(el, 'class', 'card');
+    d.toggleClass(el, 'b', true);
+    d.toggleClass(el, 'a', true);
+    d.toggleClass(el, 'a', true);
+    expect(renderToString(el)).toBe('<div id="x" class="card b a"></div>');
+    d.toggleClass(el, 'b', false);
+    expect(renderToString(el)).toBe('<div id="x" class="card a"></div>');
+  });
+
+  it('with no token left, or none ever on, there is no attribute', () => {
+    const d = new SsrDom();
+    const on = d.element('div');
+    d.toggleClass(on, 'a', true);
+    d.toggleClass(on, 'a', false);
+    const never = d.element('div');
+    d.toggleClass(never, 'a', false);
+    expect(renderToString(on) + renderToString(never)).toBe('<div></div><div></div>');
+  });
+
+  it('swapClass takes out what the new text no longer has and puts in the new, on ASCII white space', () => {
+    const d = new SsrDom();
+    const el = d.element('div');
+    d.setAttr(el, 'class', 'card');
+    d.swapClass(el, 'a\tb', '');
+    d.toggleClass(el, 'on', true);
+    d.swapClass(el, ' b\n c ', 'a\tb');
+    expect(renderToString(el)).toBe('<div class="card b on c"></div>');
+  });
+});
+
 describe('SsrDom — the instance collector (SDD-15 §3.1, §3.3)', () => {
   /** One claimed host with its shadow, the shape the emit produces. */
   function instance(d: SsrDom, tag: string): { host: SsrNode; shadow: SsrNode } {

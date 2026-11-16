@@ -84,10 +84,11 @@ const EXCEPTIONS = {
    */
   otherRealm: {
     piece: 'ssr/index',
-    // DI, and the three stateless helpers the renderer shares with `dom/browser`: the URL
-    // guard, the HTML escape and the attribute spread. Their marks come from `Symbol.for`
-    // precisely so that two copies agree (`url.ts`, `html.ts`).
-    modules: /^packages\/(di\/src\/|dom\/src\/(url|html|attrs)\.ts$)/,
+    // DI, and the stateless helpers the renderer shares with `dom/browser`: the URL guard, the
+    // HTML escape, the attribute spread and the class tokens. Their marks come from `Symbol.for`
+    // precisely so that two copies agree (`url.ts`, `html.ts`). The serializer's escaping
+    // (`escape.ts`) is the renderer's alone, and lives in `@fudic/dom` so the compiler shares it.
+    modules: /^packages\/(di\/src\/|dom\/src\/(url|html|attrs|classes|escape)\.ts$)/,
     why: '§4.10: the worker cannot import, so the renderer it links is CommonJS with `@fudic/di` and the adapter helpers inside it. Documents import them as pieces; the worker cannot. Two realms, two module systems, and the bytes twice on the origin is the price.',
   },
   /**
@@ -126,8 +127,8 @@ const EXCEPTIONS = {
       why: 'SDD-80: the server half of a `runs remote` rule — the registry its route looks rules up in, and the runner `@fudic/http` installs for the middlewares around a check. Only `@fudic/http` on the server calls them; the browser half is `forms/remote`.',
     },
     {
-      match: /^@fudic\/dom:src\/(url\.ts:(isTrustedUrl|safeUrl|guardUrl|INERT_URL)|html\.ts:(isTrustedHtml|htmlOf)|attrs\.ts:)/,
-      why: 'The adapter\'s own helpers: `dom/browser` and the renderer call them inside themselves, and the emit reaches the guard as `io.guardUrl`, never by name. What an author imports — `trustedUrl`, `trustedHtml` — is published from `dom/browser`.',
+      match: /^@fudic\/dom:src\/(url\.ts:(isTrustedUrl|safeUrl|guardUrl|INERT_URL)|html\.ts:(isTrustedHtml|htmlOf)|attrs\.ts:|classes\.ts:|escape\.ts:)/,
+      why: 'The adapter\'s own helpers: `dom/browser` and the renderer call them inside themselves, and the emit reaches the guard as `io.guardUrl`, never by name. The escape is the serializer\'s and the compiler\'s, which writes templates with it at build time. What an author imports — `trustedUrl`, `trustedHtml` — is published from `dom/browser`.',
     },
     {
       match: /^@fudic\/http:src\/(cookies\.ts|errors\.ts:CODE_HEADER$|contract\/fn\.ts:contractIds$|wire\/frames\.ts:)/,

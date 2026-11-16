@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 0 / 34 — `Listo`.
+> **Progreso:** 7 / 34 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -19,13 +19,13 @@
 
 ## Fase 1 — `@fudic/dom` y `@fudic/ssr`
 
-- [ ] **1. El escape, a `@fudic/dom`.**
+- [x] **1. El escape, a `@fudic/dom`.**
   - `escapeText` y `escapeAttr` se mueven a `@fudic/dom` y se exportan. `@fudic/ssr` los reexporta sin
     cambiar su API (SDD §3.3).
   - *Depende de:* —.
   - *Paquetes:* `dom`, `ssr`.
   - *Ficheros:* `dom/src/escape.ts`, `dom/src/index.ts`, `ssr/src/serialize.ts`, `ssr/src/index.ts`.
-- [ ] **2. `template` y `templateIn`.**
+- [x] **2. `template` y `templateIn`.**
   - Literal único y congelado o `TypeError`; parseo perezoso en la primera llamada, a través de
     `trustedHtmlOf`; `cloneNode(true)` del contenido; `templateIn` devuelve los hijos del envoltorio
     (SDD §3.1).
@@ -33,29 +33,29 @@
   - *Depende de:* —.
   - *Paquete:* `dom`.
   - *Ficheros:* `src/template.ts`, `src/index.ts`.
-- [ ] **3. La pieza `dom/template`.**
+- [x] **3. La pieza `dom/template`.**
   - Entrada en `rolldown.config.ts`, importando `dom/trusted` como externa (frontera con estado).
   - *Depende de:* 2.
   - *Paquete:* `dom`.
   - *Ficheros:* `rolldown.config.ts`.
-- [ ] **4. `toggleClass` y `swapClass` en el contrato y en el navegador.**
+- [x] **4. `toggleClass` y `swapClass` en el contrato y en el navegador.**
   - Los dos métodos en `Dom<N>` y en `browserDom`, con tokens separados por espacio ASCII (SDD §3.2).
   - *Depende de:* —.
   - *Paquete:* `dom`.
   - *Ficheros:* `src/dom.ts`, `src/browser.ts`.
-- [ ] **5. `toggleClass` y `swapClass` en `SsrDom`.**
+- [x] **5. `toggleClass` y `swapClass` en `SsrDom`.**
   - Un conjunto ordenado de tokens por elemento que se serializa como `class`; sin tokens, sin
     atributo (SDD §4.5, reglas 2 y 3).
   - *Depende de:* 4.
   - *Paquete:* `ssr`.
   - *Ficheros:* `src/ssr-dom.ts`, `src/tree.ts`.
-- [ ] **6. La `class` de un spread, por tokens.**
+- [x] **6. La `class` de un spread, por tokens.**
   - `setAttrs` escribe `class` con `swapClass` en el navegador y en el servidor; el resto de atributos
     como hoy (SDD §3.2, §4.5 regla 4).
   - *Depende de:* 4, 5.
   - *Paquetes:* `dom`, `ssr`.
   - *Ficheros:* `dom/src/browser.ts`, `dom/src/attrs.ts`, `ssr/src/ssr-dom.ts`.
-- [ ] **7. Tests de la fase.**
+- [x] **7. Tests de la fase.**
   - `template`: literal válido, string, literal con huecos, perezoso (no crea la policy sin llamar),
     con y sin `trustedTypes`, `templateIn` con SVG y MathML.
   - `toggleClass` / `swapClass` / spreads en los dos adaptadores. `dom` y `ssr` al 100 %.
@@ -210,6 +210,9 @@
 - [ ] **30. e2e: SVG y Trusted Types.**
   - Un `@if` dentro de un `<svg>` (criterio 6); con la plantilla de `page.headers`, cero violaciones
     (criterio 16); la policy no existe en una página sin bloques que se abran (criterio 17).
+  - `templateIn` con `<math>`: los hijos salen con el espacio de nombres MathML. happy-dom parsea
+    `<math>` como HTML y el test unitario de la fase 1 solo prueba que se quita el envoltorio
+    (SDD §8.2, 6).
   - *Depende de:* 22, 26.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/create.spec.ts`, `src/routes/vivo.fud`.
@@ -231,6 +234,9 @@
 - [ ] **34. Cierre.**
   - `pnpm typecheck`, `pnpm build`, cobertura de todos los paquetes tocados, e2e del ejemplo y del
     banco (criterio 27). Estado, registro de progreso de `INDEX.md` e IDEA-08.
+  - `pnpm build` termina con `examples/pieces-bench/check.mjs`: tiene que pasar con la pieza
+    `dom/template` y con `escape.ts` / `classes.ts` dentro de `ssr/index` y sin pieza propia (la
+    fase 1 los anotó en el check, sin poder correrlo sin el build entero).
   - *Depende de:* 1–33.
   - *Ficheros:* `docs/sdd/INDEX.md`, `docs/sdd/SDD-85-crear-clonando-y-clases.md`,
     `docs/sdd/ideas/IDEA-08-adelgazar-el-cliente.md`.
