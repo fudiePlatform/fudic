@@ -189,16 +189,23 @@
 
 ## Fase 6 — Guía, ejemplo y cierre
 
-- [ ] **23. La guía de componentes.**
-  - Secciones «ciclo de vida» y «props reflejadas», con la nota de los atributos nativos (SDD §4.8,
-    §4.9), en inglés y en español.
-  - *Depende de:* 11, 20.
+- [ ] **23. La guía del MCP: `overview`, `components` y `testing`.**
+  - `overview`: los hooks también hacen hidratar a un componente, y una ruta con hooks lleva JavaScript.
+  - `components`: la línea en «State and what `@code` may do», las secciones «Lifecycle» y «Reflecting
+    a prop on the host» (con la nota de los atributos nativos), y las seis filas nuevas de «Instead
+    of…» (SDD §4.10).
+  - `testing`: lo que ejecutan `mount` y `unmount`.
+  - Los bloques `broken` de `FUD1560` y `FUD1562`. En inglés y en español. `guide-examples.test.ts` en
+    verde (criterio 31).
+  - *Depende de:* 3, 11, 20.
   - *Paquete:* `mcp`.
-  - *Ficheros:* `guide/components.md`, `guide/es/components.md`.
-- [ ] **24. La guía de páginas.**
-  - El ciclo de vida de una ruta: la tabla de §4.1, la bfcache, el límite de lo asíncrono en
-    `pagehide` y el ejemplo del store en IndexedDB (SDD §4.9), en inglés y en español.
-  - *Depende de:* 8, 12.
+  - *Ficheros:* `guide/overview.md`, `guide/components.md`, `guide/testing.md`, y los tres en
+    `guide/es/`.
+- [ ] **24. La guía del MCP: `pages`.**
+  - La sección «Lifecycle of a route»: la tabla de §4.1, la bfcache, el límite de lo asíncrono en
+    `pagehide` y el ejemplo del store en IndexedDB (SDD §4.9, §4.10). El bloque `broken` de `FUD1561`.
+    En inglés y en español. `guide-examples.test.ts` en verde (criterio 31).
+  - *Depende de:* 3, 8, 12.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/pages.md`, `guide/es/pages.md`.
 - [ ] **25. El ejemplo `/ciclo`.**
@@ -223,6 +230,6 @@
 - [ ] **28. Cierre.**
   - IDEA-08 §4 apunta a esta SDD; `INDEX.md` con el estado y el registro.
   - `pnpm typecheck`, `pnpm build`, cobertura al 100 % en lo nuevo, e2e de `examples/basic` en verde
-    (criterio 31).
+    (criterio 32).
   - *Depende de:* todas.
   - *Ficheros:* `docs/sdd/ideas/IDEA-08-adelgazar-el-cliente.md`, `docs/sdd/INDEX.md`.

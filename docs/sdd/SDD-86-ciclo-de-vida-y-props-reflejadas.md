@@ -380,12 +380,8 @@ cambian cómo se comporta el host. Para una variante de estilo, el nombre propio
 
 ### 4.9. La guía y el ejemplo
 
-- `packages/mcp/guide/components.md` y `packages/mcp/guide/es/components.md` ganan dos secciones: el
-  ciclo de vida, con la tabla de §3.1, el orden de §4.1 y el ejemplo de `ResizeObserver`; y las props
-  reflejadas, con §3.6 y la nota de §4.8.
-- `packages/mcp/guide/pages.md` y `packages/mcp/guide/es/pages.md` ganan la sección del ciclo de vida
-  de una ruta, con la tabla de §4.1, la bfcache, el límite de lo asíncrono en `pagehide` y el ejemplo
-  del store en IndexedDB:
+- La guía del MCP cambia como dice §4.10. El ejemplo del store en IndexedDB, que lleva el tema
+  `pages`, es este:
 
 ```ts
 // stores/carrito.ts
@@ -415,6 +411,38 @@ export const items = signal<Item[]>([]);
 - La ruta `/ciclo` usa también sus propios hooks con el store del ejemplo de arriba: un contador cuyo
   valor se lee de IndexedDB en `afterHydrate`, se guarda con un `effect` y otra vez en `onDisconnect`.
   Recargar la página lo conserva.
+
+### 4.10. Lo que sabe un agente: la guía del MCP
+
+Una funcionalidad que no está en la guía del MCP no existe para un agente: escribirá un `effect` o
+una clase a mano. La guía (`fudic_guide`) cambia en cinco temas, en inglés y en español
+(`packages/mcp/guide/` y `packages/mcp/guide/es/`):
+
+| Tema | Qué cambia |
+|---|---|
+| `overview` | «A component hydrates when it has state, events or reactive props» pasa a incluir los hooks del ciclo de vida, y una ruta con hooks lleva JavaScript |
+| `components` | En «State and what `@code` may do», una línea que nombra los hooks y remite a su sección. Una sección «Lifecycle» con la tabla de §3.1, el orden de §4.1 y el ejemplo de `ResizeObserver`. Una sección «Reflecting a prop on the host» con §3.6 y la nota de §4.8. Filas nuevas en «Instead of… (React habits)» |
+| `pages` | Una sección «Lifecycle of a route» con la tabla de §4.1, la bfcache, el límite de lo asíncrono en `pagehide` y el ejemplo del store en IndexedDB |
+| `testing` | `mount` ejecuta los hooks de hidratar (`via: 'ssr'`) o los de crear (`via: 'client'`), y `unmount` los de salir |
+| `view` | Nada: los hooks no se escriben en la vista |
+
+Filas nuevas de «Instead of… (React habits)»:
+
+| Instead of… | Write | Code |
+|---|---|---|
+| `useEffect(fn, [])` to run once after the first paint | `afterHydrate(fn)` (and `afterCreate(fn)` for one created in the browser) | — |
+| `useEffect` cleanup on unmount | `onDispose(fn)`, or return the cleanup from `afterHydrate` | — |
+| `connectedCallback()` / `disconnectedCallback()` in a class | `onConnect(fn)` / `onDisconnect(fn)` in `@code` | — |
+| `useEffect` / `useLayoutEffect` inside a function or a handler | the hook at the top level of `@code` | `FUD1560` |
+| `window.addEventListener('beforeunload', …)` / `'unload'` | `onDisconnect(fn)` in the route's `@code` | — |
+| `reflect: true` on a property | an attribute with an expression on the identity tag: `<app-card variant="@variant">` | — |
+
+Cada ejemplo nuevo pasa por `guide-examples.test.ts`, como todos: los buenos construyen sin
+diagnósticos, y la guía lleva tres bloques `broken`: uno con `FUD1560` (un hook dentro de un handler),
+uno con `FUD1561` (`afterCreate` en una ruta) y uno con `FUD1562` (`const onConnect = …`).
+
+Los tres códigos nuevos tienen su página en `fudic_guide { topic: "FUD1560" }` sin hacer nada más:
+salen del `.md` del catálogo de `@fudic/diagnostics`.
 - IDEA-08 queda cerrada: su §4 apunta a esta SDD.
 
 ---
@@ -512,9 +540,16 @@ export const items = signal<Item[]>([]);
     con ellos no registra nunca `unload` ni `beforeunload`.
 30. Una ruta con un `@code` que solo tiene `afterHydrate(() => {})` lleva chunk de cliente.
 
+**La guía del MCP**
+
+31. `fudic_guide` de `overview`, `components`, `pages` y `testing`, en inglés y en español, dice lo de
+    §4.10. `guide-examples.test.ts` construye sus ejemplos nuevos sin diagnósticos, los tres bloques
+    `broken` fallan con `FUD1560`, `FUD1561` y `FUD1562`, y cada fila nueva de «Instead of…» nombra un
+    código que existe o ninguno.
+
 **Cierre**
 
-31. `pnpm typecheck`, `pnpm build`, la cobertura de los paquetes tocados al 100 % en lo nuevo, y los e2e
+32. `pnpm typecheck`, `pnpm build`, la cobertura de los paquetes tocados al 100 % en lo nuevo, y los e2e
     de `examples/basic` en verde.
 
 ---
@@ -554,5 +589,8 @@ Nada.
 11. **`pagehide` y `pageshow`, nunca `unload` ni `beforeunload`.** Los dos primeros son los eventos
     compatibles con la bfcache; `unload` la desactiva en Chrome y Safari. Un `pagehide` con
     `persisted === true` es un movimiento (sale y volverá); con `false`, la destrucción.
-12. **Lo asíncrono al irse no se promete.** El navegador no espera a nadie en `pagehide`. El framework
+12. **La guía del MCP es parte de la funcionalidad**, no documentación que viene después (Pedro). Un
+    agente solo sabe lo que dice `fudic_guide`: sin sus temas y sus filas de «Instead of…», escribiría
+    lo que conoce de otros frameworks.
+13. **Lo asíncrono al irse no se promete.** El navegador no espera a nadie en `pagehide`. El framework
     no intenta alargar la vida de la página: la guía enseña a guardar cuando el dato cambia.
