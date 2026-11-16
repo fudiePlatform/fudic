@@ -44,12 +44,15 @@ export interface ApiProjectFiles {
   readonly byId: ReadonlyMap<string, ApiSource>;
   readonly byPath: ReadonlyMap<string, ApiSource>;
   readonly parse: ReadonlyMap<ApiSource, readonly SourceDiagnostic[]>;
+  /** The text each source was parsed from. */
+  readonly texts: ReadonlyMap<ApiSource, string>;
   readonly libraries: readonly ApiLibrary[];
 }
 
-/** What the parser and the validator say about one `.fudapi` of the app. */
+/** What the parser and the validator say about one `.fudapi` of the app, and its text. */
 export interface ApiFileDiagnostics {
   readonly file: string;
+  readonly source: string;
   readonly diagnostics: readonly SourceDiagnostic[];
 }
 
@@ -82,10 +85,13 @@ export function readApiProject(root: string): ApiProjectFiles {
     }
   }
   const parse = new Map<ApiSource, readonly SourceDiagnostic[]>();
+  const texts = new Map<ApiSource, string>();
   const sources = found.map((f) => {
-    const result = parseApi(readFileSync(f.path, 'utf8'));
+    const text = readFileSync(f.path, 'utf8');
+    const result = parseApi(text);
     const source: ApiSource = { ...f, file: result.value };
     parse.set(source, result.diagnostics);
+    texts.set(source, text);
     return source;
   });
   return {
@@ -94,6 +100,7 @@ export function readApiProject(root: string): ApiProjectFiles {
     byId: new Map(sources.map((s) => [s.id, s])),
     byPath: new Map(sources.map((s) => [s.path, s])),
     parse,
+    texts,
     libraries,
   };
 }
@@ -142,12 +149,18 @@ export function writeApiDeclarations(root: string, files: ApiProjectFiles = read
   return written;
 }
 
-/** What the parser and the validator say about every `.fudapi` of the app, by file. */
+/**
+ * What the parser and the validator say about every `.fudapi` of the app, by file: every file,
+ * the ones with nothing to say too, because a `fud-disable` there may have silenced nothing.
+ */
 export function apiDiagnostics(root: string, files: ApiProjectFiles = readApiProject(root)): readonly ApiFileDiagnostics[] {
   return files.sources
     .filter((s) => s.origin === 'app')
-    .map((s) => ({ file: s.path, diagnostics: [...files.parse.get(s)!, ...validateApi(s, files.index, apiContextOf(root, s))] }))
-    .filter((f) => f.diagnostics.length > 0);
+    .map((s) => ({
+      file: s.path,
+      source: files.texts.get(s)!,
+      diagnostics: [...files.parse.get(s)!, ...validateApi(s, files.index, apiContextOf(root, s))],
+    }));
 }
 
 /**

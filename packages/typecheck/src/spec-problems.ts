@@ -17,6 +17,8 @@ import { specReach } from './spec-reach.js';
 /** What the parser and the validator say about one `.fudspec`. */
 export interface SpecFileDiagnostics {
   readonly file: string;
+  /** The text it was read from. */
+  readonly source: string;
   readonly diagnostics: readonly SourceDiagnostic[];
 }
 
@@ -59,7 +61,8 @@ export function specDiagnostics(
     if (text === undefined) continue;
     const parsed = parseSpec(text);
     const diagnostics = [...parsed.diagnostics, ...validateSpec(parsed.value, context)];
-    if (diagnostics.length > 0) files.push({ file, diagnostics });
+    // Every file, the clean ones too: a `fud-disable` there may have silenced nothing.
+    files.push({ file, source: text, diagnostics });
   }
   return { files, read: [...read] };
 }

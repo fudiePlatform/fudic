@@ -16,6 +16,9 @@ export type {
   StatementAtRule,
 } from './rules.js';
 export { parseCssRules } from './rules.js';
+export { cssBaselineUses } from './baseline.js';
+export type { CssComment } from './comments.js';
+export { cssComments } from './comments.js';
 export type { CssImport, CssRead, FlatRegion, FileDiagnostic, FlatSheet, ImportSite } from './flatten.js';
 export { parseImport, flattenImports, originOf, plainSheet, rebaseUrls } from './flatten.js';
 export type {

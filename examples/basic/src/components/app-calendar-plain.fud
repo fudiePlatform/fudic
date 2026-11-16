@@ -83,6 +83,7 @@
   <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       @* Un `@click` por celda y otro por botón: dos listeners por fila, y crecen con ella. *@
+      @* fud-disable FUD1380: a propósito, para comparar el número de listeners con app-calendar *@
       <div class="grid">
         @foreach (const day of rows()) key (day.id) {
           <div class="cell" @click=@pick($event, day)>

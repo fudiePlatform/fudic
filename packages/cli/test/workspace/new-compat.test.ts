@@ -80,6 +80,7 @@ describe('fudic new, without --workspace', () => {
       kind: 'app',
       server: 'src/server',
       browser: 'src/browser',
+      baseline: 'widely',
       // SDD-79 §8.2.14: the guide lives inside the app, and its base.css is the app's.
       globalStyles: { base: 'src/guide/base.css' },
       guide: { sheet: 'src/guide/guide.css', icon: 'src/guide/logo.svg' },

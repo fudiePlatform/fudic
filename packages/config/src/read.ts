@@ -16,7 +16,9 @@
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
 import { API_DIR, BROWSER_DIR, DEFAULT_LOCALE, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
-import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Span } from '@fudic/diagnostics';
+import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Policy, type Span } from '@fudic/diagnostics';
+import { floorWarning, readBaseline, type BaselineConfig } from './baseline.js';
+import { readPolicy } from './policy.js';
 import { readServe, type ServeConfig } from './serve.js';
 
 /** What the file declares, with every default already filled. */
@@ -94,6 +96,16 @@ export interface ProjectConfig {
   readonly guide?: GuideConfig;
   /** How the app is served (SDD-81): a trusted proxy, the limits of an upload. Absent when the file declares none. */
   readonly serve?: ServeConfig;
+  /**
+   * How this project reports each code (SDD-83 §3.1): off, or as another severity, by code or
+   * for every warning at once. Empty when the file declares none: every code as it is.
+   */
+  readonly diagnostics: Policy;
+  /**
+   * The Baseline this project asks for (SDD-83 §3.4), and the features it uses knowingly above it.
+   * `widely` with nothing allowed when the file declares none.
+   */
+  readonly baseline: BaselineConfig;
 }
 
 /** The `guide` of a `fudic.json`. Paths relative to the project root, inside it. */
@@ -181,12 +193,38 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const css = readCss(fields, ctx);
   const guide = readGuide(fields, ctx);
   const serve = readServe(fields, ctx.diagnostics, (field) => fieldSpan(ctx.text, field));
+  const policy = readPolicy(fields['diagnostics'], (key) =>
+    fieldSpan(ctx.text, key, fieldSpan(ctx.text, 'diagnostics')?.end ?? 0),
+  );
+  if (policy.malformed !== undefined) {
+    ctx.diagnostics.push(
+      malformed({ problem: 'diagnostics', reason: policy.malformed }, fieldSpan(ctx.text, 'diagnostics')),
+    );
+  }
+  const baselineKey = fieldSpan(ctx.text, 'baseline');
+  const baseline = readBaseline(fields['baseline'], (id) => {
+    // The id as a string after `"allow"`, which itself is past `"baseline"`.
+    const from = fieldSpan(ctx.text, 'allow', baselineKey?.end ?? 0)?.end ?? 0;
+    return stringSpan(ctx.text, id, from);
+  });
+  if (baseline.malformed !== undefined) {
+    ctx.diagnostics.push(malformed({ problem: 'baseline', reason: baseline.malformed }, baselineKey));
+  }
+  // On the year itself when the object form names one, else on `"baseline"`: where the fix goes.
+  const targetKey =
+    baselineKey !== undefined && typeof fields['baseline'] === 'object'
+      ? fieldSpan(ctx.text, 'target', baselineKey.end)
+      : undefined;
+  const floor = floorWarning(baseline.baseline, targetKey ?? baselineKey);
+  const dropped = [...policy.dropped, ...baseline.dropped, ...(floor === undefined ? [] : [floor])];
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
-  // the next build, with the file fixed, would not use.
+  // the next build, with the file fixed, would not use. An entry of `diagnostics` that names a
+  // wrong code, or an id of `allow` that is not a feature, is not part of the identity: it is
+  // dropped, said, and the rest stands.
   if (ctx.diagnostics.length > 0) {
-    return { config: null, diagnostics: ctx.diagnostics };
+    return { config: null, diagnostics: [...ctx.diagnostics, ...dropped] };
   }
   return {
     config: {
@@ -205,8 +243,11 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       css,
       ...(guide === undefined ? {} : { guide }),
       ...(fields['serve'] === undefined ? {} : { serve }),
+      diagnostics: policy.policy,
+      // Where `"baseline"` is written, for what the project says of the whole field (`FUD1526`).
+      baseline: baselineKey === undefined ? baseline.baseline : { ...baseline.baseline, span: baselineKey },
     },
-    diagnostics: [],
+    diagnostics: dropped,
   };
 }
 
@@ -457,11 +498,12 @@ function readKind(fields: Record<string, unknown>, ctx: Ctx): 'app' | 'lib' {
  *
  * The first occurrence of the text is not necessarily the key — `{"prefix":"id","id":42}`
  * spells `"id"` as a value first — so what settles it is the colon behind it. Absent when
- * the key is not in the text as written, which a key spelled with escapes manages.
+ * the key is not in the text as written, which a key spelled with escapes manages. `start` is
+ * where to look from: past `"diagnostics"`, for a key of that object.
  */
-function fieldSpan(text: string, field: string): Span | undefined {
+function fieldSpan(text: string, field: string, start = 0): Span | undefined {
   const key = `"${field}"`;
-  let from = 0;
+  let from = start;
   for (;;) {
     const at = text.indexOf(key, from);
     if (at < 0) {
@@ -473,6 +515,13 @@ function fieldSpan(text: string, field: string): Span | undefined {
     }
     from = end;
   }
+}
+
+/** Where `value` is written as a JSON string from `start` on; absent when it is spelled with escapes. */
+function stringSpan(text: string, value: string, start: number): Span | undefined {
+  const quoted = JSON.stringify(value);
+  const at = text.indexOf(quoted, start);
+  return at < 0 ? undefined : { start: at, end: at + quoted.length };
 }
 
 function malformed(problem: FUD0725Problem, span?: Span): FileDiagnostic {

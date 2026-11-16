@@ -107,8 +107,10 @@ interface OutFile {
 
 let output: OutFile[];
 
-beforeAll(async () => {
+/** The project of these tests on disk, with `extra` files at its root, ready to build. */
+function project(extra: Readonly<Record<string, string>> = {}): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-linked-'));
+  for (const [name, text] of Object.entries(extra)) writeFileSync(join(root, name), text);
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
@@ -134,6 +136,11 @@ beforeAll(async () => {
       dependencies: Object.fromEntries(installed.map((n) => [`@fudic/${n}`, '*'])),
     }),
   );
+  return root;
+}
+
+beforeAll(async () => {
+  const root = project();
 
   const result = (await build({
     root,
@@ -228,7 +235,7 @@ describe('a build that links the published runtime', () => {
     // them would buy back for every page the bytes that phase removed.
     const html = output.find((o) => o.fileName === 'index.html');
     const preloaded = [
-      ...String(html?.source ?? '').matchAll(/rel="modulepreload" href="([^"]+)"/gu),
+      ...String(html?.source ?? '').matchAll(/rel="modulepreload"(?: nonce="[^"]*")? href="([^"]+)"/gu),
     ].map(([, url]) => url);
 
     expect(preloaded.length).toBeGreaterThan(0);
@@ -262,7 +269,7 @@ describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates
   const html = (name: string): string =>
     String(output.find((o) => o.fileName === name)?.source ?? '');
   const preloads = (name: string): string[] =>
-    [...html(name).matchAll(/<link rel="modulepreload" href="([^"]+)">/gu)].map((m) => m[1]!);
+    [...html(name).matchAll(/<link rel="modulepreload"(?: nonce="[^"]*")? href="([^"]+)">/gu)].map((m) => m[1]!);
 
   it('names the eager chunk and its whole graph, each once, and nothing for a lazy page', () => {
     const file = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {
@@ -296,4 +303,13 @@ describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates
       expect(chunk.code).not.toContain('__fudic_graph__');
     }
   });
+});
+
+describe('the inline form against page.headers (SDD-84 §3.4, criterion 10)', () => {
+  it('a page policy without the nonce stops the build with FUD0803 on the layout that asks for it', async () => {
+    const root = project({ 'page.headers': "Content-Security-Policy: script-src 'self'\n" });
+    await expect(build({ root, logLevel: 'silent', plugins: [fudic()], build: { write: false, minify: false } })).rejects.toThrow(
+      /FUD0803/u,
+    );
+  }, 240000);
 });

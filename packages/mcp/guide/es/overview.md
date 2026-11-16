@@ -33,8 +33,9 @@ workspace, y qué temas de la guía existen.
 | `.fixture.ts` | Conjuntos de props con nombre con los que los criterios montan el componente (`props base`). Tipados contra el `$Props` del componente. |
 | `.test.ts` | Tests unitarios (Vitest, DOM en proceso): cada variante de prop, valores límite, detalles de eventos, funciones de servidor y sus fallos. Ver `testing`. |
 | `.fudlog` | El historial de una pieza, junto a su `.fud`: aprobaciones, ejecuciones de tests y de criterios con su resultado, `done`. Solo crece. Lo escriben las herramientas, nunca a mano. |
-| `fudic.json` | Lo que un proyecto declara sobre sí mismo: `kind` (`app` o `lib`), `id`, `prefix` de tag, `globalStyles`, `styles`, `locales`, y las carpetas `server` y `browser`. |
-| `sw.json` | Lo que cachea el Service Worker. Bórralo para no tener Service Worker. |
+| `fudic.json` | Lo que un proyecto declara sobre sí mismo. Cada clave, su valor por defecto y un ejemplo: ver `config`. |
+| `sw.json` | Lo que cachea el Service Worker. Bórralo para no tener Service Worker. Ver `config`. |
+| `page.headers`, `sw.headers`, `assets.headers` | Las cabeceras de las páginas de una app (su CSP entre ellas), de su Service Worker y de sus estáticos. Lo que hay en ellos es lo que sale. Ver `config`. |
 
 Ficheros generados, nunca editados: `fudic-globals.d.ts`, `src/fudic-env.d.ts`, y todo lo que hay
 bajo `.fudic/` (ignorado por git; los tipos generados a partir de cada `.fudapi` viven en `.fudic/api`).
@@ -63,6 +64,9 @@ app/
 ├── fudic.json            id, kind, prefix, server and browser folders
 ├── package.json          scripts: dev, build, preview, test, spec
 ├── sw.json               Service Worker cache policy
+├── page.headers          the headers of every page: CSP, HSTS, COOP…
+├── sw.headers            the headers of /fudic-sw.js
+├── assets.headers        the cache of the static files, by path
 ├── vite.config.ts        the fudic() plugin; nothing else to configure
 ├── vitest.config.ts      unit tests
 ├── tsconfig.json
@@ -227,6 +231,48 @@ Una **librería de estilos** (`fudic_generate { kind: "lib", name: "tokens", sty
 contiene un único `tokens.css` y nada más: design tokens que adopta cada componente de quienes la
 usan. Ver `html-css`.
 
+## Diagnósticos
+
+`fudic.json` decide cómo informa el proyecto de cada código; `fudic_check` ya responde con eso
+aplicado, y una severidad cambiada lo dice: «(warning by default; error in this project)».
+
+```jsonc
+"diagnostics": { "FUD1380": "off", "FUD1022": "error", "warnings": "error" }
+```
+
+- El nivel de un código es `off`, `hint`, `info`, `warning` o `error`. Un código manda sobre `warnings`.
+- Un error nunca se baja ni se silencia: eso es `FUD1521`, y el error sigue.
+- Para silenciar un sitio, escribe un comentario con su código Y su motivo, en el comentario que ya
+  tiene el lenguaje: `@* fud-disable-next-line FUD1380: why *@` en el marcado, `/* … */` en un
+  `<style>`, `// …` en `@code`, `# …` en un `.fudapi` o un `.fudspec`. `fud-disable FUDnnnn: why`
+  vale para todo el fichero. Sin código o sin motivo es `FUD1522`; un comentario que no silencia
+  nada es `FUD1523`: quítalo.
+- Silencia solo lo que has comprobado que está bien, y di por qué. Primero arregla el código.
+
+## Baseline
+
+fudic avisa (`FUD1524`) cuando el HTML, el CSS o el TS del proyecto usa algo del navegador más nuevo
+que su Baseline: `"widely"` si `fudic.json` no dice nada.
+
+```jsonc
+"baseline": "widely"                                // o "newly", o un año: 2024
+"baseline": { "target": "widely", "allow": ["popover"] }
+```
+
+Qué hacer con un `FUD1524`, en este orden:
+
+1. CSS: ponlo bajo `@supports` en una regla aparte, detrás de una alternativa que funcione sin él:
+   `textarea { resize: none; } @supports (field-sizing: content) { textarea { field-sizing: content; } }`.
+   Un selector: `@supports selector(:state(open)) { … }`.
+2. TS: compruébalo antes de usarlo: `if ('showPopover' in el) el.showPopover();`, `el.showPopover?.()`,
+   `typeof URLPattern === 'function'`.
+3. Si el proyecto lo usa a sabiendas, añade su id de web-features (el del enlace a webstatus.dev
+   del mensaje) a `allow`. Nunca bajes el nivel para callarlo.
+
+Lo que emite fudic nunca avisa. `FUD1525` dice que el nivel es más viejo de lo que fudic necesita:
+súbelo. `FUD1526` es una librería que usa features que la app no acepta; `FUD1527`, un id de
+`allow` que no es una feature o que se ha movido; `FUD1528`, un id que nada usa.
+
 ## Los temas de la guía
 
 Llama a `fudic_guide { topic }` antes de escribir un tipo de fichero por primera vez.
@@ -242,4 +288,5 @@ Llama a `fudic_guide { topic }` antes de escribir un tipo de fichero por primera
 | `fudspec` | escribir criterios y fixtures |
 | `testing` | escribir un `.test.ts` |
 | `html-css` | escribir markup o estilos: el subset de HTML, el scoping, los tokens |
+| `config` | cambiar `fudic.json`, `sw.json` o los `.headers` de una app |
 | `FUD0540` (cualquier código) | corregir ese diagnóstico: qué está mal y cómo arreglarlo |

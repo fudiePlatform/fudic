@@ -1,7 +1,10 @@
 /* Light or dark follows the system; a zone forces one, components included: .promo { color-scheme: dark; } */
 html {
   -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+}
+
+@supports (text-size-adjust: 100%) {
+  html { text-size-adjust: 100%; }
 }
 
 body {

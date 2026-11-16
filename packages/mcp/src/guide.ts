@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { FUD1403, type FudDiagnostic } from '@fudic/diagnostics';
 import { explain } from '@fudic/diagnostics/explain';
 
-export const TOPICS = ['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css'] as const;
+export const TOPICS = ['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css', 'config'] as const;
 
 export type Topic = (typeof TOPICS)[number];
 

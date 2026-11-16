@@ -9,7 +9,10 @@
   background: var(--{{project}}-surface);
   border: 1px solid var(--{{project}}-line);
   border-radius: var(--{{project}}-radius-md);
-  resize: vertical;
+}
+
+@supports (resize: vertical) {
+  :where(textarea) { resize: vertical; }
 }
 
 :where(textarea):focus-visible {

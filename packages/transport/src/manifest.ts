@@ -12,6 +12,7 @@
  *    has to know what to load before what without parsing the source (§4.3).
  */
 
+import type { ManifestHeaders } from './headers.js';
 import { createUrlResolver, type UrlResolver } from './urls.js';
 
 /**
@@ -104,13 +105,6 @@ export interface RouteRecord {
   readonly hints?: readonly string[];
 }
 
-export interface CspTemplates {
-  /** Document CSP; carries the `{nonce}` token (§4.9). */
-  readonly document: string;
-  /** CSP of the Service Worker script. Carries `'unsafe-eval'`, never a nonce. */
-  readonly sw: string;
-}
-
 export interface ManifestFile {
   readonly build: string;
   /**
@@ -119,7 +113,8 @@ export interface ManifestFile {
    * resolver applies it.
    */
   readonly base: string;
-  readonly csp: CspTemplates;
+  /** The app's headers (SDD-84 §3.7): `page.headers`, `sw.headers` and `assets.headers`. */
+  readonly headers: ManifestHeaders;
   /** Ordered by DESCENDING specificity: `match` returns the FIRST hit. */
   readonly routes: readonly RouteRecord[];
   /**
@@ -162,7 +157,7 @@ export interface RouteMatch {
 /** The compiled, synchronous view of the manifest. Lives in the SW's memory. */
 export interface RouteTable {
   readonly build: string;
-  readonly csp: CspTemplates;
+  readonly headers: ManifestHeaders;
   /** Record → URLs. The only implementation of that arithmetic (SDD-27 §5.4). */
   readonly urls: UrlResolver;
   /**
@@ -276,7 +271,7 @@ export function compileManifest(file: ManifestFile): RouteTable {
   const urls = createUrlResolver(file.base, file.build);
   return {
     build: file.build,
-    csp: file.csp,
+    headers: file.headers,
     urls,
     match,
     templateOf(pathname: string): RouteRecord | null {

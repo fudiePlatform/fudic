@@ -153,6 +153,34 @@ export function projectionService(path: string, text: string): ts.LanguageServic
 }
 
 /**
+ * The same, over a program that reads the `lib` of TypeScript from disk with the DOM in it: the
+ * browser's names — the sinks of Trusted Types, the features of Baseline — are declared there.
+ */
+export function browserProjectionService(path: string, text: string): ts.LanguageService {
+  const files: Record<string, string> = { [path]: text, '/p/fudic-globals.d.ts': GLOBALS_DTS };
+  const read = (name: string): string | undefined => files[name] ?? ts.sys.readFile(name);
+  return ts.createLanguageService({
+    getScriptFileNames: () => Object.keys(files),
+    getScriptVersion: () => '1',
+    getScriptSnapshot: (name) => {
+      const found = read(name);
+      return found === undefined ? undefined : ts.ScriptSnapshot.fromString(found);
+    },
+    getScriptKind: () => ts.ScriptKind.TS,
+    getCurrentDirectory: () => '/p',
+    getCompilationSettings: () => ({
+      strict: true,
+      target: ts.ScriptTarget.ES2022,
+      lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
+      allowNonTsExtensions: true,
+    }),
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: (name) => read(name) !== undefined,
+    readFile: read,
+  });
+}
+
+/**
  * Two apps and a library in one folder, as `examples/workspace` has them (BUG-43).
  *
  * `tienda` depends on `@acme/ui`; `admin` depends on nothing. The library is installed where a

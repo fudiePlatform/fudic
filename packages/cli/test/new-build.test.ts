@@ -103,7 +103,8 @@ describe('fudic new → vite build (§6.1)', () => {
     // template used to write `/fudic-main.js` by hand, which named a file no build produces:
     // FUD0363 from the asset check and FUD0391 from the Service Worker shell, on every
     // generated project.
-    expect(text).toMatch(/<script type="module" src="\/fudic-(main|boot)-[0-9a-f]+\.js">/u);
+    // With the response's nonce right after its type (SDD-84 §4.7), as the prerender leaves it.
+    expect(text).toMatch(/<script type="module" nonce="__FUDIC_NONCE__" src="\/fudic-(main|boot)-[0-9a-f]+\.js">/u);
     expect(text).not.toContain('"/fudic-main.js"');
   });
 

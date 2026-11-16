@@ -37,6 +37,12 @@
     "workspaceContains:**/*.fudapi"
   ],
   "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "fudic.json",
+        "url": "./dist/fudic.schema.json"
+      }
+    ],
     "languages": [
       {
         "id": "fudic",
@@ -82,6 +88,19 @@
           "light": "./icons/fudapi-light.svg",
           "dark": "./icons/fudapi-dark.svg"
         }
+      },
+      {
+        "id": "fudheaders",
+        "aliases": [
+          "Fudic headers",
+          "fudheaders"
+        ],
+        "filenames": [
+          "page.headers",
+          "sw.headers",
+          "assets.headers"
+        ],
+        "configuration": "./language-configuration.fudheaders.json"
       }
     ],
     "grammars": [
@@ -104,6 +123,11 @@
         "language": "fudapi",
         "scopeName": "source.fudapi",
         "path": "./syntaxes/fudapi.tmLanguage.json"
+      },
+      {
+        "language": "fudheaders",
+        "scopeName": "source.fudheaders",
+        "path": "./syntaxes/fudheaders.tmLanguage.json"
       }
     ],
     "commands": [
@@ -347,11 +371,17 @@
         "editor.defaultFormatter": "fudic.fudic-vscode",
         "editor.formatOnSave": true,
         "editor.wordBasedSuggestions": "off"
+      },
+      "[fudheaders]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.wordBasedSuggestions": "off"
       }
     }
   },
   "scripts": {
-    "build": "rolldown -c && node scripts/vendor-native.mjs && node scripts/copy-explanations.mjs && node scripts/verify-server-bundle.mjs",
+    "build": "rolldown -c && node scripts/vendor-native.mjs && node scripts/copy-explanations.mjs && node scripts/fudic-schema.mjs && node scripts/verify-server-bundle.mjs",
     "dev": "rolldown -c --watch",
     "package": "vsce package --no-dependencies --out fudic-vscode.vsix",
     "verify:vsix": "node scripts/verify-vsix.mjs",

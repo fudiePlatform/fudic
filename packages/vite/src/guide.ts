@@ -11,8 +11,8 @@
  */
 
 import { dirname, posix, relative, resolve } from 'node:path';
-import { readGuide, type GuidePiece, type GuideSheet } from '@fudic/compiler';
-import { CONFIG_FILE, type ProjectConfig, type ProjectStyleFile } from '@fudic/config';
+import { cssBaselineUses, judgeUses, readGuide, type GuidePiece, type GuideSheet } from '@fudic/compiler';
+import { baselineContextOf, CONFIG_FILE, type ProjectConfig, type ProjectStyleFile } from '@fudic/config';
 import { FUD0740, FUD1443, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 import type { PackageFs } from '@fudic/resolve';
 
@@ -90,7 +90,7 @@ export function readPackageGuide(
       reads: read.value.sheet.files.map((f) => posix.join(root, f)),
     },
     errors: [...errors, ...flat.filter((d) => d.severity === 'error')],
-    warnings: flat.filter((d) => d.severity !== 'error'),
+    warnings: [...flat.filter((d) => d.severity !== 'error'), ...baselineOf(root, config, read.value.sheet.files, globals, io)],
     files: pieces.map((p) => ({
       specifier: p.name,
       entry: posix.relative(root, p.path),
@@ -98,6 +98,25 @@ export function readPackageGuide(
       css: p.css,
     })),
   };
+}
+
+/**
+ * `FUD1524` over every sheet of the guide but the global ones, which `readStyles` judges already:
+ * what each uses above the project's Baseline (SDD-83 §3.6), on the file it is written in.
+ */
+function baselineOf(
+  root: string,
+  config: ProjectConfig | null,
+  files: readonly string[],
+  globals: readonly string[],
+  io: PackageFs,
+): readonly FileDiagnostic[] {
+  const judged = baselineContextOf(config);
+  return files.flatMap((file) => {
+    const path = posix.join(root, file);
+    const css = globals.includes(path) ? undefined : io.readFile(path);
+    return css === undefined ? [] : judgeUses(cssBaselineUses(css), judged).map((d) => ({ ...d, file: posix.normalize(file) }));
+  });
 }
 
 /** The guide as the entry `file` links it: flattened from the entry's folder. */

@@ -51,7 +51,8 @@ Por cada fase del Task, en su orden:
 1. Al inicio de cada fase muestra las fases como **TODOS**.
 2. Implementa **todas** sus tareas. Ninguna depende de fases posteriores; si parece que
    sí, es un fallo del Task y hay que decirlo.
-3. Verifica: `typecheck` + `test` + `coverage` de los paquetes tocados (§4).
+3. Verifica **una sola vez**: `typecheck` + `coverage` de los paquetes tocados (§4). Nunca
+   `test` y luego `coverage`: la cobertura ya corre todos los tests.
 4. Marca `[x]` cada tarea de la fase y actualiza la línea `Progreso: N / M` del Task.
    Sin esto no hay forma de saber por dónde vamos.
 5. **Commit** con todo lo de la fase, spec y Task actualizados incluidos (§5).
@@ -80,6 +81,23 @@ anota las cuatro cifras. Al cerrar la fase se compara contra ese suelo, no contr
 `thresholds` del `vitest.config`.
 
 ## 4. Comandos
+
+### Cuánto se corre, y cuándo — la suite completa es cara
+
+La suite entera tarda mucho y se corre en serie. Correrla tres o cuatro veces por fase hace
+inviable cerrar nada. Por eso:
+
+- **Mientras trabajas:** solo el fichero de test que estás escribiendo
+  (`pnpm --filter @fudic/<pkg> exec vitest run test/x.test.ts`).
+- **Al cerrar una fase:** una pasada de `pnpm --filter @fudic/<pkg> coverage` por cada paquete
+  tocado y por los que dependen de lo que cambió en su API pública (no de todo el monorepo), y
+  `typecheck` de esos mismos. Si algo falla, se arregla y se vuelve a correr **solo lo que
+  falló** (el fichero, luego su paquete), no todo.
+- **La suite completa** (`pnpm test` / `pnpm coverage`) y `pnpm build`: **una sola vez, en el
+  cierre del BUG/SDD.** Nunca al cerrar una fase intermedia. Si falla, se reintenta solo el
+  paquete roto.
+- Sin pasadas «de confirmación»: si la última ejecución de un paquete fue verde y no lo has
+  vuelto a tocar, no se repite.
 
 Desde la raíz del worktree:
 

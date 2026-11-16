@@ -30,6 +30,7 @@ export type {
   TermLine,
 } from './ast.js';
 export { componentTag, parseSpec } from './parse.js';
+export { specComments } from './line.js';
 export { argText } from './args.js';
 
 export type { Layer, ParamType, TermModule, TermParam } from './term-module.js';

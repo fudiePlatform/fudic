@@ -55,3 +55,37 @@ explain('FUD9999'); // undefined
 `explain` never throws: a code with no `.md`, or a string that is not a code, is `undefined`.
 `explanationFile(code)` is where the `.md` is on disk, for an editor that opens it. The subpath
 needs Node; nothing that runs in a browser imports it.
+
+## A project's policy
+
+A project decides in `fudic.json` how each code is reported, and a file silences a line or itself
+with a comment. Neither changes a code's severity: they change how it is reported, and the message
+says so — `… (warning by default; error in this project)`.
+
+```jsonc
+"diagnostics": { "FUD1380": "off", "FUD1022": "error", "warnings": "error" }
+```
+
+```
+@* fud-disable FUD1380: why *@                 the whole file, wherever it is
+/* fud-disable-next-line FUD1524: why */       the line after the comment
+```
+
+A code's own entry beats `warnings`. An error is never lowered nor silenced (`FUD1521`), a comment
+needs codes and a reason (`FUD1522`), an unknown or retired code is `FUD1520`, and a comment that
+silenced nothing is `FUD1523`.
+
+```ts
+import { govern } from '@fudic/diagnostics';
+
+govern(diagnostics, policy, comments, lines, { complete: true });
+```
+
+`govern` is the one call every place that shows a diagnostic to a person makes: it reads the
+directives out of the file's comments (`readSuppressions`), applies the policy (`applyPolicy`) and,
+when it holds every diagnostic of the file (`complete`), adds a `FUD1523` per unused comment. Each
+comment's `text` carries its delimiters, so a code inside it is underlined on its own.
+
+`codeInfo(code)` and `liveCodes()` read the catalogue as data — the policy needs a code's severity
+before any diagnostic of it exists. They come from `src/catalog.generated.ts`, written from the
+`.md` files by `pnpm --filter @fudic/diagnostics catalog`; a test compares it with the folder.

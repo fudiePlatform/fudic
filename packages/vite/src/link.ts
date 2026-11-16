@@ -25,7 +25,7 @@ import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
-import { serializeMap, type NestedOutputOptions } from './nested.js';
+import { nestedTarget, serializeMap, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { alternatesOf, localeChunkFileNames, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
@@ -232,6 +232,8 @@ export async function runLinkPass(
       // touch are properties of `exports`, and `preserveEntrySignatures: 'strict'` below
       // is what keeps the entry's own exports from being tree-shaken away.
       minify: nested.minify,
+      // The host's target, which the plugin derives from the Baseline (SDD-83 §3.9).
+      ...nestedTarget(nested),
       // As in the SW build: the plain map, and the caller composes the host's mode (§4.3).
       sourcemap: nested.sourcemap !== false,
       rollupOptions: {

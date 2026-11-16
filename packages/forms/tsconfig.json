@@ -7,12 +7,14 @@
     // and `test/no-dom.test.ts` is what enforces it (SDD-33 §5, §6.15).
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "paths": {
-      "@fudic/core": ["../core/src/index.ts"]
+      "@fudic/core": ["../core/src/index.ts"],
+      "@fudic/dom": ["../dom/src/index.ts"]
     }
   },
   // `bundle` holds the entries of the pieces that gather several modules (SDD-45 §4.3, third
   // rule): the validators, the typed coercions, and the form with its group. They are not part
   // of `dist` — `tsconfig.build.json` keeps its `include` at `src` — but a re-export that names
   // something `src` stopped exporting has to fail here and not in a browser.
-  "include": ["src", "test", "bundle", "impl"]
+  // `url.ts` of @fudic/dom, reached by source through `paths`, reads `import.meta.env`.
+  "include": ["src", "test", "bundle", "impl", "../dom/src/env.d.ts"]
 }

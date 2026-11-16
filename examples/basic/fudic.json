@@ -3,5 +3,7 @@
   "kind": "app",
   "prefix": "app",
   "globalStyles": { "theme": "src/styles/theme.css" },
-  "styles": { "panel": "src/styles/panel.css" }
+  "styles": { "panel": "src/styles/panel.css" },
+  "baseline": { "target": "widely", "allow": ["state"] },
+  "diagnostics": { "warnings": "error" }
 }

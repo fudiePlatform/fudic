@@ -179,6 +179,15 @@ const RUN_CRITERION = 'fudic.runCriterion';
 const EXPLAIN = 'fudic.explain';
 
 /**
+ * The two commands the server's bulbs of SDD-83 send, not contributed either. After a bulb writes a
+ * `fud-disable` comment, the cursor goes to its reason: the uri, line and character arrive as JSON.
+ * «See on webstatus.dev» opens the page in the browser: the url arrives as text, and
+ * `openExternal` wants a `Uri`.
+ */
+const PLACE_CURSOR = 'fudic.placeCursor';
+const OPEN_URL = 'fudic.openUrl';
+
+/**
  * Exported so the narrowing below is reachable from a test.
  *
  * It is the whole of what this package does with `vscode-languageclient`, and leaving it
@@ -243,6 +252,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(EXPLAIN, (path: string) =>
       vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(path)),
     ),
+    vscode.commands.registerCommand(PLACE_CURSOR, (uri: string, line: number, character: number) =>
+      vscode.window.showTextDocument(vscode.Uri.parse(uri), { selection: new vscode.Range(line, character, line, character) }),
+    ),
+    vscode.commands.registerCommand(OPEN_URL, (url: string) => vscode.env.openExternal(vscode.Uri.parse(url))),
     vscode.window.onDidChangeActiveTextEditor((editor) =>
       session?.status.setActiveLanguage(languageOf(editor)),
     ),

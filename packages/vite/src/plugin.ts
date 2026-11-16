@@ -15,10 +15,7 @@ import { tmpdir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
-import {
-  createUrlResolver,
-  DEFAULT_CSP,
-} from '@fudic/transport';
+import { createUrlResolver, LINKER_NEEDS, wantsNonce } from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
@@ -59,6 +56,7 @@ import {
   routeInParts,
 } from './client.js';
 import {
+  HEAD_NEEDS,
   INLINE_QUERY,
   IOC_SUFFIX,
   RUNTIME_MARKER,
@@ -130,10 +128,10 @@ import {
 import { checkLinks } from './link-check.js';
 import { checkPeers } from './peer-check.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
-import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
+import { baselineTarget, nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { ProjectStyleChains } from './styles.js';
 import { nodePackageFs } from '@fudic/resolve';
-import { CONFIG_FILE, type ServeConfig } from '@fudic/config';
+import { CONFIG_FILE, HEADERS_FILES, readHeaders, type CspNeed, type HeadersRead, type ServeConfig } from '@fudic/config';
 import { LinkedAssets } from './linked-assets.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass, type EdgeExtras } from './edge.js';
@@ -148,6 +146,17 @@ import {
   type BundleItem,
 } from './prerender.js';
 import { policyDeclaresNonce } from './diagnostics.js';
+import {
+  checkAssets,
+  checkEmitted,
+  devHeadersOf,
+  manifestHeadersOf,
+  pageCspOf,
+  writeCspNeeds,
+  builtFilesOf,
+  publicFilesOf,
+  type EmittedNeeds,
+} from './headers.js';
 import { BuildReporter, reportText, type ReportContext } from './report.js';
 import { startBackgroundCheck, type BackgroundCheck } from './background-check.js';
 import { summarize } from './typecheck.js';
@@ -193,7 +202,7 @@ import {
   PAGE_NAME_PREFIX,
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
-import { runtimeUrls, type RuntimeEntries } from './constants.js';
+import { runtimeUrls, SW_CONFIG_FILE, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 
@@ -379,6 +388,30 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let styleErrors: readonly FileDiagnostic[] = [];
   /** `FUD0743`, read once per sheet rather than once per route it travels into (§4.5). */
   let styleWarnings: readonly FileDiagnostic[] = [];
+  /**
+   * The three `.headers` files (SDD-84), read in `configResolved` and again in dev when one
+   * changes: a change is good for the next response, without a restart (§4.5).
+   */
+  let appHeaders: HeadersRead = { config: { page: [], sw: [], assets: [] }, diagnostics: [], sources: {} };
+  const readAppHeaders = (): HeadersRead =>
+    readHeaders(root, nodeConfigIo(), {
+      kind: project.config?.kind ?? 'app',
+      // The file, not this build: a second shape with `sw: false` (SDD-17 §4.7.1) still serves the app
+      // whose worker `sw.headers` is for.
+      sw: swConfig !== null || existsSync(join(root, SW_CONFIG_FILE)),
+    });
+  /** What each page's emit put in it that a CSP has to let in, by page and locale (§4.7). */
+  const pageNeeds = new Map<string, readonly CspNeed[]>();
+  /**
+   * Everything the output needs, gathered: each page's, and the Service Worker's — what its
+   * linker declares, as the worker bundles it (SDD-84 §3.4) — when the app has one. With a worker
+   * every page also carries the tag that registers it, which the compiler writes and only this
+   * host knows is not empty.
+   */
+  const emittedNeeds = (): EmittedNeeds => ({
+    page: [...pageNeeds.values()].flat().concat(swConfig === null ? [] : HEAD_NEEDS.boot),
+    ...(swConfig === null ? {} : { sw: LINKER_NEEDS }),
+  });
   let writeToDisk = true;
   /** Vite's logger: where the typecheck prints every problem before the build fails once. */
   let logger: Logger | undefined;
@@ -844,6 +877,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return {
         appType: 'custom',
         build: {
+          ...baselineTarget(userConfig),
           rollupOptions: {
             // The coordinators are NOT inputs: there is one per combination of pieces and
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
@@ -874,7 +908,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // applied nor reported: the option simply did nothing for these two outputs, and
       // `build.minify` did nothing for them either (BUG-06 §2.2) — the same hole, found
       // twice, which is why the list is now a type and not two ad-hoc fields.
-      nested = { sourcemap: config.build.sourcemap, minify: config.build.minify };
+      nested = { sourcemap: config.build.sourcemap, minify: config.build.minify, target: config.build.target };
       // `write: false` is a build that produces no files (tests, programmatic callers), so
       // the edge artifacts are not written either — they are still materialized for the
       // prerender, which needs them in a temp dir regardless.
@@ -894,6 +928,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
+      // Its headers (SDD-84 §4.2): what the server, the worker and the manifest send.
+      appHeaders = readAppHeaders();
       // Pruned copies are served from memory in dev, under a prefix no file of the project
       // can collide with (SDD-49 §4.8); a build publishes them beside every other asset. With
       // `css: "link"` the registry publishes every sheet of a page as a file (SDD-73 §3.5).
@@ -975,6 +1011,29 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       server.watcher.on('add', onApiFile);
       server.watcher.on('change', onApiFile);
       server.watcher.on('unlink', onApiFile);
+      // The three `.headers` (SDD-84 §4.5): a change is good for the next response, and what is
+      // wrong in it is said at once. An error is logged, not thrown: the server stays up.
+      const headersFiles = new Set(Object.values(HEADERS_FILES).map((file) => slash(join(root, file))));
+      const onHeadersFile = (file: string): void => {
+        if (!headersFiles.has(slash(file))) return;
+        appHeaders = readAppHeaders();
+        const log = server.config.logger;
+        try {
+          reporter.report(
+            {
+              warn: (entry) => log.warn(entry.message),
+              error: (entry) => {
+                throw entry;
+              },
+            },
+            appHeaders.diagnostics,
+          );
+        } catch (error) {
+          log.error((error as Error).message);
+        }
+      };
+      // Vite already watches the root, where the three live.
+      for (const event of ['add', 'change', 'unlink'] as const) server.watcher.on(event, onHeadersFile);
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
@@ -1021,6 +1080,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const devApp: ServerApp = {
         base,
         locales,
+        // `page.headers` without its CSP and HSTS (SDD-84 §4.5), read again when a file changes.
+        get headers() {
+          return devHeadersOf(manifestHeadersOf(appHeaders.config));
+        },
         // Route discovery is cheap and dev adds/removes files: re-read on each request so a new
         // `.fud` is routable without restarting the server.
         routes: () => {
@@ -1108,7 +1171,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const url = (req.url ?? '').split('?')[0] ?? '';
         if (url === manifestUrl) {
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(devManifest(builds)));
+          res.end(JSON.stringify(devManifest(builds, 'dev', '/', devHeadersOf(manifestHeadersOf(appHeaders.config)))));
           return;
         }
         // The two bootstraps, and every component's client module (SDD-17 §4.7.1). The
@@ -1125,8 +1188,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           .then((result) => {
             res.setHeader('Content-Type', 'text/javascript');
             if (id === SW_ID) {
+              // `sw.headers` (SDD-84 §4.3), then the two that are fudic's: the scope, and no cache.
+              for (const [name, value] of Object.entries(manifestHeadersOf(appHeaders.config).sw)) res.setHeader(name, value);
               res.setHeader('Service-Worker-Allowed', base); // root scope
-              res.setHeader('Content-Security-Policy', devManifest(builds).csp.sw);
             }
             res.setHeader('Cache-Control', 'no-cache'); // these two govern updates
             // WITH its map. `transformRequest` hands back both halves and this middleware
@@ -1230,6 +1294,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Every batch of `buildStart` goes through `report`, which lets the typecheck speak first.
       await report(this, project.errors);
+      // The three `.headers` (SDD-84 §4.2): an error in one stops the build, and the file is never
+      // replaced by its template — whoever wrote it believes they changed something.
+      await report(this, appHeaders.diagnostics);
       // The head of every page of an app in two or more languages carries absolute URLs
       // (SDD-58 §4.7), and a prerendered page has no request to take the origin from.
       if (!isDev && locales.length >= 2 && site === undefined) {
@@ -1356,7 +1423,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // library's own components, and whether this project defines any says nothing about it.
       // Nor a sheet its style guide imports (SDD-79): that one reaches every page through the
       // guide, and a project just created has no component yet.
+      // Nor with no route at all: the components a project defines are found through the
+      // routes that link them, so with none the answer is unknown, not "none". That is the
+      // workbench opening a flow, whose pages are written after Vite starts — and under
+      // `"warnings": "error"` (SDD-83) a false warning there stopped the server.
       if (
+        builds.length > 0 &&
         styleChains !== null &&
         ownSheets(styleChains, root) > 0 &&
         discoverComponents(builds, io).length === 0
@@ -1703,6 +1775,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (chunk === null) {
           return null;
         }
+        // What the hydrating half paints through the `fudic` policy (SDD-84 §4.6): only a component
+        // that hydrates has a client chunk, so only then is the policy's name needed.
+        pageNeeds.set(`${pageHintKey(path, locale)}?client`, chunk.needs);
+        if (isDev) {
+          writeCspNeeds(root, emittedNeeds());
+          await report(this, checkEmitted(appHeaders, { page: chunk.needs }).filter((d) => d.severity !== 'hint'));
+        }
         // Every diagnostic of the chunk, positioned, and none of them twice (SDD-35 §4.4):
         // this path used to drop the emit's own, so a `@client` that did not compile shipped.
         await report(this, [
@@ -1744,6 +1823,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
       const result = compiled.result;
       if (result.hints !== undefined) pageHints.set(pageHintKey(path, locale), result.hints);
+      // What its emit put in the page that a CSP has to let in: the build checks them all at
+      // once in `generateBundle`; dev, page by page, as each one is compiled (SDD-84 §4.2).
+      pageNeeds.set(pageHintKey(path, locale), result.needs);
+      if (isDev) {
+        writeCspNeeds(root, emittedNeeds());
+        await report(this, checkEmitted(appHeaders, { page: result.needs }).filter((d) => d.severity !== 'hint'));
+      }
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       const diagnostics: FudDiagnostic[] = result.missingAssets.map((spec) => FUD0363({ file: path, spec }));
@@ -1752,10 +1838,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // hydrate: the browser drops the module and nothing connects that silence to the line
       // that caused it.
       //
-      // The policy is the framework's default today and declares the nonce, so this cannot
-      // fire yet. It is written where it will keep working the day the policy is the
-      // project's, which is the only reason a build check is worth anything.
-      if (result.inlineRuntime !== undefined && !policyDeclaresNonce(DEFAULT_CSP.document)) {
+      // The policy is the app's `page.headers` (SDD-84 §3.4); a page without a CSP lets it in.
+      const pageCsp = pageCspOf(manifestHeadersOf(appHeaders.config));
+      if (result.inlineRuntime !== undefined && pageCsp !== undefined && !policyDeclaresNonce(pageCsp)) {
         diagnostics.push(
           FUD0803({
             file: result.inlineRuntime.file,
@@ -2367,6 +2452,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         ...(errorPage === undefined ? {} : { errorPage }),
         build: buildId,
         base,
+        headers: manifestHeadersOf(appHeaders.config),
         serviceWorker: swConfig !== null,
         hydrateDeps,
         hydratePieces,
@@ -2394,17 +2480,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const server = emitServerModule({
           base,
           locales: locales.length < 2 ? [] : locales,
-          csp: file.csp.document,
+          headers: file.headers,
           // The two files that govern updates (SDD-20 §4.11): never cached, and the worker
-          // allowed the app's whole scope with its own policy.
-          statics: {
-            [`/${manifestFileName}`]: { 'cache-control': 'no-cache' },
-            [`/${DEV_SW_URL}`]: {
-              'cache-control': 'no-cache',
-              'service-worker-allowed': base,
-              'content-security-policy': file.csp.sw,
-            },
-          },
+          // allowed the app's whole scope with `sw.headers`.
+          files: { manifest: `/${manifestFileName}`, ...(swConfig === null ? {} : { worker: `/${DEV_SW_URL}` }) },
           routes: file.routes.map((record) => {
             const chunk = edge.entries.get(record.pattern);
             return { pattern: record.pattern, hints: record.hints ?? [], ...(chunk !== undefined ? { file: chunk } : {}) };
@@ -2424,6 +2503,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 5. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
       const prerenders = builds.filter((b) => b.decision.prerender);
+      // The token only when `page.headers` asks for a nonce (SDD-84 §4.7): none otherwise.
+      const nonced = wantsNonce(file.headers);
       // Every route that broke, and not only the first: one build tells all of them (SDD-35).
       const prerenderDiagnostics: FudDiagnostic[] = [];
       if (prerenders.length > 0 || edge.root !== undefined) {
@@ -2458,7 +2539,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             const chunkPath = join(dir, fileName);
             try {
               if (rb.decision.enumerate) {
-                const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern);
+                const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern, { nonce: nonced });
                 for (const f of files) {
                   this.emitFile({ type: 'asset', fileName: f.path, source: f.html });
                   emitted.add(f.path);
@@ -2467,7 +2548,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   prerenderDiagnostics.push(FUD0362({ entry: bad, pattern: rb.route.pattern }));
                 }
               } else if (!rb.route.pattern.includes(':')) {
-                const html = await renderChunkToHtml(chunkPath, rb.route.pattern);
+                const html = await renderChunkToHtml(chunkPath, rb.route.pattern, { nonce: nonced });
                 this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
                 emitted.add(htmlPathFor(rb.route.pattern));
               }
@@ -2550,6 +2631,24 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this,
         missingShellEntries(swConfig?.shell ?? [], base, emitted, publicDir).map((entry) => FUD0391({ entry })),
       );
+
+      // 7. The headers against what was really emitted (SDD-84 §4.2): what the pages and the
+      //    worker need from their policies, and the cache rules against the files and `sw.json`.
+      //    What was gathered is left for the editor, which compiles nothing.
+      const needs = emittedNeeds();
+      if (writeToDisk) writeCspNeeds(root, needs);
+      const caching =
+        swConfig === null
+          ? null
+          : {
+              // What `sw.json` declares: fudic's own chunks in the shell are its business.
+              shell: swConfig.shell.map((entry) => (entry.startsWith(base) ? `/${entry.slice(base.length)}` : entry)),
+              cacheFirst: swConfig.resources.filter((rule) => rule.policy === 'cache-first').map((rule) => rule.pattern),
+            };
+      reporter.report(this, [
+        ...checkEmitted(appHeaders, needs),
+        ...checkAssets(appHeaders.config.assets, builtFilesOf(emitted, publicFilesOf(publicDir)), caching),
+      ]);
     },
   };
 }

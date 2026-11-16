@@ -22,6 +22,10 @@ const READERS: Readonly<Record<string, string>> = {
   'language-server/src/fudapi/repairs.ts': 'REPAIRS',
   'formatter/src/format.ts': 'KEY_RULES',
   'cli/src/run.ts': 'BROKEN_SOURCE',
+  'language-server/src/services/baseline-actions.ts': 'CONFIG_REPAIRS',
+  'language-server/src/services/suppressions.ts': 'COMMENT_CODES',
+  'language-server/src/services/plugin.ts': 'BASELINE_CODE',
+  'language-server/src/headers/actions.ts': 'HEADER_REPAIRS',
 };
 
 function sources(dir: string): string[] {

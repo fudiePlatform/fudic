@@ -11,14 +11,15 @@
  */
 
 import type { ServeConfig } from '@fudic/config';
+import type { ManifestHeaders } from '@fudic/transport';
 
 export interface ServerModuleInput {
   readonly base: string;
   readonly locales: readonly string[];
-  /** The document CSP with its `{nonce}`. */
-  readonly csp: string;
-  /** Extra headers of the app's own static files, by path without `base`. */
-  readonly statics: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /** The app's headers, as the manifest carries them (SDD-84 §3.7). */
+  readonly headers: ManifestHeaders;
+  /** The manifest and the worker, by path without `base`: the files that govern updates. */
+  readonly files: { readonly manifest: string; readonly worker?: string };
   /** Each route, most specific first: its pattern, its hints, and its edge chunk when it has one. */
   readonly routes: readonly { readonly pattern: string; readonly hints: readonly string[]; readonly file?: string }[];
   /** `_error.fud` per locale (`''` in an app with one), with its edge chunk. */
@@ -46,8 +47,8 @@ export function emitServerModule(input: ServerModuleInput): string {
   const app = [
     `    base: ${JSON.stringify(input.base)},`,
     '    locales: LOCALES,',
-    `    csp: ${JSON.stringify(input.csp)},`,
-    `    statics: ${JSON.stringify(input.statics)},`,
+    `    headers: ${JSON.stringify(input.headers)},`,
+    `    files: ${JSON.stringify(input.files)},`,
     '    routes: () => table,',
     '    module: (pattern) => {',
     '      const load = modules.get(pattern);',

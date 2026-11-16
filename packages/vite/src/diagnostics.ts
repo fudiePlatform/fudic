@@ -7,7 +7,7 @@
  * Whether a document policy leaves room for the inline form: does it declare the nonce?
  *
  * The token and not a parsed policy, because the token is what the response substitutes
- * (`cspFor`): a policy that never writes `{nonce}` cannot produce a nonce for the page, and
+ * (`fillPlaceholders`): a policy that never writes `{nonce}` cannot produce a nonce for the page, and
  * no amount of reading `script-src` changes that.
  */
 export function policyDeclaresNonce(documentPolicy: string): boolean {

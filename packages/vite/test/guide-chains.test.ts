@@ -207,6 +207,21 @@ describe('readPackageGuide', () => {
     expect(result.guide?.pieces.map((p) => p.path)).toEqual(['/g/h1.css']);
     expect(result.files).toEqual([{ specifier: 'h1', entry: 'h1.css', path: '/g/h1.css', css: 'h1 {}' }]);
   });
+
+  it('FUD1524 in the guide and in each piece, on its file; not in a global, which readStyles judges (SDD-83 criterion 21)', () => {
+    const result = read(
+      {
+        '/g/guide.css': '@import "./base.css";\n@import "./note.css";\n',
+        '/g/base.css': 'textarea { field-sizing: content; }',
+        '/g/note.css': 'textarea { field-sizing: content; }\n@supports (field-sizing: content) { p { field-sizing: content; } }',
+      },
+      { sheet: 'guide.css' },
+    );
+    expect(result.warnings.map((d) => [d.code, d.file, d.span?.start])).toEqual([
+      ['FUD1524', 'note.css', 11],
+      ['FUD1524', 'note.css', 25],
+    ]);
+  });
 });
 
 describe('entryGuide and specFrom', () => {

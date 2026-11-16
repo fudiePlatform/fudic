@@ -8,6 +8,7 @@ import type { Node } from '../types/index.js';
 import type { Diagnostic, ParseResult } from '../types/index.js';
 import type { StructuredDocument } from '../document/index.js';
 import type { JsBatchResult, FragmentId } from '../oxc/index.js';
+import type { BaselineContext } from './baseline.js';
 
 /** Everything an analyzer needs. Assembled by the pipeline (fragment collection is SDD-11 §7). */
 export interface SemanticInput {
@@ -50,6 +51,11 @@ export interface SemanticInput {
    * module parsed once per version.
    */
   readModule?(specifier: string, importer: string): ProjectModule | undefined;
+  /**
+   * What the project asks of the browser (SDD-83 §3.4): its Baseline and what it allows. ABSENT:
+   * the host cannot say, and the markup and the `<style>` are not judged.
+   */
+  readonly baseline?: BaselineContext;
 }
 
 /** A module of the project, read by the host (SDD-61 §4.1). */

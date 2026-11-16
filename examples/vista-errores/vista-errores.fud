@@ -374,8 +374,8 @@
        clásico de `javascript:`. *@
     <svg><a><animate attributeName="href" values=@data.ruta></animate><text>t</text></a></svg>
     <svg><a><set attributeName="href" to="javascript:alert(1)"></set><text>t</text></a></svg>
-    @* Sin diagnóstico: `imagesrcset` y `ping` son listas de URL y van por el guardia, URL a
-       URL. *@
+    @* Ninguno de URL: `imagesrcset` y `ping` son listas de URL y van por el guardia, URL a URL.
+       Solo FUD1524 sobre `ping`: Firefox no lo tiene, y queda por debajo del Baseline. *@
     <link rel="preload" as="image" imagesrcset=@data.ruta>
     <a href="/x" ping=@data.ruta>ping</a>
     @* FUD0915 sobre `style`: un `style` dinámico es inyección de CSS; se escribe `style:prop`. *@

@@ -32,7 +32,7 @@ import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
 import { SERVER_ROOT_ID } from './api-root.js';
-import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
+import { nestedTarget, serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { alternatesOf, idWithoutLocale, localePlugin, localeTarget, pageModuleOf, withLocale, type LocaleContext } from './i18n.js';
 
@@ -238,6 +238,9 @@ export async function runEdgePass(
       // cost is real: a `@server load` that throws during the prerender is a stack trace
       // someone has to read.
       minify: false,
+      // The host's target, as the other nested builds (SDD-83 §3.9): the same `@code` is lowered
+      // the same way for the page that renders it and for the browser that hydrates it.
+      ...nestedTarget(nested),
       // Always, whatever the host asked for its client (SDD-60 §4.6): this output never reaches a
       // browser, and an error in a handler has to name the `.ts` of `src/server` and its line.
       sourcemap: true,

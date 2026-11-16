@@ -149,8 +149,8 @@ field as it settles (SDD-70). The Service Worker is **not registered in dev** un
 `"dev": "preview"`, which is what SvelteKit, Next and Nuxt do and what keeps HMR sane.
 
 `vite preview` is the production edge: prerendered files where they exist, the data
-endpoints, on-demand render for the rest, and on every document a CSP header with a fresh
-nonce stamped into the page.
+endpoints, on-demand render for the rest, and on every document the headers of `page.headers`,
+with a fresh nonce stamped into the page when they ask for one (see Headers).
 
 ## Early hints
 
@@ -187,6 +187,73 @@ on a page request:
 
 `vite dev` and `vite preview` do this. Over plain HTTP they are HTTP/1.1 and send only the `Link`;
 with `server.https` / `preview.https` they speak HTTP/2 and send the `103` too.
+
+## Headers
+
+An app's headers are three text files at its root: `page.headers` (every page and `_error`),
+`sw.headers` (`/fudic-sw.js`) and `assets.headers` (the static files, by path). The build reads
+them and writes them into `fudic-routes.json` as `headers`: `page` and `sw` are name → value, and
+`assets` is a list of `{ pattern, headers }`, most specific first, where `''` means "do not send".
+
+A value may hold a placeholder, `{name}`, that whoever answers fills for each response. Today there
+is one: `{nonce}`. Any backend does what `@fudic/server` does:
+
+```
+on a page:
+  if some value of manifest.headers.page holds "{nonce}":
+    nonce = 16 random bytes, base64url, new for THIS response
+    every "{nonce}" in those values    -> nonce
+    every "__FUDIC_NONCE__" in the HTML -> nonce   (prerendered pages, and streams chunk by chunk)
+  send the headers of manifest.headers.page
+on its 103:       of those, Content-Security-Policy and Referrer-Policy, same nonce
+on /fudic-sw.js:  manifest.headers.sw
+on a static file: for each name, the most specific rule of manifest.headers.assets; '' = none
+```
+
+- `Strict-Transport-Security` only over HTTPS.
+- What `load` writes loses to any header of `page.headers`.
+- `/fudic-sw.js` and the manifest also go with `Cache-Control: no-cache`, and the worker with
+  `Service-Worker-Allowed` and the app's `base`, whatever `assets.headers` says.
+- Without `{nonce}` in `page.headers` there is no nonce: none is made, and the HTML carries none.
+
+Filling a placeholder is replacing a fixed text with another — no template engine, no regular
+expression:
+
+Node (the one `@fudic/server` uses):
+
+```js
+const fill = (value, nonce) => value.split('{nonce}').join(nonce);
+```
+
+Go:
+
+```go
+func fill(value, nonce string) string { return strings.ReplaceAll(value, "{nonce}", nonce) }
+```
+
+Java:
+
+```java
+static String fill(String value, String nonce) { return value.replace("{nonce}", nonce); }
+```
+
+Python:
+
+```python
+def fill(value: str, nonce: str) -> str: return value.replace("{nonce}", nonce)
+```
+
+C#:
+
+```csharp
+static string Fill(string value, string nonce) => value.Replace("{nonce}", nonce);
+```
+
+Rust:
+
+```rust
+fn fill(value: &str, nonce: &str) -> String { value.replace("{nonce}", nonce) }
+```
 
 ## The two bootstraps
 

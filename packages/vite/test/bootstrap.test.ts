@@ -184,7 +184,8 @@ describe('emitBootBootstrap — the always-on half (BUG-31 T2)', () => {
       "import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';",
     );
     expect(code).toContain("'serviceWorker' in navigator");
-    expect(code).toContain('registerRenderServiceWorker(import.meta.ROLLUP_FILE_URL_sw)');
+    expect(code).toContain("import { trustedScriptUrlOf } from '@fudic/dom';");
+    expect(code).toContain('registerRenderServiceWorker(trustedScriptUrlOf(import.meta.ROLLUP_FILE_URL_sw))');
     expect(code).toContain('notifyLocation()');
     expect(code).not.toContain('new Worker'); // the WW is gone for good
     // The registration and the hydration runtime are different tags now: this half carries

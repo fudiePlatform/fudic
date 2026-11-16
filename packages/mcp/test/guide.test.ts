@@ -18,8 +18,8 @@ describe('guideDir', () => {
 describe('Guide.read', () => {
   const guide = new Guide();
 
-  it('has the nine topics of the spec, in order', () => {
-    expect(TOPICS).toEqual(['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css']);
+  it('has the ten topics, in order: config last (SDD-84 §3.9)', () => {
+    expect(TOPICS).toEqual(['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css', 'config']);
   });
 
   it('takes a topic in any case and with spaces around', () => {
@@ -80,5 +80,20 @@ describe('Guide.read', () => {
     if (!('error' in result)) throw new Error('expected an error');
     expect(result.error.code).toBe('FUD1403');
     expect(result.error.message).toContain(TOPICS.join(', '));
+  });
+});
+
+describe('the overview explains the policy and Baseline, in both languages (SDD-83 criterion 36)', () => {
+  it('the two keys of fudic.json, the comments and what to do with a FUD1524', () => {
+    for (const [file, diagnostics] of [['overview.md', '## Diagnostics'], [join('es', 'overview.md'), '## Diagnósticos']] as const) {
+      const text = readFileSync(join(guideDir(), file), 'utf8');
+      expect(text).toContain(diagnostics);
+      expect(text).toContain('## Baseline');
+      expect(text).toContain('"diagnostics": {');
+      expect(text).toContain('"baseline": { "target": "widely", "allow": ["popover"] }');
+      expect(text).toContain('fud-disable-next-line FUD1380');
+      expect(text).toContain('FUD1524');
+      expect(text).toContain('@supports (field-sizing: content)');
+    }
   });
 });

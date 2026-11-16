@@ -43,6 +43,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fudic/baseline": "workspace:*",
     "@fudic/conventions": "workspace:*",
     "@fudic/diagnostics": "workspace:*"
   },

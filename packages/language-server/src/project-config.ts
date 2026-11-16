@@ -12,9 +12,11 @@
 
 import { posix } from 'node:path';
 import { readGuide, type GuidePiece } from '@fudic/compiler';
-import { readProjectConfig, tagOf, type ProjectConfig } from '@fudic/config';
+import { baselineContextOf, readProjectConfig, tagOf, type BaselineJudged, type ProjectConfig } from '@fudic/config';
+import type { Policy } from '@fudic/diagnostics';
 import { dependencyChain, owningPackage } from '@fudic/resolve';
-import { toPosix } from '@fudic/typecheck';
+import { requiresTrustedTypes, toPosix } from '@fudic/typecheck';
+import type { ConfigFile } from './services/suppressions.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the snippet proposes when the project declares no prefix — the literal of today. */
@@ -81,6 +83,49 @@ export class ProjectConfigs {
    */
   choosableStylesFor(path: string): readonly string[] | null {
     return this.#choiceFor(toPosix(path))?.names ?? null;
+  }
+
+  /**
+   * How the project `path` belongs to reports each code: the `diagnostics` of the NEAREST
+   * `fudic.json` above it, as the build reads it. `null` when no `fudic.json` governs the file,
+   * and then every code is reported as it is.
+   */
+  policyFor(path: string): Policy | null {
+    return this.#nearest(toPosix(path))?.config.diagnostics ?? null;
+  }
+
+  /**
+   * What the project `path` belongs to asks of the browser (SDD-83 §3.4): the `baseline` of the
+   * NEAREST `fudic.json` above it, as the build reads it; `widely` when none says otherwise.
+   */
+  baselineFor(path: string): BaselineJudged {
+    return baselineContextOf(this.#nearest(toPosix(path))?.config ?? null);
+  }
+
+  /**
+   * The `fudic.json` the project of `path` is declared in, with its text: where the bulbs turn a
+   * code off or allow a feature (SDD-83 §3.11). Absent when no usable `fudic.json` governs the file.
+   */
+  configFileFor(path: string): ConfigFile | undefined {
+    const at = this.#nearest(toPosix(path));
+    return at === null ? undefined : { path: `${at.root}/fudic.json`, text: at.text };
+  }
+
+  /**
+   * The project `path` belongs to: the folder of the NEAREST `fudic.json` above it and what it
+   * declares; `null` when no usable one governs the file.
+   */
+  projectFor(path: string): { readonly root: string; readonly config: ProjectConfig } | null {
+    const at = this.#nearest(toPosix(path));
+    return at === null ? null : { root: at.root, config: at.config };
+  }
+
+  /**
+   * Whether the pages of the project `path` belongs to require Trusted Types (SDD-84 §4.6): its
+   * `page.headers` as it is on disk now, or its template. Never for a library, nor with no project.
+   */
+  requiresTrustedTypesFor(path: string): boolean {
+    return requiresTrustedTypes(this.projectFor(path), (file) => this.#scanner.readFile(file));
   }
 
   /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */
@@ -155,9 +200,10 @@ export class ProjectConfigs {
         break;
       }
       visited.push(dir);
-      if (this.#scanner.readFile(`${dir}/fudic.json`) !== undefined) {
-        const config = this.#read(dir);
-        found = config === null ? null : { root: dir, config };
+      const text = this.#scanner.readFile(`${dir}/fudic.json`);
+      if (text !== undefined) {
+        const config = parse(dir, text);
+        found = config === null ? null : { root: dir, config, text };
         break;
       }
       const up = dir.lastIndexOf('/');
@@ -172,15 +218,21 @@ export class ProjectConfigs {
     // One read, not two: `exists` and `read` would otherwise hit the disk twice for a file
     // this is asked about on every folder of the workspace.
     const source = this.#scanner.readFile(`${root}/fudic.json`);
-    if (source === undefined) return null;
-    return readProjectConfig(root, { exists: () => true, read: () => source }).config;
+    return source === undefined ? null : parse(root, source);
   }
+}
+
+/** What the `fudic.json` of `root` with this text declares; `null` when it is unusable. */
+function parse(root: string, text: string): ProjectConfig | null {
+  return readProjectConfig(root, { exists: () => true, read: () => text }).config;
 }
 
 /** A `fudic.json` read, with the folder it governs. */
 interface ConfigAt {
   readonly root: string;
   readonly config: ProjectConfig;
+  /** The file as it was read, for the bulbs that write in it. */
+  readonly text: string;
 }
 
 /** What a component may name in `shadowrootadoptedstylesheets`, and which of those are pieces. */

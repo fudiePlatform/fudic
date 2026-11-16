@@ -1,0 +1,42 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-note.fud">
+<link rel="component" href="../components/app-menu.fud">
+
+<head>
+  <title>Baseline — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="baseline"></site-nav>
+}
+
+<h1>Baseline</h1>
+<p class="lede">
+  fudic avisa cuando el HTML, el CSS o el TS de un componente usa algo del navegador más nuevo
+  que el nivel de Baseline del proyecto. Este ejemplo pide <code>widely</code> en
+  <code>fudic.json</code> y sube todos los warnings a error: si algo de esta página no pasara,
+  el build fallaría.
+</p>
+
+<h2>Una mejora protegida</h2>
+<p>
+  La nota usa <code>field-sizing: content</code> dentro de un <code>@("@supports")</code>. Fuera
+  de él sería un aviso; dentro, el navegador que no lo tiene se queda con la altura mínima.
+</p>
+<app-note></app-note>
+
+<h2>Una feature permitida</h2>
+<p>
+  El menú abre con <code>popover</code>, que ya está en <code>widely</code>, y pinta su botón con
+  <code>:state(open)</code>, que no lo está. El proyecto lo acepta con
+  <code>"allow": ["state"]</code>.
+</p>
+<app-menu></app-menu>
+
+<h2>Qué comprobar</h2>
+<p>
+  Escribe varias líneas en la nota: crece con ellas donde el navegador lo sabe hacer. Abre el
+  menú: el botón se vuelve naranja mientras está abierto. Quita <code>"state"</code> del
+  <code>allow</code> y el build falla con el aviso de <code>:state</code>.
+</p>

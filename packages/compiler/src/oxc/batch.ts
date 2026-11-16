@@ -59,6 +59,12 @@ export interface JsBatchResult {
   mapOffset(bufferOffset: number): number;
   /** Map a buffer [start, end) back to an original-source Span. */
   mapSpan(bufferStart: number, bufferEnd: number): Span;
+  /**
+   * Every comment of the JS, in source coordinates and as written there, delimiters included:
+   * where a `fud-disable` of the `@code` is read from. The wrappers write none, so each one is
+   * the author's.
+   */
+  readonly comments: readonly { readonly span: Span; readonly text: string }[];
 }
 
 /** Synthetic filename: `.ts` enables TypeScript; no JSX appears in the JS of a `.fud`. */
@@ -174,6 +180,11 @@ export class JsBatch {
       diagnostics.push(FUD0170({ span: sp, detail: err.message }));
     }
 
+    const comments = parsed.comments.map((comment) => {
+      const sp = mapSpan(comment.start, comment.end);
+      return { span: sp, text: this.#source.slice(sp.start, sp.end) };
+    });
+
     const result: JsBatchResult = {
       ast: (id) => {
         const root = roots[id];
@@ -181,6 +192,7 @@ export class JsBatch {
       },
       mapOffset,
       mapSpan,
+      comments,
     };
     return withDiagnostics(result, diagnostics);
   }

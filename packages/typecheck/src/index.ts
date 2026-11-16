@@ -70,9 +70,32 @@ export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics, semanticInput } from './fudic-diagnostics.js';
 export { echoes } from './one-voice.js';
+export { commentsOf, governFile, projectPolicies, type FudParse, type GovernFileOptions } from './govern.js';
 
 export { propShapes } from './prop-shapes.js';
 export { portableTypeDiagnostics, isReactive } from './portable-types.js';
+export { baselineContextOf } from '@fudic/config';
+export {
+  browserModules,
+  fudBaselineDiagnostics,
+  fudBaselineUses,
+  moduleBaselineDiagnostics,
+  moduleBaselineUses,
+} from './baseline.js';
+export {
+  fudTrustedTypesDiagnostics,
+  moduleTrustedTypesDiagnostics,
+  requiresTrustedTypes,
+  type TrustedTypesProject,
+} from './trusted-types.js';
+export {
+  packageBaselineUses,
+  packageModules,
+  projectBaselineDiagnostics,
+  type BaselineLibrary,
+  type BaselinePackage,
+  type BaselineSite,
+} from './baseline-project.js';
 
 // The project check (§3.1).
 export {
@@ -80,6 +103,7 @@ export {
   type CheckOptions,
   type ProjectChecker,
 } from './checker.js';
+export { headersDiagnostics } from './headers.js';
 export {
   compareProblems,
   hasErrors,

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { NONCE_TOKEN, applyNonce, applyNonceStream, cspFor, newNonce } from '../src/csp.js';
+import { NONCE_TOKEN, applyNonce, applyNonceStream, newNonce } from '../src/csp.js';
 import { readAll } from './helpers.js';
 
 /** A byte stream from arbitrary text pieces — the boundaries are the point. */
@@ -22,13 +22,7 @@ function streamOf(pieces: readonly string[]): ReadableStream<Uint8Array> {
   });
 }
 
-describe('cspFor / applyNonce / newNonce', () => {
-  it('fills every {nonce} of a policy template', () => {
-    expect(cspFor("script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'", 'abc')).toBe(
-      "script-src 'nonce-abc'; style-src 'nonce-abc'",
-    );
-  });
-
+describe('applyNonce / newNonce', () => {
   it('replaces every occurrence of the token', () => {
     expect(applyNonce(`<a nonce="${NONCE_TOKEN}"><b nonce="${NONCE_TOKEN}">`, 'z')).toBe(
       '<a nonce="z"><b nonce="z">',

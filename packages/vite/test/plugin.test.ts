@@ -348,6 +348,7 @@ interface FakeRes {
   body: string;
   setHeader(k: string, v: string): void;
   removeHeader(k: string): void;
+  writeHead(): FakeRes;
   write(b: string | Uint8Array): void;
   end(b?: string): void;
   /** A real `ServerResponse` has it: the dev server listens for `close` to abort the request (SDD-56 §4.12). */
@@ -361,6 +362,9 @@ const fakeRes = (): FakeRes => ({
   },
   removeHeader(k) {
     delete this.headers[k.toLowerCase()];
+  },
+  writeHead() {
+    return this;
   },
   write(b) {
     this.body += typeof b === 'string' ? b : new TextDecoder().decode(b);
@@ -377,6 +381,7 @@ const flush = (): Promise<void> => new Promise((r) => setImmediate(r));
 describe('configureServer middleware', () => {
   async function withServer(
     transformRequest: (id: string) => Promise<{ code: string }>,
+    projectRoot = root,
   ): Promise<(req: { url: string }, res: FakeRes, next: () => void) => void> {
     let handler!: (req: { url: string }, res: FakeRes, next: () => void) => void;
     const server = {
@@ -384,7 +389,7 @@ describe('configureServer middleware', () => {
       middlewares: { use: (fn: typeof handler) => (handler = fn) },
       transformRequest,
     };
-    await setup('serve').configureServer(server);
+    await setup('serve', {}, projectRoot).configureServer(server);
     return handler;
   }
 
@@ -397,7 +402,7 @@ describe('configureServer middleware', () => {
   });
 
   it('serves the SW with a root-scope header and its own CSP', async () => {
-    const handler = await withServer(async () => ({ code: 'createRouter(...)' }));
+    const handler = await withServer(async () => ({ code: 'createRouter(...)' }), swRoot());
     const res = fakeRes();
     handler({ url: '/fudic-sw.js' }, res, () => undefined);
     await flush();
@@ -691,8 +696,8 @@ describe('configurePreviewServer middleware', () => {
       emitServerModule({
         base: '/',
         locales: [],
-        csp: "script-src 'nonce-{nonce}'",
-        statics: {},
+        headers: { page: { 'Content-Security-Policy': "script-src 'nonce-{nonce}'", 'Referrer-Policy': 'strict-origin-when-cross-origin' }, sw: { 'Content-Security-Policy': "script-src 'self' 'unsafe-eval'" }, assets: [] },
+        files: { manifest: '/fudic-routes.json', worker: '/fudic-sw.js' },
         routes: [],
         errorPages: [],
         errorHints: [],
@@ -798,14 +803,16 @@ describe('configurePreviewServer middleware', () => {
     expect(res.body).toContain('<h1>404</h1>');
   });
 
-  it('the app’s own static files get their headers and go on to Vite', async () => {
-    const { root: r, outDir } = built({ statics: { '/sw.js': { 'cache-control': 'no-cache' } } });
+  it('SDD-84 criterion 25: the worker gets sw.headers, no-cache and its scope, and goes on to Vite', async () => {
+    const { root: r, outDir } = built({});
     const { app } = withPreview(outDir, r);
     const res = fakeRes();
     const { next, called } = nextCall();
-    app({ url: '/sw.js', method: 'GET', headers: {} }, res, next);
+    app({ url: '/fudic-sw.js', method: 'GET', headers: {} }, res, next);
     await called;
     expect(res.headers['cache-control']).toBe('no-cache');
+    expect(res.headers['service-worker-allowed']).toBe('/');
+    expect(res.headers['content-security-policy']).toBe("script-src 'self' 'unsafe-eval'");
   });
 
   it('criterion 43: preview over http hands the functions Secure-less cookies, and a secret of its own', async () => {

@@ -41,6 +41,8 @@ import { jsxText } from './analyzers/jsx-text.js';
 import { attributeBindings } from './analyzers/attribute-bindings.js';
 import { loopBindings } from './analyzers/loop-bindings.js';
 import { dataWithoutLoad } from './analyzers/data-without-load.js';
+import { baselineHtml } from './analyzers/baseline-html.js';
+import { baselineCss } from './analyzers/baseline-css.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -76,6 +78,8 @@ export const ANALYZERS: readonly Analyzer[] = [
   awaitBlocks,
   loopBindings,
   dataWithoutLoad,
+  baselineHtml,
+  baselineCss,
   jsxText,
 ];
 

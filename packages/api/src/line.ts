@@ -162,6 +162,16 @@ export function* lines(source: string): Generator<readonly [number, number]> {
   yield [start, source.length];
 }
 
+/** Every `#` comment of a `.fudapi`, `#` included: where a `fud-disable` is written. */
+export function apiComments(source: string): readonly { readonly span: Span; readonly text: string }[] {
+  const found: { span: Span; text: string }[] = [];
+  for (const [start, end] of lines(source)) {
+    const comment = readLine(source, start, end, []).comment;
+    if (comment !== undefined) found.push({ span: comment, text: source.slice(comment.start, comment.end) });
+  }
+  return found;
+}
+
 /** A node while the tree is being built: its children still grow. */
 interface Building {
   tokens: Token[];

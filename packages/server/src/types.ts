@@ -4,6 +4,7 @@
  */
 
 import type { Spool, UploadLimits } from '@fudic/http/server';
+import type { ManifestHeaders } from '@fudic/transport';
 import type { RenderModule } from './render.js';
 
 /** One route of the app, most specific first in the list `routes()` gives. */
@@ -47,13 +48,17 @@ export interface ServerApp {
   readonly base: string;
   /** The app's locales; empty, or one, when its URLs carry no prefix. */
   readonly locales: readonly string[];
-  /** The document CSP, with its `{nonce}`. Absent: no CSP (dev). */
-  readonly csp?: string;
   /**
-   * Extra headers of the app's own static files, by path without `base`: the manifest and the
-   * worker, which govern updates (SDD-20 §4.11). The files themselves are served by the host.
+   * The app's headers (SDD-84 §3.7): `page.headers` for every page and `_error`, `sw.headers` for
+   * the worker, `assets.headers` for the static files. Read on each response: dev changes them.
    */
-  readonly statics?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly headers: ManifestHeaders;
+  /**
+   * The app's own files that govern updates, by path without `base` (SDD-20 §4.11): always
+   * `no-cache`, whatever `assets.headers` says, and the worker with `sw.headers` and the app's
+   * scope. Absent: none — dev serves its own.
+   */
+  readonly files?: { readonly manifest: string; readonly worker?: string };
   /** The routes, most specific first. Asked on each request: dev adds and removes files. */
   routes(): readonly AppRoute[];
   /** A route's render module, by pattern. */
@@ -102,9 +107,9 @@ export interface ServerOptions {
 /** What a `103 Early Hints` may say before the response (SDD-73 §3.2). */
 export interface EarlyHints {
   readonly link: readonly string[];
-  /** The page's policies, with the nonce the final response carries. */
+  /** Of `page.headers`, only these two, with the nonce the final response carries (SDD-84 §4.1). */
   readonly 'content-security-policy'?: string;
-  readonly 'referrer-policy': string;
+  readonly 'referrer-policy'?: string;
 }
 
 /** What whoever mounts the server may be told while `fetch` works. */
@@ -121,6 +126,9 @@ export interface FudicServer {
    * files. `null` for anything that is not a `GET` or `HEAD` asking for HTML.
    */
   notFound(request: Request, hooks?: FetchHooks): Promise<Response | null>;
-  /** The extra headers of one of the app's own static files, or `null`. */
+  /**
+   * The headers of one of the app's static files (SDD-84 §4.4), or `null` when there are none. A
+   * `''` value is a header that must not go out, even if the host's static server writes one.
+   */
   staticHeaders(request: Request): Readonly<Record<string, string>> | null;
 }

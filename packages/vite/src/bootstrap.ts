@@ -323,9 +323,12 @@ export function emitBootBootstrap(swUrlExpr: string | null, runtimePrefix = ''):
     `import { registerRenderServiceWorker, notifyLocation${
       runtimePrefix === '' ? '' : ', notifyRuntimeUsed'
     } } from '@fudic/transport';`,
+    `// Under \`require-trusted-types-for\` the URL of the worker is a script URL: it goes through the`,
+    `// \`fudic\` policy, the one the runtime paints HTML with (SDD-84 §4.6).`,
+    `import { trustedScriptUrlOf } from '@fudic/dom';`,
     '',
     `if ('serviceWorker' in navigator) {`,
-    `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
+    `  registerRenderServiceWorker(trustedScriptUrlOf(${swUrlExpr})).then(() => notifyLocation());`,
     `}`,
     ...(runtimePrefix === ''
       ? []

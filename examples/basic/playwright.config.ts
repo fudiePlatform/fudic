@@ -46,6 +46,9 @@ const THREE_WAY = /(hydration|routes|di|usuarios|remote-rule|ficheros)\.spec\.ts
 // the browser that asked, one page at a time.
 const DEV_ONLY = /sesion\.spec\.ts/u;
 
+// The headers of the app (SDD-84) run in the two builds: dev sends no page CSP on purpose.
+const HEADERS = /headers\.spec\.ts/u;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -64,7 +67,7 @@ export default defineConfig({
       testMatch: [THREE_WAY, DEV_ONLY],
       use: { baseURL: 'http://localhost:5273' },
     },
-    { name: 'nosw', testMatch: THREE_WAY, use: { baseURL: 'http://localhost:4273' } },
+    { name: 'nosw', testMatch: [THREE_WAY, HEADERS], use: { baseURL: 'http://localhost:4273' } },
   ],
   webServer: [
     {

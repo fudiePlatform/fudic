@@ -31,3 +31,43 @@ export {
   type ProjectConfig,
 } from './read.js';
 export { tagOf } from './tag.js';
+export { readPolicy, ProjectPolicies, type PolicyRead, type ProjectAt } from './policy.js';
+export {
+  allowedFeatures,
+  baselineContextOf,
+  buildTargetOf,
+  DEFAULT_BASELINE,
+  floorWarning,
+  readBaseline,
+  type AllowedId,
+  type BaselineConfig,
+  type BaselineJudged,
+  type BaselineRead,
+} from './baseline.js';
+export { projectConfigSchema } from './schema.js';
+export type { HeaderEntry, HeadersKind, Piece } from './headers/segments.js';
+export { segmentsOf, nameSpanOf } from './headers/segments.js';
+export { HEADERS_FILES, parseHeaders, type AssetRule, type ParsedHeaders } from './headers/parse.js';
+export { HEADERS_TEMPLATES } from './headers/templates.js';
+export {
+  readHeaders,
+  type HeadersConfig,
+  type HeadersRead,
+  type HeadersSource,
+  type ReadHeadersOptions,
+} from './headers/read.js';
+export { KNOWN_HEADERS, FUDIC_HEADERS, FUDIC_PATHS, type KnownHeader } from './headers/known.js';
+export { CACHE_CONTROL_DIRECTIVES } from './headers/checks.js';
+export {
+  CSP_DIRECTIVES,
+  CSP_KEYWORDS,
+  cspOf,
+  directiveOf,
+  NONCE_SOURCE,
+  parseCsp,
+  PLACEHOLDERS,
+  SOURCE_LIST_DIRECTIVES,
+  type CspDirective,
+  type CspPolicy,
+} from './headers/csp.js';
+export { checkNeeds, CSP_NEEDS_FILE, readCspNeeds, type CspNeed, type NeedFinding } from './headers/needs.js';

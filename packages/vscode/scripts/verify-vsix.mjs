@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 const REQUIRED = [
   ['the extension bundle', 'dist/extension.cjs'],
   ['the bundled server', 'dist/server.mjs'],
+  ['the schema of fudic.json', 'dist/fudic.schema.json'],
   ['the grammar', 'syntaxes/fudic.tmLanguage.json'],
   ['the language configuration', 'language-configuration.json'],
   ['the light icon', 'icons/fud-light.svg'],
@@ -29,6 +30,10 @@ const REQUIRED = [
   ['the .fudspec language configuration', 'language-configuration.fudspec.json'],
   ['the .fudspec light icon', 'icons/fudspec-light.svg'],
   ['the .fudspec dark icon', 'icons/fudspec-dark.svg'],
+  ['the .fudapi grammar', 'syntaxes/fudapi.tmLanguage.json'],
+  ['the .fudapi language configuration', 'language-configuration.fudapi.json'],
+  ['the .headers grammar', 'syntaxes/fudheaders.tmLanguage.json'],
+  ['the .headers language configuration', 'language-configuration.fudheaders.json'],
   ['the manifest', 'package.json'],
   ['the parser loader', 'dist/node_modules/oxc-parser/src-js/bindings.js'],
   ['the formatter leaf', 'dist/node_modules/oxfmt/dist/index.js'],

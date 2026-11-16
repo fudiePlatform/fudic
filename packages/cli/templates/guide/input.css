@@ -18,8 +18,10 @@
   outline-offset: 1px;
 }
 
-:where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
-  accent-color: var(--{{project}}-accent);
+@supports (accent-color: red) {
+  :where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+    accent-color: var(--{{project}}-accent);
+  }
 }
 
 :where(input[type="checkbox"], input[type="radio"]) {

@@ -19,6 +19,7 @@
 import { browserDom } from '@fudic/dom';
 import type { Controller, FudicElementCtor } from './controller.js';
 import { adoptSheets } from './adopt-sheets.js';
+import { delegateFocus } from './focus-delegate.js';
 
 /**
  * The subclass's own factory. `this.constructor` — not `new.target`, which is only bound
@@ -62,6 +63,12 @@ export abstract class FudicElement extends Base {
     const controller = factoryOf(this).c([browserDom, this.shadowRoot, ...props]);
     this.#controller = controller;
     controller.h();
+    // The server wrote `shadowrootdelegatesfocus`; a browser that predates it left a shadow root
+    // that does not delegate, and only script can make up for it (SDD-83 §4.6).
+    const shadow = this.shadowRoot;
+    if (shadow?.delegatesFocus === false && this.shadowInit().delegatesFocus === true) {
+      delegateFocus(this, shadow);
+    }
   }
 
   /**

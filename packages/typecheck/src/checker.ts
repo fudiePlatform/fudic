@@ -29,6 +29,20 @@ import { FUD0870, FUD0871, type SourceDiagnostic as Diagnostic } from '@fudic/di
 import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
+import { baselineContextOf } from '@fudic/config';
+import { fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
+import { fudTrustedTypesDiagnostics, moduleTrustedTypesDiagnostics, requiresTrustedTypes } from './trusted-types.js';
+import {
+  packageBaselineUses,
+  packageModules,
+  projectBaselineDiagnostics,
+  type BaselineLibrary,
+  type BaselinePackage,
+  type BaselineSite,
+} from './baseline-project.js';
+import { findLibraries } from '@fudic/resolve';
+import { governFile, projectPolicies } from './govern.js';
+import { headersDiagnostics } from './headers.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
@@ -44,6 +58,7 @@ import {
 } from './report.js';
 import type { FudicVirtualCode } from './virtual-code.js';
 import type { ComponentInfo, PropField } from '@fudic/spec';
+import { CONFIG_FILE, type ProjectConfig } from '@fudic/config';
 import { propShapes } from './prop-shapes.js';
 import { portableTypeDiagnostics } from './portable-types.js';
 import { apiDiagnostics, readApiProject } from './api-project.js';
@@ -55,6 +70,11 @@ export interface CheckOptions {
   readonly root: string;
   /** The TypeScript to check with. Defaults to the one this package ships (§7). */
   readonly typescript?: typeof ts;
+  /**
+   * Whether the three `.headers` of the app are checked too (SDD-84 §3.8): what `fudic_check` asks.
+   * Off by default, because `dev` already says them as they change, and the build as it reads them.
+   */
+  readonly headers?: boolean;
 }
 
 export interface ProjectChecker {
@@ -177,6 +197,43 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     };
   };
 
+  /** The `.fud` at `path` as the program holds it, projected; undefined when it holds none. */
+  const projectedOf = (state: Mounted, path: string): ProjectedFud | undefined =>
+    (state.language.scripts.get(path)?.generated?.root as FudicVirtualCode | undefined)?.document;
+
+  /** The `.fud` of `paths` the program holds, projected. */
+  const projectedAll = (state: Mounted, paths: Iterable<string>): ProjectedFud[] =>
+    [...paths].flatMap((path) => {
+      const fud = projectedOf(state, toPosix(path));
+      return fud === undefined ? [] : [fud];
+    });
+
+  /**
+   * `FUD1526` and `FUD1528` (SDD-83 §3.8, §4.1): what the project's own files and its libraries
+   * use of the browser, against its `fudic.json`. Nothing when the project has none.
+   */
+  const projectBaseline = (
+    state: Mounted,
+    site: BaselineSite,
+    config: ProjectConfig | null,
+    own: BaselinePackage,
+  ): readonly CheckProblem[] => {
+    if (config === null) return [];
+    const libraries: BaselineLibrary[] = findLibraries(root, fs).map((library) => ({
+      name: library.name === '' ? library.root : library.name,
+      uses: () =>
+        packageBaselineUses(site, { root: library.root, config: library.config, fuds: projectedAll(state, library.files) }),
+    }));
+    const file = `${root}/${CONFIG_FILE}`;
+    const found = projectBaselineDiagnostics(config, () => packageBaselineUses(site, own), libraries);
+    // A `fudic.json` has no comments: only its own policy says how these are reported. With no
+    // `"baseline"` written, a `FUD1526` is about the whole file, and starts it.
+    const located = found.map((d) => ({ ...d, file, span: d.span ?? { start: 0, end: 0 } }));
+    // The file is there: its project was read from it.
+    const said = governFile(file, fs.readFile(file)!, located, config.diagnostics);
+    return fudicProblems(file, said, new Map());
+  };
+
   const collect = (state: Mounted): CheckReport => {
     const program = state.service.getProgram();
     if (program === undefined) throw new Error('TypeScript built no program');
@@ -185,6 +242,16 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     const problems: CheckProblem[] = [];
     /** The problems already reported in a file that is not the `.fud` being collected. */
     const elsewhere = new Map<string, string[]>();
+    // Read again on every check: a `fudic.json` edited in `dev` reports differently at once.
+    const policies = projectPolicies((path) => fs.readFile(path));
+    // Whether a file's pages require trusted types (SDD-84 §4.6), once per project.
+    const trusted = new Map<string, boolean>();
+    const requiresTrusted = (file: string): boolean => {
+      const project = policies.projectOf(file);
+      if (project === null) return false;
+      if (!trusted.has(project.root)) trusted.set(project.root, requiresTrustedTypes(project, (path) => fs.readFile(path)));
+      return trusted.get(project.root)!;
+    };
     for (const entry of state.index.all()) {
       // A library's file is in the program for its types and is not the author's to fix (§4.2).
       if (entry.external) continue;
@@ -196,10 +263,22 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       // script of its client virtual is always there.
       const sourceFile = program.getSourceFile(entry.path)!;
       const map = state.language.maps.get(root.client, script);
-      const own = [
-        ...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere),
-        ...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere),
-      ];
+      // What the project asks of the browser: `widely` when its `fudic.json` says nothing (SDD-83 §3.4).
+      const baseline = baselineContextOf(policies.projectOf(entry.path)?.config ?? null);
+      // Everything fudic says of the file, under its project's policy and its own comments.
+      const said = governFile(
+        entry.path,
+        root.document.source,
+        [
+          ...fudicDiagnostics(root.document, state.index, baseline),
+          ...portableTypeDiagnostics(program, root.document),
+          ...fudBaselineDiagnostics(program, root.document, baseline),
+          ...(requiresTrusted(entry.path) ? fudTrustedTypesDiagnostics(program, root.document) : []),
+        ],
+        policies.policyOf(entry.path),
+        { parsed: root.document, complete: true },
+      );
+      const own = fudicProblems(entry.path, said, elsewhere);
       // One fact, one voice: TypeScript is silent where a fudic error of this file speaks.
       const spoken = own.filter((p) => p.file === entry.path && p.severity === 'error').map((p) => p.span);
       const found = [
@@ -248,13 +327,45 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       }
     }
 
+    // The modules the browser loads, against the Baseline of their project (SDD-83 §3.6).
+    const config = policies.projectOf(`${root}/${CONFIG_FILE}`)?.config ?? null;
+    const site: BaselineSite = { typescript, program, readFile: (path) => fs.readFile(path) };
+    // The project itself as a package: its own `.fud`, never a library's.
+    const own: BaselinePackage = {
+      root,
+      config,
+      fuds: projectedAll(state, state.index.all().filter((entry) => !entry.external).map((entry) => entry.path)),
+    };
+    for (const file of packageModules(site, own)) {
+      const baseline = baselineContextOf(policies.projectOf(file)?.config ?? null);
+      const found = [
+        ...moduleBaselineDiagnostics(program, file, baseline),
+        ...(requiresTrusted(file) ? moduleTrustedTypesDiagnostics(program, file) : []),
+      ];
+      const source = program.getSourceFile(file)!.text;
+      // A module with nothing to say and no `fud-disable` is not read for its comments.
+      if (found.length === 0 && !source.includes('fud-disable')) continue;
+      const said = governFile(file, source, found, policies.policyOf(file), { complete: true });
+      problems.push(...fudicProblems(file, said, elsewhere));
+    }
+
     // What the parser and the validator say of each `.fudapi` of the app and each `.fudspec`: the
     // build reports them here, once, with everything else.
     const api = readApiProject(root);
     const specs = specDiagnostics(root, fs, state.index, api, state.components);
-    for (const { file, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
-      problems.push(...fudicProblems(file, diagnostics, elsewhere));
+    for (const { file, source, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
+      const said = governFile(file, source, diagnostics, policies.policyOf(file), { complete: true });
+      problems.push(...fudicProblems(file, said, elsewhere));
     }
+    // The `.headers` of the app, as the build reads them (SDD-84 §3.8).
+    if (options.headers === true) {
+      for (const said of headersDiagnostics(root, (path) => fs.readFile(path), policies)) {
+        problems.push(...fudicProblems(said.file!, [said], elsewhere));
+      }
+    }
+    // What the project as a whole says of its Baseline: its libraries, and an `allow` nothing uses.
+    problems.push(...projectBaseline(state, site, config, own));
+
     const read = [...api.sources.filter((s) => s.origin === 'app').map((s) => s.path), ...specs.read];
 
     const project: ProjectProblem[] = state.commandLine.configFile === undefined ? [FUD0870()] : [];

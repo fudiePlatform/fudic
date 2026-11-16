@@ -39,6 +39,37 @@ const { config, diagnostics } = readProjectConfig(root, {
 consumer behaves exactly as it did before the file existed. It **never throws**: an
 unreadable or malformed file is a diagnostic, with the position of the guilty field.
 
+## The headers of an app
+
+Three text files next to `fudic.json` (SDD-84): `page.headers` (every page, served or painted by
+the Service Worker), `sw.headers` (`/fudic-sw.js`) and `assets.headers` (the static files, by path).
+What is in the file is what goes out; a missing file reads as its template, `HEADERS_TEMPLATES`,
+which is also what the CLI writes.
+
+```
+# A comment, alone on its line.
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'nonce-{nonce}' 'strict-dynamic'
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+One header per line; an indented line continues the one above, joined with `; ` in the CSP and
+`, ` in the comma lists. `{nonce}` is the nonce of each response, only in `page.headers`. In
+`assets.headers` every rule starts with a path (`/**`, `/assets/**`, `/legacy.js`), the most
+specific path wins header by header, and an empty value sends nothing.
+
+```ts
+import { parseHeaders, readHeaders } from '@fudic/config';
+
+const { config, diagnostics } = readHeaders(root, io, { kind: 'app', sw: true });
+```
+
+`parseHeaders(kind, text)` checks one file as you type; `readHeaders` reads the three, and like
+every reader here it never throws. What a file says wrong is `FUD1540`–`FUD1556`, with its span.
+`CSP_NEEDS_FILE` / `readCspNeeds` are what the build writes about what it emitted
+(`.fudic/csp-needs.json`), and what the editor reads to compare it with the policy.
+
 ## Building a tag
 
 ```ts

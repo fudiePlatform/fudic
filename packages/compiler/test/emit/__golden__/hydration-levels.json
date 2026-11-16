@@ -94,6 +94,16 @@
     "tag": "app-marco",
     "hydrates": false
   },
+  "examples/basic/src/components/app-menu.fud": {
+    "kind": "component",
+    "tag": "app-menu",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-note.fud": {
+    "kind": "component",
+    "tag": "app-note",
+    "hydrates": true
+  },
   "examples/basic/src/components/app-parent.fud": {
     "kind": "component",
     "tag": "app-parent",
@@ -321,6 +331,15 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": []
+  },
+  "examples/basic/src/routes/baseline.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-menu",
+      "app-note"
+    ]
   },
   "examples/basic/src/routes/blog/[slug].fud": {
     "kind": "route",

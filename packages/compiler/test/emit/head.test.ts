@@ -56,7 +56,8 @@ describe('page <head> passthrough', () => {
     expect(src).toContain('<meta charset="utf-8">');
     expect(src).toContain('<link rel="icon" href="./logo.svg">');
     expect(src).toContain('<link rel="stylesheet" href="https://cdn.example/reset.css">');
-    expect(src).toContain('<script type="module" src="/fudic-main.js"></script>');
+    // The author's script carries the response's nonce, right after its name (SDD-84 §4.7).
+    expect(src).toContain('"<script" + $nonce + " type="module" src="/fudic-main.js"></script>"');
   });
 
   it('interpolates <title> and drops the component links', () => {

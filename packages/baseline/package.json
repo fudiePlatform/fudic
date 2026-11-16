@@ -1,0 +1,59 @@
+{
+  "name": "@fudic/baseline",
+  "version": "0.0.1",
+  "description": "What Baseline a fudic project asks for: the compat keys of web-features with their dates, and the judge that says whether one passes a level.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/baseline#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/baseline"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "baseline",
+    "web-features",
+    "browser-compat"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && rolldown -c",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "generate": "node scripts/generate.ts"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "rolldown": "1.2.1",
+    "web-features": "3.45.0"
+  }
+}

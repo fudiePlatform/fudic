@@ -22,9 +22,10 @@ import {
 import type { LanguageServicePlugin } from '@volar/language-service';
 import type { SpecFs } from '@fudic/spec';
 import { commentSyntaxOf } from '@fudic/compiler';
-import { CONFIG_FILE } from '@fudic/config';
+import { CONFIG_FILE, CSP_NEEDS_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { silenceLibraryFiles } from './services/read-only.js';
+import { quietAfterShutdown } from './services/shutdown.js';
 import { create as createHtmlService } from 'volar-service-html';
 import { create as createCssService } from 'volar-service-css';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -41,6 +42,7 @@ import { definitionsWithoutPreview } from './services/no-preview.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
 import { createConfigFileService } from './services/config-file.js';
+import { createHeadersService } from './headers/service.js';
 import { mountApiTypes } from './fudapi/types-mount.js';
 import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
 import { SpecHost } from './fudspec/host.js';
@@ -262,11 +264,36 @@ export function createFudicServer(
       // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
       createFudicTagService({ index, stats, configs, apis }),
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
-      createFudspecService({ host: specs, stats }),
+      createFudspecService({
+        host: specs,
+        stats,
+        policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
+      }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
-      createFudapiService({ host: apis, stats, implementations, generated, translations }),
+      createFudapiService({
+        host: apis,
+        stats,
+        implementations,
+        generated,
+        translations,
+        policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
+      }),
+      // The three `.headers` of an app: what the build says of them, and what its output needs (SDD-84).
+      createHeadersService({
+        stats,
+        readFile: (path) => deps.fileSystem.readFile(path),
+        projectFor: (path) => configs.projectFor(path),
+        policyFor: (path) => configs.policyFor(path),
+        configFileFor: (path) => configs.configFileFor(path),
+      }),
       // A `fudic.json`: what the build says about it, while it is written (SDD-81).
-      createConfigFileService({ stats }),
+      createConfigFileService({
+        stats,
+        // And what the project as a whole says of its Baseline, over the program TypeScript holds.
+        ...(withTypeScript ? { project: { index, fs: deps.fileSystem, typescript: typescript.typescript } } : {}),
+      }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
@@ -283,6 +310,9 @@ export function createFudicServer(
         ...silenceEchoes(
           redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
           index,
+          (path) => configs.policyFor(path),
+          (path) => configs.baselineFor(path),
+          (path) => configs.requiresTrustedTypesFor(path),
         ),
       );
       project = deps.createTypeScriptProject(
@@ -318,7 +348,12 @@ export function createFudicServer(
     }
 
     // And no definition previews: every name already has a hover that says what it is (SDD-75).
-    const result = server.initialize(params, project, definitionsWithoutPreview(readOnly(plugins)));
+    // And nothing validated after the shutdown, when the projects are gone.
+    const result = server.initialize(
+      params,
+      project,
+      quietAfterShutdown(definitionsWithoutPreview(readOnly(plugins)), () => stats.closed),
+    );
     // §3.2 is a contract with the client, so it is declared rather than inferred from whichever
     // plugins happened to load: with no TypeScript the list must still say what a `.fud` supports.
     //
@@ -342,6 +377,7 @@ export function createFudicServer(
     // §4.6: no state survives a restart, and there is none on disk to survive.
     cache.clear();
     stats.reset();
+    stats.close();
     server.shutdown();
   });
 
@@ -351,6 +387,9 @@ export function createFudicServer(
     let criteria = false;
     // And whether an open `.fudapi` may: another contract, or a dependency of its project.
     let contracts = false;
+    // And whether every open file may: a `fudic.json` changed how its project reports each code, or
+    // a `.headers` what its project requires.
+    let policy = false;
     // The projects whose `.fudapi` changed on disk: saved, created or deleted. Their types follow.
     const generated = new Set<string>();
     for (const change of changes) {
@@ -378,8 +417,12 @@ export function createFudicServer(
       tokens.invalidate(path);
       // A sheet may be a style guide or one of its pieces: what a component may adopt follows.
       if (path.endsWith('.css')) configs.sheetChanged();
+      // A `.headers`, or what the build left of its output's needs: what an open `.headers` says, and
+      // whether a `.fud` of the app is held to Trusted Types (SDD-84 §3.8, §4.6).
+      if (path.endsWith('.headers') || path.endsWith(`/${CSP_NEEDS_FILE}`)) policy = true;
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
+        policy = true;
         continue;
       }
       if (!path.endsWith('.fud')) continue;
@@ -393,7 +436,7 @@ export function createFudicServer(
     if (criteria) specs.invalidate();
     if (contracts) apis.invalidate();
     for (const project of generated) apis.generate(project);
-    if (criteria || contracts) void server.languageFeatures?.requestRefresh(false);
+    if (criteria || contracts || policy) void server.languageFeatures?.requestRefresh(false);
   });
 
   // What a `.fudapi` generates, for the lenses on its line 1 (SDD-75 §3.2).

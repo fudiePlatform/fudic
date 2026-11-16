@@ -28,7 +28,7 @@ import { type BrowserContext, type Page } from '@playwright/test';
  */
 export function runtimeEntry(): string {
   const html = readFileSync(fileURLToPath(new URL('../dist/index.html', import.meta.url)), 'utf8');
-  const found = /<script type="module" src="(\/fudic-[^"]+\.js)"/u.exec(html);
+  const found = /<script type="module"[^>]* src="(\/fudic-[^"]+\.js)"/u.exec(html);
   if (found === null) throw new Error('the built home page loads no fudic module');
   return found[1]!;
 }

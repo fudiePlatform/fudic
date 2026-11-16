@@ -6,6 +6,7 @@
 
 <head>
   <title>La delegación, medida — fudic</title>
+  <script src="/probe-listeners.js"></script>
   <style>
     .probe {
       position: sticky;
@@ -65,11 +66,9 @@
    diferido—, así que ve el primer listener del día. No es parte del framework: es el
    instrumento con el que se le mide.
 
-   Y es la razón de que `sw.json` conserve un `shell`: lo que enlaza un `<head>` —la hoja y
-   el icono— entra en el precacheo solo, pero esto lo carga un `<script>` del CUERPO, así
-   que nada lo mete ahí. Lo que se escribe en `shell` es siempre una ruta pública tal cual;
-   si alguna vez hay que escribir un nombre con hash, es que el fichero va en un `<head>`. *@
-<script src="/probe-listeners.js"></script>
+   Se carga en el `<head>`, arriba, porque ahí lleva el nonce de la respuesta: `page.headers`
+   pide `'strict-dynamic'`, y un `<script>` del cuerpo sin nonce no carga. `sw.json` la sigue
+   nombrando en `shell`, una ruta pública tal cual. *@
 
 <div class="probe">
   <span>addEventListener: <b id="probe-add">0</b></span>

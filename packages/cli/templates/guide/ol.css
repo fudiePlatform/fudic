@@ -7,7 +7,9 @@
   margin-block: var(--{{project}}-space-1);
 }
 
-:where(ol) > :where(li)::marker {
-  color: var(--{{project}}-muted);
-  font-variant-numeric: tabular-nums;
+@supports selector(::marker) {
+  :where(ol) > :where(li)::marker {
+    color: var(--{{project}}-muted);
+    font-variant-numeric: tabular-nums;
+  }
 }

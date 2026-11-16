@@ -57,6 +57,11 @@ export interface HookupContext {
   /** Marked when a binding reads `$host`, so the factory declares it (§4.4). */
   hostUsed: boolean;
   /**
+   * Marked when the walk writes HTML through the `fudic` Trusted Types policy — an `@raw(…)`, or a
+   * form's summary — so the output records what that policy needs from the page's CSP (SDD-84 §4.6).
+   */
+  paintsHtml: boolean;
+  /**
    * The props this component received as CELLS of a function (BUG-24 §4.6).
    *
    * A handler named by one of them is the cell, not the function: what has to be subscribed
@@ -120,6 +125,7 @@ export function hookupContext(
     template,
     diagnostics,
     hostUsed: false,
+    paintsHtml: false,
     callbacks,
     controls,
     binds: new Set(),

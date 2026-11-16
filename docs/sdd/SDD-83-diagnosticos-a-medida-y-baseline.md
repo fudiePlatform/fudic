@@ -1,6 +1,7 @@
 # SDD-83 — Diagnósticos a medida y Baseline
 
-> **Estado:** `Listo` (2026-11-10) — [tareas](./SDD-83-Task.md).
+> **Estado:** `Hecho` (2026-11-16), probada por Pedro (§6.1, [SDD-83-Prueba](./SDD-83-Prueba.md)) y
+> mergeada a `main` con la 84 — [tareas](./SDD-83-Task.md).
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/baseline` (nuevo) · `@fudic/config` · `@fudic/compiler` ·
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` (guía) · `examples/basic`
@@ -92,7 +93,7 @@
 ```
 
 ```css
-textarea { resize: none; }
+textarea { min-height: 4em; }
 @supports (field-sizing: content) {
   textarea { field-sizing: content; }
 }
@@ -288,6 +289,10 @@ y `pipes`, y los módulos del proyecto que importan):
 export interface EmittedFeature {
   /** The BCD key, or null when the data has none (`<style type="module" specifier>`). */
   readonly key: string | null;
+  /** The web-features id of the key, or null with no key (§8.2, decision 14). */
+  readonly feature: string | null;
+  /** The key's `newly` date; null with no key or when it is not in Baseline. */
+  readonly newly: string | null;
   /** What makes fudic emit it. */
   readonly when: string;
   /** What fudic does where it is missing, or null when it needs it. */
@@ -298,6 +303,9 @@ export const EMITTED: readonly EmittedFeature[];
 
 /** The newest `newly` date among the entries with no remedy: the oldest browsers fudic runs in. */
 export const FLOOR: string;   // '2024-03-05'
+
+/** The features fudic needs that a level cutting on `cutoff` lacks, for FUD1525. */
+export function needsNewer(cutoff: string): readonly string[];
 ```
 
 - **Lo del manifiesto no avisa en el código del usuario.** Si el autor escribe `shadowrootmode` en su
@@ -312,8 +320,9 @@ export const FLOOR: string;   // '2024-03-05'
   suelo sin declararlo con remedio, falla.
 
 Lo que el autor elige en su `<template>` raíz y fudic solo copia (`shadowrootclonable`,
-`shadowrootserializable`, `shadowrootreferencetarget`) no está en el manifiesto: avisa como cualquier
-atributo suyo.
+`shadowrootserializable`) no está en el manifiesto: avisa como cualquier atributo suyo.
+`shadowrootreferencetarget` sí está, con remedio: un control de formulario lleva por script el nombre
+y la descripción de su host al campo donde el navegador no tiene el puente (§8.2, decisión 18).
 
 ### 3.8. Librerías
 
@@ -378,6 +387,7 @@ export type Target = 'widely' | 'newly' | number;
 export interface KeyStatus {
   readonly key: string;
   readonly feature: string;           // web-features id
+  readonly features: readonly string[]; // all of them: audio and video share HTMLMediaElement
   readonly newly: string | null;      // 'YYYY-MM-DD'; null when not in Baseline
   readonly support: Readonly<Partial<Record<CoreBrowser, string>>>;
 }
@@ -385,13 +395,21 @@ export interface KeyStatus {
 export const AS_OF: string;                                   // the data's date
 export function cutoff(target: Target, asOf?: string): string;
 export function status(key: string): KeyStatus | undefined;
-export function passes(key: string, target: Target, allow?: ReadonlySet<string>): boolean;
+export function passes(key: string, target: Target, allow?: ReadonlySet<string>, asOf?: string): boolean;
 export function feature(id: string): FeatureInfo | Moved | undefined;   // for allow, hover, explain
-export function browsersFor(target: Target): readonly string[];         // for Vite's build.target
+export function browsersFor(target: Target, asOf?: string): readonly string[]; // for Vite's build.target
 export function firstKnown(candidates: readonly string[]): string | undefined;
 export function cssFunctionKeys(name: string): readonly string[];
 export function cssUnitKey(unit: string): string | undefined;
+export function tagInterface(tag: string): string;            // 'HTMLDivElement'; 'HTMLElement' if none
+export function widelyOn(newly: string): string;              // newly + 30 months, for FUD1524
+export function describeTarget(target: Target): string;       // 'widely available', 'Baseline 2024'
+export const FIRST_YEAR: 2015;
+export function lastYear(asOf?: string): number;              // the data's year
 ```
+
+`@fudic/baseline/config` exporta solo lo que necesita leer un `fudic.json` (los niveles y `feature`),
+sin la tabla de claves (§8.2, decisión 10).
 
 - Cada lector de comentarios (el lexer del `.fud`, el de líneas del `.fudapi` y del `.fudspec`, el de
   reglas CSS, Oxc para TS) da sus comentarios a `readSuppressions`. La directiva se lee en un solo
@@ -691,3 +709,143 @@ Nada.
     demás como desconocidas.
 21. **Un comentario mal escrito es el mismo código que uno sin motivo** (`FUD1522`): en los dos casos
     el comentario no silencia nada y el arreglo es escribirlo entero.
+
+### 8.2. Tomadas al implementar
+
+1. **El criterio 4 nombra `FUD0050`, que está retirado.** Escrito en la política da `FUD1520` con sus
+   sustitutos (`FUD0052`, `FUD0051`); el criterio se prueba con `FUD0051`, un error vivo.
+2. **El catálogo como datos.** La política necesita la severidad de un código antes de que exista un
+   diagnóstico suyo. `@fudic/diagnostics` gana `codeInfo` y `liveCodes`, sobre una tabla generada de
+   los `.md` (`pnpm --filter @fudic/diagnostics catalog`); un test la compara con la carpeta.
+3. **El `text` de un comentario lleva sus delimitadores** (`@* … *@`, `/* … */`, `//`, `#`). Así
+   `FUD1520` y `FUD1521` subrayan el código dentro del comentario, no el comentario entero.
+4. **Una sola llamada en los tres sitios: `govern`.** Lee los comentarios, aplica la política a los
+   diagnósticos del fichero y a los de los comentarios, y añade los `FUD1523` cuando quien llama tiene
+   todos los diagnósticos del fichero (`complete`). El plugin de Vite, que solo ve los del compilador,
+   no da `FUD1523`; el informe de `@fudic/typecheck` y el editor sí.
+5. **Una entrada de `diagnostics` descartada no tumba la configuración.** `FUD0725` (forma inválida)
+   deja el `fudic.json` sin configuración, como cualquier otro campo; `FUD1520` y `FUD1521` quitan esa
+   entrada y el resto vale.
+6. **Dónde se aplica, en concreto.** En `@fudic/typecheck`, `governFile` (comentarios según la
+   extensión del fichero + `govern`) y `projectPolicies` (el `fudic.json` más cercano), también en su
+   entrada ligera `problems`, sin TypeScript. Los usan el comprobador, el `BuildReporter` del plugin
+   (todo lo que dice el build pasa por él) y, en el editor, los diagnósticos del `.fud`, del `.fudapi`
+   y del `.fudspec` y el «una sola voz» que calla a TypeScript donde habla un error de fudic.
+7. **Un `.fudapi` o `.fudspec` sin diagnósticos también pasa por el comprobador**, para que un
+   `fud-disable` que ya no silencia nada dé su `FUD1523` igual que en un `.fud`.
+8. **Qué es «un fichero de una lib» al compilar una app**: uno cuyo `fudic.json` más cercano es de
+   otro proyecto y dice `"kind": "lib"`. El comprobador ya no miraba esos ficheros; el plugin se queda
+   con sus errores y calla lo demás.
+9. **El editor vuelve a pedir los diagnósticos al guardar un `fudic.json`**, como ya hacía con un
+   `.fudapi` o un módulo de términos.
+10. **La tabla de claves, en texto y aparte.** Como literales de objeto, cargar `@fudic/baseline`
+    costaba 40 ms a todo proceso que lee un `fudic.json`, la CLI incluida, juzgue algo o no. El
+    generador escribe dos ficheros: `data.generated.ts` (fecha, navegadores, features, redirecciones,
+    unidades, etiquetas; 72 KB) y `table.generated.ts` (claves, estados y funciones CSS, como JSON en
+    texto que el juez parsea la primera vez que se le pregunta). `@fudic/config` importa
+    `@fudic/baseline/config`, que no carga la tabla, y las dos entradas se empaquetan con rolldown
+    como `@fudic/diagnostics` (BUG-51): leer un `fudic.json` paga unos pocos milisegundos.
+11. **`asOf` en todo lo que depende de la fecha**: `cutoff`, `passes`, `browsersFor`, `lastYear`, como
+    último parámetro (criterio 17).
+12. **Una clave puede ser de dos features** (`audio` y `video` comparten `api.HTMLMediaElement.*`, con
+    el mismo estado). `KeyStatus.features` las lleva todas; `feature` es la primera, y `passes` acepta
+    la clave si cualquiera de ellas está en `allow`.
+13. **`baseline` en `fudic.json`.** La forma de objeto sin `target` es `widely`; una clave que no es
+    `target` ni `allow`, o un `allow` con algo que no es texto, es `FUD0725`. `ProjectConfig.baseline`
+    guarda cada id de `allow` tal como se escribió con lo que permite (él mismo, o su destino), para
+    que `FUD1528` y las bombillas sepan qué entrada tocar; `allowedFeatures` da el conjunto para el
+    juez. Un `FUD1527` no tumba la configuración, como `FUD1520`.
+14. **El manifiesto lleva la feature y la fecha de cada clave.** `EmittedFeature` gana `feature` y
+    `newly`, copiadas de la tabla, para que `@fudic/config` calcule `FUD1525` desde
+    `@fudic/baseline/config` sin cargar la tabla de claves (decisión 10). Un test las ata a la tabla:
+    una versión de `web-features` que mueva una fecha falla ahí. `FLOOR` se calcula de esas fechas, y
+    `needsNewer(cutoff)` da las features que un nivel no tiene, para el mensaje.
+15. **`FUD1525` va sobre `"target"`** cuando `baseline` es un objeto que lo escribe, y si no sobre
+    `"baseline"`: donde se escribe el arreglo. No tumba la configuración, como `FUD1527`.
+16. **El remedio del foco** mira `shadowRoot.delegatesFocus === false` y el `shadowInit()` de la clase,
+    así un control de formulario y un autor con `shadowrootdelegatesfocus` pasan por el mismo sitio.
+    Además del foco, una pulsación dirigida al host (lo que un `<label>` reenvía a su control) lleva
+    el foco dentro: hay motores que reenvían la pulsación sin mover el foco.
+17. **Qué del manifiesto calla en el código del autor.** Lo que fudic necesita sin remedio (lo cubre
+    el suelo, y un nivel por debajo es `FUD1525`) y el HTML del `<template>` raíz, cuyo remedio corre
+    sobre lo que diga el template. Lo que tiene un remedio del propio runtime sí avisa cuando lo
+    escribe el autor: nada remedia su llamada. Por eso `requestIdleCallback()` en el `@code` avisa
+    (criterio 22) y `Promise.withResolvers()` no.
+18. **`shadowrootreferencetarget` entra en el manifiesto, con remedio.** El autor lo escribe, pero
+    `FudicControlElement` lo suple por script (el puente de la decisión 132); sin esto, toda app con
+    controles de formulario avisaría, contra el criterio 25.
+19. **Dos huecos de los datos, al manifiesto.** El test de §4.7 encontró en el runtime
+    `customElements.get` y `Response.formData`: están en todos los navegadores, pero a `web-features`
+    3.45.0 le falta la versión de uno y no los da por Baseline. Entran sin fecha y sin remedio: no
+    suben el suelo y no avisan en el código del autor.
+20. **La mitad HTML de §4.7, en `examples/basic`.** `@fudic/typecheck` no depende de un build ni del
+    plugin de Vite, que es quien sirve una página. El ejemplo pinta con `renderToHtml` un formulario con
+    controles, un calendario delegado y un contador hidratado; lo que el autor escribió en sus `.fud`
+    es suyo y el resto, más nuevo que `widely`, tiene que estar en `EMITTED`.
+21. **Los detectores, por sitio.** El HTML y el CSS del `.fud` son dos analizadores del compilador
+    que solo juzgan si quien llama da el nivel (`SemanticInput.baseline`): el comprobador, el editor y
+    `fudic_check` lo dan siempre, `widely` sin `fudic.json`. El TS mira el `@code` del `.fud` y los
+    módulos del proyecto que el navegador carga (lo que importan los `.fud`, la carpeta `browser` y
+    los pipes, nunca `server`), sobre el árbol de Oxc y preguntando al comprobador el símbolo de cada
+    nodo. `baselineContextOf` vive en `@fudic/config`: la usan el comprobador, el plugin y el editor.
+22. **Una condición que prueba un nombre también lo protege a él**, en cualquier sentido:
+    `typeof X === 'undefined'` en un `if (…) return` no avisa de `X`. Y la rama derecha de un `||` cuya
+    izquierda dice que falta (`typeof X === 'undefined' || X()`) va protegida.
+23. **Una palabra clave de valor sin fecha no avisa.** `cursor: pointer` salía como no Baseline
+    porque a los datos les falta Safari en iOS, donde no hay cursor; casi todos los valores sin fecha
+    son huecos así. La propiedad ya responde por lo demás, y un valor con fecha
+    (`field-sizing: content`) sigue avisando. `ping` sí avisa: Firefox no lo tiene, y el ejemplo
+    `vista-errores` lo anuncia.
+24. **Qué es «usar» una feature para `FUD1528`.** Cualquier uso sin proteger de una clave de esa
+    feature, pase o no el nivel, en los ficheros del proyecto o en los de sus librerías: la app
+    permite una feature para quien la escriba. Un paquete se lee entero (el marcado, el `<style>` y
+    el `@code` de sus `.fud`, los módulos que carga el navegador y sus hojas: `globalStyles`,
+    `styles` y la guía con lo que importa), y solo si de ahí puede salir un aviso: sin librerías y
+    sin `allow`, la pasada no cuesta nada. Vive en `@fudic/typecheck` (`baseline-project.ts`) y la
+    llaman el comprobador y el editor al abrir el `fudic.json`, sobre el programa que cada uno tiene.
+25. **Dónde se escriben `FUD1526` y `FUD1528`.** `BaselineConfig.span` guarda dónde está `"baseline"`
+    y `AllowedId.span` dónde está cada id. Sin `"baseline"` escrito, `FUD1526` va al principio del
+    fichero. Los dos pasan por la política del propio `fudic.json` (no tiene comentarios). `FUD1528`
+    es hint y el informe del build solo lleva errores y warnings: se ve en el editor, o en el build
+    si el proyecto lo sube.
+26. **Una lib no impone nada a otra lib.** `FUD1526` solo sale en un proyecto `"kind": "app"`; el
+    nombre de la lib es el de su `package.json`, o su carpeta si no tiene.
+27. **`build.target` en el hook `config`**, leyendo el `fudic.json` de la raíz del usuario (o del cwd)
+    antes de que Vite resuelva nada (`buildTargetOf` de `@fudic/config`). Lo heredan los tres builds
+    anidados por `NestedOutputOptions.target`: el SW, el borde y también el paso de enlace, que
+    produce código de navegador igual que el SW.
+28. **`browserModules` mira `node_modules` dentro de la raíz del paquete**, no por encima: una lib
+    instalada en la app es la raíz de sus propios módulos.
+29. **Las bombillas de silenciar no dejan dos comentarios apilados.** Si encima de la línea ya hay un
+    `fud-disable-next-line`, o en el fichero un `fud-disable`, ganan el código (`FUD1380, FUD1524`):
+    un segundo comentario encima silenciaría la línea del primero. El comentario nuevo toma la
+    sintaxis de la región donde empieza la línea (marcado, `<style>`, `@code`); el cursor va al
+    motivo con un comando del cliente, `fudic.placeCursor`, y «Ver en webstatus.dev» con
+    `fudic.openUrl`. `FUD1520` y `FUD1523` no se silencian: hablan del propio comentario.
+30. **La bombilla de un `FUD1524` lee la clave del mensaje.** Un diagnóstico no lleva datos aparte
+    (decisión de `@fudic/diagnostics`); un test ata el formato del mensaje a quien lo lee.
+31. **El esquema de `fudic.json` lo escribe `@fudic/config`** (`projectConfigSchema`), que conoce
+    todas sus claves, y la extensión lo genera al construirse en `dist/fudic.schema.json` (no se
+    commitea: los códigos y las features cambian con cada versión). Un código de error solo admite
+    `"error"`. El script es `scripts/fudic-schema.mjs`, como los demás de la extensión.
+32. **Bugs de fases anteriores, arreglados aquí.** (a) En el editor, lo que el lector dice de un
+    `fudic.json` no pasaba por su propia política y en el build sí. (b) `web-features` acota algunas
+    fechas (`≤2018-10-02`): se comparaban como más nuevas que cualquiera y `<output>` avisaba con
+    «NaN»; el generador escribe la cota. (c) El mensaje de `FUD1524` nombraba los navegadores
+    móviles como los de escritorio («missing Firefox, Safari» junto a «Firefox 4, Safari 3»); ahora
+    dice «Firefox on Android», «Safari on iOS». (d) La guía que escribe `fudic new` daba nueve
+    `FUD1524` (`text-wrap: balance`, `accent-color`, `::marker`, `resize`, `text-size-adjust`):
+    cada mejora va en su `@supports`, y un test de la CLI pasa el detector por todas las hojas de
+    las plantillas. (e) `FUD1524` no tenía su par de fixtures.
+33. **`resize` avisa en `widely`**: no está en iOS ni en Android. Por eso el ejemplo de §1.3 usa
+    `min-height` como alternativa.
+34. **`fudic g lib` también escribe `"baseline": "widely"`**: una lib declara el nivel que promete.
+35. **El menú del ejemplo toma su estado con `attachInternals()` desde el `@code`.** Un componente
+    de fudic no tiene acceso a su `ElementInternals` (solo los controles de formulario), y `:state()`
+    solo casa con un estado del host. El menú lo pide al abrirse, sobre el host de su shadow root; con
+    `"allow": ["state"]` el selector y la API (`states`, `add`, `delete`, que son de la misma feature)
+    dejan de avisar. Los enseña la página nueva `/baseline`, junto a la nota.
+36. **`FUD0742` calla cuando no hay ninguna ruta.** Los componentes de un proyecto se encuentran por
+    las rutas que los enlazan; sin rutas, la respuesta es «no se sabe», no «ninguno». Es el banco al
+    abrir un flujo o la spec de una página: Vite arranca antes de escribir sus páginas. Era un aviso
+    falso que nadie leía, y con `"warnings": "error"` en el ejemplo tumbaba el arranque.

@@ -33,8 +33,9 @@ and which guide topics exist.
 | `.fixture.ts` | Named sets of props that the criteria mount the component with (`props base`). Typed against the component's `$Props`. |
 | `.test.ts` | Unit tests (Vitest, in-process DOM): every prop variant, edge values, event details, server functions and their failures. See `testing`. |
 | `.fudlog` | The history of one piece, next to its `.fud`: approvals, test and criteria runs with their result, `done`. It only grows. Written by the tools, never by hand. |
-| `fudic.json` | What a project declares about itself: `kind` (`app` or `lib`), `id`, tag `prefix`, `globalStyles`, `styles`, `locales`, and the `server` and `browser` folders. |
-| `sw.json` | What the Service Worker caches. Delete it for no Service Worker. |
+| `fudic.json` | What a project declares about itself. Every key, its default and an example: see `config`. |
+| `sw.json` | What the Service Worker caches. Delete it for no Service Worker. See `config`. |
+| `page.headers`, `sw.headers`, `assets.headers` | The headers of an app's pages (its CSP among them), of its Service Worker and of its static files. What is in them is what is sent. See `config`. |
 
 Generated files, never edited: `fudic-globals.d.ts`, `src/fudic-env.d.ts`, and everything under
 `.fudic/` (ignored by git; the types generated from each `.fudapi` live in `.fudic/api`).
@@ -63,6 +64,9 @@ app/
 ├── fudic.json            id, kind, prefix, server and browser folders
 ├── package.json          scripts: dev, build, preview, test, spec
 ├── sw.json               Service Worker cache policy
+├── page.headers          the headers of every page: CSP, HSTS, COOP…
+├── sw.headers            the headers of /fudic-sw.js
+├── assets.headers        the cache of the static files, by path
 ├── vite.config.ts        the fudic() plugin; nothing else to configure
 ├── vitest.config.ts      unit tests
 ├── tsconfig.json
@@ -227,6 +231,47 @@ A **style library** (`fudic_generate { kind: "lib", name: "tokens", stylesOnly: 
 single `tokens.css` and nothing else: design tokens every component of its users adopts. See
 `html-css`.
 
+## Diagnostics
+
+`fudic.json` decides how the project reports each code; `fudic_check` already answers with it
+applied, and a changed severity says so: «(warning by default; error in this project)».
+
+```jsonc
+"diagnostics": { "FUD1380": "off", "FUD1022": "error", "warnings": "error" }
+```
+
+- A code's level is `off`, `hint`, `info`, `warning` or `error`. A code beats `warnings`.
+- An error is never lowered nor silenced: that is `FUD1521`, and the error stays.
+- To silence one place, write a comment with its code AND its reason, in the comment the language
+  already has: `@* fud-disable-next-line FUD1380: why *@` in markup, `/* … */` in a `<style>`,
+  `// …` in `@code`, `# …` in a `.fudapi` or a `.fudspec`. `fud-disable FUDnnnn: why` is the whole
+  file. No code or no reason is `FUD1522`; a comment that silences nothing is `FUD1523`: remove it.
+- Silence only what you checked is right, and say why. Fix the code first.
+
+## Baseline
+
+fudic warns (`FUD1524`) when the HTML, CSS or TS of the project uses something of the browser newer
+than its Baseline: `"widely"` when `fudic.json` says nothing.
+
+```jsonc
+"baseline": "widely"                                // or "newly", or a year: 2024
+"baseline": { "target": "widely", "allow": ["popover"] }
+```
+
+What to do with a `FUD1524`, in this order:
+
+1. CSS: put it under `@supports` in a rule of its own, after a fallback that works without it:
+   `textarea { resize: none; } @supports (field-sizing: content) { textarea { field-sizing: content; } }`.
+   A selector: `@supports selector(:state(open)) { … }`.
+2. TS: test it before using it: `if ('showPopover' in el) el.showPopover();`, `el.showPopover?.()`,
+   `typeof URLPattern === 'function'`.
+3. When the project uses it knowingly, add its web-features id (the one in the message's
+   webstatus.dev link) to `allow`. Never lower the target to quiet it.
+
+What fudic itself emits never warns. `FUD1525` says the level is older than fudic needs: raise it.
+`FUD1526` is a library using features the app does not accept; `FUD1527` an id of `allow` that is
+not a feature or moved; `FUD1528` an id nothing uses.
+
 ## The guide topics
 
 Call `fudic_guide { topic }` before writing a kind of file for the first time.
@@ -242,4 +287,5 @@ Call `fudic_guide { topic }` before writing a kind of file for the first time.
 | `fudspec` | writing criteria and fixtures |
 | `testing` | writing a `.test.ts` |
 | `html-css` | writing markup or styles: the HTML subset, scoping, tokens |
+| `config` | changing `fudic.json`, `sw.json` or the `.headers` of an app |
 | `FUD0540` (any code) | fixing that diagnostic: what is wrong and how to fix it |

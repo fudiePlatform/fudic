@@ -13,6 +13,8 @@
  */
 
 import {
+  cssBaselineUses,
+  judgeUses,
   lintProjectStyle,
   projectSheetDiagnostics,
   type Diagnostic,
@@ -24,6 +26,7 @@ import { entryGuide, readPackageGuide, specFrom, type PackageGuide } from './gui
 import type { HostStyle } from './transform.js';
 import { FUD0741, type FileDiagnostic } from '@fudic/diagnostics';
 import {
+  baselineContextOf,
   readProjectConfig,
   readProjectStyles,
   type ConfigIo,
@@ -67,7 +70,9 @@ export function readStyles(
     // `FUD0854`: an adopted sheet takes no `@import` (SDD-49 §4.1). Once per sheet, here
     // where it is read, for the same reason as `FUD0743` below.
     errors: [...diagnostics, ...[...global, ...optional].flatMap(importErrors)],
-    warnings: [...global, ...optional].flatMap(lintOne),
+    // `FUD1524`: what a sheet uses above the project's Baseline (SDD-83 §3.6). The CSS of fudic
+    // does not go through Vite, so what the author wrote is what reaches the browser.
+    warnings: [...global, ...optional].flatMap((file) => [...lintOne(file), ...baselineOne(file, config)]),
   };
 }
 
@@ -311,6 +316,11 @@ function toPosix(path: string): string {
  */
 function lintOne(file: ProjectStyleFile): readonly FileDiagnostic[] {
   return located(file, lintProjectStyle(file.css));
+}
+
+/** `FUD1524` over one sheet, against the Baseline of the project that declares it. */
+function baselineOne(file: ProjectStyleFile, config: ProjectConfig): readonly FileDiagnostic[] {
+  return located(file, judgeUses(cssBaselineUses(file.css), baselineContextOf(config)));
 }
 
 /** `FUD0854` over one sheet: each `@import` it holds. */

@@ -1,0 +1,14 @@
+<head>
+  <style>
+    textarea { min-height: 3em; }
+
+    @supports (field-sizing: content) {
+      textarea { field-sizing: content; }
+    }
+  </style>
+</head>
+<fix-note>
+  <template shadowrootmode="open">
+    <textarea></textarea>
+  </template>
+</fix-note>

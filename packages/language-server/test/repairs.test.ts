@@ -358,8 +358,9 @@ describe('repairsFor answers what the editor offers, with no server (criterion 9
       const service = createFudicService({ index: s.index, stats: new RequestStats(), typescript: true, configs }).create(context);
       const whole = { start: { line: 0, character: 0 }, end: { line: sample.source.split('\n').length, character: 0 } };
       const actions = (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+      // The comment bulbs of a warning (SDD-83 §3.11) silence it, they do not repair it: not the table's.
       const editor = actions
-        .filter((a) => a.edit !== undefined)
+        .filter((a) => a.edit !== undefined && !/^(Silence|Turn) FUD\d{4}/u.test(a.title))
         .map((a) => ({
           title: a.title,
           edits: (Object.values(a.edit!.changes ?? {})[0] ?? []).map((e) => ({

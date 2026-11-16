@@ -3,7 +3,7 @@
  * what the app holds and asks the server what it answers.
  */
 
-import type { RenderContext } from '@fudic/transport';
+import type { ManifestHeaders, RenderContext } from '@fudic/transport';
 import type { AppRoute, ErrorPage, FunctionsOptions, Handler, RenderModule, ServerApp } from '../src/index.js';
 
 const utf8 = new TextEncoder();
@@ -56,8 +56,11 @@ export interface RouteSpec {
 export interface AppSpec {
   readonly base?: string;
   readonly locales?: readonly string[];
+  /** The page's CSP; with the `Referrer-Policy` of the template, the page headers. */
   readonly csp?: string;
-  readonly statics?: ServerApp['statics'];
+  /** All the headers, instead of `csp`. */
+  readonly headers?: ManifestHeaders;
+  readonly files?: ServerApp['files'];
   readonly routes?: readonly RouteSpec[];
   readonly errorPages?: Readonly<Record<string, ErrorPage>>;
   readonly functions?: (options: FunctionsOptions) => Handler;
@@ -74,8 +77,12 @@ export function testApp(spec: AppSpec = {}): ServerApp {
   return {
     base: spec.base ?? '/',
     locales: spec.locales ?? [],
-    ...(spec.csp !== undefined ? { csp: spec.csp } : {}),
-    ...(spec.statics !== undefined ? { statics: spec.statics } : {}),
+    headers: spec.headers ?? {
+      page: { ...(spec.csp !== undefined ? { 'Content-Security-Policy': spec.csp } : {}), 'Referrer-Policy': 'strict-origin-when-cross-origin' },
+      sw: {},
+      assets: [],
+    },
+    ...(spec.files !== undefined ? { files: spec.files } : {}),
     routes: () => table,
     module: async (pattern) => routes.find((r) => r.pattern === pattern)!.module!,
     errorPage: async (locale) => spec.errorPages?.[locale ?? ''] ?? null,

@@ -4,11 +4,28 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { NONCE_TOKEN } from '@fudic/transport';
+import { NONCE_TOKEN, orderAssetRules, type ManifestHeaders } from '@fudic/transport';
 import { createServer, matchRoute, type EarlyHints, type FunctionsOptions, type RenderModule } from '../src/index.js';
 import { errorModule, failing, httpError, navigate, pageModule, redirect, streamOf, testApp } from './helpers.js';
 
 const CSP = "script-src 'nonce-{nonce}'";
+
+/** The page headers of the template with an `X-Custom`, and `assets.headers` with an exclusion. */
+const TEMPLATE: ManifestHeaders = {
+  page: {
+    'Content-Security-Policy': "default-src 'self'; script-src 'nonce-{nonce}' 'strict-dynamic' 'unsafe-inline' https:; object-src 'none'",
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+    'X-Custom': '1',
+  },
+  sw: { 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'" },
+  assets: orderAssetRules([
+    { pattern: '/**', headers: { 'Cache-Control': 'no-cache' } },
+    { pattern: '/assets/**', headers: { 'Cache-Control': 'public, max-age=31536000, immutable' } },
+    { pattern: '/legacy.js', headers: { 'Cache-Control': '' } },
+  ]),
+};
 
 /** The nonce a CSP header names. */
 const nonceOf = (csp: string | null): string => /'nonce-([^']+)'/u.exec(csp ?? '')?.[1] ?? '';
@@ -298,10 +315,13 @@ describe('a route (step 8)', () => {
     expect(withCsp!.headers.getSetCookie()).toEqual(['a=1']);
     expect(withCsp!.headers.get('content-security-policy')).toMatch(/^script-src 'nonce-/u);
     expect(withCsp!.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
-    // Dev has no CSP, and neither does what load wrote.
+    // Without a CSP in page.headers, there is nothing to win over the one load wrote (SDD-84 §4.1).
     const dev = await createServer(testApp({ routes: [{ pattern: '/', module: mod }] })).fetch(navigate('/'));
-    expect(dev!.headers.has('content-security-policy')).toBe(false);
+    expect(dev!.headers.get('content-security-policy')).toBe('mine');
     expect(dev!.headers.has('link')).toBe(false);
+    // Dev sends no CSP at all, not even load's: Vite's client has no nonce (SDD-84 §4.5).
+    const served = await createServer(testApp({ csp: CSP, routes: [{ pattern: '/', module: mod }] }), { dev: true }).fetch(navigate('/'));
+    expect(served!.headers.has('content-security-policy')).toBe(false);
   });
 
   it('a page that shows no </head> goes out whole, through transformHtml', async () => {
@@ -478,13 +498,92 @@ describe('fetch returns null for a static file (criterion 42)', () => {
     expect(await server.fetch(navigate('/favicon.ico'))).toBeNull();
   });
 
-  it('and staticHeaders gives the extra headers of the app’s own, by path without base', () => {
-    const server = createServer(testApp({ base: '/app/', statics: { '/sw.js': { 'cache-control': 'no-cache' } } }));
-    expect(server.staticHeaders(new Request('http://app.test/app/sw.js'))).toEqual({ 'cache-control': 'no-cache' });
-    expect(server.staticHeaders(new Request('http://app.test/app/other.js'))).toBeNull();
-    // A path outside base is matched as it is.
-    expect(server.staticHeaders(new Request('http://app.test/sw.js'))).toEqual({ 'cache-control': 'no-cache' });
-    expect(createServer(testApp()).staticHeaders(new Request('http://app.test/sw.js'))).toBeNull();
+  it('and staticHeaders gives what assets.headers says for it, by path without base (SDD-84 §4.4)', () => {
+    const server = createServer(testApp({ base: '/app/', headers: TEMPLATE, files: { manifest: '/fudic-routes.json', worker: '/fudic-sw.js' } }));
+    expect(server.staticHeaders(new Request('http://app.test/app/assets/x-1a2b.js'))).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
+    expect(server.staticHeaders(new Request('http://app.test/app/favicon.ico'))).toEqual({ 'Cache-Control': 'no-cache' });
+    // An empty value is a header that must not go out: said, so the host's own is stopped.
+    expect(server.staticHeaders(new Request('http://app.test/app/legacy.js'))).toEqual({ 'Cache-Control': '' });
+    expect(createServer(testApp()).staticHeaders(new Request('http://app.test/favicon.ico'))).toBeNull();
+  });
+
+  it('the manifest and the worker are fudic’s, whatever a pattern says, and never a route', async () => {
+    const files = { manifest: '/fudic-routes.json', worker: '/fudic-sw.js' };
+    const server = createServer(testApp({ base: '/app/', headers: TEMPLATE, files, routes: [{ pattern: '/:page', module: pageModule() }] }));
+    expect(server.staticHeaders(new Request('http://app.test/app/fudic-routes.json'))).toEqual({ 'cache-control': 'no-cache' });
+    expect(server.staticHeaders(new Request('http://app.test/app/fudic-sw.js'))).toEqual({
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'",
+      'cache-control': 'no-cache',
+      'service-worker-allowed': '/app/',
+    });
+    expect(await server.fetch(navigate('/app/fudic-sw.js'))).toBeNull();
+    expect(await server.fetch(navigate('/app/fudic-routes.json'))).toBeNull();
+    expect(await server.fetch(navigate('/app/other'))).not.toBeNull();
+    // Without the files, nothing is fudic's own.
+    const bare = createServer(testApp({ headers: TEMPLATE, routes: [{ pattern: '/:page', module: pageModule() }] }));
+    expect(await bare.fetch(navigate('/fudic-sw.js'))).not.toBeNull();
+  });
+});
+
+describe('page.headers (SDD-84 §4.1)', () => {
+  const routes = [{ pattern: '/', module: pageModule(), hints: ['</a.js>; rel=modulepreload'] }];
+
+  it('criteria 22 and 27: every one of them on a page, HSTS only over HTTPS', async () => {
+    const server = createServer(testApp({ headers: TEMPLATE, routes }));
+    const secure = await server.fetch(new Request('https://app.test/', { headers: { accept: 'text/html' } }));
+    const plain = await server.fetch(navigate('/'));
+    for (const response of [secure!, plain!]) {
+      expect(response.headers.get('content-security-policy')).toMatch(/script-src 'nonce-[\w-]{22}' 'strict-dynamic'/u);
+      expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+      expect(response.headers.get('cross-origin-opener-policy')).toBe('same-origin');
+      expect(response.headers.get('x-custom')).toBe('1');
+    }
+    expect(secure!.headers.get('strict-transport-security')).toBe('max-age=63072000; includeSubDomains; preload');
+    expect(plain!.headers.has('strict-transport-security')).toBe(false);
+  });
+
+  it('with trustProxy, HSTS when the proxy says HTTPS', async () => {
+    const server = createServer(testApp({ headers: TEMPLATE, routes }), { trustProxy: true });
+    const response = await server.fetch(navigate('/', { 'x-forwarded-proto': 'https' }));
+    expect(response!.headers.has('strict-transport-security')).toBe(true);
+  });
+
+  it('criterion 27: not on the data, the functions nor the static files', async () => {
+    const functions = () => async () => new Response('fn');
+    const server = createServer(testApp({ headers: TEMPLATE, functions, routes: [{ pattern: '/', module: { ...pageModule(), data: async () => streamOf('frame') } }] }));
+    const frames = await server.fetch(new Request('http://app.test/_fudic/data/'));
+    const fn = await server.fetch(new Request('http://app.test/_fudic/fn/x', { method: 'POST' }));
+    expect(frames!.headers.has('x-custom')).toBe(false);
+    expect(fn!.headers.has('x-custom')).toBe(false);
+    expect(server.staticHeaders(new Request('http://app.test/favicon.ico'))).not.toHaveProperty('X-Custom');
+  });
+
+  it('criterion 24: the 103 carries the CSP, with the nonce of the page, and the Referrer-Policy, nothing else', async () => {
+    const hints = vi.fn();
+    const response = await createServer(testApp({ headers: TEMPLATE, routes })).fetch(navigate('/'), { earlyHints: hints });
+    const sent = hints.mock.calls[0]![0] as Record<string, unknown>;
+    expect(Object.keys(sent).sort()).toEqual(['content-security-policy', 'link', 'referrer-policy']);
+    expect(sent['content-security-policy']).toBe(response!.headers.get('content-security-policy'));
+  });
+
+  it('criterion 15: without {nonce}, no nonce is made, and prerendered HTML is served as it is', async () => {
+    const headers = { ...TEMPLATE, page: { 'Content-Security-Policy': "script-src 'self' 'unsafe-inline'" } };
+    const server = createServer(
+      testApp({ headers, routes: [{ pattern: '/', module: pageModule() }, { pattern: '/about', prerendered: '<p>about</p>' }] }),
+    );
+    const rendered = await server.fetch(navigate('/'));
+    expect(rendered!.headers.get('content-security-policy')).toBe("script-src 'self' 'unsafe-inline'");
+    expect(await rendered!.text()).toContain('<body nonce="">');
+    expect(await (await server.fetch(navigate('/about')))!.text()).toBe('<p>about</p>');
+    expect(await (await server.notFound(navigate('/nope')))!.text()).toContain('<h1>404</h1>');
+  });
+
+  it('without a Referrer-Policy in the file, none: what is in the file is what goes out', async () => {
+    const headers = { ...TEMPLATE, page: {} };
+    const hints = vi.fn();
+    const response = await createServer(testApp({ headers, routes })).fetch(navigate('/'), { earlyHints: hints });
+    expect(response!.headers.has('referrer-policy')).toBe(false);
+    expect(hints.mock.calls[0]![0]).toEqual({ link: ['</a.js>; rel=modulepreload'] });
   });
 });
 

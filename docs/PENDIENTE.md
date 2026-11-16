@@ -33,9 +33,9 @@ Aclaradas el 2026-11-05. La primera está desarrollada en «Análisis con sesió
 
 | # | Qué | Tamaño |
 |---|---|---|
-| 1 | Silenciar o subir diagnósticos | Pequeña |
+| 1 | ~~Silenciar o subir diagnósticos~~ — cerrada en SDD-83 | Pequeña |
 | 3 | Cabeceras de seguridad configurables (fuera los avisos de Lighthouse) | Pequeña |
-| 4 | Nivel de Baseline en `fudic.json` | Pequeña o mediana |
+| 4 | ~~Nivel de Baseline en `fudic.json`~~ — cerrada en SDD-83 | Pequeña o mediana |
 | 5 | Fixtures del `load` de las páginas | Mediana |
 | 7 | Generar la hoja de estilos desde la CLI, con el usuario | Mediana |
 | 8 | `fudic.json` en la guía del MCP, como el `sw.json` | Pequeña |
@@ -43,12 +43,19 @@ Aclaradas el 2026-11-05. La primera está desarrollada en «Análisis con sesió
 
 ### 1. Silenciar o subir diagnósticos
 
+> **Cerrada el 2026-11-13**: implementada en SDD-83, pendiente solo de la prueba de Pedro
+> ([SDD-83-Prueba](sdd/SDD-83-Prueba.md)) y del merge.
+>
 > **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
 > con la nota 4.
 
 Ver «Análisis con sesión» §1.
 
 ### 3. Cabeceras de seguridad configurables
+
+> **Redactada el 2026-11-13** como [SDD-84](sdd/SDD-84-cabeceras-de-la-app.md), junto con la nota 8.
+> Lo de abajo es el análisis previo; donde no coincida, manda la SDD (la configuración no va en
+> `fudic.json`, sino en `page.headers`, `sw.headers` y `assets.headers`).
 
 Lighthouse da 100 % en Buenas prácticas, pero saca avisos que no puntúan en «Confianza y
 seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
@@ -73,6 +80,9 @@ seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
 
 ### 4. Baseline
 
+> **Cerrada el 2026-11-13**: implementada en SDD-83, pendiente solo de la prueba de Pedro
+> ([SDD-83-Prueba](sdd/SDD-83-Prueba.md)) y del merge.
+>
 > **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
 > con la nota 1. Lo de abajo es el análisis previo; donde no coincida, manda la SDD (el anidamiento
 > CSS sí es «widely», y el corte sale de la fecha de los datos, no del reloj).
@@ -251,6 +261,9 @@ Un generador interactivo: el usuario elige o completa tokens, colores, etc. `fud
 hojas en los shadow roots (`packages/mcp/guide/html-css.md:208`). Encaja con la SDD-66.
 
 ### 8. `fudic.json` en el MCP
+
+> **Redactada el 2026-11-13** dentro de [SDD-84](sdd/SDD-84-cabeceras-de-la-app.md) §3.9: el tema
+> `config` de la guía, con `fudic.json`, `sw.json` y los tres `.headers`.
 
 El `sw.json` ya está en la guía (`guide/overview.md`, `guide/pages.md`). El `fudic.json` necesita
 su página o su esquema para que la IA sepa configurarlo, incluidas las claves nuevas de 1, 3 y 4.

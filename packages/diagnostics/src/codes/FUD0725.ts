@@ -68,6 +68,18 @@ export type FUD0725Problem =
       readonly problem: 'guide';
       /** What is wrong with it: not an object, no sheet, or a path that is not one or leaves. */
       readonly reason: string;
+    }
+  /** `diagnostics` that is not an object of code (or `warnings`) to level (SDD-83 §3.1). */
+  | {
+      readonly problem: 'diagnostics';
+      /** What is wrong with it: not an object, a key that is not a code, a level not in the list. */
+      readonly reason: string;
+    }
+  /** `baseline` that is not a level or `{ target, allow? }` (SDD-83 §3.4). */
+  | {
+      readonly problem: 'baseline';
+      /** What is wrong with it: not a level, a year out of range, an `allow` that is not ids. */
+      readonly reason: string;
     };
 
 /** Parameters of `FUD0725`. */
@@ -111,6 +123,10 @@ function describe(p: FUD0725Problem): string {
       return 'fudic.json "css" must be "inline" (the CSS inside the page) or "link" (a file per sheet)';
     case 'guide':
       return `fudic.json "guide" must be { "sheet": "guide.css", "icon"?: "logo.svg" } with paths inside the project: ${p.reason}`;
+    case 'diagnostics':
+      return `fudic.json "diagnostics" must be an object of "FUDnnnn" or "warnings" to "off", "hint", "info", "warning" or "error": ${p.reason}`;
+    case 'baseline':
+      return `fudic.json "baseline" must be "widely", "newly", a year, or { "target": …, "allow"?: ["feature-id"] }: ${p.reason}`;
   }
 }
 
