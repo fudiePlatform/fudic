@@ -108,6 +108,13 @@ What changes with state goes in the markup, never in the CSS: a class that comes
 `class:highlight=@(variant === 'highlight')`, one property is `style:width=@width`. `class:` goes
 on an element inside the template, never on the host tag (`FUD0720`).
 
+None of the three ways a class changes —`class:x=@cond`, `class=@expr` and the `class` of a
+spread— rewrites the whole attribute: each one adds and removes only its own tokens, so a class
+some other code put on the element (a `ref`, a library, an animation) stays. A token written both
+static and with `class:` (`class="on" class:on=@x`) follows `class:`. As painted, the tokens come
+in this order: static, then `class=@expr`, then the active `class:` in source order; after a few
+changes the order may differ, which CSS never sees.
+
 ```fud broken=FUD0132 path=src/components/app-meter/app-meter.fud
 <head>
   <style>

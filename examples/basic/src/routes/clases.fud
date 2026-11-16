@@ -1,0 +1,50 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/clases-demo.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  // The same panel twice: one the server paints and the browser hydrates, one the browser
+  // creates from its template when the `@if` opens. Both have to keep a class nobody declared.
+  const segundo = signal(false);
+
+  function abrir() {
+    segundo.set(!segundo());
+  }
+}
+
+<head>
+  <title>Clases — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="clases"></site-nav>
+}
+
+<h1>Clases que no se pisan</h1>
+<p class="lede">
+  <code>class:x=@@cond</code>, <code>class=@@expr</code> y la <code>class</code> de un spread
+  escriben token a token: quitan y ponen los suyos y no tocan los demás. Una clase que pone
+  otro código —aquí, <code>extra</code>, desde un <code>ref</code>— sigue ahí después de
+  cualquier cambio.
+</p>
+
+<h2>Pintado por el servidor</h2>
+<clases-demo></clases-demo>
+
+<h2>Creado en el navegador</h2>
+<p><button @click=@abrir data-id="abrir">Mostrar / ocultar el segundo panel</button></p>
+@if (segundo()) {
+  <clases-demo></clases-demo>
+}
+
+<h2>Qué mirar</h2>
+<p>
+  En cada panel: pulsa <strong>Añadir «extra» a las tres</strong> (salen con borde rojo
+  discontinuo) y después cada botón de cambio varias veces. El informe tiene que seguir
+  enseñando <code>extra</code> en las tres cajas, la caja 1 alternar <code>activo</code>, la 2
+  pasar de <code>a b</code> a <code>b c</code> y la 3 de <code>x y</code> a <code>y z</code>.
+  Al cargar, la caja 1 no tiene <code>activo</code> aunque el autor la escribió fija: manda
+  <code>class:activo</code>, que empieza en falso.
+</p>

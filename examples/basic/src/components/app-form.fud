@@ -12,8 +12,15 @@
   // El envío es del autor, no del framework (SDD-34 §7): aquí no hay a dónde mandar nada,
   // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto: validar, y parar
   // con el foco en el resumen cuando hay errores.
+  import { signal } from "@fudic/core";
+
+  // What the send would have sent, so "it sent" is something a person can see: the handler
+  // runs on every submit, and only a valid one gets here with nothing to fix.
+  const enviado = signal("");
+
   function stop(e: Event) {
     e.preventDefault();
+    if (userForm.$valid()) enviado.set(`Enviado: ${userForm.$value().name}.`);
   }
 }
 
@@ -68,6 +75,11 @@
     .comprobando {
       color: var(--muted, #666);
       font-size: 0.85rem;
+    }
+    .enviado {
+      margin: 0;
+      color: #137333;
+      font-weight: 600;
     }
     .resumen {
       border-left: 3px solid #b3261e;
@@ -145,6 +157,9 @@
       </fieldset>
 
       <button type="submit" disabled=@(!userForm.$valid())>Guardar</button>
+      @if (enviado() !== "") {
+        <p class="enviado" role="status" data-id="enviado">@enviado()</p>
+      }
     </form>
   </template>
 </app-form>

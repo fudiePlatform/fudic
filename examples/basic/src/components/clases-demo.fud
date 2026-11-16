@@ -1,0 +1,97 @@
+@code {
+  import { signal } from "@fudic/core";
+  import type { Atributos } from "fudic:components/clases-demo";
+
+  // The three ways a class changes after the element exists (SDD-85 §4.5): `class:`, `class=@expr`
+  // and the `class` of a spread. Each box also gets a class nobody declared, `extra`, added by
+  // hand through a `ref` — what a library or an animation would do — and it has to survive.
+  const activo = signal(false);
+  const clase = signal("a b");
+  const atributos = signal<Atributos>({ class: "x y", title: "con spread" });
+  const informe = signal("");
+
+  let caja1: HTMLElement | null = null;
+  let caja2: HTMLElement | null = null;
+  let caja3: HTMLElement | null = null;
+
+  function leer() {
+    const de = (el: HTMLElement | null) => (el === null ? "—" : `"${el.className}"`);
+    informe.set(`1: ${de(caja1)} · 2: ${de(caja2)} · 3: ${de(caja3)}`);
+  }
+
+  function extra() {
+    for (const el of [caja1, caja2, caja3]) el?.classList.add("extra");
+    leer();
+  }
+
+  function alternarActivo() {
+    activo.set(!activo());
+    queueMicrotask(leer);
+  }
+
+  function alternarClase() {
+    clase.set(clase() === "a b" ? "b c" : "a b");
+    queueMicrotask(leer);
+  }
+
+  function alternarResto() {
+    atributos.set({ class: atributos().class === "x y" ? "y z" : "x y", title: "con spread" });
+    queueMicrotask(leer);
+  }
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+    }
+    .fila {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .caja {
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    .activo {
+      background: #e6f4ea;
+    }
+    .extra {
+      outline: 2px dashed #b3261e;
+    }
+    .informe {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+<clases-demo>
+  <template shadowrootmode="open">
+    <div class="panel">
+      <div class="fila">
+        <span ref="@caja1" class="caja card activo" class:activo=@activo() data-id="caja1">1 · class:activo</span>
+        <button @click=@alternarActivo data-id="activo">Alternar activo</button>
+      </div>
+      <div class="fila">
+        <span ref="@caja2" class=@clase() data-id="caja2">2 · class=@@clase</span>
+        <button @click=@alternarClase data-id="clase">a b ⇄ b c</button>
+      </div>
+      <div class="fila">
+        @{ const resto = atributos(); }
+        <span ref="@caja3" ...resto data-id="caja3">3 · spread</span>
+        <button @click=@alternarResto data-id="resto">x y ⇄ y z</button>
+      </div>
+      <div class="fila">
+        <button @click=@extra data-id="extra">Añadir «extra» a las tres</button>
+        <button @click=@leer data-id="leer">Leer clases</button>
+      </div>
+      <p class="informe" data-id="informe">@informe()</p>
+    </div>
+  </template>
+</clases-demo>

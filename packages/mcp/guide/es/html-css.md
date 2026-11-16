@@ -108,6 +108,13 @@ Lo que cambia con el estado va en el markup, nunca en el CSS: una clase que va y
 `class:highlight=@(variant === 'highlight')`, una propiedad es `style:width=@width`. `class:` va
 en un elemento dentro de la plantilla, nunca en el tag host (`FUD0720`).
 
+Ninguna de las tres formas de cambiar una clase —`class:x=@cond`, `class=@expr` y la `class` de
+un spread— reescribe el atributo entero: cada una pone y quita solo sus tokens, así que una clase
+que puso otro código en el elemento (un `ref`, una librería, una animación) se queda. Un token
+escrito fijo y con `class:` (`class="on" class:on=@x`) sigue a `class:`. Tal como se pinta, los
+tokens van en este orden: los fijos, después los de `class=@expr` y después los `class:` activos
+en el orden del fuente; tras varios cambios el orden puede variar, y el CSS no lo ve.
+
 ```fud broken=FUD0132 path=src/components/app-meter/app-meter.fud
 <head>
   <style>

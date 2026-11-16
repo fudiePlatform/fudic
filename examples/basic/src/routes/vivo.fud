@@ -6,6 +6,8 @@
 <link rel="component" href="../components/vivo-lista.fud">
 <link rel="component" href="../components/vivo-item.fud">
 <link rel="component" href="../components/vivo-otro.fud">
+<link rel="component" href="../components/vivo-figuras.fud">
+<link rel="component" href="../components/app-form.fud">
 
 @code {
   import { signal } from "@fudic/core";
@@ -16,6 +18,14 @@
 
   function alternar() {
     verdadera.set(!verdadera());
+  }
+
+  // The form is not on the page until it is asked for: everything in it is created in the
+  // browser, from its template, and has to validate and send like the one /formularios paints.
+  const formulario = signal(false);
+
+  function abrirFormulario() {
+    formulario.set(!formulario());
   }
 }
 
@@ -41,7 +51,12 @@
   Pulsa <strong>Añadir</strong>. El elemento nuevo tiene que enseñar su etiqueta y responder
   a su propio botón igual que el que pintó el servidor: un componente creado al vuelo es un
   componente vivo, no una etiqueta vacía. Los dos caminos —adoptar lo que vino pintado y
-  fabricar lo que no vino— tienen que acabar en el mismo sitio.
+  crear lo que no vino, clonando su plantilla— tienen que acabar en el mismo sitio.
+</p>
+<p>
+  Pulsa el botón de cada fila unas cuantas veces, distinto en cada una, y luego
+  <strong>Invertir</strong> y <strong>Quitar el primero</strong>: las filas se mueven, no se
+  rehacen, así que cada una sigue con su cuenta.
 </p>
 
 <h2>Un componente en cada rama de un <code>@@if</code></h2>
@@ -60,3 +75,29 @@
 } else {
   <vivo-otro .label="rama falsa"></vivo-otro>
 }
+
+<h2>Un formulario que nace en el navegador</h2>
+<p>
+  El mismo formulario de <a href="/formularios">/formularios</a>, pero dentro de un
+  <code>@@if</code> cerrado: el servidor no pinta nada de él. Ábrelo, deja campos vacíos o
+  mal escritos para ver los errores, corrígelos y pulsa <strong>Guardar</strong>: tiene que
+  aparecer «Enviado: …» en verde.
+</p>
+
+<p><button @click=@abrirFormulario data-id="abrir-formulario">Mostrar / ocultar formulario</button></p>
+
+@if (formulario()) {
+  <app-form></app-form>
+}
+
+<h2>Bloques dentro de <code>&lt;svg&gt;</code> y <code>&lt;math&gt;</code></h2>
+<p>
+  Cada botón cambia de rama un <code>@@if</code> que vive dentro de un <code>&lt;svg&gt;</code>
+  o de un <code>&lt;math&gt;</code>. Lo que entra nace en el navegador. Pulsa
+  <strong>Comprobar</strong> después de cambiar: la figura tiene que decir
+  <code>http://www.w3.org/2000/svg</code> y la fórmula
+  <code>http://www.w3.org/1998/Math/MathML</code>. Un círculo con espacio de nombres HTML no se
+  dibuja.
+</p>
+
+<vivo-figuras></vivo-figuras>

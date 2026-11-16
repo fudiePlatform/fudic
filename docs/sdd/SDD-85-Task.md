@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 27 / 34 (y F1–F6) — `En curso`.
+> **Progreso:** 29 / 34 (y F1–F6) — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -286,6 +286,19 @@ Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abi
 
 ## Fase 6 — e2e, docs y cierre
 
+**Cómo se hace esta fase** (Pedro, 2026-11-16): primero se prepara todo lo que hay que probar en el
+navegador —el ejemplo y [SDD-85-Prueba.md](./SDD-85-Prueba.md)— y Pedro lo prueba; los e2e
+(28–31) se escriben después, con lo que salga, y se cierra. Ya preparado en el ejemplo: en
+`/vivo`, filas que se invierten y se quitan (`vivo-lista`), el formulario de `app-form` dentro de un
+`@if` con un «Enviado» visible, y `vivo-figuras` con un `@if` en `<svg>` y otro en `<math>`; la
+ruta `/clases` con `clases-demo` pintado y creado.
+
+**Encontrado al prepararla, pendiente de decisión:** el lexer convierte un `(` suelto tras un
+nombre de atributo en un atributo llamado `(` sin ningún diagnóstico: `<span ...resto()>` compila
+a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igual con
+`@click(x)`. Propuesta: que `(` detrás de un nombre que no acaba en `:` sea `FUD0098` (o un
+código propio), en vez de un atributo.
+
 - [ ] **28. e2e: crear desde cada bloque.**
   - En `/vivo`, `/spread` y `/mapas` (`vivo-item`, `vivo-otro`, `spread-card`, `bus-option`): abrir y
     cerrar, añadir, quitar y reordenar filas con clave (criterio 10), sin errores en consola. El spec
@@ -312,13 +325,13 @@ Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abi
   - *Depende de:* 9, 10, 6.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/classes.spec.ts`, `playwright.config.ts`, `src/routes/clases.fud`.
-- [ ] **32. Docs.**
+- [x] **32. Docs.**
   - README de `@fudic/dom` (`template`, `toggleClass`, `swapClass`); en la guía del MCP, que `class:`,
     `class=@expr` y la `class` de un spread no borran clases ajenas, y el orden de los tokens.
   - *Depende de:* 2, 4.
   - *Paquetes:* `dom`, `mcp`.
   - *Ficheros:* `dom/README.md`, `mcp/guide/*.md`.
-- [ ] **33. La prueba de Pedro.**
+- [x] **33. La prueba de Pedro.**
   - `SDD-85-Prueba.md` con el criterio 1 paso a paso.
   - *Depende de:* 28–31.
   - *Ficheros:* `docs/sdd/SDD-85-Prueba.md`.

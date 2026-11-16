@@ -1,0 +1,4 @@
+# The attributes of the spread box of /clases: its `class` changes, and has to change by tokens.
+type Atributos
+  class  str
+  title  str
