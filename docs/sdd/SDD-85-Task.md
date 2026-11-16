@@ -120,6 +120,34 @@
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/template-html.test.ts`.
 
+## Relevo de la fase 3 para la fase 4
+
+Lo que la siguiente sesión tiene que saber antes de empezar, decidido con Pedro el 2026-11-16:
+
+- **El orden de los atributos no cuenta.** Todo atributo dinámico (no solo los de un spread) queda
+  detrás de los estáticos en un elemento creado, porque la plantilla trae los estáticos y el paso 3
+  escribe el resto. La tarea 24 compara los atributos como **conjunto** de nombre y valor; el orden
+  de los nodos, el texto, el tipo y el espacio de nombres sí se comparan. Ya está en la spec (§5 y
+  §8.2, decisión 22). La condición de Pedro: que funcione sin dejar dudas, así que la comparación
+  tiene que ser estricta en todo lo demás.
+- **Dónde está cada pieza.** `ClientMarkupEmitter.template` da el `TemplateHtml` de cada recorrido;
+  `Templates.add()` devuelve el nombre de la constante (`$TN`) o `null` si el trozo no tiene nodos
+  propios. Hoy ese nombre se descarta en `block.ts` (`#declare`) y en `client.ts` (tras
+  `emitRoots`): la fase 4 lo guarda y lo usa en el `c`.
+- **`LiteralSink`.** Los atributos literales pasan por `#literal` en `markup-client.ts`, que hoy
+  escribe el `setAttr` en el cuerpo de fabricar **y** en la plantilla. Al borrar el cuerpo de
+  fabricar (tarea 21), `#literal` solo escribe en la plantilla. Las URL de asset y el `setAttrs` de
+  un spread en su sitio no son literales: van a `fixed` y tienen que acabar en el paso 3.
+- **Un caso a vigilar en la tarea 24:** un `<option selected>` estático dentro de un `<select
+  value=@x>`. El servidor quita ese `selected` y escribe `selected=""` en la opción elegida; la
+  plantilla lleva el estático y el navegador elige por la propiedad. Si la equivalencia lo marca, se
+  resuelve en el emisor, no con una excepción en la comparación.
+- **Tests.** Los arneses que evalúan chunks reciben `$template` / `$templateIn` como globales
+  (`test/setup-templates.ts`). Los goldens se regeneran con
+  `pnpm --filter @fudic/compiler exec vitest run test/emit/golden.test.ts -u`.
+- **Paquetes intactos hasta la fase 5:** el chunk ya importa de `@fudic/dom` la pieza `template`,
+  pero el manifiesto de vite aún no la conoce (tarea 26). No se ha corrido `pnpm build` del ejemplo.
+
 ## Fase 4 — compilador: el nuevo `c`
 
 - [ ] **17. La adopción con los bloques cerrados.**

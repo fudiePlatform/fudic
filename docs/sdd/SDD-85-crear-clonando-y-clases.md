@@ -287,7 +287,7 @@ tiene estado. Entra en el presupuesto del manifiesto como las demás.
   como hoy.
 - **Lo que crea el navegador es lo que pinta el servidor.** Para los mismos datos, el árbol de un `c`
   y el del HTML del servidor, parseado, son iguales nodo a nodo, salvo el orden de las clases y de los
-  atributos de un spread (§4.5, §4.6) y el `class=""` residual.
+  atributos (§4.5, §4.6, §8.2 decisión 22) y el `class=""` residual.
 - **La plantilla no lleva datos.** Ningún valor dinámico se escribe en un literal.
 - **`template` solo acepta literales.** Un string que no viene de un literal es `TypeError`.
 - **Una sola policy**: la `fudic` de SDD-84.
@@ -492,3 +492,8 @@ Nada.
     componentes. Dos claves de `di-diagnostics.ts` y `expand.ts` llevaban un NUL literal (ahora
     `\u0000`); la regla de `CLAUDE.md` sobre LS/PS llevaba los dos caracteres literales en vez de su
     escape; y `owned.test.ts` tenía un `…` en Windows-1252, que no es UTF-8.
+22. **El orden de los atributos no se compara** (Pedro, 2026-11-16, al cerrar la fase 3). La
+    plantilla trae los atributos estáticos y el paso 3 escribe los dinámicos después, así que en un
+    elemento creado en el navegador todo atributo dinámico queda detrás de los estáticos, no solo
+    los de un spread (§4.6). Es lo mismo que las clases: ni el DOM ni el CSS lo ven. La prueba de
+    equivalencia (criterio 8) compara los atributos como conjunto de nombre y valor.
