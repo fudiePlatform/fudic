@@ -3,6 +3,10 @@
 > **Estado:** `Idea` — no es un SDD. Sin interfaz pública cerrada, sin criterios de aceptación,
 > sin rango de diagnósticos. Captura la conversación del **2026-11-11** con Pedro. Lo marcado como
 > **decidido** no se reabre; lo demás es propuesta.
+>
+> **2026-11-16:** §1, §2 y §3 pasan a [SDD-85](../SDD-85-crear-clonando-y-clases.md), con un cambio de
+> Pedro: el `c` no va a un chunk perezoso, sino que clona una plantilla HTML y la adopta. §4 (props
+> reflejadas) sigue aquí, aparcada.
 
 Cuatro mejoras del código que el compilador emite para el navegador. Son independientes entre
 sí; el orden propuesto está en §5.
