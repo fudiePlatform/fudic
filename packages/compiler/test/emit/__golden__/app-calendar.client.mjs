@@ -1,5 +1,8 @@
 import { FudicElement, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template` <div class="cell"> <span></span> <button>e</button> </div> `;
+const $T1 = $template`<div class="grid">  </div>`;
 
 customElements.define("app-calendar", class extends FudicElement {
   static c($props) {

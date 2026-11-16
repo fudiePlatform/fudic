@@ -59,13 +59,15 @@ import {
   valueReadsMember,
   writeElementAttrs,
   type HostContext,
+  type LiteralSink,
   type PropTarget,
   type ValueSink,
 } from './attrs.js';
 import { blocksOf, headerReads, rawChild, refTarget } from './constructs.js';
 import { isConstructNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
-import { writeStamp, type SourceStamp } from './source-locations.js';
+import { SOURCE_ATTRIBUTE, type SourceStamp } from './source-locations.js';
+import { childrenNamespace, elementNamespace, TemplateHtml, type Namespace } from './template-html.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
@@ -137,6 +139,8 @@ export interface BlockSite {
    * construct's place in the level (BUG-21 §4.2.b).
    */
   readonly at: RunContext;
+  /** The namespace of the level the construct sits in: its body's template is parsed in it. */
+  readonly ns: Namespace;
   /** The bodies of the PARENT: where the create / adopt / mount / update lines go. */
   readonly bodies: ClientBodies;
   /**
@@ -417,6 +421,11 @@ export interface MarkupOptions {
    * keeps its key and changes its data left its child painting the old one.
    */
   readonly params?: ReadonlySet<string>;
+  /**
+   * The namespace of the level the walk starts in: a block body inside an `<svg>` is SVG, and its
+   * template has to be parsed as such (SDD-85 §3.1). HTML when absent.
+   */
+  readonly ns?: Namespace;
 }
 
 export class ClientMarkupEmitter {
@@ -489,7 +498,28 @@ export class ClientMarkupEmitter {
     this.#slot = options.slot;
     this.#at = options.at;
     this.#params = options.params ?? new Set();
+    this.#ns = options.ns ?? 'html';
+    this.#template = new TemplateHtml(this.#ns);
   }
+
+  /** The namespace of the level being written: a stack like `#at`, pushed entering an element. */
+  #ns: Namespace;
+  readonly #template: TemplateHtml;
+
+  /**
+   * The HTML of this walk's nodes with every value empty and every block closed: what the browser
+   * clones to create them (SDD-85 §4.1). Written by the same walk as the adoption, so the two
+   * cannot describe different trees.
+   */
+  get template(): TemplateHtml {
+    return this.#template;
+  }
+
+  /** A literal attribute of the element being written: its line, and its place in the template. */
+  readonly #literal: LiteralSink = (name, value, line) => {
+    this.#fab.line(line);
+    this.#template.attr(name, value);
+  };
 
   /** The names this walk's own `u` reassigns. See `MarkupOptions.params`. */
   readonly #params: ReadonlySet<string>;
@@ -859,6 +889,7 @@ export class ClientMarkupEmitter {
 
   /** The empty comment, on both paths: created here, found from the run in front of it. */
   #marker(marker: Marker, level: Level): void {
+    this.#template.comment();
     this.#fab.line(`${marker.name} = $dom.comment('');`);
     this.#place(marker.name, level.fab);
     this.#adopt.line(`${marker.name} = $dom.nextSibling(${marker.runName});`);
@@ -926,6 +957,9 @@ export class ClientMarkupEmitter {
     marker: Marker | undefined,
     first: boolean,
   ): void {
+    // Its static text, with every hole empty: an interpolated run that is nothing else leaves no
+    // node, and the adoption creates it where it goes (`textAt`), as after the server (§4.4).
+    this.#template.text(run.text);
     if (name === undefined) {
       const open = level.fab === null ? '$r.push($dom.text(' : `$dom.append(${level.fab}, $dom.text(`;
       this.#fab.mappedLine(open, ...run.value, '));');
@@ -1042,14 +1076,20 @@ export class ClientMarkupEmitter {
 
   #element(el: ElementNode, level: Level, v: string): void {
     const outer = this.#at;
+    const outerNs = this.#ns;
     const isComponent = this.#isComponent(el.name);
     // Derived by the SAME function the server branch uses: the two have to answer the box
     // question identically, or they stop building the same tree (BUG-21 §4.5).
     this.#at = childrenContext(outer, el, isComponent);
+    this.#ns = childrenNamespace(elementNamespace(outerNs, el.name), el.name);
     this.#elementVars.set(el, v);
+    this.#template.open(el.name);
     this.#fab.line(`${v} = $dom.element(${JSON.stringify(el.name)});`);
     // Only where it fabricates: an adopted element already came from the server with it.
-    writeStamp(this.#fab, this.#scope.stamp, el, v);
+    const stamp = this.#scope.stamp?.(el);
+    if (stamp !== undefined) {
+      this.#literal(SOURCE_ATTRIBUTE, stamp, `$dom.setAttr(${v}, '${SOURCE_ATTRIBUTE}', ${JSON.stringify(stamp)});`);
+    }
     if (isComponent) {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
       // shadow or drive its controller. Who downloads a child's chunk, and in which order
@@ -1064,7 +1104,7 @@ export class ClientMarkupEmitter {
           ? ['data-fud-adopt', adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name))]
           : ['data-fud-sheets', sheets(el.name)];
       if (adopt !== '') {
-        this.#fab.line(`$dom.setAttr(${v}, '${marker}', ${JSON.stringify(adopt)});`);
+        this.#literal(marker, adopt, `$dom.setAttr(${v}, '${marker}', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.
@@ -1076,6 +1116,7 @@ export class ClientMarkupEmitter {
         this.#linker,
         this.#host(true, el.name),
         this.#sinkFor(),
+        this.#literal,
       );
       // What a marker or a summary says of this control-component from outside, and the id a
       // summary links to — the same attributes the server writes on the host (BUG-42 §4.9).
@@ -1093,6 +1134,7 @@ export class ClientMarkupEmitter {
         this.#linker,
         this.#host(false),
         this.#sinkFor(),
+        this.#literal,
       );
       // The `aria-describedby` of a bound control — written by the emit and never by the
       // runtime, and written on BOTH branches with the same value (SDD-34 §4.3). The
@@ -1104,7 +1146,7 @@ export class ClientMarkupEmitter {
     // A root of a hole its layout slots (SDD-48 §4.5), on the create path only: the server
     // already wrote it on every node `h` adopts.
     if (this.#slot !== undefined && level.fab === null) {
-      this.#fab.line(`$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#slot)});`);
+      this.#literal('slot', this.#slot, `$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#slot)});`);
     }
     this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
@@ -1114,7 +1156,9 @@ export class ClientMarkupEmitter {
     // After BOTH assignments: the fabricated node above, the adopted one on the line before.
     this.#delegationMarks(el, v);
     this.#children(el, v);
+    this.#template.close();
     this.#at = outer;
+    this.#ns = outerNs;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
     this.#controlBinding(el, v);
     this.#messageBinding(el, v);
@@ -1160,14 +1204,20 @@ export class ClientMarkupEmitter {
    */
   #controlAttrs(el: ElementNode, v: string): void {
     const id = this.#hookup.controls.ids.get(el);
-    if (id !== undefined) this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(id)});`);
+    if (id !== undefined) this.#literal('id', id, `$dom.setAttr(${v}, 'id', ${JSON.stringify(id)});`);
     const site = this.#hookup.controls.sites.get(el);
     if (site === undefined) return;
     if (site.describedBy !== '') {
-      this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
+      this.#literal(
+        'aria-describedby',
+        site.describedBy,
+        `$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`,
+      );
     }
-    if (site.noValidate) this.#fab.line(`$dom.setAttr(${v}, 'novalidate', '');`);
-    if (site.accept !== undefined) this.#fab.line(`$dom.setAttr(${v}, 'accept', ${JSON.stringify(site.accept)});`);
+    if (site.noValidate) this.#literal('novalidate', '', `$dom.setAttr(${v}, 'novalidate', '');`);
+    if (site.accept !== undefined) {
+      this.#literal('accept', site.accept, `$dom.setAttr(${v}, 'accept', ${JSON.stringify(site.accept)});`);
+    }
   }
 
   /**
@@ -1181,9 +1231,9 @@ export class ClientMarkupEmitter {
   #markerAttrs(el: ElementNode, v: string): void {
     const marker = this.#hookup.controls.markers.get(el);
     if (marker === undefined) return;
-    if (marker.writesId) this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
-    if (marker.live) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
-    if (marker.links !== null) this.#fab.line(`$dom.setAttr(${v}, 'tabindex', '-1');`);
+    if (marker.writesId) this.#literal('id', marker.id, `$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
+    if (marker.live) this.#literal('aria-live', 'polite', `$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    if (marker.links !== null) this.#literal('tabindex', '-1', `$dom.setAttr(${v}, 'tabindex', '-1');`);
   }
 
   /**
@@ -1629,6 +1679,7 @@ export class ClientMarkupEmitter {
     if (dataScriptType(el) !== undefined) {
       for (const child of el.children) {
         if (child.type !== 'raw-text') continue;
+        this.#template.text(child.value);
         this.#fab.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
       }
       return;
@@ -1678,6 +1729,7 @@ export class ClientMarkupEmitter {
       anchor,
       ...(liveAnchor === undefined ? {} : { liveAnchor }),
       at,
+      ns: this.#ns,
       bodies: this.#bodies,
       deferredMount: level.fab === null,
       // Only a construct at the root: one inside an element builds that element's children.

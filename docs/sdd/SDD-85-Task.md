@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 11 / 34 — `En curso`.
+> **Progreso:** 16 / 34 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -90,31 +90,31 @@
 
 ## Fase 3 — compilador: la plantilla
 
-- [ ] **12. El cuarto cuerpo del recorrido: el HTML de la plantilla.**
+- [x] **12. El cuarto cuerpo del recorrido: el HTML de la plantilla.**
   - Elementos, atributos estáticos (escapados con `escapeAttr`), texto estático (`escapeText`), tramos
     con las partes dinámicas vacías, comentarios separadores, bloques cerrados, hosts de hijos vacíos
     (SDD §4.1).
   - *Depende de:* 1, 8.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/markup-client.ts`, `src/emit/template-html.ts`.
-- [ ] **13. Los contenidos especiales.**
+- [x] **13. Los contenidos especiales.**
   - RCDATA (`<textarea>`, `<title>`), `<script>` de datos, `<template>` del autor y `@raw` vacío, como
     los escribe el servidor (SDD §4.1).
   - *Depende de:* 12.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/template-html.ts`.
-- [ ] **14. El literal y SVG / MathML.**
+- [x] **14. El literal y SVG / MathML.**
   - Una constante por plantilla a nivel de módulo; escape de `\`, `` ` `` y `${`; `templateIn` con su
     envoltorio cuando la raíz del trozo está en SVG o MathML (SDD §3.1, §4.1).
   - *Depende de:* 2, 12.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/template-html.ts`, `src/emit/client.ts`, `src/emit/route-client.ts`.
-- [ ] **15. Una plantilla por rama y por cuerpo de bloque.**
+- [x] **15. Una plantilla por rama y por cuerpo de bloque.**
   - `@if` / `else`, cada `case`, `@foreach`, `@for`, `@while` y cada rama de `@await` (SDD §4.1).
   - *Depende de:* 12, 14.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/block.ts`, `src/emit/constructs.ts`.
-- [ ] **16. Tests de la plantilla.**
+- [x] **16. Tests de la plantilla.**
   - Criterios 2, 3, 4, 5 y 6 sobre el HTML generado.
   - *Depende de:* 12–15.
   - *Paquete:* `compiler`.

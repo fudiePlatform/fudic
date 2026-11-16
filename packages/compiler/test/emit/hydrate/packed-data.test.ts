@@ -12,6 +12,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as core from '@fudic/core';
 import type { Controller } from '@fudic/core';
+import * as dom from '@fudic/dom';
 import { browserDom } from '@fudic/dom';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteClientModule, emitRouteModule } from '../../../src/emit/index.js';
@@ -95,6 +96,7 @@ async function served(): Promise<{
   }).value;
   const modules = {
     '@fudic/core': core,
+    '@fudic/dom': dom,
     'fudic:routes/usuarios': { load: { fetch: async () => next } },
   };
   const layoutSource = emitLayoutModule(graph, graph.layouts[0]!).replace(/^export\s+/gmu, '');

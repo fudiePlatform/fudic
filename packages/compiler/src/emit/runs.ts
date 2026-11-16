@@ -33,6 +33,11 @@ export interface TextRun {
   /** Whether any piece is an interpolation — i.e. whether anyone will ever rewrite it. */
   readonly interpolated: boolean;
   /**
+   * The characters the run has with every hole empty: what a template carries for it (SDD-85
+   * §4.4). The whole run when it has no hole.
+   */
+  readonly text: string;
+  /**
    * Whether every piece is literal whitespace — the run BUG-21 asks to prove unnecessary.
    *
    * Read off the RAW source, before entities are decoded: `&#32;` is a space the author
@@ -225,11 +230,15 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
   const interpolated = pieces.some((p) => ROLE[p.type] === 'expression');
   // An interpolation is never blank whatever it evaluates to, and `@@` contributes an `@`.
   const blank = !interpolated && pieces.every((p) => BLANK.test(literalText(p)));
+  const text = pieces
+    .filter((p) => ROLE[p.type] !== 'expression')
+    .map(literal)
+    .join('');
 
   // No hole anywhere: ONE string literal, however many pieces contributed to it. `@@` beside
   // its own text is still static text, and static text has no business being a template.
   if (!interpolated) {
-    return { kind: 'run', value: [JSON.stringify(pieces.map(literal).join(''))], interpolated, blank };
+    return { kind: 'run', value: [JSON.stringify(text)], interpolated, text, blank };
   }
 
   const only = pieces[0]!;
@@ -238,6 +247,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
       kind: 'run',
       value: ['String((', { text: slice(expr(only)), src: expr(only).start }, `) ?? '')`],
       interpolated,
+      text,
       blank,
     };
   }
@@ -253,7 +263,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
     }
   }
   parts.push('`');
-  return { kind: 'run', value: parts, interpolated, blank };
+  return { kind: 'run', value: parts, interpolated, text, blank };
 }
 
 /**

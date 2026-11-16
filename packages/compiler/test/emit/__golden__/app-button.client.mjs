@@ -1,5 +1,7 @@
 import { FudicElement, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template`<button class="btn"><slot></slot></button>`;
 
 customElements.define("app-button", class extends FudicElement {
   static c($props) {

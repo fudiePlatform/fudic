@@ -23,6 +23,7 @@ import { spaceModeOf } from './space.js';
 import { CodeWriter, type MappedPart } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
+import { Templates, writeTemplates } from './template-html.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type NeutralStatement, type Prop } from './oxc-code.js';
 import { localOf, propDefaults, restAssignments, restGroups } from './rest.js';
@@ -299,7 +300,8 @@ function buildComponentClientModule(
   const imported = [...new Set([...clientImports, ...apiForms(graph)])];
   // What a walk watches a member of: those, and the forms it binds (`ClientScope.through`).
   const watched = [...new Set([...imported, ...scope.through])];
-  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup, watched);
+  const templates = new Templates();
+  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup, watched, templates);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -328,6 +330,8 @@ function buildComponentClientModule(
   if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitShadow(comp.doc.template!);
   em.emitRoots(comp.doc.template!.children);
+  // The root's template, after its blocks': what an instance created in the browser clones.
+  templates.add(em.template);
 
   // The component's OWN reactivity, and the only consumer a signal has: the emitted code
   // (SDD-31 §1). `$a()` re-applies the value writes and the constructs reconcile after it,
@@ -439,6 +443,7 @@ function buildComponentClientModule(
   // The functions and forms of the `.fudapi` it links, from their modules, at module scope where
   // `c` and its handlers reach them (SDD-60 §3.14).
   for (const line of apiImports(graph)) w.line(line);
+  writeTemplates(w, templates);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();

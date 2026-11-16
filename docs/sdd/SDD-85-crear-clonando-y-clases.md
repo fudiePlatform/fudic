@@ -173,8 +173,8 @@ plantilla.
   ([markup-client.ts](../../packages/compiler/src/emit/markup-client.ts)). La plantilla sustituye al
   cuerpo de fabricar. Generarla en otro recorrido sería abrir la puerta a que se separen.
 - **El escape es el del servidor** (§3.3). Dentro de `<textarea>` y `<title>` (RCDATA) se escapa como
-  texto; dentro de un `<script>` de datos (`application/json`, `ld+json`), tal cual, como lo escribe
-  el servidor. Un `<template>` del autor va con su contenido.
+  texto; dentro de un `<script>` de datos (`ld+json`, `importmap`: decisión 129), tal cual, como lo
+  escribe el servidor. Un `<template>` del autor va con su contenido.
 - **El literal** se escribe como `` template`…` `` a nivel de módulo, una constante por plantilla. Se
   escapan `\`, `` ` `` y `${`. Una plantilla cuya raíz está dentro de `<svg>` o `<math>` va con
   `templateIn` y su envoltorio (§3.1).
@@ -462,3 +462,33 @@ Nada.
     `toggleClass` / `swapClass` ni `setAttrs`, y repetía a mano las reglas de clases.
 13. **Deuda saldada de paso** (fase 2): `hasValueAttrs` no lo usaba nadie y se borra; el script de
     goldens del compilador no regeneraba `app-calendar`.
+14. **La plantilla es un cuarto cuerpo del mismo emisor** (fase 3). Cada recorrido del cliente (la
+    raíz de un componente, cada rama o cuerpo de bloque) lleva su `TemplateHtml`, que recibe un
+    hecho por llamada —abrir, atributo literal, texto, comentario, cerrar— y serializa con las
+    reglas del servidor (escape de `@fudic/dom`, elementos vacíos, texto crudo de `<script>` y
+    `<style>`). Los atributos literales llegan desde `writeElementAttrs` por un `LiteralSink`: en
+    fase 3 escribe además el `setAttr` del cuerpo de fabricar; en fase 4 solo la plantilla.
+15. **Una URL de asset estática no va en la plantilla** (fase 3). Con el enlazador activo,
+    `src="./logo.png"` es una referencia al import que resuelve Vite, un valor del módulo y no un
+    texto: se escribe en el paso 3 como cualquier valor.
+16. **El host de un hijo lleva su DOM ligero** (fase 3). «Vacío» en §4.1 es sin
+    `<template shadowrootmode>`: lo que el autor escribe dentro del host son nodos de este
+    componente, el servidor los pinta y la adopción entra en ellos.
+17. **«Script de datos» es el de la decisión 129: `application/ld+json` e `importmap`** (fase 3).
+    `application/json` no lo es para fudic: el servidor lo deja vacío y la plantilla también, así
+    que el criterio 4 se cumple igual. §4.1 decía `application/json` por error.
+18. **Plantillas iguales, una constante; plantilla vacía, ninguna** (fase 3). Dos trozos con el
+    mismo HTML en el mismo espacio de nombres comparten `$TN`, y un cuerpo sin nodos propios (solo
+    bloques, o solo un texto dinámico que crea `textAt`) no declara ninguna.
+19. **Importadas como `$template` y `$templateIn`** (fase 3). Las constantes viven en el ámbito del
+    módulo, donde también están los imports del autor: un `template` suyo chocaría. La reserva `$`
+    del emisor lo evita.
+20. **El espacio de nombres sigue los puntos de integración del parser** (fase 3): los hijos de
+    `foreignObject`, `desc` y `title` de SVG, y de `mi`, `mo`, `mn`, `ms` y `mtext` de MathML, son
+    HTML, y un bloque ahí va con `template` sin envoltorio.
+21. **Deuda saldada de paso** (fase 3). Los goldens del compilador se fijan con
+    `toMatchFileSnapshot` y se regeneran con `vitest run test/emit/golden.test.ts -u`: el script
+    `scripts/goldens.ts` pedía `tsx`, que no es dependencia de nadie, y repetía la lista de
+    componentes. Dos claves de `di-diagnostics.ts` y `expand.ts` llevaban un NUL literal (ahora
+    `\u0000`); la regla de `CLAUDE.md` sobre LS/PS llevaba los dos caracteres literales en vez de su
+    escape; y `owned.test.ts` tenía un `…` en Windows-1252, que no es UTF-8.

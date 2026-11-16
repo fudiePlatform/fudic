@@ -1,5 +1,10 @@
 import { FudicElement, subscribe as $sub, written as $written, live as $live, owned as $owned } from '@fudic/core';
 import { signal } from '@fudic/core';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template` <div class="body"><slot></slot></div> `;
+const $T1 = $template` Cerrar `;
+const $T2 = $template` Abrir `;
+const $T3 = $template`<article class="card"><header><h2></h2></header>  <app-button data-fud-adopt="app-button">  </app-button></article>`;
 
 customElements.define("app-card", class extends FudicElement {
   static c($props) {

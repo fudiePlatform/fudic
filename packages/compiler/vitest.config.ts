@@ -26,6 +26,7 @@ export default defineConfig({
   },
   test: {
     include: ['test/**/*.test.ts'],
+    setupFiles: ['test/setup-templates.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
@@ -75,6 +76,8 @@ export default defineConfig({
         'src/semantic/analyzers/baseline-html.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/baseline-css.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/css/baseline.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The template a piece of view is created from (SDD-85 §4.1).
+        'src/emit/template-html.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

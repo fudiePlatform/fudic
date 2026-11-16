@@ -1,4 +1,9 @@
 import { FudicElement } from '@fudic/core';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template` <span class="tag"></span> `;
+const $T1 = $template` <li class="row"> <span></span>  </li> `;
+const $T2 = $template` <li class="empty"></li> `;
+const $T3 = $template`<ul class="list">  </ul>`;
 
 customElements.define("app-list", class extends FudicElement {
   static c($props) {

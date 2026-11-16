@@ -494,6 +494,12 @@ export interface ValueSink {
   live?(expr: string, write: (value: string) => string): void;
 }
 
+/**
+ * Where a LITERAL attribute goes instead of its `setAttr` line: its name, its value, and the
+ * line the server writes for it — the client's template carries it (SDD-85 §4.1).
+ */
+export type LiteralSink = (name: string, value: string, line: string) => void;
+
 /** The single-body sink: the server, and the fabricate body inside a `@foreach`. */
 export function inlineSink(w: CodeWriter): ValueSink {
   return {
@@ -536,7 +542,14 @@ export function writeElementAttrs(
   linker: AssetLinker,
   host: HostContext,
   values: ValueSink = inlineSink(fixed),
+  literals?: LiteralSink,
 ): void {
+  // A literal attribute: its `setAttr` line, or — for the client, whose template carries it
+  // (SDD-85 §4.1) — the sink that takes it instead.
+  const literal = (name: string, value: string, line: string): void => {
+    if (literals === undefined) fixed.line(line);
+    else literals(name, value, line);
+  };
   const toggles = classToggles(source, el, host);
   const toggled = new Set(toggles.map((t) => t.token));
   // The toggles go right behind the swap when there is one, and at the end when there is none.
@@ -562,22 +575,20 @@ export function writeElementAttrs(
     if (written === null) continue; // event / bus / ref, and `.prop` on a native tag
     const isStatic = written.value.every((p) => p.type === 'attribute-text');
     if (isStatic) {
-      const literal = written.value.map((p) => attrText(p as AttributeText)).join('');
+      const text = written.value.map((p) => attrText(p as AttributeText)).join('');
       if (written.name === 'class') {
         // In its place, like any other literal; what is left once the toggled tokens are out.
-        const kept = staticClass(literal, toggled);
-        if (kept !== null) fixed.line(`$dom.setAttr(${v}, 'class', ${JSON.stringify(kept)});`);
-      } else if (linker.enabled && isAssetAttr(el.name, written.name)) {
-        // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
-        // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
-        const binding = linker.maybeRef(literal);
-        const value = binding ?? JSON.stringify(literal);
-        fixed.line(`$dom.setAttr(${v}, ${JSON.stringify(written.name)}, ${value});`);
-      } else {
-        fixed.line(
-          `$dom.setAttr(${v}, ${JSON.stringify(written.name)}, ${JSON.stringify(literal)});`,
-        );
+        const kept = staticClass(text, toggled);
+        if (kept !== null) literal('class', kept, `$dom.setAttr(${v}, 'class', ${JSON.stringify(kept)});`);
+        continue;
       }
+      const name = JSON.stringify(written.name);
+      // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5); a
+      // missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363). The
+      // reference is a value of the module, not text: it is never a literal of a template.
+      const binding = linker.enabled && isAssetAttr(el.name, written.name) ? linker.maybeRef(text) : null;
+      if (binding !== null) fixed.line(`$dom.setAttr(${v}, ${name}, ${binding});`);
+      else literal(written.name, text, `$dom.setAttr(${v}, ${name}, ${JSON.stringify(text)});`);
     } else if (written.name === 'class') {
       // `class=@expr`, and a `class="card @(x)"` that mixes in a literal: one value, written
       // by tokens, in its place — where the server always wrote it. Its value goes over as it

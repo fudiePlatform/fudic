@@ -37,6 +37,7 @@ import {
 } from './constructs.js';
 import { assignedNames, freeReferences, type FragmentAst } from './scope.js';
 import type { HookupContext } from './events.js';
+import type { Templates } from './template-html.js';
 import {
   ClientMarkupEmitter,
   type BlockSink,
@@ -67,6 +68,8 @@ export interface BlockContext {
    * member of, as the root does (`watchImports`), because the name itself is no source.
    */
   readonly imported: readonly string[];
+  /** The module's templates: each block body adds its own (SDD-85 §4.1). */
+  readonly templates: Templates;
   nextBlock(): number;
   nextConstruct(): number;
 }
@@ -93,6 +96,7 @@ export function blockContext(
   usage: CoreUsage,
   hookup: HookupContext,
   imported: readonly string[],
+  templates: Templates,
 ): BlockContext {
   let blocks = 0;
   let constructs = 0;
@@ -104,6 +108,7 @@ export function blockContext(
     usage,
     hookup,
     imported,
+    templates,
     nextBlock: () => blocks++,
     nextConstruct: () => constructs++,
   };
@@ -252,9 +257,12 @@ export class BlockEmitter implements BlockSink {
       params: new Set(block.params),
       // The body's roots are the hole's roots when the construct sits in one (SDD-48 §4.5).
       ...(at.slot === undefined ? {} : { slot: at.slot }),
+      // Its template is parsed in the namespace of the level it sits in (SDD-85 §3.1).
+      ns: at.ns,
     });
     em.planInPlace(branch.body);
     em.emitBlockBody(branch.body, '$c', at.tail);
+    this.#ctx.templates.add(em.template);
     // What the body reads through an imported name — `@if (userForm.alias.pending())` in a row —
     // is watched by the instance itself, in its `$s`, and repaints it with the row it holds now:
     // the parent only repaints a block when a value of its own moves. A name the row declares,

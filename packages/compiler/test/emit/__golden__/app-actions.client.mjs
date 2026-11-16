@@ -1,5 +1,8 @@
 import { FudicElement, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template` <li class="row"> <span></span> <button class="none">-</button> <button class="event">e</button> <button class="data">d</button> <button class="both">ed</button> <button class="reversed">de</button> <button class="bare">x</button> </li> `;
+const $T1 = $template`<ul class="list">  </ul>`;
 
 customElements.define("app-actions", class extends FudicElement {
   static c($props) {

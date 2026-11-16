@@ -14,6 +14,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as core from '@fudic/core';
 import type { Callable, Controller } from '@fudic/core';
+import * as dom from '@fudic/dom';
 import { browserDom } from '@fudic/dom';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteClientModule, emitRouteModule, resolveComponents } from '../../../src/emit/index.js';
@@ -116,6 +117,7 @@ async function hydrated(route = ROUTE): Promise<Controller> {
   ).value;
   const modules = {
     '@fudic/core': core,
+    '@fudic/dom': dom,
     'fudic:routes/usuarios': {
       save: stubOf<{ id: number; active: boolean }>('PUT', ({ id, active }) => {
         if (refuse) throw new Error('409 Conflict');

@@ -455,7 +455,7 @@ class Expander {
       if (href === undefined) continue;
       const tag = href.replace(/^.*[/\\]/u, '').replace(/\.fud$/u, '');
       if (!used.has(tag)) continue;
-      const key = `${snippet.file} ${href}`;
+      const key = `${snippet.file}\u0000${href}`;
       if (this.#seenLinks.has(key)) continue;
       this.#seenLinks.add(key);
       this.#dragged.push({ href, from: snippet.file });

@@ -164,7 +164,7 @@ function unregisteredProviders(graph: ComponentGraph, io: ResolveIo, out: Diagno
     for (const call of codeOf(comp).di) {
       if (call.kind !== 'inject') continue;
       if (call.from === undefined || owned.has(call.provider)) continue;
-      const key = `${comp.path} ${call.from}`;
+      const key = `${comp.path}\u0000${call.from}`;
       let known = facts.get(key);
       if (known === undefined) {
         const text = moduleText(io, comp.path, call.from);

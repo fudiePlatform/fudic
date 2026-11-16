@@ -1,4 +1,6 @@
 import { FudicElement } from '@fudic/core';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template`<span class="badge"> <slot></slot> </span>`;
 
 customElements.define("app-badge", class extends FudicElement {
   static c($props) {
