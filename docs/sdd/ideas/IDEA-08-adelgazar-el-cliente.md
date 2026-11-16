@@ -8,8 +8,13 @@
 > Pedro: el `c` no va a un chunk perezoso, sino que clona una plantilla HTML y la adopta.
 >
 > **2026-11-16:** §4 (props reflejadas) pasa a [SDD-86](../SDD-86-ciclo-de-vida-y-props-reflejadas.md), sin
-> sintaxis nueva: ya funcionaba desde BUG-32 como un atributo con expresión en el tag de identidad. Con
-> eso la IDEA queda cerrada.
+> sintaxis nueva: ya funcionaba desde BUG-32 como un atributo con expresión en el tag de identidad.
+>
+> **2026-11-16:** §6 (`errorPages` sin `base`) y §7 (página de error compartida) pasan a
+> [SDD-87](../SDD-87-pagina-de-error-compartida.md), con dos cambios: la página llega por la cadena de
+> dependencias, como la guía, sin componente `error-view`; y el bug del `base` resultó más ancho
+> (las llamadas, el CSRF y las reglas remotas tampoco lo llevaban en el navegador). Con eso la IDEA
+> queda cerrada.
 
 Cuatro mejoras del código que el compilador emite para el navegador. Son independientes entre
 sí; el orden propuesto está en §5.
