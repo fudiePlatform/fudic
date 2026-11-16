@@ -20,7 +20,7 @@ import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import type { CspNeed } from '@fudic/config';
 import { TRUSTED_TYPES_NEEDS } from '@fudic/dom';
 import { spaceModeOf } from './space.js';
-import { CodeWriter, type MappedPart } from './writer.js';
+import { CodeWriter, here, type MappedPart } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { Templates, writeTemplates } from './template-html.js';
@@ -159,7 +159,7 @@ function updateGuards(props: readonly Prop[]): string {
  * **One expression, not two branches**, and that is the answer to the objection SDD-31 §7
  * raised against a lazy upgrade. `$p3` comes filled by `h` — an instance the server rendered,
  * whose slice carries the cell the runtime materialised — and empty by `c`, an instance the
- * parent fabricated at runtime, which has no payload at all; there the author's own
+ * parent created at runtime, which has no payload at all; there the author's own
  * initialiser runs, exactly as it always did. There is no second mode a chunk can be in, and
  * therefore no window in which the first update could arrive in the other one's shape.
  *
@@ -246,12 +246,12 @@ function buildComponentClientModule(
     // And what moves through a store or a form it binds, from the same function as well.
     through: memberSources(codeOf(comp), comp.source, templateOf(comp)),
     // And the same set the server branch writes `data-fud-adopt` from (BUG-31 §T4): the two
-    // fabricate the same host, so they have to answer this identically.
+    // create the same host, so they have to answer this identically.
     styled: styledTags(graph),
     // Same reason, one level up: the project's guide is in front of the component's own on
     // both sides, or a host hydrates adopting a different list than it rendered with.
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
-    // The same `data-fud-src` the server writes, on what this branch fabricates.
+    // The same `data-fud-src` the server writes, in what this branch clones.
     ...stampOption(options, comp.path, comp.path === graph.entryPath ? graph.entryMap : undefined),
     // And the same files, with `css: "link"` (SDD-73 §3.5) — and how many `<link>`s its own
     // root opens with, for the adopt path to step over.
@@ -329,9 +329,9 @@ function buildComponentClientModule(
   em.planInPlace(comp.doc.template!.children);
   if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitShadow(comp.doc.template!);
-  em.emitRoots(comp.doc.template!.children);
+  em.emitRoots(comp.doc.template!.children, comp.doc.template!.openSpan.start);
   // The root's template, after its blocks': what an instance created in the browser clones.
-  templates.add(em.template);
+  const root = templates.add(em.template, comp.doc.template!.openSpan.start);
 
   // The component's OWN reactivity, and the only consumer a signal has: the emitted code
   // (SDD-31 §1). `$a()` re-applies the value writes and the constructs reconcile after it,
@@ -410,9 +410,9 @@ function buildComponentClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
-    // Only a file that fabricates a component host pays for it: a template with no child
+    // Only a file that creates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
-    ...(usage.fabricates ? ['live as $live'] : []),
+    ...(usage.creates ? ['live as $live'] : []),
     // Only a factory that runs code of its author has anything of its own to tear down.
     ...(owns ? ['owned as $owned'] : []),
   ];
@@ -462,7 +462,6 @@ function buildComponentClientModule(
   w.indent();
   openOwned(w, owns);
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
-  w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
   // Its own list, because it is the only one that is emptied while the instance lives.
   if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
@@ -502,7 +501,6 @@ function buildComponentClientModule(
   // body above was copied VERBATIM into this same scope, so a private closure called `m`
   // is a private closure the author cannot shadow — it is a `SyntaxError` in their face,
   // with no diagnostic (BUG-12 §2.5). The `$` reserve of SDD-15 §4.7 binds the emit too.
-  writeMount(w, bodies.mount);
   // `$cb` — the bindings of every `control` whose node crossed as a prop, made again from
   // scratch. It undoes its own previous work first, so the second call replaces the first
   // instead of doubling it: what changes between them is which node the element is bound to.
@@ -520,7 +518,7 @@ function buildComponentClientModule(
   // listeners and the component's own fine-grained subscriptions are still to come
   // (§4.5, §3.8).
   writeClosure(w, '$s', bodies.hook);
-  // `$a` — the only place a value reaches a node. `c` calls it after fabricating and `u`
+  // `$a` — the only place a value reaches a node. `c` calls it after adopting its clone and `u`
   // after reassigning, so create and update converge here and cannot drift apart; that the
   // invariant holds is checkable by looking at the chunk.
   writeClosure(w, '$a', bodies.apply, 'let $v;');
@@ -531,16 +529,18 @@ function buildComponentClientModule(
   w.line('');
   w.line('return {');
   w.indent();
-  w.line('c: () => {'); // fabricate → write the values → mount → hook up
+  // Clone into the shadow root → adopt the clone with every block closed, creating and mounting
+  // the blocks as the walk reaches them → write every value once → hook up (SDD-85 §4.2).
+  w.line('c: () => {');
   w.indent();
-  w.appendWriter(bodies.fab);
-  w.line('$a();');
-  w.line('$m();');
-  w.line('$s();');
+  const start = here(comp.doc.template!.openSpan.start);
+  if (root !== null) w.mappedLine(start, `$dom.append($shadow, ${root}());`);
+  w.appendWriter(bodies.create);
+  w.mappedLine(start, '$a();');
+  w.mappedLine(start, '$s();');
   w.dedent();
   w.line('},');
-  // Adopt → hook up. No `$m()`: the structure came mounted. And no `$a()` either — the
-  // server already painted those values, so re-applying them would rewrite every text node
+  // Adopt → hook up. No `$a()`: the server already painted those values, so re-applying them would rewrite every text node
   // of the subtree with the string it already holds, inside the gesture that INP measures,
   // to change nothing. `h` adopts positions; the payload stays the authority on state.
   w.line('h: () => {');
@@ -588,28 +588,9 @@ function buildComponentClientModule(
     linker,
     diagnostics: [...diagnostics, ...emitDiagnostics],
     // What the walk painted through the `fudic` Trusted Types policy needs from the CSP (SDD-84 §4.6).
-    needs: hookup.paintsHtml ? TRUSTED_TYPES_NEEDS : [],
+    // And a template is parsed through it too (SDD-85 §4.7): a chunk with one needs the same name.
+    needs: hookup.paintsHtml || !templates.empty ? TRUSTED_TYPES_NEEDS : [],
   };
-}
-
-/**
- * `$m` — the roots into the shadow root.
- *
- * A block at the root level is mounted HERE and not while `c` fabricates, and its anchor is
- * a sibling root that this loop has already put in place: inserting during `c` would land
- * the block's rows ahead of every root still waiting in `$r` (SDD-30 §3.4).
- */
-function writeMount(w: CodeWriter, mount: CodeWriter): void {
-  if (mount.empty) {
-    w.line('const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
-    return;
-  }
-  w.line('const $m = () => {');
-  w.indent();
-  w.line('for (const $n of $r) $dom.append($shadow, $n);');
-  w.appendWriter(mount);
-  w.dedent();
-  w.line('};');
 }
 
 /**

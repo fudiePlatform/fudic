@@ -19,7 +19,6 @@ import {
   emitLayoutModuleMapped,
   emitRouteModule,
   emitRouteModuleMapped,
-  type ResolvedLayout,
 } from '../../src/emit/index.js';
 import type { LinkedApi } from '../../src/types/io.js';
 import { drain, memoryIo, minimalSsr, renderPageHtml, type Pieces } from './_support.js';

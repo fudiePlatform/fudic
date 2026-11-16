@@ -113,7 +113,8 @@ describe('§6.16 — the marker, over the list the rule leaves behind', () => {
     const comp = g.components.get(tag)!;
     return {
       server: emitComponentModule(g, comp).includes("$dom.comment('')"),
-      client: emitComponentClientModule(g, comp).includes("$dom.comment('')"),
+      // On the client the comment is in the template the `c` path clones (SDD-85 §4.1).
+      client: emitComponentClientModule(g, comp).includes('<!---->'),
     };
   }
 

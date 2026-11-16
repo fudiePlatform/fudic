@@ -143,21 +143,21 @@ describe('the pieces the template is written with', () => {
     const svg = new TemplateHtml('svg');
     svg.open('circle');
     svg.close();
-    expect(templates.add(new TemplateHtml('html'))).toBeNull();
-    expect(templates.add(a)).toBe('$T0');
-    expect(templates.add(again)).toBe('$T0');
+    expect(templates.add(new TemplateHtml('html'), 0)).toBeNull();
+    expect(templates.add(a, 1)).toBe('$T0');
+    expect(templates.add(again, 2)).toBe('$T0');
     expect(templates.importLine).toBe("import { template as $template } from '@fudic/dom';");
-    expect(templates.add(svg)).toBe('$T1');
-    expect(templates.declarations).toEqual([
+    expect(templates.add(svg, 3)).toBe('$T1');
+    expect(templates.declarations.map((d) => d.text)).toEqual([
       'const $T0 = $template`a`;',
       'const $T1 = $templateIn`<svg><circle></circle></svg>`;',
     ]);
     const math = new Templates();
     const mi = new TemplateHtml('math');
     mi.text('x');
-    math.add(mi);
+    math.add(mi, 4);
     expect(math.importLine).toBe("import { templateIn as $templateIn } from '@fudic/dom';");
-    expect(math.declarations).toEqual(['const $T0 = $templateIn`<math>x</math>`;']);
+    expect(math.declarations.map((d) => d.text)).toEqual(['const $T0 = $templateIn`<math>x</math>`;']);
     writeTemplates(w, templates);
     expect(w.toString()).toBe(
       [
@@ -404,6 +404,13 @@ describe('criterion 3 — no value of examples/basic is in any template', () => 
   it('compiles the example and finds templates in it', () => {
     expect(chunks.size).toBeGreaterThan(50);
     expect(templates.length).toBeGreaterThan(50);
+  });
+
+  it('criterion 7 — no chunk builds an element by hand, and none composes a class', () => {
+    for (const [file, code] of chunks) {
+      expect(code, file).not.toContain('$dom.element(');
+      expect(code, file).not.toContain('filter(Boolean)');
+    }
   });
 
   it('every attribute of every template is one the author wrote literally, or one the compiler adds', () => {

@@ -442,7 +442,7 @@ export class MarkupEmitter {
     // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1) —
     // and the run REACHING this method is already the decision of BUG-21: `emitItems` left
     // out the whitespace runs it could prove render nothing, and left in every one it could
-    // not. Whatever arrives here becomes a node, and the same node the client fabricates.
+    // not. Whatever arrives here becomes a node, and the same node the client clones.
     this.#w.mappedLine(`const ${v} = $dom.text(`, ...run.value, `); $dom.append(${parent}, ${v});`);
   }
 

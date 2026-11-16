@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 16 / 34 — `En curso`.
+> **Progreso:** 25 / 34 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -150,61 +150,87 @@ Lo que la siguiente sesión tiene que saber antes de empezar, decidido con Pedro
 
 ## Fase 4 — compilador: el nuevo `c`
 
-- [ ] **17. La adopción con los bloques cerrados.**
+- [x] **17. La adopción con los bloques cerrados.**
   - Un parámetro del recorrido de adopción: «el servidor pintó los bloques» (para `h`) o «están
     cerrados» (para `c`). En el segundo caso no se llama al `h` de los bloques (SDD §4.3).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/markup-client.ts`, `src/emit/block.ts`.
-- [ ] **18. Escribir una vez cada valor.**
+- [x] **18. Escribir una vez cada valor.**
   - Un pase que llama una vez a cada escritor de `u` con el valor actual: textos (`setText`),
     atributos, `class:`, `class=@expr`, `setLive`, spreads (`setAttrs`), `@raw` (SDD §4.2 paso 3,
     §4.4, §4.6).
   - *Depende de:* 9, 10, 17.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/markup-client.ts`, `src/emit/attrs.ts`.
-- [ ] **19. El `c` raíz: clonar, adoptar, escribir, abrir, levantar, enganchar.**
+- [x] **19. El `c` raíz: clonar, adoptar, escribir, abrir, levantar, enganchar.**
   - Los seis pasos de SDD §4.2 en la raíz del componente.
   - *Depende de:* 14, 17, 18.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `src/emit/markup-client.ts`.
-- [ ] **20. El `c` de los bloques.**
+- [x] **20. El `c` de los bloques.**
   - Clonar en un fragmento, adoptar dentro con el fragmento como `$parent`, escribir, abrir los bloques
     internos, levantar hijos; `m` y `move` como hoy; filas con clave (SDD §4.2).
   - *Depende de:* 15, 17, 18.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/block.ts`.
-- [ ] **21. Lo que se va.**
+- [x] **21. Lo que se va.**
   - Borrar el cuerpo de fabricar y los helpers que solo usaba él; actualizar el comentario de cabecera
     de `markup-client.ts` (SDD §4.9). Criterio 7.
   - *Depende de:* 19, 20, 24 en verde con el camino nuevo.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/markup-client.ts`, `src/emit/block.ts`, `src/emit/runs.ts`.
-- [ ] **22. La necesidad de Trusted Types.**
+- [x] **22. La necesidad de Trusted Types.**
   - `paintsHtml` es cierto en todo chunk que lleva una plantilla, así que registra
     `TRUSTED_TYPES_NEEDS` (SDD §4.7).
   - *Depende de:* 19, 20.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `src/emit/route-client.ts`.
-- [ ] **23. Source maps.**
+- [x] **23. Source maps.**
   - Cada literal de plantilla y cada línea del `c` nuevo apuntan al elemento o al bloque del `.fud`
     que los genera.
   - *Depende de:* 19, 20.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/source-locations.ts`, `src/emit/maps.ts`.
-- [ ] **24. La prueba de equivalencia.**
+- [x] **24. La prueba de equivalencia.**
   - Criterio 8: para cada fixture con controlador de cliente y cada componente de `examples/basic`,
     el árbol de `c` contra el del HTML del servidor parseado, en happy-dom, con todos los bloques
     abiertos y con todos cerrados. Se escribe primero contra el `c` viejo.
   - *Depende de:* 9, 10.
-  - *Paquete:* `compiler`.
-  - *Ficheros:* `test/emit/create-equivalence.test.ts`, `test/helpers/tree-compare.ts`.
-- [ ] **25. Tests del nuevo `c`.**
+  - *Paquete:* `compiler`, `examples/basic`.
+  - *Ficheros:* `test/emit/create-equivalence.test.ts`, `test/helpers/tree-compare.ts`,
+    `examples/basic/src/create-equivalence.test.ts` (SDD §8.2, decisión 31).
+- [x] **25. Tests del nuevo `c`.**
   - Criterios 9, 12 y 14 en happy-dom; cobertura de `compiler` al 100 % en los ficheros nuevos y
     tocados.
   - *Depende de:* 19–23.
   - *Paquete:* `compiler`.
-  - *Ficheros:* `test/emit/create.test.ts`.
+  - *Ficheros:* `test/emit/create.test.ts`, `test/emit/hydrate/await.test.ts` (criterio 12).
+
+## Relevo de la fase 4 para la fase 5
+
+- **Cómo quedó el `c`.** Decisiones 23–33 de la spec. En una frase: el clon se importa, la
+  adopción se escribe dos veces en el mismo recorrido (`create` y `adopt`), los bloques se crean en
+  su sitio y se montan cuando el nivel está adoptado, y el texto que comparte trozo con otro texto
+  lo crea el `c`.
+- **Lo que cambió fuera del compilador**, que la fase 5 tiene que conocer: `DomClient.setDefault`
+  (dom), el `u` provisional de `live` (core), el runtime instalado en el camino `client` de `mount`
+  y `customElements.upgrade` en sitio sobre happy-dom (testing). Los cuatro con su test y al 100 %.
+- **La tarea 24 no se escribió antes que el `c` nuevo**, como pedía el orden: el camino viejo ya
+  lo cubrían las suites de equivalencia de `test/emit/hydrate/`, que pasaron sin tocar con el
+  nuevo, y la prueba nueva es más estricta (atributos como conjunto, texto, espacio de nombres,
+  shadow roots de los hijos).
+- **Cobertura.** Todo lo nuevo de la fase al 100 %. En los ficheros del compilador tocados quedan
+  ramas parciales que ya estaban (`attrs.ts` 159, `client.ts` 330, `markup-client.ts` 854…);
+  `dom`, `core` y `testing` al 100 %.
+- **`node-server.test.ts` del ejemplo** necesita el build del ejemplo (`vite build`): es del
+  cierre, con la pieza `dom/template` en el manifiesto (tarea 26).
+- **Tres fallos previos que la fase destapó y no son de este SDD**, pendientes de decisión de
+  Pedro: (1) al hidratar, el texto que el HTML funde a los dos lados de un bloque cerrado se
+  descoloca o se pierde cuando el bloque se abre (`h` no puede separarlos sin marcadores en el
+  HTML del servidor; el `c` nuevo no lo tiene); (2) un dueño de servicio (`provide`) creado en el
+  navegador no da contenedor a sus hijos; (3) un `let` de un `@{ }` no lo ve un bloque posterior
+  en el cliente (en el servidor sí).
 
 ## Fase 5 — vite, core y testing
 

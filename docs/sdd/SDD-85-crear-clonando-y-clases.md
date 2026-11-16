@@ -98,8 +98,8 @@ export function templateIn(strings: TemplateStringsArray): Template;
   ajeno.
 - **Perezoso.** Nada se parsea al cargar el módulo. La primera llamada a la función devuelta crea un
   `<template>`, le asigna el HTML a través de `trustedHtmlOf` y guarda el elemento; esa llamada y
-  todas las siguientes devuelven `content.cloneNode(true)`. Una página en la que no se abre ningún
-  bloque no crea la policy.
+  todas las siguientes devuelven `document.importNode(content, true)` (§8.2, decisión 23). Una
+  página en la que no se abre ningún bloque no crea la policy.
 - **`templateIn`** es para un trozo que vive dentro de `<svg>` o de `<math>`. El compilador escribe el
   envoltorio en el literal (`<svg>…</svg>`) para que el navegador cree los nodos con el espacio de
   nombres correcto, y `templateIn` devuelve los hijos del envoltorio, sin él.
@@ -497,3 +497,58 @@ Nada.
     elemento creado en el navegador todo atributo dinámico queda detrás de los estáticos, no solo
     los de un spread (§4.6). Es lo mismo que las clases: ni el DOM ni el CSS lo ven. La prueba de
     equivalencia (criterio 8) compara los atributos como conjunto de nombre y valor.
+23. **El clon se importa, no se clona** (fase 4). `template` devuelve
+    `document.importNode(content, true)` y no `content.cloneNode(true)` (§3.1): un clon de
+    `content` pertenece al documento inerte del `<template>`, donde ningún elemento personalizado
+    se mejora, y un hijo creado ahí no se podría levantar con `live` hasta que algo lo moviera a la
+    página. Importado, nace en el documento de la página.
+24. **La adopción se escribe dos veces en el mismo recorrido** (fase 4). El cuerpo de fabricar se
+    sustituye por `create`, que recibe línea a línea la misma adopción que `h` salvo en tres
+    sitios: los bloques se crean (`c` + `s`) en su sitio del recorrido —así un `@{ }` sigue
+    evaluándose donde está (SDD-51 §3.8)— y se montan con su ancla cuando el nivel ya está
+    adoptado (al final del nivel, o en el `m` del bloque si están en su raíz); el `$w` que `h`
+    siembra para un spread, `class=@expr` y `@raw` no se siembra; y el texto que se funde se crea
+    (decisión 25). Es el «parámetro del recorrido» de §4.3, hecho cuerpo. El componente ya no
+    tiene `$r` ni `$m`: el clon entra entero en el shadow root.
+25. **El texto que comparte trozo con otro texto lo crea el `c`, no la plantilla** (fase 4). En un
+    trozo de un nivel (lo que hay entre dos elementos, o entre un elemento y el marcador) con dos
+    o más tramos, lo único que los separa es un bloque o un `@{ }`, y ninguno es nodo de la
+    plantilla: cerrados, los dos textos serían un solo nodo y el bloque, al abrirse, caería al
+    lado y no entre ellos. Esos tramos no van en la plantilla y el `c` los crea en su sitio. Un
+    tramo solo en su trozo va en la plantilla y se encuentra como siempre. Matiza la fila «tramo
+    de texto» de la tabla de §4.1.
+26. **Un comentario del autor no corta un tramo de texto** (fase 4, deuda saldada). `<!-- -->` y
+    `@* *@` no pintan nada en ninguna rama, así que el texto de sus dos lados es un solo trozo del
+    HTML; tratarlos como frontera hacía dos tramos que escribían el mismo nodo, y el segundo
+    perdía su texto (`vista-tareas`: `" Una  "` acababa `" Una "`). Arreglado en `runs.ts`, que
+    usan las dos ramas.
+27. **El cuerpo de un bloque sin nada que clonar no tiene fragmento** (fase 4). Sin plantilla
+    (decisión 18), sus textos se crean sueltos en `$r` y `m` los coloca; se decide antes del
+    recorrido, con los mismos items que escriben la plantilla.
+28. **Un control creado lleva su valor por defecto como lo pinta el servidor** (fase 4).
+    `DomClient` gana `setDefault(el, name, value)`: `checked`/`selected` presentes o ausentes, el
+    atributo `value` de un `<input>`, el texto de un `<textarea>` y el `selected` de la `<option>`
+    que elige el valor de un `<select>`. El `c` lo llama una vez, tras los hijos del control (las
+    opciones pueden venir de un bloque); `setLive` sigue escribiendo solo el estado (SDD-74). Es
+    el caso del `<option selected>` que anunciaba el relevo de la fase 3.
+29. **`live` guarda lo que el padre entrega mientras se descarga la definición** (fase 4, fallo
+    previo). Un hijo creado cuya etiqueta aún no está definida no tiene `u`, y el `$s` del padre
+    lo llamaba: `TypeError`. Ahora `live` le pone un `u` provisional que acumula los valores y lo
+    levanta con ellos.
+30. **`@fudic/testing` crea como un navegador** (fase 4). En `mount(…, { via: 'client' })` se
+    instala el runtime de la página (si no, ningún hijo creado se levantaba), y
+    `customElements.upgrade` —que en happy-dom no hace nada— mejora en sitio, como ya hacía
+    `define`.
+31. **La equivalencia de `examples/basic` vive en el ejemplo** (fase 4). El criterio 8 sobre los
+    fixtures está en `compiler/test/emit/create-equivalence.test.ts`, con formas sintéticas de
+    texto, marcador, SVG, `<select>`, clases, spreads, hijos, `@raw` y scripts de datos; sobre los
+    componentes del ejemplo, en `examples/basic/src/create-equivalence.test.ts`, donde sus módulos
+    resuelven, montando cada uno por los dos caminos y comparando también los shadow roots de sus
+    hijos. Los componentes que solo viven dentro de otro (un control de su formulario, una señal
+    suya) se comparan dentro de él. `di-owner` y lo que inyecta quedan fuera: un dueño de servicio
+    creado en el navegador no tiene contenedor (SDD-38 §4.5), con el `c` viejo igual.
+32. **Source maps** (fase 4). La constante de cada plantilla apunta a su trozo de vista y cada
+    línea del `c` al elemento, texto o bloque que la genera (`here(at)` de `writer.ts`).
+33. **Deuda saldada de paso** (fase 4): el `setAttrs` «en su sitio» del cliente sobraba (el orden
+    no se compara) y se va; el compilador queda sin imports ni parámetros muertos
+    (`--noUnusedLocals --noUnusedParameters` limpio, `src` y `test`).

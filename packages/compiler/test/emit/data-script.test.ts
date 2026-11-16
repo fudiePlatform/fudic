@@ -91,9 +91,10 @@ describe('a data `<script>` reaches the HTML (decision 129)', () => {
     expect(html).toContain('<script src="/probe.js"></script>');
   });
 
-  it('the client chunk fabricates the same body, so `c` and `h` end with one tree', () => {
-    // The equivalence hydration rests on: what `c()` builds is what the HTML gives back.
-    expect(clientChunk).toContain(JSON.stringify(LD));
-    expect(clientChunk).toContain(JSON.stringify(MAP));
+  it('the client template carries the same body, so `c` and `h` end with one tree', () => {
+    // The equivalence hydration rests on: what `c()` clones is what the HTML gives back. Verbatim,
+    // as the server writes it: a script's text is not HTML, and escaping it would change it.
+    expect(clientChunk).toContain(`<script type="application/ld+json">${LD}</script>`);
+    expect(clientChunk).toContain(`<script type="importmap">${MAP}</script>`);
   });
 });

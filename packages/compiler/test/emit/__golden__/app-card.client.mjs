@@ -4,13 +4,12 @@ import { template as $template } from '@fudic/dom';
 const $T0 = $template` <div class="body"><slot></slot></div> `;
 const $T1 = $template` Cerrar `;
 const $T2 = $template` Abrir `;
-const $T3 = $template`<article class="card"><header><h2></h2></header>  <app-button data-fud-adopt="app-button">  </app-button></article>`;
+const $T3 = $template`<article class="card"><header><h2></h2></header><app-button data-fud-adopt="app-button"></app-button></article>`;
 
 customElements.define("app-card", class extends FudicElement {
   static c($props) {
     const [$ctl, $owns] = $owned(() => {
       let $n0, $n1, $n2, $n3, $n4, $n5, $n10;
-      const $r = [];
       const $d = []; // teardowns
       const $w = []; // last applied, per value write
       let [$dom, $shadow, title, variant] = $props; variant ??= ('default');
@@ -31,14 +30,17 @@ customElements.define("app-card", class extends FudicElement {
         return {
           key: undefined,
           c: () => {
-            $n6 = $dom.text(" ");
+            const $f = $T0();
+            let $c = $dom.firstElementChild($f);
+            $n6 = $dom.previousSibling($c);
             $r.push($n6);
-            $n7 = $dom.element("div");
-            $dom.setAttr($n7, 'class', "body");
-            $n9 = $dom.element("slot");
-            $dom.append($n7, $n9);
+            $n7 = $c; $c = $dom.nextElementSibling($c);
             $r.push($n7);
-            $n8 = $dom.text(" ");
+            {
+              let $c1 = $dom.firstElementChild($n7);
+              $n9 = $c1; $c1 = $dom.nextElementSibling($c1);
+            }
+            $n8 = $dom.lastChild($f);
             $r.push($n8);
             $a();
           },
@@ -93,7 +95,9 @@ customElements.define("app-card", class extends FudicElement {
         return {
           key: undefined,
           c: () => {
-            $n11 = $dom.text(" Cerrar ");
+            const $f = $T1();
+            let $c = $dom.firstElementChild($f);
+            $n11 = $dom.lastChild($f);
             $r.push($n11);
             $a();
           },
@@ -124,7 +128,9 @@ customElements.define("app-card", class extends FudicElement {
         return {
           key: undefined,
           c: () => {
-            $n12 = $dom.text(" Abrir ");
+            const $f = $T2();
+            let $c = $dom.firstElementChild($f);
+            $n12 = $dom.lastChild($f);
             $r.push($n12);
             $a();
           },
@@ -157,7 +163,6 @@ customElements.define("app-card", class extends FudicElement {
         const $i = $f1($q, $n10);
         if ($i !== null) { $i.c(); $i.m(); $i.s(); $k1.push($i); }
       };
-      const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
       const $s = () => {
         $n3 && $d.push($dom.event($n3, "press", toggle));
         $d.push($sub(expanded, $u));
@@ -174,39 +179,42 @@ customElements.define("app-card", class extends FudicElement {
 
       return {
         c: () => {
-          $n0 = $dom.element("article");
-          $dom.setAttr($n0, 'class', "card");
-          $n1 = $dom.element("header");
-          $n4 = $dom.element("h2");
-          $n5 = $dom.text('');
-          $dom.append($n4, $n5);
-          $dom.append($n1, $n4);
-          $dom.append($n0, $n1);
-          $dom.append($n0, $dom.text(" "));
+          $dom.append($shadow, $T3());
+          let $c0 = $dom.firstElementChild($shadow);
+          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
           {
-            const $q = $q0();
-            const $i = $f0($q, null);
-            if ($i !== null) { $i.c(); $i.m(); $i.s(); $k0.push($i); }
-            $x0 = $q;
+            let $c1 = $dom.firstElementChild($n0);
+            $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
+            {
+              let $c2 = $dom.firstElementChild($n1);
+              $n4 = $c2; $c2 = $dom.nextElementSibling($c2);
+              $n5 = $dom.lastChild($n4);
+              $n5 = $dom.textAt($n4, $n5, null);
+            }
+            $dom.before($c1, $dom.text(" "));
+            {
+              const $q = $q0();
+              const $i = $f0($q, null);
+              if ($i !== null) { $i.c(); $i.s(); $k0.push($i); }
+              $x0 = $q;
+            }
+            $n2 = $dom.text(" ");
+            $dom.before($c1, $n2);
+            $n3 = $c1; $c1 = $dom.nextElementSibling($c1);
+            $live($n3, ["ghost"]);
+            $dom.append($n3, $dom.text(" "));
+            {
+              const $q = $q1();
+              const $i = $f1($q, null);
+              if ($i !== null) { $i.c(); $i.s(); $k1.push($i); }
+              $x1 = $q;
+            }
+            $n10 = $dom.text(" ");
+            $dom.append($n3, $n10);
+            for (const $i of $k1) $i.m($n10);
+            for (const $i of $k0) $i.m($n2);
           }
-          $n2 = $dom.text(" ");
-          $dom.append($n0, $n2);
-          $n3 = $dom.element("app-button");
-          $dom.setAttr($n3, 'data-fud-adopt', "app-button");
-          $live($n3, ["ghost"]);
-          $dom.append($n3, $dom.text(" "));
-          {
-            const $q = $q1();
-            const $i = $f1($q, null);
-            if ($i !== null) { $i.c(); $i.m(); $i.s(); $k1.push($i); }
-            $x1 = $q;
-          }
-          $n10 = $dom.text(" ");
-          $dom.append($n3, $n10);
-          $dom.append($n0, $n3);
-          $r.push($n0);
           $a();
-          $m();
           $s();
         },
         h: () => {

@@ -158,9 +158,10 @@ describe('a signal crosses its VALUE, never the object (decision 151)', () => {
 describe('a plain attribute on a component host is an HTML attribute (§4.2)', () => {
   it('is written on the host and is NOT a prop of the child', () => {
     const { page: p, server, client } = outputs('<app-badge slot="meta"></app-badge>');
-    for (const src of [p, server, client]) {
+    for (const src of [p, server]) {
       expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, "slot", "meta"\);/u);
     }
+    expect(client).toContain('<app-badge slot="meta"');
     // `slot` is HTML's own vocabulary, never a prop the child declares.
     expect(p).not.toContain('"slot": "meta"');
     expect(server).not.toContain('"slot": "meta"');

@@ -62,8 +62,8 @@ describe('`@@` in content (§6.1)', () => {
     expect(serverModule).toContain('$dom.text("@server load")');
   });
 
-  it('the client chunk builds the same text', () => {
-    expect(clientChunk).toContain('$dom.text("@server load")');
+  it('the client template carries the same text', () => {
+    expect(clientChunk).toContain('<code>@server load</code>');
   });
 
   it('and the painted HTML carries it', () => {
@@ -74,7 +74,8 @@ describe('`@@` in content (§6.1)', () => {
 describe('an entity in content (§6.2)', () => {
   it('the node data is the CHARACTER, on both branches', () => {
     expect(serverModule).toContain('$dom.text("<html>")');
-    expect(clientChunk).toContain('$dom.text("<html>")');
+    // In the template it is HTML again, escaped as the server escapes it: the clone holds `<html>`.
+    expect(clientChunk).toContain('&lt;html&gt;');
   });
 
   it('the serializer escapes it exactly once', () => {

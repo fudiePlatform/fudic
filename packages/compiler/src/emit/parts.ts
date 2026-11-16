@@ -205,7 +205,7 @@ function headStyleExpr(source: string, el: ElementNode, linker: AssetLinker): st
   const attrs = source.slice(el.openSpan.start + '<style'.length, el.openSpan.end - 1);
   return (
     `'<style' + $nonce + ${JSON.stringify(attrs)} + '>' + ` +
-    `${linker.cssTemplate(compactStyleCss(source, body))} + '</style>'`
+    `${linker.cssTemplate(compactStyleCss(body))} + '</style>'`
   );
 }
 

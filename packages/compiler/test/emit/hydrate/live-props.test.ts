@@ -13,7 +13,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { FudicElement, owned, signal, subscribe, written } from '@fudic/core';
 import {
   emitComponentClientModule,
-  emitComponentModule,
   resolveComponents,
   type ComponentGraph,
 } from '../../../src/emit/index.js';

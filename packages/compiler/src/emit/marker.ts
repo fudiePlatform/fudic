@@ -35,7 +35,7 @@ const CONSTRUCT_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'for', 'fo
 export const isConstructNode = (node: HtmlContent): boolean => CONSTRUCT_TYPES.has(node.type);
 
 /** Whether item `i` of a level is a control construct. Past the end it is not one. */
-function isConstructAt(items: readonly EmitItem[], i: number): boolean {
+export function isConstructAt(items: readonly EmitItem[], i: number): boolean {
   const item = items[i];
   return item !== undefined && item.kind === 'node' && isConstructNode(item.node);
 }

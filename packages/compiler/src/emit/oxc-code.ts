@@ -15,7 +15,6 @@ import type {
   PageDocument,
   RouteDocument,
 } from '../document/index.js';
-import type { CodeBlockNode } from '../code/index.js';
 import type { HtmlContent } from '../html/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
@@ -1712,7 +1711,7 @@ function readDeclarator(
     const declared = declaredMembers(init, named, source, map);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, declared);
-    readRest(id, source, map, props, declared);
+    readRest(id, map, props, declared);
     // RECOGNISED, and that is what the answer means — not «it produced something». A
     // `const {} = props<Props>()` declares no prop and is still the emit's to write: copying
     // it into a module would call a `props` that exists nowhere.
@@ -1867,7 +1866,6 @@ function declaredMembers(
  */
 function readRest(
   pattern: OxcNode,
-  source: string,
   map: MapOffset,
   out: Prop[],
   declared: ReadonlyMap<string, DeclaredMember>,

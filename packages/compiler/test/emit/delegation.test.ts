@@ -70,10 +70,6 @@ describe('delegation — the emit (§6.12, invariant 3)', () => {
 describe('delegatedHandler — the wrapper itself (§4.1)', () => {
   /** The listener one component's single event binding compiles to. */
   function wrapper(inner: string): string | undefined {
-    const source = `<m-el>\n  <template shadowrootmode="open">${inner}</template>\n</m-el>\n`;
-    const doc = parse(source) as ComponentDocument;
-    const { template } = extractCode(source, doc);
-    const roots = doc.template!.children;
     return wrappers(inner)[0];
   }
 

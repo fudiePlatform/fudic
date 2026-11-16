@@ -44,6 +44,8 @@ export interface TextRun {
    * asked for by name, and a node that spells its own content is content.
    */
   readonly blank: boolean;
+  /** Where the run starts in the source: what the lines that find or create it map to. */
+  readonly at: number;
 }
 
 /** Anything that is not text: an element, a control construct, a layout directive. */
@@ -112,6 +114,9 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
 
 const isTextish = (node: HtmlContent): boolean => ROLE[node.type] !== 'node';
 
+/** The nodes no branch writes anything for: the author's comments, HTML and Razor. */
+const SILENT: ReadonlySet<HtmlContent['type']> = new Set(['comment', 'razor-comment']);
+
 /** Whether a piece of content is literal text — the `@@` escape included. */
 export const isLiteralText = (node: HtmlContent): boolean => ROLE[node.type] === 'literal';
 
@@ -141,6 +146,10 @@ export function emitItems(
       run.push(child);
       continue;
     }
+    // An author's comment paints nothing on either branch, so it is no boundary either: the text
+    // on its two sides is one stretch of the HTML, and two runs there would be two writers of one
+    // node — the second hole's text overwritten by the first's.
+    if (SILENT.has(child.type)) continue;
     flush();
     items.push({ kind: 'node', node: child });
   }
@@ -163,8 +172,8 @@ function keepRuns(items: readonly EmitItem[], at: RunContext): EmitItem[] {
   const kept = items.filter((_, i) => !dropped[i]);
   // Discarding every child of an element is emptying it, and `:empty` can see that. Asked of
   // the RESULT and not of the source: if every sibling goes, the last one stays — and asked
-  // of what ends up being a NODE, so an author comment, which neither branch paints, does not
-  // pass for content.
+  // of what ends up being a NODE, so an `@{ }` or a layout directive, which neither branch
+  // paints, does not pass for content.
   if (kept.some(isNode)) return kept;
   const last = dropped.lastIndexOf(true);
   if (last === -1) return kept;
@@ -227,6 +236,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
     const text = literalText(node);
     return decodeEntities(space === 'preserve' ? text : collapseSpace(text));
   };
+  const at = pieces[0]!.span.start;
   const interpolated = pieces.some((p) => ROLE[p.type] === 'expression');
   // An interpolation is never blank whatever it evaluates to, and `@@` contributes an `@`.
   const blank = !interpolated && pieces.every((p) => BLANK.test(literalText(p)));
@@ -238,7 +248,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
   // No hole anywhere: ONE string literal, however many pieces contributed to it. `@@` beside
   // its own text is still static text, and static text has no business being a template.
   if (!interpolated) {
-    return { kind: 'run', value: [JSON.stringify(text)], interpolated, text, blank };
+    return { kind: 'run', value: [JSON.stringify(text)], interpolated, text, blank, at };
   }
 
   const only = pieces[0]!;
@@ -249,6 +259,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
       interpolated,
       text,
       blank,
+      at,
     };
   }
 
@@ -263,7 +274,7 @@ function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMod
     }
   }
   parts.push('`');
-  return { kind: 'run', value: parts, interpolated, text, blank };
+  return { kind: 'run', value: parts, interpolated, text, blank, at };
 }
 
 /**

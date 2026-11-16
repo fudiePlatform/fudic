@@ -71,10 +71,10 @@ describe('a text run with a hole is ONE node, and one template', () => {
     expect([...server.matchAll(/\$dom\.text\([^\n]*\$dom\.append\(\$n0,/gu)]).toHaveLength(1);
   });
 
-  it('the client fabricates one node and lets $a write its text', () => {
-    // The node is structure and the text is state (SDD-15 §4.3): `c()` makes it empty and
-    // `$a()` fills it, so create and update converge on the same statement.
-    expect(client).toContain("$dom.text('')");
+  it('the client clones one node and lets $a write its text', () => {
+    // The node is structure and the text is state (SDD-15 §4.3): the template has it with its
+    // hole empty and `$a()` fills it, so create and update converge on the same statement.
+    expect(client).toMatch(/\$template`[^`]*Hello [^`]*`/u);
     expect(client).toContain("$v = `Hello ${(name) ?? ''}`;");
     expect(client).toContain('$dom.setText(');
   });

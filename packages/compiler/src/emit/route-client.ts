@@ -288,7 +288,7 @@ function buildRouteClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
-    ...(usage.fabricates ? ['live as $live'] : []),
+    ...(usage.creates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
     ...(refreshes ? ['onStaleData as $stale'] : []),
     ...(shape !== undefined ? ['unpackData as $unpackData'] : []),
@@ -361,7 +361,7 @@ function buildRouteClientModule(
     linker,
     diagnostics: [...code.diagnostics, ...emitDiagnostics],
     // What the walk painted through the `fudic` Trusted Types policy needs from the CSP (SDD-84 §4.6).
-    needs: hookup.paintsHtml ? TRUSTED_TYPES_NEEDS : [],
+    needs: hookup.paintsHtml || !templates.empty ? TRUSTED_TYPES_NEEDS : [],
   };
 }
 

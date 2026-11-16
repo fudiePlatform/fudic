@@ -23,6 +23,7 @@ import type { Diagnostic } from '../../src/types/index.js';
 import { memoryIo } from './_support.js';
 import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './hydrate/_harness.js';
 import { viewInput } from '../semantic/_view.js';
+import { treeOf } from '../helpers/tree-compare.js';
 
 const FIELD =
   '@code {\n' +
@@ -65,7 +66,9 @@ describe('the emitted text', () => {
   it('h seeds the guard with the objects the server painted from, in a block too', () => {
     const h = client.slice(client.lastIndexOf('h: () => {'));
     expect(h).toMatch(/\$w\[\d+\] = \[\(resto\)\];/u);
-    expect(client).toMatch(/h: \(\$c\) => \{\n\s*\$w\[0\] = \[\(x\)\];/u);
+    // Right behind the adoption of the row's element, and only on `h`: `c` has painted nothing.
+    expect(client).toMatch(/h: \(\$c\) => \{\n(?:.*\n){2}\s*\$w\[0\] = \[\(x\)\];/u);
+    expect(client.match(/\$w\[0\] = \[\(x\)\];/gu)).toHaveLength(1);
   });
 
   it('a class: composition puts `class` in the except list', () => {
@@ -110,7 +113,8 @@ describe('run over a live DOM', () => {
     const shadow = host.attachShadow({ mode: 'open' });
     document.body.append(host);
     controller(clientFactory(graph, 'x-run-field'), browserDom, shadow, values).c();
-    expect(shadow.innerHTML).toBe(painted().innerHTML);
+    // The same tree; the attributes a spread writes come behind the clone's (SDD-85 §4.6).
+    expect(treeOf(shadow)).toBe(treeOf(painted()));
     expect(shadow.querySelector('input.a')!.getAttribute('placeholder')).toBe('Escribe');
     expect(shadow.querySelector('input.a')!.getAttribute('required')).toBe('');
     expect(shadow.querySelector('input.a')!.getAttribute('maxlength')).toBe('20');

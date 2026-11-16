@@ -35,6 +35,18 @@ function blanks(code: string): number {
     const raw = call[1] ?? call[2] ?? '';
     if (raw !== '' && /^(?:\\n|\\t|\\r|\\f| )+$/u.test(raw)) n += 1;
   }
+  return n + templateBlanks(code);
+}
+
+/**
+ * The whitespace nodes of the client's templates (SDD-85 §4.1): every stretch between two tags of
+ * a literal is one text node of the clone. What `c` creates instead is a `$dom.text` call above.
+ */
+function templateBlanks(code: string): number {
+  let n = 0;
+  for (const literal of code.matchAll(/\$template(?:In)?`((?:[^`\\]|\\.)*)`/gu)) {
+    for (const text of literal[1]!.split(/<[^>]*>/u)) if (/^[ \n\t\r\f]+$/u.test(text)) n += 1;
+  }
   return n;
 }
 

@@ -38,7 +38,11 @@ function cloner(html: string, unwrap: boolean): Template {
       // The wrapper only gave its children their namespace: the children are what is created.
       if (unwrap) content.replaceChildren(...content.firstElementChild!.childNodes);
     }
-    return content.cloneNode(true) as DocumentFragment;
+    // Imported, not cloned: a clone of `content` belongs to the template's inert document, where
+    // no custom element is ever upgraded — a child host in it could not be raised (`live`) until
+    // something moved it into the page. Imported, it is born in the page's document, and a tag
+    // already defined is upgraded on the spot.
+    return document.importNode(content, true);
   };
 }
 

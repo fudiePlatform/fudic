@@ -8,7 +8,7 @@
  * their contents are validated by Oxc later (SDD-11). Never throws.
  */
 
-import { type Span, span, emptySpan } from '../types/index.js';
+import { span, emptySpan } from '../types/index.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   FUD0010,

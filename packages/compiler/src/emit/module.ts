@@ -264,10 +264,10 @@ function styleElement(doc: ComponentDocument): ElementNode | undefined {
  * interpolation stays byte for byte (BUG-08 §3.1). A slice of the source in the emit is a
  * sign that a node is going unused.
  */
-function componentCss(source: string, doc: ComponentDocument): string {
+function componentCss(doc: ComponentDocument): string {
   const style = componentStyleNode(doc);
   if (!style) return '';
-  return compactStyleCss(source, style);
+  return compactStyleCss(style);
 }
 
 /**
@@ -286,7 +286,7 @@ function componentCss(source: string, doc: ComponentDocument): string {
 export function styledTags(graph: ComponentGraph): ReadonlySet<string> {
   const styled = new Set<string>();
   for (const comp of allComponents(graph)) {
-    if (componentCss(comp.source, comp.doc) !== '') styled.add(comp.tag);
+    if (componentCss(comp.doc) !== '') styled.add(comp.tag);
   }
   return styled;
 }
@@ -321,7 +321,7 @@ export function sheetUrlsOf(
   return (tag) => {
     const urls = adopt(tag).split(' ').filter((s) => s !== '').flatMap(projectUrl);
     const comp = graph.components.get(tag) ?? (self?.tag === tag ? self : undefined);
-    const css = comp === undefined ? '' : componentCss(comp.source, comp.doc);
+    const css = comp === undefined ? '' : componentCss(comp.doc);
     if (comp !== undefined && css !== '') {
       const own = css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gu, (whole, q: string, spec: string) =>
         isRelativeUrl(spec) ? `url(${q}${rebaseSpec(spec, comp.path, graph.entryPath)}${q})` : whole,
@@ -485,7 +485,7 @@ function buildComponentModule(
   if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
-  const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
+  const css = linker.cssTemplate(componentCss(comp.doc));
 
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);

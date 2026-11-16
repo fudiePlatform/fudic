@@ -21,7 +21,7 @@
  */
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
-import type { LayoutDocument, RouteDocument } from '../document/index.js';
+import type { RouteDocument } from '../document/index.js';
 import type { SectionNode } from '../layout/index.js';
 import { CodeWriter } from './writer.js';
 import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';

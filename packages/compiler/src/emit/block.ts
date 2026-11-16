@@ -21,8 +21,8 @@
 import type { AwaitNode, ControlConstruct } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import type { Span } from '../types/index.js';
-import { type OxcNode, loopHeaderNames } from '../oxc/index.js';
-import { CodeWriter } from './writer.js';
+import { loopHeaderNames } from '../oxc/index.js';
+import { CodeWriter, here } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import {
   awaitBranches,
@@ -77,7 +77,7 @@ export interface BlockContext {
 /** A fresh set of the bodies one closure — a factory or a block — fills. */
 export function newBodies(): ClientBodies {
   return {
-    fab: new CodeWriter(),
+    create: new CodeWriter(),
     adopt: new CodeWriter(),
     mount: new CodeWriter(),
     apply: new CodeWriter(),
@@ -163,7 +163,7 @@ export class BlockEmitter implements BlockSink {
     if (!isLoop(node)) at.bodies.decls.line(`let $x${id} = -1;`);
     for (const [i, branch] of branches.entries()) this.#declare(blocks[i]!, branch, node, at);
 
-    const parent = at.level.fab ?? at.level.dom;
+    const parent = at.level.dom;
     if (isLoop(node)) this.#loop(node, blocks[0]!, blocks[1], id, registry, parent, at);
     else this.#branching(node, branches, blocks, id, registry, parent, at);
     at.bodies.update.line(`$u${id}();`);
@@ -261,8 +261,9 @@ export class BlockEmitter implements BlockSink {
       ns: at.ns,
     });
     em.planInPlace(branch.body);
-    em.emitBlockBody(branch.body, '$c', at.tail);
-    this.#ctx.templates.add(em.template);
+    em.emitBlockBody(branch.body, '$c', at.tail, node.span.start);
+    // What `c` clones into its fragment: the walk decided before writing it whether there is one.
+    const template = this.#ctx.templates.add(em.template, node.span.start);
     // What the body reads through an imported name — `@if (userForm.alias.pending())` in a row —
     // is watched by the instance itself, in its `$s`, and repaints it with the row it holds now:
     // the parent only repaints a block when a value of its own moves. A name the row declares,
@@ -304,8 +305,12 @@ export class BlockEmitter implements BlockSink {
     // The block of an `@empty` has no row to be: no key, and the mark the reconciliation finds it by.
     if (branch.kind === 'empty') w.line('key: undefined,').line('z: true,');
     else w.line(`key: ${this.#keyOf(node)},`);
+    // Clone, adopt the clone with every block closed — creating them as it reaches them — and
+    // write every value once (SDD-85 §4.2). The nodes stay in the fragment until `m` places them.
     w.line('c: () => {');
-    w.indent().appendWriter(bodies.fab).line('$a();').dedent();
+    w.indent();
+    if (em.fragment) w.mappedLine(here(node.span.start), `const $f = ${template!}();`);
+    w.appendWriter(bodies.create).mappedLine(here(node.span.start), '$a();').dedent();
     w.line('},');
     // `h` never calls `$a()`: the server already painted those values, and rewriting them
     // inside the gesture INP measures is work that changes nothing (§4.5, BUG-12 §4.3).
@@ -385,18 +390,17 @@ export class BlockEmitter implements BlockSink {
     // releases it too, as it does the live arm of an `@if`.
     const none = empty === undefined ? undefined : `if (${registry}.length === 0) { ${callOf(empty, parent, 'null')}`;
 
-    const fab = at.bodies.fab;
-    fab.line(`${head} {`).indent();
-    fab.line(call);
-    fab.line('$i.c();');
-    if (!at.deferredMount) fab.line('$i.m();');
-    fab.line('$i.s();');
-    fab.line(`${registry}.push($i);`);
-    fab.dedent().line('}');
-    if (none !== undefined) fab.line(`${none} $i.c();${at.deferredMount ? '' : ' $i.m();'} $i.s(); ${registry}.push($i); }`);
-    if (at.deferredMount) {
-      at.bodies.mount.line(`for (const $i of ${registry}) $i.m(${anchorOf(at)});`);
-    }
+    // Created in its place — its header reads what the `@{ }`s before it left (SDD-51 §3.8) — and
+    // mounted once the level around it is adopted, before the node it goes in front of.
+    const create = at.bodies.create;
+    create.mappedLine(here(node.span.start), `${head} {`).indent();
+    create.mappedLine(here(node.span.start), call);
+    create.mappedLine(here(node.span.start), '$i.c();');
+    create.mappedLine(here(node.span.start), '$i.s();');
+    create.mappedLine(here(node.span.start), `${registry}.push($i);`);
+    create.dedent().mappedLine(here(node.span.start), '}');
+    if (none !== undefined) create.mappedLine(here(node.span.start), `${none} $i.c(); $i.s(); ${registry}.push($i); }`);
+    at.mount.mappedLine(here(node.span.start), `for (const $i of ${registry}) $i.m(${anchorOf(at)});`);
 
     const adopt = at.bodies.adopt;
     adopt.line(`${head} {`).indent();
@@ -497,18 +501,14 @@ export class BlockEmitter implements BlockSink {
     );
     w.line(`const ${make} = ($x, $an) => ${arms.join(' : ')} : null;`);
 
-    const fab = at.bodies.fab;
-    fab.line('{').indent();
-    fab.line(`const $q = ${pick}();`);
-    fab.line(`const $i = ${make}($q, null);`);
-    fab.line(
-      `if ($i !== null) { $i.c();${at.deferredMount ? '' : ' $i.m();'} $i.s(); ${registry}.push($i); }`,
-    );
-    fab.line(`$x${id} = $q;`);
-    fab.dedent().line('}');
-    if (at.deferredMount) {
-      at.bodies.mount.line(`for (const $i of ${registry}) $i.m(${anchorOf(at)});`);
-    }
+    const create = at.bodies.create;
+    create.mappedLine(here(node.span.start), '{').indent();
+    create.mappedLine(here(node.span.start), `const $q = ${pick}();`);
+    create.mappedLine(here(node.span.start), `const $i = ${make}($q, null);`);
+    create.mappedLine(here(node.span.start), `if ($i !== null) { $i.c(); $i.s(); ${registry}.push($i); }`);
+    create.mappedLine(here(node.span.start), `$x${id} = $q;`);
+    create.dedent().mappedLine(here(node.span.start), '}');
+    at.mount.mappedLine(here(node.span.start), `for (const $i of ${registry}) $i.m(${anchorOf(at)});`);
 
     const adopt = at.bodies.adopt;
     adopt.line('{').indent();

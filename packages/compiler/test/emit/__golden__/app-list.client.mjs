@@ -1,14 +1,13 @@
 import { FudicElement } from '@fudic/core';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <span class="tag"></span> `;
-const $T1 = $template` <li class="row"> <span></span>  </li> `;
+const $T1 = $template` <li class="row"> <span></span></li> `;
 const $T2 = $template` <li class="empty"></li> `;
-const $T3 = $template`<ul class="list">  </ul>`;
+const $T3 = $template`<ul class="list"></ul>`;
 
 customElements.define("app-list", class extends FudicElement {
   static c($props) {
     let $n0, $n1;
-    const $r = [];
     const $d = []; // teardowns
     let [$dom, $shadow, rows, empty] = $props; rows ??= ([]); empty ??= ('Sin elementos');
 
@@ -34,14 +33,15 @@ customElements.define("app-list", class extends FudicElement {
         return {
           key: mark,
           c: () => {
-            $n8 = $dom.text(" ");
+            const $f = $T0();
+            let $c = $dom.firstElementChild($f);
+            $n8 = $dom.previousSibling($c);
             $r.push($n8);
-            $n9 = $dom.element("span");
-            $dom.setAttr($n9, 'class', "tag");
-            $n11 = $dom.text('');
-            $dom.append($n9, $n11);
+            $n9 = $c; $c = $dom.nextElementSibling($c);
             $r.push($n9);
-            $n10 = $dom.text(" ");
+            $n11 = $dom.lastChild($n9);
+            $n11 = $dom.textAt($n9, $n11, null);
+            $n10 = $dom.lastChild($f);
             $r.push($n10);
             $a();
           },
@@ -95,27 +95,29 @@ customElements.define("app-list", class extends FudicElement {
       return {
         key: row.id,
         c: () => {
-          $n2 = $dom.text(" ");
+          const $f = $T1();
+          let $c = $dom.firstElementChild($f);
+          $n2 = $dom.previousSibling($c);
           $r.push($n2);
-          $n3 = $dom.element("li");
-          $dom.setAttr($n3, 'class', "row");
-          $dom.append($n3, $dom.text(" "));
-          $n5 = $dom.element("span");
-          $n7 = $dom.text('');
-          $dom.append($n5, $n7);
-          $dom.append($n3, $n5);
-          $dom.append($n3, $dom.text(" "));
-          for (const mark of row.tags) {
-            const $i = $b2($n3, null, mark);
-            $i.c();
-            $i.m();
-            $i.s();
-            $k1.push($i);
-          }
-          $n6 = $dom.text(" ");
-          $dom.append($n3, $n6);
+          $n3 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n3);
-          $n4 = $dom.text(" ");
+          {
+            let $c1 = $dom.firstElementChild($n3);
+            $n5 = $c1; $c1 = $dom.nextElementSibling($c1);
+            $n7 = $dom.lastChild($n5);
+            $n7 = $dom.textAt($n5, $n7, null);
+            $dom.append($n3, $dom.text(" "));
+            for (const mark of row.tags) {
+              const $i = $b2($n3, null, mark);
+              $i.c();
+              $i.s();
+              $k1.push($i);
+            }
+            $n6 = $dom.text(" ");
+            $dom.append($n3, $n6);
+            for (const $i of $k1) $i.m($n6);
+          }
+          $n4 = $dom.lastChild($f);
           $r.push($n4);
           $a();
         },
@@ -170,14 +172,15 @@ customElements.define("app-list", class extends FudicElement {
         key: undefined,
         z: true,
         c: () => {
-          $n12 = $dom.text(" ");
+          const $f = $T2();
+          let $c = $dom.firstElementChild($f);
+          $n12 = $dom.previousSibling($c);
           $r.push($n12);
-          $n13 = $dom.element("li");
-          $dom.setAttr($n13, 'class', "empty");
-          $n15 = $dom.text('');
-          $dom.append($n13, $n15);
+          $n13 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n13);
-          $n14 = $dom.text(" ");
+          $n15 = $dom.lastChild($n13);
+          $n15 = $dom.textAt($n13, $n15, null);
+          $n14 = $dom.lastChild($f);
           $r.push($n14);
           $a();
         },
@@ -223,28 +226,29 @@ customElements.define("app-list", class extends FudicElement {
       for (let $j = $next.length - 1, $ref = $n1; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
       $k0 = $next;
     };
-    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {};
     const $a = () => {};
 
     return {
       c: () => {
-        $n0 = $dom.element("ul");
-        $dom.setAttr($n0, 'class', "list");
-        $dom.append($n0, $dom.text(" "));
-        for (const row of rows) {
-          const $i = $b0($n0, null, row);
-          $i.c();
-          $i.m();
-          $i.s();
-          $k0.push($i);
+        $dom.append($shadow, $T3());
+        let $c0 = $dom.firstElementChild($shadow);
+        $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+        {
+          let $c1 = $dom.firstElementChild($n0);
+          $dom.append($n0, $dom.text(" "));
+          for (const row of rows) {
+            const $i = $b0($n0, null, row);
+            $i.c();
+            $i.s();
+            $k0.push($i);
+          }
+          if ($k0.length === 0) { const $i = $b1($n0, null, empty); $i.c(); $i.s(); $k0.push($i); }
+          $n1 = $dom.text(" ");
+          $dom.append($n0, $n1);
+          for (const $i of $k0) $i.m($n1);
         }
-        if ($k0.length === 0) { const $i = $b1($n0, null, empty); $i.c(); $i.m(); $i.s(); $k0.push($i); }
-        $n1 = $dom.text(" ");
-        $dom.append($n0, $n1);
-        $r.push($n0);
         $a();
-        $m();
         $s();
       },
       h: () => {

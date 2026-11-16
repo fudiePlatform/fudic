@@ -21,7 +21,6 @@
 import type { Diagnostic } from '../types/index.js';
 import { FUD0605 } from '@fudic/diagnostics';
 import type { Attribute, ElementNode } from '../html/index.js';
-import { isFormAssociated } from './control.js';
 import { staticId, walkBlocks } from './markers.js';
 
 /** The standard attribute of a declarative shadow root that sets its reference target. */

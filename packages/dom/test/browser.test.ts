@@ -156,6 +156,43 @@ describe('browserDom mutation', () => {
     expect(b.hasAttribute('selected')).toBe(false);
   });
 
+  it('setDefault writes checked and selected as the server does: present, or absent (SDD-85 §4.2)', () => {
+    const box = dom.element('input') as HTMLInputElement;
+    box.type = 'checkbox';
+    dom.setDefault(box, 'checked', true);
+    expect(box.getAttribute('checked')).toBe('');
+    expect(box.checked).toBe(true); // untouched, the state follows the default
+    dom.setDefault(box, 'checked', null);
+    expect(box.hasAttribute('checked')).toBe(false);
+    const option = dom.element('option') as HTMLOptionElement;
+    dom.setDefault(option, 'selected', 'yes');
+    expect(option.getAttribute('selected')).toBe('yes');
+  });
+
+  it('setDefault writes the value attribute of an input, and the text of a textarea', () => {
+    const input = dom.element('input') as HTMLInputElement;
+    dom.setDefault(input, 'value', 42);
+    expect(input.getAttribute('value')).toBe('42');
+    expect(input.value).toBe('42');
+    const area = dom.element('textarea') as HTMLTextAreaElement;
+    dom.setDefault(area, 'value', 'Ana');
+    expect(area.textContent).toBe('Ana');
+    dom.setDefault(area, 'value', undefined);
+    expect(area.textContent).toBe('');
+  });
+
+  it('setDefault marks the option a select value picks, and only that one, inside a group too', () => {
+    const select = document.createElement('select');
+    select.innerHTML = '<option value="a" selected>A</option><optgroup><option>b</option></optgroup>';
+    dom.setDefault(select, 'value', 'b');
+    const [a, b] = [...select.options];
+    expect(a!.hasAttribute('selected')).toBe(false);
+    expect(b!.hasAttribute('selected')).toBe(true);
+    expect(select.value).toBe('b');
+    dom.setDefault(select, 'value', null); // no option has the empty value
+    expect(select.querySelector('[selected]')).toBeNull();
+  });
+
   it('setLive does not write when the DOM already holds the value', () => {
     let writes = 0;
     let held: unknown = 'same';

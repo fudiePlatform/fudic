@@ -335,7 +335,7 @@ describe('the one marker the DOM gets (§3.4)', () => {
     const src = marked('<div>@a @if (on) { <b></b> } @b</div>');
     // With the block closed the two runs are ONE text node coming back from HTML, and no
     // traversal can tell them apart. The comment is the boundary the markup lost.
-    expect(src).toContain("$n3 = $dom.comment('');");
+    expect(src).toContain('$template`<div> <!----> </div>`');
     expect(src).toContain('$n1 = $dom.firstChild($n0);'); // reached forward, not backward
     expect(src).toContain('$n3 = $dom.nextSibling($n1);');
   });
@@ -343,7 +343,8 @@ describe('the one marker the DOM gets (§3.4)', () => {
   it('steps the marked run from the node before it when there is one', () => {
     const src = marked('<div><i></i>@a @if (on) { <b></b> } @b</div>');
     expect(src).toContain('$n2 = $dom.nextSibling($n1);');
-    expect(src).toContain("$n4 = $dom.comment('');");
+    expect(src).toContain('$template`<div><i></i> <!----> </div>`');
+    expect(src).toContain('$n4 = $dom.nextSibling($n2);');
   });
 
   it('gives the marker a reference of its own inside a block, so r() takes it away', () => {

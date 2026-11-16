@@ -2,13 +2,12 @@ import { FudicElement, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <li class="row"> <span></span> <button class="none">-</button> <button class="event">e</button> <button class="data">d</button> <button class="both">ed</button> <button class="reversed">de</button> <button class="bare">x</button> </li> `;
-const $T1 = $template`<ul class="list">  </ul>`;
+const $T1 = $template`<ul class="list"></ul>`;
 
 customElements.define("app-actions", class extends FudicElement {
   static c($props) {
     const [$ctl, $owns] = $owned(() => {
       let $n0, $n1;
-      const $r = [];
       const $d = []; // teardowns
       let [$dom, $shadow, rows] = $props; rows ??= ([]);
       let $host = $dom.host($shadow);
@@ -55,48 +54,25 @@ customElements.define("app-actions", class extends FudicElement {
         return {
           key: row.id,
           c: () => {
-            $n2 = $dom.text(" ");
+            const $f = $T0();
+            let $c = $dom.firstElementChild($f);
+            $n2 = $dom.previousSibling($c);
             $r.push($n2);
-            $n3 = $dom.element("li");
-            $dom.setAttr($n3, 'class', "row");
-            $dom.append($n3, $dom.text(" "));
-            $n5 = $dom.element("span");
-            $n12 = $dom.text('');
-            $dom.append($n5, $n12);
-            $dom.append($n3, $n5);
-            $dom.append($n3, $dom.text(" "));
-            $n6 = $dom.element("button");
-            $dom.setAttr($n6, 'class', "none");
-            $dom.append($n6, $dom.text("-"));
-            $dom.append($n3, $n6);
-            $dom.append($n3, $dom.text(" "));
-            $n7 = $dom.element("button");
-            $dom.setAttr($n7, 'class', "event");
-            $dom.append($n7, $dom.text("e"));
-            $dom.append($n3, $n7);
-            $dom.append($n3, $dom.text(" "));
-            $n8 = $dom.element("button");
-            $dom.setAttr($n8, 'class', "data");
-            $dom.append($n8, $dom.text("d"));
-            $dom.append($n3, $n8);
-            $dom.append($n3, $dom.text(" "));
-            $n9 = $dom.element("button");
-            $dom.setAttr($n9, 'class', "both");
-            $dom.append($n9, $dom.text("ed"));
-            $dom.append($n3, $n9);
-            $dom.append($n3, $dom.text(" "));
-            $n10 = $dom.element("button");
-            $dom.setAttr($n10, 'class', "reversed");
-            $dom.append($n10, $dom.text("de"));
-            $dom.append($n3, $n10);
-            $dom.append($n3, $dom.text(" "));
-            $n11 = $dom.element("button");
-            $dom.setAttr($n11, 'class', "bare");
-            $dom.append($n11, $dom.text("x"));
-            $dom.append($n3, $n11);
-            $dom.append($n3, $dom.text(" "));
+            $n3 = $c; $c = $dom.nextElementSibling($c);
             $r.push($n3);
-            $n4 = $dom.text(" ");
+            {
+              let $c1 = $dom.firstElementChild($n3);
+              $n5 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n12 = $dom.lastChild($n5);
+              $n12 = $dom.textAt($n5, $n12, null);
+              $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n8 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n9 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n10 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n11 = $c1; $c1 = $dom.nextElementSibling($c1);
+            }
+            $n4 = $dom.lastChild($f);
             $r.push($n4);
             $a();
           },
@@ -150,7 +126,6 @@ customElements.define("app-actions", class extends FudicElement {
         for (let $j = $next.length - 1, $ref = $n1; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
         $k0 = $next;
       };
-      const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
       const $s = () => {
         $d.push($dom.bus($host, "cleared", ($event) => onCleared.call($host, $event)));
       };
@@ -158,21 +133,23 @@ customElements.define("app-actions", class extends FudicElement {
 
       return {
         c: () => {
-          $n0 = $dom.element("ul");
-          $dom.setAttr($n0, 'class', "list");
-          $dom.append($n0, $dom.text(" "));
-          for (const row of rows) {
-            const $i = $b0($n0, null, row);
-            $i.c();
-            $i.m();
-            $i.s();
-            $k0.push($i);
+          $dom.append($shadow, $T1());
+          let $c0 = $dom.firstElementChild($shadow);
+          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+          {
+            let $c1 = $dom.firstElementChild($n0);
+            $dom.append($n0, $dom.text(" "));
+            for (const row of rows) {
+              const $i = $b0($n0, null, row);
+              $i.c();
+              $i.s();
+              $k0.push($i);
+            }
+            $n1 = $dom.text(" ");
+            $dom.append($n0, $n1);
+            for (const $i of $k0) $i.m($n1);
           }
-          $n1 = $dom.text(" ");
-          $dom.append($n0, $n1);
-          $r.push($n0);
           $a();
-          $m();
           $s();
         },
         h: () => {

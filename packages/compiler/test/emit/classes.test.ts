@@ -85,7 +85,9 @@ describe('the emitted code (criterion 19)', () => {
 
   it('a static class is a literal, on the server and on the client, with no filter or join', () => {
     expect(server).toMatch(/\$dom\.setAttr\(\$n\d+, 'class', "panel"\);/u);
-    expect(client).toMatch(/\$dom\.setAttr\(\$n\d+, 'class', "panel"\);/u);
+    // On the client it is in the template, and nowhere else (SDD-85 §4.5).
+    expect(client).toMatch(/\$template`[^`]*<p id="lit" class="panel">/u);
+    expect(client).not.toContain(`'class', "panel"`);
     for (const module of [server, client]) {
       expect(module).not.toContain('filter(Boolean)');
       expect(module).not.toContain(".join(' ')");

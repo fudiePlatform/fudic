@@ -79,7 +79,8 @@ export function serverRendersOf(graph: ComponentGraph): Map<string, ServerRender
   return out;
 }
 
-const factories = new Map<string, FudicElementCtor>();
+// By graph and then by tag: two graphs may hold two different components under one tag.
+const factories = new WeakMap<ComponentGraph, Map<string, FudicElementCtor>>();
 
 /**
  * The emitted factory of a component's client chunk. `customElements` is shadowed by a
@@ -88,7 +89,9 @@ const factories = new Map<string, FudicElementCtor>();
  * by its own suite.
  */
 export function clientFactory(graph: ComponentGraph, tag: string): FudicElementCtor {
-  let factory = factories.get(tag);
+  const ofGraph = factories.get(graph) ?? new Map<string, FudicElementCtor>();
+  factories.set(graph, ofGraph);
+  let factory = ofGraph.get(tag);
   if (factory === undefined) {
     const source = emitComponentClientModule(graph, graph.components.get(tag)!);
     const body = source.replace(/^import .*$/gmu, '');
@@ -116,7 +119,7 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
       body,
     )(FudicElement, signal, computed, effect, subscribe, written, live, owned, emit, registry);
     factory = captured!;
-    factories.set(tag, factory);
+    ofGraph.set(tag, factory);
   }
   return factory;
 }

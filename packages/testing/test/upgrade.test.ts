@@ -32,6 +32,35 @@ describe('defining a tag upgrades its instances in place', () => {
     expect(el).toBeInstanceOf(Inner);
   });
 
+  test('upgrade() does what a browser does: an element of a tag defined by then, in place, and its own below', () => {
+    class Late extends HTMLElement {
+      readonly late = true;
+    }
+    // A template parsed before the tag was defined: happy-dom's clones of it are plain elements.
+    const template = document.createElement('template');
+    template.innerHTML = '<x-late><x-late></x-late></x-late><x-late></x-late>';
+    customElements.define('x-late', Late);
+    const clone = (): DocumentFragment => document.importNode(template.content, true);
+    const first = clone();
+    const el = first.firstElementChild!;
+    expect(el).not.toBeInstanceOf(Late);
+    customElements.upgrade(el);
+    expect(el).toBeInstanceOf(Late);
+    expect(el.firstElementChild).toBeInstanceOf(Late);
+    // A fragment is walked too, and one already upgraded is left as it is.
+    const second = clone();
+    const loose = second.lastElementChild!;
+    second.append(el);
+    customElements.upgrade(second);
+    expect(loose).toBeInstanceOf(Late);
+    expect((el as Late).late).toBe(true);
+    // What holds no element, and what has no definition, upgrade nothing.
+    customElements.upgrade(document.createTextNode('t'));
+    const unknown = document.createElement('x-nobody');
+    customElements.upgrade(unknown);
+    expect(Object.getPrototypeOf(unknown)).toBe(HTMLElement.prototype);
+  });
+
   test('a whenDefined still resolves', async () => {
     const defined = customElements.whenDefined('x-awaited');
     customElements.define('x-awaited', class extends HTMLElement {});

@@ -17,6 +17,22 @@ import {
 import { memoryIo } from './_support.js';
 
 /** A one-component graph whose template is the given markup, with a form imported as a slice. */
+/**
+ * The literal attributes a module writes, as `name=value`: the server's `setAttr` calls, and the
+ * attributes of the client's templates (SDD-85 §4.1) — on the client a literal is part of the
+ * HTML it clones, and asking both branches the same question is what these nets are about.
+ */
+function literals(out: string): string[] {
+  const found: string[] = [];
+  for (const m of out.matchAll(/setAttr\(\$n\d+, (?:'([^']*)'|"([^"]*)"), (?:'([^']*)'|"([^"]*)")\)/gu)) {
+    found.push(`${m[1] ?? m[2]}=${m[3] ?? m[4]}`);
+  }
+  for (const t of out.matchAll(/\$template(?:In)?`((?:[^`\\]|\\.)*)`/gu)) {
+    for (const a of t[1]!.matchAll(/\s([^\s="<>]+)="([^"]*)"/gu)) found.push(`${a[1]}=${a[2]}`);
+  }
+  return found;
+}
+
 function emit(
   template: string,
   code = "  import { f } from './user.form.js';",
@@ -307,19 +323,17 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
   it('both branches give the marker the same derived id, and point at it (criterion 13)', () => {
     const { server, client } = emit('<input control="@f.seo.canonical"><p error="@f.seo.canonical"></p>');
     const id = 'fud-e-f-seo-canonical';
-    for (const out of [server, client]) {
-      expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "${id}");`);
-      expect(out).toContain(`$dom.setAttr($n1, 'id', "${id}");`);
-      expect(out).toContain('$dom.element("p")');
-    }
+    expect(server).toContain(`$dom.setAttr($n0, 'aria-describedby', "${id}");`);
+    expect(server).toContain(`$dom.setAttr($n1, 'id', "${id}");`);
+    expect(server).toContain('$dom.element("p")');
+    expect(client).toContain(`<input aria-describedby="${id}"><p id="${id}"></p>`);
   });
 
   it('the marker goes where the author put it — before the field too (criterion 13)', () => {
     const { server, client } = emit('<small error="@f.title"></small><input control="@f.title">');
-    for (const out of [server, client]) {
-      expect(out).toContain(`$dom.setAttr($n0, 'id', "fud-e-f-title");`);
-      expect(out).toContain(`$dom.setAttr($n1, 'aria-describedby', "fud-e-f-title");`);
-    }
+    expect(server).toContain(`$dom.setAttr($n0, 'id', "fud-e-f-title");`);
+    expect(server).toContain(`$dom.setAttr($n1, 'aria-describedby', "fud-e-f-title");`);
+    expect(client).toContain('<small id="fud-e-f-title"></small><input aria-describedby="fud-e-f-title">');
     // The call waited for the marker it names, and names the element and the marker both.
     expect(client).toContain('$n1 && $n0 && $d.push(bindText($n1, f.title, $n0));');
   });
@@ -327,7 +341,7 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
   it('the author’s own static id is kept, and pointed at (criterion 13)', () => {
     const { server, client } = emit('<input control="@f.title"><p id="mine" error="@f.title"></p>');
     for (const out of [server, client]) {
-      expect(out).toContain(`'aria-describedby', "mine"`);
+      expect(literals(out)).toContain('aria-describedby=mine');
       expect(out).not.toContain('fud-e-f-title');
     }
   });
@@ -349,8 +363,8 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
         '<p error="@f.tone"></p>',
     );
     for (const out of [server, client]) {
-      expect(out.match(/'aria-describedby', "fud-e-f-tone"/gu)).toHaveLength(2);
-      expect(out.match(/'id', "fud-e-f-tone"/gu)).toHaveLength(1);
+      expect(literals(out).filter((a) => a === 'aria-describedby=fud-e-f-tone')).toHaveLength(2);
+      expect(literals(out).filter((a) => a === 'id=fud-e-f-tone')).toHaveLength(1);
     }
     expect(client).toMatch(/bindRadio\(\[\$n0, \$n1\], f\.tone, \$n2\)/u);
   });
@@ -374,10 +388,10 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
   it('a `<form>`’s summary sits INSIDE it and is a polite live region (criterion 16, BUG-42 criterion 17)', () => {
     const { server, client } = emit('<form control="@f"><div summary="@f"></div></form>');
     for (const out of [server, client]) {
-      expect(out).toContain(`'id', "fud-s-f"`);
-      expect(out).toContain("'aria-live', 'polite'");
-      expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "fud-s-f");`);
+      expect(literals(out)).toEqual(expect.arrayContaining(['id=fud-s-f', 'aria-live=polite', 'aria-describedby=fud-s-f']));
     }
+    expect(server).toContain(`$dom.setAttr($n0, 'aria-describedby', "fud-s-f");`);
+    expect(client).toContain('<form aria-describedby="fud-s-f" novalidate=""><div id="fud-s-f" aria-live="polite">');
     expect(server).toContain('const $l = summaryEntriesOf(f, "fud-s-f", null);');
     expect(server).toContain("import { summaryEntriesOf } from '@fudic/forms';");
     expect(client).toMatch(/bindForm\(\$n0, f, \$n1\)/u);
@@ -394,10 +408,11 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
 
   it('a bound `<form>` gets `novalidate`: the browser must not stop the submit first', () => {
     const { server, client } = emit('<form control="@f"></form><input control="@f.title">');
+    expect(server).toContain(`$dom.setAttr($n0, 'novalidate', '');`);
+    expect(client).toMatch(/<form [^>]*novalidate=""/u);
     for (const out of [server, client]) {
-      expect(out).toContain(`$dom.setAttr($n0, 'novalidate', '');`);
       // Only the form: a field has no constraint validation of its own to switch off.
-      expect(out.match(/'novalidate'/gu)).toHaveLength(1);
+      expect(literals(out).filter((a) => a === 'novalidate=')).toHaveLength(1);
     }
   });
 
@@ -411,7 +426,7 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
   it('a group’s summary gets its list and a live region, and the group points at it', () => {
     const { server, client } = emit('<fieldset control="@f.seo"><div summary="@f.seo"></div></fieldset>');
     expect(server).toContain('const $l = summaryEntriesOf(f.seo, "fud-s-f-seo", null);');
-    for (const out of [server, client]) expect(out).toContain("'aria-live', 'polite'");
+    for (const out of [server, client]) expect(literals(out)).toContain('aria-live=polite');
     expect(client).toMatch(/bindGroup\(\$n0, f\.seo, \$n1\)/u);
   });
 });
@@ -446,8 +461,8 @@ describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
   it('takes `fields` out of the HTML and makes the summary focusable', () => {
     const { server, client } = emit(TEMPLATE);
     for (const out of [server, client]) {
-      expect(out).not.toContain("'fields'");
-      expect(out).toContain(`'tabindex', '-1'`);
+      expect(literals(out).some((a) => a.startsWith('fields='))).toBe(false);
+      expect(literals(out)).toContain('tabindex=-1');
     }
   });
 
@@ -459,7 +474,7 @@ describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
     // The same map is the ids of the form's fields, sixth (BUG-51): every field here has one.
     expect(client).toContain(`bindForm($n0, f, $n1, ${links}, undefined, ${links})`);
     for (const out of [server, client]) {
-      expect(out).toContain(`'id', "fud-c-f-alias"`);
+      expect(literals(out)).toContain('id=fud-c-f-alias');
       // A dynamic id cannot be linked to.
       expect(out).not.toContain('fud-c-f-web');
     }
@@ -468,11 +483,15 @@ describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
   it('describes each listed field with no marker of its own by its entry — on the host of a control-component too', () => {
     const { server, client } = emit(TEMPLATE);
     for (const out of [server, client]) {
-      expect(out).toContain(`'aria-describedby', "fud-s-f-alias"`);
-      expect(out).toContain(`'aria-describedby', "fud-s-f-email"`);
-      expect(out).toContain(`'aria-describedby', "fud-s-f-acceso-clave"`);
-      // A field with its own marker keeps pointing at it.
-      expect(out).toContain(`'aria-describedby', "fud-e-f-name"`);
+      expect(literals(out)).toEqual(
+        expect.arrayContaining([
+          'aria-describedby=fud-s-f-alias',
+          'aria-describedby=fud-s-f-email',
+          'aria-describedby=fud-s-f-acceso-clave',
+          // A field with its own marker keeps pointing at it.
+          'aria-describedby=fud-e-f-name',
+        ]),
+      );
       expect(out).not.toContain('fud-s-f-name');
     }
   });
@@ -497,8 +516,7 @@ describe('BUG-42 — a marker beside a control-component (criterion 22)', () => 
       '<form control="@f"><app-input control="@f.email"></app-input><app-error error="@f.email"></app-error></form>',
     );
     for (const out of [server, client]) {
-      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
-      expect(out).toContain(`'id', "fud-e-f-email"`);
+      expect(literals(out)).toEqual(expect.arrayContaining(['aria-describedby=fud-e-f-email', 'id=fud-e-f-email']));
     }
     expect(server).toContain("f.email.touched() ? f.email.message() : ''");
     expect(client).toContain("import { bindForm, bindMessage } from '@fudic/forms/dom';");
@@ -530,8 +548,7 @@ describe('BUG-42 — a marker beside a control-component (criterion 22)', () => 
     const server = emitComponentModule(graph, comp);
     const client = emitComponentClientModule(graph, comp);
     for (const out of [server, client]) {
-      expect(out).toContain(`'id', "fud-e-f-email"`);
-      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
+      expect(literals(out)).toEqual(expect.arrayContaining(['id=fud-e-f-email', 'aria-describedby=fud-e-f-email']));
     }
     expect(server).toContain("f.email.touched() ? f.email.message() : ''");
     expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);

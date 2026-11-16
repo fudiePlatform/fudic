@@ -215,10 +215,10 @@ describe('the client chunk (criterion 10)', () => {
     return emitComponentClientModuleMapped(g, g.components.get(tag)!, options).code;
   }
 
-  it('a fabricated child host carries the same `data-fud-sheets` the server writes', () => {
+  it('a created child host carries the same `data-fud-sheets` the server writes', () => {
     const code = client('x-p', host().options);
-    expect(code).toContain(`'data-fud-sheets', "/assets/theme.css /assets/x-n.css"`);
-    expect(client('x-p', host(false).options)).toContain(`'data-fud-adopt', "theme x-n"`);
+    expect(code).toContain('data-fud-sheets="/assets/theme.css /assets/x-n.css"');
+    expect(client('x-p', host(false).options)).toContain('data-fud-adopt="theme x-n"');
   });
 
   it('the adopt path finds the root’s first element past the `<link>`s that open it', () => {

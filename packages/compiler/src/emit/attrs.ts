@@ -28,7 +28,7 @@ import {
   type ComponentDeclaredProps,
 } from '../binding/index.js';
 import { classTokens } from '@fudic/dom';
-import type { CodeWriter } from './writer.js';
+import { here, type CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { freeReferences, type FragmentAst } from './scope.js';
 
@@ -490,17 +490,19 @@ export interface ValueSink {
   /**
    * A write that runs on every pass, never filtered by what it wrote last: a live property of a
    * control (SDD-74 §4.4), which compares with the DOM instead. Only a sink that repeats has one.
+   * `initial` is what a control the browser creates gets once, before: its default, as the server
+   * paints it (SDD-85 §4.2).
    */
-  live?(expr: string, write: (value: string) => string): void;
+  live?(expr: string, write: (value: string) => string, initial: (value: string) => string): void;
 }
 
 /**
- * Where a LITERAL attribute goes instead of its `setAttr` line: its name, its value, and the
- * line the server writes for it — the client's template carries it (SDD-85 §4.1).
+ * Where a LITERAL attribute goes instead of its `setAttr` line: its name and its value — the
+ * client's template carries it (SDD-85 §4.1).
  */
-export type LiteralSink = (name: string, value: string, line: string) => void;
+export type LiteralSink = (name: string, value: string) => void;
 
-/** The single-body sink: the server, and the fabricate body inside a `@foreach`. */
+/** The single-body sink: the server. */
 export function inlineSink(w: CodeWriter): ValueSink {
   return {
     repeats: false,
@@ -547,8 +549,8 @@ export function writeElementAttrs(
   // A literal attribute: its `setAttr` line, or — for the client, whose template carries it
   // (SDD-85 §4.1) — the sink that takes it instead.
   const literal = (name: string, value: string, line: string): void => {
-    if (literals === undefined) fixed.line(line);
-    else literals(name, value, line);
+    if (literals === undefined) fixed.mappedLine(here(el.openSpan.start), line);
+    else literals(name, value);
   };
   const toggles = classToggles(source, el, host);
   const toggled = new Set(toggles.map((t) => t.token));
@@ -567,7 +569,7 @@ export function writeElementAttrs(
     // The spreads of a native element are written together, where the FIRST of them sits
     // (SDD-61 §3.8): the explicit attributes keep their places around them.
     if (b.type === 'spread' && !host.isComponent) {
-      if (!spread) writeSpreadAttrs(source, el, v, fixed, values);
+      if (!spread) writeSpreadAttrs(source, el, v, values);
       spread = true;
       continue;
     }
@@ -587,7 +589,7 @@ export function writeElementAttrs(
       // missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363). The
       // reference is a value of the module, not text: it is never a literal of a template.
       const binding = linker.enabled && isAssetAttr(el.name, written.name) ? linker.maybeRef(text) : null;
-      if (binding !== null) fixed.line(`$dom.setAttr(${v}, ${name}, ${binding});`);
+      if (binding !== null) fixed.mappedLine(here(el.openSpan.start), `$dom.setAttr(${v}, ${name}, ${binding});`);
       else literal(written.name, text, `$dom.setAttr(${v}, ${name}, ${JSON.stringify(text)});`);
     } else if (written.name === 'class') {
       // `class=@expr`, and a `class="card @(x)"` that mixes in a literal: one value, written
@@ -608,13 +610,14 @@ export function writeElementAttrs(
       const name = JSON.stringify(written.name);
       // A live property of a control: the browser writes the property, compared with the DOM on
       // every pass, so what the user moved goes back to what the view says (SDD-74 §4.4).
-      // Where the writes do not repeat — the server, a row fabricated in the browser — it is
+      // Where the writes do not repeat — the server — it is
       // the same call once: the server writes what says it without a script (a `<textarea>`'s
       // text, the `selected` of an `<option>`), the browser the property.
       if (isLiveProp(el.name, written.name)) {
         const expr = crossingExpr(source, attr, written.value, host.signals);
         const write = ($v: string): string => `$dom.setLive(${v}, ${name}, ${$v});`;
-        if (values.live !== undefined) values.live(expr, write);
+        const initial = ($v: string): string => `$dom.setDefault(${v}, ${name}, ${$v});`;
+        if (values.live !== undefined) values.live(expr, write, initial);
         else values.bound(expr, write);
         continue;
       }
@@ -681,7 +684,7 @@ export function staticClass(literal: string, toggled: ReadonlySet<string>): stri
  * writes by any of its three forms — is left out of the spread wherever it sits, as an explicit `.prop` wins
  * over a props spread.
  */
-function writeSpreadAttrs(source: string, el: ElementNode, v: string, fixed: CodeWriter, values: ValueSink): void {
+function writeSpreadAttrs(source: string, el: ElementNode, v: string, values: ValueSink): void {
   const objects: string[] = [];
   const except = new Set<string>();
   for (const attr of el.attributes) {
@@ -693,11 +696,7 @@ function writeSpreadAttrs(source: string, el: ElementNode, v: string, fixed: Cod
   if (objects.length === 0) return;
   const names = JSON.stringify([...except]);
   const value = `[${objects.join(', ')}]`;
-  // Where the writes repeat — a client's `$a`, which runs after every static attribute is
-  // already on the node — the attributes are first written HERE, in the spread's place among
-  // the static ones, so an instance the client creates carries them in the order the server
-  // painted (SDD-61 §3.8). `$a` writes the same text again, and an attribute set twice keeps
-  // its place.
-  if (values.repeats) fixed.line(`$dom.setAttrs(${v}, ${value}, undefined, ${names});`);
+  // In the browser the static attributes come with the clone and the spread's go behind them,
+  // written by `$a` (SDD-85 §4.6): the order of attributes is not something the DOM shows.
   values.diff(value, ($v, prev) => `$dom.setAttrs(${v}, ${$v}, ${prev}, ${names});`);
 }

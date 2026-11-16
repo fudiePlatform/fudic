@@ -23,8 +23,6 @@ import {
   emitComponentModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
-import type { ElementNode } from '../../src/html/index.js';
-import type { StyleNode } from '../../src/css/index.js';
 import { fixture, fixturesDir, fixtureIo, memoryIo } from './_support.js';
 
 const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);

@@ -13,7 +13,7 @@
 
 import { escapeAttr, escapeText } from '@fudic/dom';
 import { VOID_ELEMENTS } from '../html/index.js';
-import type { CodeWriter } from './writer.js';
+import { here, type CodeWriter } from './writer.js';
 
 /** The namespace the parser creates an element in: what a template's wrapper has to restore. */
 export type Namespace = 'html' | 'svg' | 'math';
@@ -125,7 +125,7 @@ export function literalBody(text: string): string {
  */
 export class Templates {
   readonly #names = new Map<string, string>();
-  readonly #lines: string[] = [];
+  readonly #lines: { readonly text: string; readonly at: number }[] = [];
   #foreign = false;
   #plain = false;
 
@@ -133,7 +133,7 @@ export class Templates {
    * The constant a template is cloned from, or `null` when it has nothing to clone: a piece of
    * view with no node of its own creates everything it holds after the clone.
    */
-  add(template: TemplateHtml): string | null {
+  add(template: TemplateHtml, at: number): string | null {
     if (template.html === '') return null;
     const wrapper = template.ns === 'html' ? undefined : WRAPPER[template.ns];
     const tag = wrapper === undefined ? '$template' : '$templateIn';
@@ -143,7 +143,7 @@ export class Templates {
     if (known !== undefined) return known;
     const name = `$T${this.#names.size}`;
     this.#names.set(literal, name);
-    this.#lines.push(`const ${name} = ${literal};`);
+    this.#lines.push({ text: `const ${name} = ${literal};`, at });
     if (wrapper === undefined) this.#plain = true;
     else this.#foreign = true;
     return name;
@@ -161,8 +161,16 @@ export class Templates {
     return names.length === 0 ? null : `import { ${names.join(', ')} } from '@fudic/dom';`;
   }
 
-  /** One `const $TN = template\`…\`;` per template, in the order they were added. */
-  get declarations(): readonly string[] {
+  /** Whether the module declares no template, and so parses no HTML through the policy (SDD-85 §4.7). */
+  get empty(): boolean {
+    return this.#lines.length === 0;
+  }
+
+  /**
+   * One `const $TN = template\`…\`;` per template, in the order they were added, with where its
+   * piece starts in the `.fud`, which the source map points at.
+   */
+  get declarations(): readonly { readonly text: string; readonly at: number }[] {
     return this.#lines;
   }
 }
@@ -175,5 +183,6 @@ export function writeTemplates(w: CodeWriter, templates: Templates): void {
   const line = templates.importLine;
   if (line === null) return;
   w.line(line);
-  for (const declaration of templates.declarations) w.line(declaration);
+  // Each one mapped to where its piece starts in the `.fud`.
+  for (const { text, at } of templates.declarations) w.mappedLine(here(at), text);
 }

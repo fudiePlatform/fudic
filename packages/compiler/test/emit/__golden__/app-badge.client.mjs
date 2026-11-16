@@ -5,12 +5,10 @@ const $T0 = $template`<span class="badge"> <slot></slot> </span>`;
 customElements.define("app-badge", class extends FudicElement {
   static c($props) {
     let $n0, $n1;
-    const $r = [];
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
     let [$dom, $shadow, tone] = $props; tone ??= ('neutral');
 
-    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {};
     const $a = () => {
       let $v;
@@ -22,15 +20,14 @@ customElements.define("app-badge", class extends FudicElement {
 
     return {
       c: () => {
-        $n0 = $dom.element("span");
-        $dom.setAttr($n0, 'class', "badge");
-        $dom.append($n0, $dom.text(" "));
-        $n1 = $dom.element("slot");
-        $dom.append($n0, $n1);
-        $dom.append($n0, $dom.text(" "));
-        $r.push($n0);
+        $dom.append($shadow, $T0());
+        let $c0 = $dom.firstElementChild($shadow);
+        $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+        {
+          let $c1 = $dom.firstElementChild($n0);
+          $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
+        }
         $a();
-        $m();
         $s();
       },
       h: () => {

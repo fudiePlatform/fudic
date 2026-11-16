@@ -131,6 +131,22 @@ export const browserDom: DomClient<Node> = {
   setProp(el: Node, name: string, value: unknown): void {
     (el as unknown as Record<string, unknown>)[name] = value;
   },
+  setDefault(el: Node, name: LiveProperty, value: unknown): void {
+    const control = el as Element;
+    // The server's reading: `true` empty, `false` and `null` none, the rest its text.
+    const text = value === false || value == null ? null : value === true ? '' : String(value);
+    if (name === 'value' && control.localName === 'select') {
+      // The option the value picks is the one painted `selected`, as the server chooses it.
+      // The attribute itself, which is what `defaultSelected` reflects.
+      for (const option of (control as HTMLSelectElement).options) option.toggleAttribute('selected', option.value === (text ?? ''));
+    } else if (name === 'value' && control.localName === 'textarea') {
+      (control as HTMLTextAreaElement).defaultValue = text ?? '';
+    } else if (text === null) {
+      control.removeAttribute(name);
+    } else {
+      control.setAttribute(name, text);
+    }
+  },
   firstChild(node: Node): Node | null {
     return node.firstChild;
   },
