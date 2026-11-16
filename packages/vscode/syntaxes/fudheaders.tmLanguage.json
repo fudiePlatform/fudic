@@ -1,0 +1,82 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Fudic headers",
+  "scopeName": "source.fudheaders",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#path" },
+    { "include": "#header" },
+    { "include": "#value" }
+  ],
+  "repository": {
+    "comment": {
+      "comment": "`#` opens a comment only on a line of its own (SDD-84 §3.2).",
+      "name": "comment.line.number-sign.fudheaders",
+      "match": "^\\s*(#).*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.fudheaders" }
+      }
+    },
+
+    "path": {
+      "comment": "A path at column 0 opens a block of `assets.headers`.",
+      "match": "^(/\\S*)\\s*$",
+      "captures": {
+        "1": { "name": "entity.name.section.path.fudheaders" }
+      }
+    },
+
+    "header": {
+      "comment": "A header: its name, the colon, and the rest of its first line. Indented only in a block of `assets.headers`.",
+      "begin": "^(\\s*)([!#$%&'*+\\-.^_`|~0-9A-Za-z]+)(:)",
+      "beginCaptures": {
+        "2": { "name": "entity.name.tag.header.fudheaders" },
+        "3": { "name": "punctuation.separator.key-value.fudheaders" }
+      },
+      "end": "$",
+      "patterns": [{ "include": "#value" }]
+    },
+
+    "value": {
+      "patterns": [
+        { "include": "#directive" },
+        { "include": "#keyword" },
+        { "include": "#placeholder" },
+        { "include": "#number" },
+        { "include": "#separator" }
+      ]
+    },
+
+    "directive": {
+      "comment": "The directives of a Content-Security-Policy (CSP3).",
+      "name": "keyword.other.directive.csp.fudheaders",
+      "match": "(?<![\\w-])(default-src|child-src|connect-src|font-src|frame-src|img-src|manifest-src|media-src|object-src|script-src-elem|script-src-attr|script-src|style-src-elem|style-src-attr|style-src|worker-src|fenced-frame-src|base-uri|form-action|frame-ancestors|sandbox|report-uri|report-to|require-trusted-types-for|trusted-types|upgrade-insecure-requests|webrtc)(?![\\w-])"
+    },
+
+    "keyword": {
+      "comment": "A keyword between single quotes: 'self', 'nonce-{nonce}', a hash.",
+      "name": "string.quoted.single.fudheaders",
+      "begin": "'",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.fudheaders" } },
+      "end": "'|$",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.fudheaders" } },
+      "patterns": [{ "include": "#placeholder" }]
+    },
+
+    "placeholder": {
+      "comment": "A hole filled per response; today only {nonce}.",
+      "name": "variable.other.placeholder.fudheaders",
+      "match": "\\{[A-Za-z]+\\}"
+    },
+
+    "number": {
+      "name": "constant.numeric.fudheaders",
+      "match": "(?<![\\w-])\\d+(?![\\w-])"
+    },
+
+    "separator": {
+      "name": "punctuation.separator.fudheaders",
+      "match": "[;,]"
+    }
+  }
+}

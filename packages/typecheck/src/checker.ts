@@ -31,6 +31,7 @@ import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { baselineContextOf } from '@fudic/config';
 import { fudBaselineDiagnostics, moduleBaselineDiagnostics } from './baseline.js';
+import { fudTrustedTypesDiagnostics, moduleTrustedTypesDiagnostics, requiresTrustedTypes } from './trusted-types.js';
 import {
   packageBaselineUses,
   packageModules,
@@ -41,6 +42,7 @@ import {
 } from './baseline-project.js';
 import { findLibraries } from '@fudic/resolve';
 import { governFile, projectPolicies } from './govern.js';
+import { headersDiagnostics } from './headers.js';
 import { mountGlobals } from './globals.js';
 import { echoes } from './one-voice.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
@@ -68,6 +70,11 @@ export interface CheckOptions {
   readonly root: string;
   /** The TypeScript to check with. Defaults to the one this package ships (§7). */
   readonly typescript?: typeof ts;
+  /**
+   * Whether the three `.headers` of the app are checked too (SDD-84 §3.8): what `fudic_check` asks.
+   * Off by default, because `dev` already says them as they change, and the build as it reads them.
+   */
+  readonly headers?: boolean;
 }
 
 export interface ProjectChecker {
@@ -237,6 +244,14 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     const elsewhere = new Map<string, string[]>();
     // Read again on every check: a `fudic.json` edited in `dev` reports differently at once.
     const policies = projectPolicies((path) => fs.readFile(path));
+    // Whether a file's pages require trusted types (SDD-84 §4.6), once per project.
+    const trusted = new Map<string, boolean>();
+    const requiresTrusted = (file: string): boolean => {
+      const project = policies.projectOf(file);
+      if (project === null) return false;
+      if (!trusted.has(project.root)) trusted.set(project.root, requiresTrustedTypes(project, (path) => fs.readFile(path)));
+      return trusted.get(project.root)!;
+    };
     for (const entry of state.index.all()) {
       // A library's file is in the program for its types and is not the author's to fix (§4.2).
       if (entry.external) continue;
@@ -258,6 +273,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
           ...fudicDiagnostics(root.document, state.index, baseline),
           ...portableTypeDiagnostics(program, root.document),
           ...fudBaselineDiagnostics(program, root.document, baseline),
+          ...(requiresTrusted(entry.path) ? fudTrustedTypesDiagnostics(program, root.document) : []),
         ],
         policies.policyOf(entry.path),
         { parsed: root.document, complete: true },
@@ -322,7 +338,10 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     };
     for (const file of packageModules(site, own)) {
       const baseline = baselineContextOf(policies.projectOf(file)?.config ?? null);
-      const found = moduleBaselineDiagnostics(program, file, baseline);
+      const found = [
+        ...moduleBaselineDiagnostics(program, file, baseline),
+        ...(requiresTrusted(file) ? moduleTrustedTypesDiagnostics(program, file) : []),
+      ];
       const source = program.getSourceFile(file)!.text;
       // A module with nothing to say and no `fud-disable` is not read for its comments.
       if (found.length === 0 && !source.includes('fud-disable')) continue;
@@ -337,6 +356,12 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     for (const { file, source, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
       const said = governFile(file, source, diagnostics, policies.policyOf(file), { complete: true });
       problems.push(...fudicProblems(file, said, elsewhere));
+    }
+    // The `.headers` of the app, as the build reads them (SDD-84 §3.8).
+    if (options.headers === true) {
+      for (const said of headersDiagnostics(root, (path) => fs.readFile(path), policies)) {
+        problems.push(...fudicProblems(said.file!, [said], elsewhere));
+      }
     }
     // What the project as a whole says of its Baseline: its libraries, and an `allow` nothing uses.
     problems.push(...projectBaseline(state, site, config, own));

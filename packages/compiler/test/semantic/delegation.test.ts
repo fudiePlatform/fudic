@@ -668,12 +668,13 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
     // The strongest form the promise of §4.5 can take in a test: the package that decides
     // these codes declares no dependency a checker could arrive through. Its runtime
     // dependencies are the parser and four packages of plain data and functions (the Baseline
-    // data of SDD-83, diagnostics, the ICU subset and catalog of SDD-58, and the reader of
-    // fudic.json whose sheet-name pattern SDD-79 shares), none of which reaches a checker either.
+    // data of SDD-83, diagnostics, the ICU subset and catalog of SDD-58, the reader of fudic.json
+    // whose sheet-name pattern SDD-79 shares, and the DOM runtime whose Trusted Types policy
+    // declares what it needs from a CSP, SDD-84), none of which reaches a checker either.
     const manifest: { dependencies: Record<string, string> } = (
       await import('../../package.json', { with: { type: 'json' } })
     ).default;
-    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/baseline', '@fudic/config', '@fudic/diagnostics', '@fudic/i18n', 'oxc-parser']);
+    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/baseline', '@fudic/config', '@fudic/diagnostics', '@fudic/dom', '@fudic/i18n', 'oxc-parser']);
     const i18n: { dependencies: Record<string, string> } = (
       await import('../../../i18n/package.json', { with: { type: 'json' } })
     ).default;
@@ -687,6 +688,11 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
       await import('../../../baseline/package.json', { with: { type: 'json' } })
     ).default;
     expect(baseline['dependencies']).toBeUndefined();
+    // And the DOM runtime has none either: plain functions over the browser's own API.
+    const dom: Readonly<Record<string, unknown>> = (
+      await import('../../../dom/package.json', { with: { type: 'json' } })
+    ).default;
+    expect(dom['dependencies']).toBeUndefined();
   });
 });
 

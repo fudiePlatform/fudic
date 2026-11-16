@@ -16,6 +16,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
+import type { CspNeed } from '@fudic/config';
 import { dirname, relative, resolve } from 'node:path';
 import { assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
@@ -104,6 +105,8 @@ export interface TransformResult {
    * sheets its head links. Present for a page or a route; the plugin adds the runtime.
    */
   readonly hints?: readonly EarlyHint[];
+  /** What the page puts in a document that its CSP has to let in (SDD-84 §3.4), from the emit. */
+  readonly needs: readonly CspNeed[];
 }
 
 /** A POSIX, explicitly-relative specifier from `fromDir` to `target` (`./x.fud`, `../y/x.fud`). */
@@ -463,6 +466,7 @@ export function transformFud(
     ...(inlineRuntimeOf(id, graph) ?? {}),
     map: buildMap(id, origin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
+    needs: out.needs,
     ...(out.hints === undefined ? {} : { hints: out.hints }),
     // The sheets this page was pruned against are inputs of this module too: an edit to one
     // has to prune the page again on the next navigation (SDD-49 §4.8).
@@ -540,6 +544,7 @@ export function transformFudClient(
     code: out.code,
     map: buildMap(id, graph.entryOrigin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
+    needs: out.needs,
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared. Remapped like the module's, so
@@ -565,6 +570,7 @@ function routeClientResult(
     code: out.code,
     map: buildMap(id, graph.entryOrigin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
+    needs: out.needs,
     diagnostics: remapDiagnostics([...graphDiagnostics, ...out.diagnostics], graph.entryMap, id),
   };
 }
@@ -615,7 +621,7 @@ function emitFor(
       // nothing at runtime. It reaches here at all because it is a `.fud` like any other —
       // a route directory it was dropped into, an editor save, an explicit import — and the
       // honest answer is an empty module rather than a component with no wrapper.
-      return { code: '', mappings: [], missingAssets: [], diagnostics: [] };
+      return { code: '', mappings: [], missingAssets: [], diagnostics: [], needs: [] };
     case 'page-document':
       return emitPageModuleMapped(graph, emitOptions);
     case 'route-document':

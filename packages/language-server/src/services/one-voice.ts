@@ -16,6 +16,7 @@ import {
   echoes,
   fudBaselineDiagnostics,
   fudicDiagnostics,
+  fudTrustedTypesDiagnostics,
   governFile,
   portableTypeDiagnostics,
   type FudicVirtualCode,
@@ -50,12 +51,14 @@ function spoken(
   index: WorkspaceIndex,
   policy: Policy | null,
   baseline: BaselineJudged | undefined,
+  trusted: boolean,
 ): Span[] {
   const program = typeScriptService(context)?.getProgram();
   const found = [
     ...fudicDiagnostics(cached, index, baseline),
     ...(program === undefined ? [] : portableTypeDiagnostics(program, cached)),
     ...(program === undefined || baseline === undefined ? [] : fudBaselineDiagnostics(program, cached, baseline)),
+    ...(program === undefined || !trusted ? [] : fudTrustedTypesDiagnostics(program, cached)),
   ];
   return governFile(cached.path, cached.source, found, policy, { parsed: cached })
     .filter((d) => d.severity === 'error' && (d.file === undefined || d.file === cached.path))
@@ -65,13 +68,15 @@ function spoken(
 /**
  * Every TypeScript service, with its diagnostics of a `.fud` minus those fudic already says.
  * `policyFor` is how the project of a file reports each code; absent, every code as it is. `baselineFor`
- * is what it asks of the browser: a `FUD1524` the project raises to an error speaks too.
+ * is what it asks of the browser: a `FUD1524` the project raises to an error speaks too. `trustedTypesFor`
+ * is whether its pages require Trusted Types: a `FUD1555` raised to an error speaks too (SDD-84 §4.6).
  */
 export function silenceEchoes(
   plugins: readonly LanguageServicePlugin[],
   index: WorkspaceIndex,
   policyFor: (path: string) => Policy | null = () => null,
   baselineFor: (path: string) => BaselineJudged | undefined = () => undefined,
+  trustedTypesFor: (path: string) => boolean = () => false,
 ): LanguageServicePlugin[] {
   return plugins.map((plugin) => ({
     ...plugin,
@@ -85,7 +90,8 @@ export function silenceEchoes(
           const found = await inner(document, token);
           const at = clientOf(context, document);
           if (found == null || at === undefined) return found;
-          const speaks = spoken(context, at.cached, index, policyFor(at.cached.path), baselineFor(at.cached.path));
+          const path = at.cached.path;
+          const speaks = spoken(context, at.cached, index, policyFor(path), baselineFor(path), trustedTypesFor(path));
           return found.filter((diagnostic) => {
             const start = mapToSource(at.client, document.offsetAt(diagnostic.range.start), 'verification');
             const end = mapToSource(at.client, document.offsetAt(diagnostic.range.end), 'verification');

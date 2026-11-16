@@ -37,6 +37,17 @@ export interface Linker {
 }
 
 /**
+ * What the linker needs from the policy of `/fudic-sw.js` (SDD-84 §3.4), declared here, beside
+ * the `new Function` that needs it: it evaluates text, so `script-src` has to allow
+ * `'unsafe-eval'`. The build compares it with `sw.headers`; the day the linker stops
+ * evaluating, this list empties and the `'unsafe-eval'` of the file becomes `FUD1556`.
+ * Structurally a `CspNeed` of `@fudic/config`.
+ */
+export const LINKER_NEEDS: readonly { readonly loads: 'eval'; readonly piece: string }[] = [
+  { loads: 'eval', piece: 'the Service Worker linker' },
+];
+
+/**
  * The safety valve (§4.1): can this realm evaluate at all? If a deployment ships
  * `/sw.js` without `'unsafe-eval'`, the SW declares itself useless and never
  * intercepts — the app degrades to server/SSG instead of breaking.

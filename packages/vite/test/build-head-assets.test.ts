@@ -129,7 +129,9 @@ describe('vite build — what a <head> links', () => {
   });
 
   it('leaves a <script src> alone: a module is not an asset, and never a data: URI', () => {
-    expect(html()).toContain('<script src="./analytics.js">');
+    // Its URL as written; the nonce of the response right after its name (SDD-84 §4.7), as the
+    // prerender leaves it for the server to fill.
+    expect(html()).toMatch(/<script nonce="[^"]+" src="\.\/analytics\.js">/u);
     expect(output.some((o) => /^assets\/analytics-/u.test(o.fileName))).toBe(false);
   });
 

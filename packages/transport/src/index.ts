@@ -5,7 +5,7 @@
  * belongs to no document and therefore owns the `Response` of a navigation from start
  * to finish. Pieces: the manifest (the single route contract), the linker that stands
  * in for the forbidden `import()`, cache access with policy and in-flight dedup, the
- * router with its one synchronous decision, CSP with a per-response nonce, the control
+ * router with its one synchronous decision, the app's headers and the per-response nonce, the control
  * bus and the main-thread hooks. Runtime dependencies: platform types only.
  */
 
@@ -30,7 +30,6 @@ export {
   type DataPolicy,
   type PagePolicy,
   type RouteRecord,
-  type CspTemplates,
   type ManifestFile,
   type RouteMatch,
   type RouteTable,
@@ -56,6 +55,7 @@ export {
   type LinkerConfig,
   LinkError,
   canLink,
+  LINKER_NEEDS,
   createLinker,
 } from './linker.js';
 export {
@@ -75,12 +75,23 @@ export {
 } from './runtime-cache.js';
 export {
   NONCE_TOKEN,
-  DEFAULT_CSP,
   applyNonce,
   applyNonceStream,
-  cspFor,
   newNonce,
 } from './csp.js';
+export {
+  type AssetHeaders,
+  type ManifestHeaders,
+  type PlaceholderValues,
+  PLACEHOLDERS,
+  assetDecisionsFor,
+  assetHeadersFor,
+  fillPlaceholders,
+  globMatches,
+  orderAssetRules,
+  pageHeadersFor,
+  wantsNonce,
+} from './headers.js';
 export {
   type FetchEvent,
   type LayoutResolver,

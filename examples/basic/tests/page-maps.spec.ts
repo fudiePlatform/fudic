@@ -60,11 +60,26 @@ async function served(page: import('@playwright/test').Page): Promise<string> {
   return (await page.request.get(page.url(), { headers: { accept: 'text/html' } })).text();
 }
 
+/**
+ * Run `fn` on `arg` in a blank page of the same browser. The served text is parsed THERE and not in
+ * the page: the page runs under its own `require-trusted-types-for 'script'` (SDD-84), which refuses
+ * a plain string to `DOMParser`, and the probe is not the page's code to route through `fudic`.
+ */
+async function offPage<A, R>(page: import('@playwright/test').Page, fn: (arg: A) => R, arg: A): Promise<R> {
+  const blank = await page.context().newPage();
+  try {
+    return await blank.evaluate(fn, arg);
+  } finally {
+    await blank.close();
+  }
+}
+
 /** The parsed content of one block, or `undefined` when the page does not publish it. */
 async function block(page: import('@playwright/test').Page, id: string): Promise<unknown> {
   const html = await served(page);
-  return page.evaluate(
-    ([text, blockId]) => {
+  return offPage(
+    page,
+    ([text, blockId]: readonly [string, string]) => {
       const el = new DOMParser().parseFromString(text, 'text/html').getElementById(blockId);
       return el === null ? undefined : (JSON.parse(el.textContent ?? '') as unknown);
     },
@@ -79,7 +94,7 @@ test.describe('the page publishes its maps', () => {
 
   test('the three blocks travel inside the document, at the end of the body', async ({ page }) => {
     const html = await served(page);
-    const where = await page.evaluate((text) => {
+    const where = await offPage(page, (text: string) => {
       const doc = new DOMParser().parseFromString(text, 'text/html');
       return ['fud-state', 'fud-tree', 'fud-bus'].map((id) => {
         const el = doc.getElementById(id);

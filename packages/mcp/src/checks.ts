@@ -128,7 +128,8 @@ export class Checks {
       for (const folder of this.#deps.projects(this.#root)) {
         // Each project with the fudic it installed; the server's folder is loaded once.
         const own = folder === this.#root ? fudic : await this.#deps.load(folder);
-        checked.push({ folder, fudic: own, checker: own.createProjectChecker({ root: folder }) });
+        // With its `.headers`, which the build reads apart from the program (SDD-84 §3.8).
+        checked.push({ folder, fudic: own, checker: own.createProjectChecker({ root: folder, headers: true }) });
       }
       // The service asks a check's own TypeScript: one program, and the types the build sees.
       // In a workspace, the first project's: the service reads them all, a program sees one.

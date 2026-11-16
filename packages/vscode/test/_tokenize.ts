@@ -30,6 +30,7 @@ const GRAMMARS: Readonly<Record<string, string>> = {
   'text.html.fudic': 'fudic.tmLanguage.json',
   'source.fudspec': 'fudspec.tmLanguage.json',
   'source.fudapi': 'fudapi.tmLanguage.json',
+  'source.fudheaders': 'fudheaders.tmLanguage.json',
 };
 
 const onigLib = loadWASM(readFileSync(require.resolve('vscode-oniguruma/release/onig.wasm')).buffer).then(
@@ -54,8 +55,8 @@ const registry = new Registry({
   },
 });
 
-/** A grammar the extension contributes: the `.fud` one, the `.fudspec` one or the `.fudapi` one. */
-export type Scope = 'text.html.fudic' | 'source.fudspec' | 'source.fudapi';
+/** A grammar the extension contributes: the `.fud` one, the `.fudspec` one, the `.fudapi` one or the `.headers` one. */
+export type Scope = 'text.html.fudic' | 'source.fudspec' | 'source.fudapi' | 'source.fudheaders';
 
 const cached = new Map<Scope, IGrammar>();
 

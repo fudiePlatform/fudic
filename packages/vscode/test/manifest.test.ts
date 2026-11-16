@@ -409,6 +409,55 @@ describe('the .fudapi language (SDD-60 §4.10)', () => {
   });
 });
 
+describe('the .headers language (SDD-84 §3.8)', () => {
+  const languages = at(manifest, 'contributes', 'languages') as readonly unknown[];
+  const grammars = at(manifest, 'contributes', 'grammars') as readonly unknown[];
+  const language = languages.find((l) => at(l, 'id') === 'fudheaders');
+  const grammar = grammars.find((g) => at(g, 'language') === 'fudheaders');
+  const headersConfig = readJson('../language-configuration.fudheaders.json');
+
+  it('claims the three files by name, and no other file', () => {
+    expect(at(language, 'filenames')).toEqual(['page.headers', 'sw.headers', 'assets.headers']);
+    expect(at(language, 'extensions')).toBeUndefined();
+    expect(at(language, 'configuration')).toBe('./language-configuration.fudheaders.json');
+    expect(exists('../language-configuration.fudheaders.json')).toBe(true);
+  });
+
+  it('registers the scope the grammar file declares, with nothing embedded', () => {
+    expect(at(grammar, 'scopeName')).toBe('source.fudheaders');
+    expect(at(grammar, 'path')).toBe('./syntaxes/fudheaders.tmLanguage.json');
+    expect(at(grammar, 'embeddedLanguages')).toBeUndefined();
+    expect(at(readJson('../syntaxes/fudheaders.tmLanguage.json'), 'scopeName')).toBe('source.fudheaders');
+  });
+
+  it('indents with two spaces, always: the indentation is the structure of the file', () => {
+    expect(at(manifest, 'contributes', 'configurationDefaults', '[fudheaders]')).toEqual({
+      'editor.insertSpaces': true,
+      'editor.tabSize': 2,
+      'editor.detectIndentation': false,
+      'editor.wordBasedSuggestions': 'off',
+    });
+  });
+
+  it('comments with #, closes quotes and braces, and indents after a header with no value or a path', () => {
+    expect(at(headersConfig, 'comments', 'lineComment')).toBe('#');
+    expect(at(headersConfig, 'autoClosingPairs')).toEqual([
+      { open: "'", close: "'", notIn: ['string', 'comment'] },
+      { open: '{', close: '}', notIn: ['comment'] },
+    ]);
+    const indent = new RegExp(String(at(headersConfig, 'indentationRules', 'increaseIndentPattern')));
+    for (const line of ['Content-Security-Policy:', '/assets/**', '/**']) expect(indent.test(line), line).toBe(true);
+    for (const line of ['Referrer-Policy: same-origin', "  default-src 'self'", '# a comment']) expect(indent.test(line), line).toBe(false);
+    expect(at(headersConfig, 'onEnterRules', 0, 'action')).toEqual({ indent: 'indent' });
+  });
+
+  it("selects a keyword with its quotes, and a path, whole on double click", () => {
+    const word = new RegExp(String(at(headersConfig, 'wordPattern')), 'g');
+    expect("  script-src 'nonce-{nonce}' 'self'".match(word)).toEqual(['script-src', "'nonce-{nonce}'", "'self'"]);
+    expect('/assets/**'.match(word)).toEqual(['/assets/**']);
+  });
+});
+
 describe('the workbench contributions (SDD-32 criterion 23)', () => {
   const WHEN = 'editorLangId == fudic || editorLangId == fudspec';
 

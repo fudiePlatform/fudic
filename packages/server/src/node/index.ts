@@ -186,25 +186,57 @@ export interface NodeMiddlewareOptions {
 }
 
 /**
- * The server as a Connect middleware: the extra headers of the app's static files, then
- * `fetch` (with its `103`), and `next()` for what it does not answer. An error of the server
- * itself — dev refusing a page — goes to `next(error)`.
+ * `headers` on `res`, and kept there whatever the next middleware writes (SDD-84 §4.4): a static
+ * server (`sirv`, `express.static`) writes its own `Cache-Control`, and what `assets.headers` says
+ * has to win. So `setHeader` and `writeHead` are wrapped for the rest of this response, and a name
+ * of `headers` they try to write is dropped; a `''` value is a header that does not go out at all.
+ */
+export function enforceHeaders(res: ServerResponse, headers: Readonly<Record<string, string>>): void {
+  const owned = new Set(Object.keys(headers).map((name) => name.toLowerCase()));
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === '') res.removeHeader(name);
+    else res.setHeader(name, value);
+  }
+  const setHeader = res.setHeader.bind(res);
+  res.setHeader = ((name: string, value: number | string | readonly string[]) =>
+    owned.has(name.toLowerCase()) ? res : setHeader(name, value)) as ServerResponse['setHeader'];
+  const writeHead = res.writeHead.bind(res) as (...args: unknown[]) => ServerResponse;
+  res.writeHead = ((...args: unknown[]) => writeHead(...args.map(withoutOwned(owned)))) as ServerResponse['writeHead'];
+}
+
+/** A `writeHead` argument without the names in `owned`: its headers, as an object or as a flat list. */
+function withoutOwned(owned: ReadonlySet<string>): (arg: unknown) => unknown {
+  return (arg) => {
+    if (Array.isArray(arg)) {
+      const kept: unknown[] = [];
+      for (let i = 0; i < arg.length; i += 2) {
+        if (!owned.has(String(arg[i]).toLowerCase())) kept.push(arg[i], arg[i + 1]);
+      }
+      return kept;
+    }
+    if (typeof arg !== 'object' || arg === null) return arg;
+    return Object.fromEntries(Object.entries(arg).filter(([name]) => !owned.has(name.toLowerCase())));
+  };
+}
+
+/**
+ * The server as a Connect middleware: `fetch` (with its `103`), and for what it does not answer —
+ * a static file, the host's — the headers `assets.headers` gives it, then `next()`. An error of
+ * the server itself — dev refusing a page — goes to `next(error)`.
  */
 export function nodeMiddleware(server: FudicServer, options: NodeMiddlewareOptions = {}): NodeMiddleware {
   return (req, res, next) => {
     const request = toRequest(req, res);
-    const statics = server.staticHeaders(request);
-    if (statics !== null) {
-      for (const [name, value] of Object.entries(statics)) res.setHeader(name, value);
-      next();
-      return;
-    }
     const hooks = hooksFor(req, res);
     server
       .fetch(request, hooks)
       .then((response) => (response === null && options.notFound === true ? server.notFound(request, hooks) : response))
       .then((response) => {
-        if (response === null) return next();
+        if (response === null) {
+          const statics = server.staticHeaders(request);
+          if (statics !== null) enforceHeaders(res, statics);
+          return next();
+        }
         if (req.httpVersionMajor === 1 && !req.complete && req.method !== 'GET' && req.method !== 'HEAD') lingerUnread(req, res);
         return sendResponse(res, response);
       })

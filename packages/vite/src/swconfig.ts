@@ -34,6 +34,18 @@ export interface SwConfigFile {
   readonly dev?: 'off' | 'preview';
 }
 
+/** The fields of `sw.json`: what the guide of the MCP documents, one by one (SDD-84 §3.9). */
+export const SW_CONFIG_FIELDS = ['shell', 'resources', 'dev'] as const;
+
+/** The fields of each class of `resources`. */
+export const RESOURCE_RULE_FIELDS = ['pattern', 'policy', 'ttl', 'maxEntries'] as const;
+
+/** Whether two unions hold the same members. */
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+// A field added to the file without its name in the lists above does not build.
+true satisfies Same<keyof SwConfigFile, (typeof SW_CONFIG_FIELDS)[number]>;
+true satisfies Same<keyof ResourceRuleFile, (typeof RESOURCE_RULE_FIELDS)[number]>;
+
 export interface ResolvedSwConfig {
   readonly shell: readonly string[];
   /** Compiled rules IN EVALUATION ORDER: the first pattern that matches wins. */

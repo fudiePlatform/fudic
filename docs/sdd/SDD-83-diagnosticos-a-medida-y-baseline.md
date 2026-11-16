@@ -1,7 +1,7 @@
 # SDD-83 — Diagnósticos a medida y Baseline
 
-> **Estado:** `Listo` (2026-11-10) — [tareas](./SDD-83-Task.md). Implementada el 2026-11-13; pendiente de
-> la prueba de Pedro ([SDD-83-Prueba](./SDD-83-Prueba.md)) y del merge.
+> **Estado:** `Hecho` (2026-11-16), probada por Pedro (§6.1, [SDD-83-Prueba](./SDD-83-Prueba.md)) y
+> mergeada a `main` con la 84 — [tareas](./SDD-83-Task.md).
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/baseline` (nuevo) · `@fudic/config` · `@fudic/compiler` ·
 > `@fudic/api` · `@fudic/spec` · `@fudic/typecheck` · `@fudic/vite` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` (guía) · `examples/basic`

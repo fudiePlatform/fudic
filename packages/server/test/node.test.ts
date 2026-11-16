@@ -506,15 +506,62 @@ describe('a body left unread lingers, then goes (SDD-81 §3.5)', () => {
 });
 
 describe('nodeMiddleware', () => {
-  it('the extra headers of the app’s static files, then on to the host', async () => {
-    const fetch = vi.fn();
-    const { res, next } = await run(
-      nodeMiddleware(fakeServer({ staticHeaders: () => ({ 'cache-control': 'no-cache' }), fetch })),
-      nodeReq({ url: '/sw.js' }),
+  it('SDD-84 criterion 26: what fetch does not answer gets its static headers, and they win over the host’s', async () => {
+    const decided: Record<string, Readonly<Record<string, string>>> = {
+      '/assets/x-1a2b.js': { 'Cache-Control': 'public, max-age=31536000, immutable' },
+      '/favicon.ico': { 'Cache-Control': 'no-cache' },
+      '/legacy.js': { 'Cache-Control': '', 'X-Kept': 'yes' },
+    };
+    const mw = nodeMiddleware(fakeServer({ staticHeaders: (request) => decided[new URL(request.url).pathname] ?? null }));
+    // The host's static server, as `sirv` writes: some with `setHeader`, some in `writeHead`.
+    const server = createHttpServer((req, res) =>
+      mw(req, res, () => {
+        res.setHeader('Cache-Control', 'max-age=60');
+        res.setHeader('ETag', '"1"');
+        if (req.url === '/favicon.ico') res.writeHead(200, ['Cache-Control', 'public', 'X-Host', 'flat']);
+        else res.writeHead(200, { 'cache-control': 'public', 'X-Host': 'object' });
+        res.end('file');
+      }),
     );
-    expect(res.headers['cache-control']).toBe('no-cache');
-    expect(next).toEqual([]);
-    expect(fetch).not.toHaveBeenCalled();
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const at = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      const asset = await fetch(`${at}/assets/x-1a2b.js`);
+      expect(asset.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+      expect(asset.headers.get('x-host')).toBe('object');
+      expect(asset.headers.get('etag')).toBe('"1"');
+      const icon = await fetch(`${at}/favicon.ico`);
+      expect(icon.headers.get('cache-control')).toBe('no-cache');
+      expect(icon.headers.get('x-host')).toBe('flat');
+      const legacy = await fetch(`${at}/legacy.js`);
+      expect(legacy.headers.has('cache-control')).toBe(false);
+      expect(legacy.headers.get('x-kept')).toBe('yes');
+      // Nothing decided: the host's own goes out.
+      expect((await fetch(`${at}/other.js`)).headers.get('cache-control')).toBe('public');
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+
+  it('writeHead without headers, or with only a status message, is left alone', async () => {
+    const mw = nodeMiddleware(fakeServer({ staticHeaders: () => ({ 'Cache-Control': 'no-cache' }) }));
+    const server = createHttpServer((req, res) =>
+      mw(req, res, () => {
+        if (req.url === '/a') res.writeHead(200);
+        else res.writeHead(200, 'Fine', { 'Cache-Control': 'public' });
+        res.end();
+      }),
+    );
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const at = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      expect((await fetch(`${at}/a`)).headers.get('cache-control')).toBe('no-cache');
+      const b = await fetch(`${at}/b`);
+      expect(b.statusText).toBe('Fine');
+      expect(b.headers.get('cache-control')).toBe('no-cache');
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
   });
 
   it('what fetch answers is sent', async () => {

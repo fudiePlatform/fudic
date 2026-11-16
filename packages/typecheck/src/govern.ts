@@ -10,7 +10,7 @@
 
 import { apiComments } from '@fudic/api';
 import { cssComments, fudComments, JsBatch, type HtmlDocument, type JsBatchResult } from '@fudic/compiler';
-import { ProjectPolicies, readProjectConfig, type ConfigIo } from '@fudic/config';
+import { parseHeaders, ProjectPolicies, readProjectConfig, type ConfigIo } from '@fudic/config';
 import {
   govern,
   LineMap,
@@ -38,8 +38,14 @@ export function commentsOf(path: string, source: string, parsed?: FudParse): rea
   if (path.endsWith('.fudapi')) return apiComments(source);
   if (path.endsWith('.fudspec')) return specComments(source);
   if (path.endsWith('.css')) return cssComments(source);
+  if (path.endsWith('.headers')) return headersComments(source);
   if (/\.[cm]?[jt]s$/u.test(path)) return scriptComments(source);
   return [];
+}
+
+/** The `#` lines of a `.headers` file (SDD-84 §3.2): the same in the three of them. */
+function headersComments(source: string): readonly SourceComment[] {
+  return parseHeaders('page', source).comments;
 }
 
 /** The tree and the Oxc batch of a `.fud`: the caller's, or parsed here when it has none. */

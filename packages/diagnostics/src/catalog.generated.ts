@@ -456,6 +456,23 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1526: ['warning', "A library uses features the app does not accept"],
   FUD1527: ['warning', "Not a feature, or a feature that moved"],
   FUD1528: ['hint', "A feature allowed that nothing uses"],
+  FUD1540: ['error', "A line that is not a header"],
+  FUD1541: ['error', "A header written twice or with a bad name"],
+  FUD1542: ['error', "A header fudic sends itself"],
+  FUD1543: ['error', "A value the header does not accept"],
+  FUD1544: ['warning', "A CSP directive that does not exist"],
+  FUD1545: ['error', "The page policy blocks what fudic emits"],
+  FUD1546: ['error', "A placeholder that is not one"],
+  FUD1547: ['warning', "The page policy lets more in than it needs"],
+  FUD1548: ['warning', "The Service Worker policy blocks its linker"],
+  FUD1549: ['warning', "This referrer policy leaves `back` empty"],
+  FUD1550: ['warning', "HSTS preload without what it requires"],
+  FUD1551: ['warning', "The Service Worker downloads this file twice"],
+  FUD1552: ['warning', "A long cache on a file without a hash"],
+  FUD1553: ['hint', "A rule that matches no file"],
+  FUD1554: ['warning', "A headers file that applies to nothing"],
+  FUD1555: ['warning', "Trusted Types will block this assignment"],
+  FUD1556: ['hint', "The policy allows what fudic no longer needs"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */

@@ -139,7 +139,7 @@ export function createServer(options: ServerOptions): McpServer {
     {
       title: 'fudic check',
       description:
-        'The fudic project check: what the build would say, without building — .fud, TypeScript, .fudapi and .fudspec. ' +
+        'The fudic project check: what the build would say, without building — .fud, TypeScript, .fudapi, .fudspec and the .headers of an app. ' +
         'Each diagnostic has its file:line:column and the line it is on; each fudic code is explained once. ' +
         '"paths" narrows the list, never the check: the whole project is always checked.',
       inputSchema: {

@@ -38,7 +38,10 @@ function project(): string {
   writeHttpTypecheckConfig(root, { module: 'esnext', moduleResolution: 'bundler', verbatimModuleSyntax: true, strict: true });
   const files: Readonly<Record<string, string>> = {
     'sw.json': JSON.stringify({ shell: ['/fudic-main.js'] }),
-    'fudic.json': JSON.stringify({ id: 'test' }),
+    // FUD1554 raised to an error: the second shape ignores sw.json, but sw.headers still applies to the
+    // worker of the first, so it must not break that build (SDD-84).
+    'fudic.json': JSON.stringify({ id: 'test', diagnostics: { FUD1554: 'error' } }),
+    'sw.headers': "Content-Security-Policy:\n  default-src 'self'\n  script-src 'self' 'unsafe-eval'\n",
     'src/routes/plain.fudapi': PLAIN_API,
     'src/routes/plain.fud': PLAIN,
     'src/server/plain.ts': PLAIN_SERVER,

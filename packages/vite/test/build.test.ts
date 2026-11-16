@@ -80,13 +80,13 @@ describe('vite build over the fixtures (hito §6.17)', () => {
     expect(asset).toBeDefined();
     const manifest = JSON.parse(asset!.source as string) as {
       build: string;
-      csp: { document: string; sw: string };
+      headers: { page: Record<string, string> };
       routes: Array<Record<string, unknown>>;
     };
     // home.fud → /home (only index.fud maps to /); the components are not routes.
     expect(manifest.routes).toHaveLength(1);
     expect(manifest.build).toMatch(/^[0-9a-f]{8}$/u);
-    expect(manifest.csp.document).toContain('{nonce}');
+    expect(manifest.headers.page['Content-Security-Policy']).toContain('{nonce}');
     // `home` has `@server load`, so its data is not build-known: rendered in the SW.
     expect(manifest.routes[0]).toMatchObject({ pattern: '/home', mode: 'sw' });
     // The record names components; the URL is DERIVED, and it has to land on a real file.

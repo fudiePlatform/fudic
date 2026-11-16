@@ -18,8 +18,8 @@ describe('guideDir', () => {
 describe('Guide.read', () => {
   const guide = new Guide();
 
-  it('has the nine topics of the spec, in order', () => {
-    expect(TOPICS).toEqual(['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css']);
+  it('has the ten topics, in order: config last (SDD-84 §3.9)', () => {
+    expect(TOPICS).toEqual(['overview', 'workflow', 'components', 'pages', 'view', 'fudapi', 'fudspec', 'testing', 'html-css', 'config']);
   });
 
   it('takes a topic in any case and with spaces around', () => {

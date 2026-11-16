@@ -25,6 +25,7 @@ const READERS: Readonly<Record<string, string>> = {
   'language-server/src/services/baseline-actions.ts': 'CONFIG_REPAIRS',
   'language-server/src/services/suppressions.ts': 'COMMENT_CODES',
   'language-server/src/services/plugin.ts': 'BASELINE_CODE',
+  'language-server/src/headers/actions.ts': 'HEADER_REPAIRS',
 };
 
 function sources(dir: string): string[] {

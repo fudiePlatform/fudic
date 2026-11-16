@@ -28,7 +28,8 @@ describe('devManifest', () => {
     const manifest = devManifest([build('/a', 'sw'), build('/x', 'excluded')]);
     expect(manifest.routes).toHaveLength(1);
     expect(manifest.routes[0]).toEqual({ pattern: '/a', mode: 'ssr' });
-    expect(manifest.csp.sw).toContain('unsafe-eval');
+    // Dev serves what it is handed: by default, no headers.
+    expect(manifest.headers).toEqual({ page: {}, sw: {}, assets: [] });
   });
 });
 

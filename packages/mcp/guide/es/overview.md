@@ -33,8 +33,9 @@ workspace, y qué temas de la guía existen.
 | `.fixture.ts` | Conjuntos de props con nombre con los que los criterios montan el componente (`props base`). Tipados contra el `$Props` del componente. |
 | `.test.ts` | Tests unitarios (Vitest, DOM en proceso): cada variante de prop, valores límite, detalles de eventos, funciones de servidor y sus fallos. Ver `testing`. |
 | `.fudlog` | El historial de una pieza, junto a su `.fud`: aprobaciones, ejecuciones de tests y de criterios con su resultado, `done`. Solo crece. Lo escriben las herramientas, nunca a mano. |
-| `fudic.json` | Lo que un proyecto declara sobre sí mismo: `kind` (`app` o `lib`), `id`, `prefix` de tag, `globalStyles`, `styles`, `locales`, y las carpetas `server` y `browser`. |
-| `sw.json` | Lo que cachea el Service Worker. Bórralo para no tener Service Worker. |
+| `fudic.json` | Lo que un proyecto declara sobre sí mismo. Cada clave, su valor por defecto y un ejemplo: ver `config`. |
+| `sw.json` | Lo que cachea el Service Worker. Bórralo para no tener Service Worker. Ver `config`. |
+| `page.headers`, `sw.headers`, `assets.headers` | Las cabeceras de las páginas de una app (su CSP entre ellas), de su Service Worker y de sus estáticos. Lo que hay en ellos es lo que sale. Ver `config`. |
 
 Ficheros generados, nunca editados: `fudic-globals.d.ts`, `src/fudic-env.d.ts`, y todo lo que hay
 bajo `.fudic/` (ignorado por git; los tipos generados a partir de cada `.fudapi` viven en `.fudic/api`).
@@ -63,6 +64,9 @@ app/
 ├── fudic.json            id, kind, prefix, server and browser folders
 ├── package.json          scripts: dev, build, preview, test, spec
 ├── sw.json               Service Worker cache policy
+├── page.headers          the headers of every page: CSP, HSTS, COOP…
+├── sw.headers            the headers of /fudic-sw.js
+├── assets.headers        the cache of the static files, by path
 ├── vite.config.ts        the fudic() plugin; nothing else to configure
 ├── vitest.config.ts      unit tests
 ├── tsconfig.json
@@ -284,4 +288,5 @@ Llama a `fudic_guide { topic }` antes de escribir un tipo de fichero por primera
 | `fudspec` | escribir criterios y fixtures |
 | `testing` | escribir un `.test.ts` |
 | `html-css` | escribir markup o estilos: el subset de HTML, el scoping, los tokens |
+| `config` | cambiar `fudic.json`, `sw.json` o los `.headers` de una app |
 | `FUD0540` (cualquier código) | corregir ese diagnóstico: qué está mal y cómo arreglarlo |

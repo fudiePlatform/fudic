@@ -14,14 +14,16 @@
  *  7. `_error.fud` at its own URL (SDD-56 §4.8);
  *  8. a route: its prerendered HTML with the nonce stamped, or its render as it comes.
  *
+ * Every page and every `_error` goes out with `page.headers` (SDD-84 §4.1), over what `load` wrote,
+ * and with a nonce of its own only when those headers ask for one.
+ *
  * `null` for anything else: a static file, the host's.
  */
 
 import { CSRF_PATH, DATA_PREFIX, ERROR_PREFIX, FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
-import { applyNonce, cspFor, newNonce } from '@fudic/transport';
+import { applyNonce, assetDecisionsFor, newNonce, pageHeadersFor, wantsNonce } from '@fudic/transport';
 import {
   classifyError,
-  PAGE_REFERRER_POLICY,
   pageOriginOf,
   problemOfStatus,
   renderErrorPage,
@@ -122,23 +124,42 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
   const isFunctionPath = (pathname: string): boolean =>
     pathname.startsWith(`${root}${FN_PREFIX}/`) || pathname.startsWith(`${root}${RULE_PREFIX}/`) || pathname === `${root}${CSRF_PATH}`;
 
-  /** The policies a page goes out with, its own and those of its `103`. */
-  const pageHeaders = (headers: Headers, nonce: string, hints: readonly string[]): Headers => {
-    // fudic's win over what `load` wrote (SDD-69 §4.2), and in dev its CSP is none.
-    if (app.csp === undefined) headers.delete('content-security-policy');
-    else headers.set('content-security-policy', cspFor(app.csp, nonce));
-    headers.set('referrer-policy', PAGE_REFERRER_POLICY);
+  /** The app's own files, by path without `base`. */
+  const files = app.files;
+  const isOwnFile = (pathname: string): boolean => files !== undefined && (pathname === files.manifest || pathname === files.worker);
+
+  /** A nonce for one response, when `page.headers` asks for one (SDD-84 §4.7); none otherwise. */
+  const nonceFor = (): string | undefined => (wantsNonce(app.headers) ? newNonce() : undefined);
+
+  /** `page.headers` of one response, `{nonce}` filled. */
+  const policiesOf = (nonce: string | undefined): Headers => pageHeadersFor(app.headers, nonce === undefined ? {} : { nonce });
+
+  /**
+   * The headers a page goes out with: `page.headers` over what `load` wrote (SDD-69 §4.2), HSTS
+   * only over HTTPS (SDD-84 §4.1), and the `Link` of what is painted.
+   */
+  const pageHeaders = (request: Request, headers: Headers, nonce: string | undefined, hints: readonly string[]): Headers => {
+    const secure = new URL(request.url).protocol === 'https:';
+    for (const [name, value] of policiesOf(nonce)) {
+      if (secure || name !== 'strict-transport-security') headers.set(name, value);
+    }
+    // Dev sends no page CSP (SDD-84 §4.5), and none of `load`'s either: Vite's client has no nonce.
+    if (dev) headers.delete('content-security-policy');
     // The `Link` of what is painted, whatever the `103` said (SDD-73 §3.2).
     if (hints.length > 0) headers.set('link', hints.join(', '));
     return headers;
   };
 
-  const hint = (hooks: FetchHooks | undefined, links: readonly string[], nonce: string): void => {
+  /** The `103`: of `page.headers`, only the CSP and the `Referrer-Policy`, with the page's nonce. */
+  const hint = (hooks: FetchHooks | undefined, links: readonly string[], nonce: string | undefined): void => {
     if (links.length === 0 || hooks?.earlyHints === undefined) return;
+    const policies = policiesOf(nonce);
+    const csp = policies.get('content-security-policy');
+    const referrer = policies.get('referrer-policy');
     hooks.earlyHints({
       link: links,
-      'referrer-policy': PAGE_REFERRER_POLICY,
-      ...(app.csp !== undefined ? { 'content-security-policy': cspFor(app.csp, nonce) } : {}),
+      ...(csp !== null ? { 'content-security-policy': csp } : {}),
+      ...(referrer !== null ? { 'referrer-policy': referrer } : {}),
     });
   };
 
@@ -151,6 +172,7 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
    * before it threw: it goes too (SDD-69 §4.2). `announce`: the page was not hinted yet.
    */
   const errorPage = async (
+    request: Request,
     url: string,
     problem: PageProblem,
     origin: PageOrigin,
@@ -160,11 +182,11 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
     announce = true,
   ): Promise<Response> => {
     const page = await app.errorPage(locale);
-    const nonce = newNonce();
+    const nonce = nonceFor();
     const hints = page?.hints ?? [];
     if (announce) hint(hooks, hints, nonce);
-    const html = await transformed(url, await renderErrorPage(page?.module ?? null, problem, nonce, origin), true);
-    const headers = pageHeaders(written, nonce, hints);
+    const html = await transformed(url, await renderErrorPage(page?.module ?? null, problem, nonce ?? '', origin), true);
+    const headers = pageHeaders(request, written, nonce, hints);
     headers.set('content-type', HTML_TYPE);
     return new Response(html, { status: problem.status, headers });
   };
@@ -194,25 +216,25 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
 
   /** A route's page: prerendered, or rendered as it comes; a failure of `load`, its error page. */
   /** A route's prerendered HTML with this response's nonce, or `null` when it has none. */
-  const prerenderedPage = async (route: AppRoute, pathname: string, hooks: FetchHooks | undefined): Promise<Response | null> => {
+  const prerenderedPage = async (route: AppRoute, pathname: string, request: Request, hooks: FetchHooks | undefined): Promise<Response | null> => {
     const prerendered = await app.prerendered(pathname);
     if (prerendered === null) return null;
-    const nonce = newNonce();
+    const nonce = nonceFor();
     const hints = await route.hints();
     hint(hooks, hints, nonce);
-    const headers = pageHeaders(new Headers({ 'content-type': HTML_TYPE }), nonce, hints);
-    return new Response(applyNonce(prerendered, nonce), { status: 200, headers });
+    const headers = pageHeaders(request, new Headers({ 'content-type': HTML_TYPE }), nonce, hints);
+    return new Response(nonce === undefined ? prerendered : applyNonce(prerendered, nonce), { status: 200, headers });
   };
 
   const page = async (route: AppRoute, pathname: string, url: string, request: Request, hooks: FetchHooks | undefined): Promise<Response | null> => {
     // A criterion of the workbench's own build is painted on demand, with its fixture: never the
     // prerendered file, which is the page without it (SDD-82 §4.2).
     const benched = options.bench === true && route.renders && benchCriterionOf(request) !== undefined;
-    const served = benched ? null : await prerenderedPage(route, pathname, hooks);
+    const served = benched ? null : await prerenderedPage(route, pathname, request, hooks);
     if (served !== null) return served;
     // No prerendered file and nothing to render it with: this route produced nothing to serve.
     if (!route.renders) return null;
-    const nonce = newNonce();
+    const nonce = nonceFor();
     // A page dev refuses is not served at all: `fetch` rejects, and the host shows why.
     await options.prepare?.(route);
     const pending = pendingResponse(settings);
@@ -222,8 +244,8 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
       // The `103` before `load` runs (SDD-73 §4.1): that is its whole point.
       hints = await route.hints();
       hint(hooks, hints, nonce);
-      const opened = await renderPage(await app.module(route.pattern), route.pattern, pathname, nonce, request, pending, options.onError);
-      const headers = pageHeaders(new Headers(pending.headers), nonce, hints);
+      const opened = await renderPage(await app.module(route.pattern), route.pattern, pathname, nonce ?? '', request, pending, options.onError);
+      const headers = pageHeaders(request, new Headers(pending.headers), nonce, hints);
       headers.set('content-type', HTML_TYPE);
       if (opened.whole) return new Response(await transformed(url, opened.head, true), { status: pending.status, headers });
       // What decides the status has run once the head is in; the rest goes out as it is rendered.
@@ -240,7 +262,7 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
       return new Response(null, { status: failure.status, headers });
     }
     const origin = pageOriginOf(request, app.base, false);
-    return errorPage(url, failure.problem, origin, localeOfPath(pathname, locales), hooks, new Headers(pending.headers), false);
+    return errorPage(request, url, failure.problem, origin, localeOfPath(pathname, locales), hooks, new Headers(pending.headers), false);
   };
 
   const refererPath = (request: Request): string | undefined => {
@@ -256,6 +278,8 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
 
     const pathname = pathOf(url);
     const asked = `${pathname}${url.search}`;
+    // The manifest and the worker are the host's to serve, whatever route might match them.
+    if (isOwnFile(pathname)) return null;
     const routes = app.routes();
 
     const redirect = localeRedirect(pathname, request.headers.get('accept-language') ?? undefined, locales, (path) => matchRoute(routes, path) !== null);
@@ -277,7 +301,7 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
       const status = Number(errorPath.slice(ERROR_PREFIX.length + 1));
       if (!Number.isInteger(status) || status < 400 || status > 599) return null;
       const locale = errorLocaleOf(pathname, refererPath(request), locales);
-      return errorPage(asked, problemOfStatus(status), pageOriginOf(request, app.base, true), locale, hooks);
+      return errorPage(request, asked, problemOfStatus(status), pageOriginOf(request, app.base, true), locale, hooks);
     }
 
     const route = matchRoute(routes, pathname);
@@ -291,11 +315,22 @@ export function createServer(app: ServerApp, options: ServerOptions = {}): Fudic
     const url = new URL(request.url);
     const pathname = pathOf(url);
     const origin = pageOriginOf(request, app.base, false);
-    return errorPage(`${pathname}${url.search}`, problemOfStatus(404), origin, localeOfPath(pathname, locales), hooks);
+    return errorPage(request, `${pathname}${url.search}`, problemOfStatus(404), origin, localeOfPath(pathname, locales), hooks);
   };
 
-  const staticHeaders = (request: Request): Readonly<Record<string, string>> | null =>
-    app.statics?.[pathOf(new URL(request.url))] ?? null;
+  /**
+   * A static file's headers (SDD-84 §4.4): the manifest and the worker, fudic's own (SDD-20
+   * §4.11), whatever `assets.headers` says; any other, the rule of `assets.headers` that wins.
+   */
+  const staticHeaders = (request: Request): Readonly<Record<string, string>> | null => {
+    const pathname = pathOf(new URL(request.url));
+    if (files !== undefined && pathname === files.manifest) return { 'cache-control': 'no-cache' };
+    if (files !== undefined && pathname === files.worker) {
+      return { ...app.headers.sw, 'cache-control': 'no-cache', 'service-worker-allowed': app.base };
+    }
+    const decided = assetDecisionsFor(app.headers, pathname);
+    return Object.keys(decided).length === 0 ? null : decided;
+  };
 
   return { fetch, notFound, staticHeaders };
 }

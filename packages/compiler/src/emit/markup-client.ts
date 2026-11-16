@@ -1251,6 +1251,8 @@ export class ClientMarkupEmitter {
     const slotGuard = slot === null ? '' : `${slot} && `;
     // A summary with `fields` hands its map path → id to `bindForm` / `bindGroup` (BUG-42 §4.7).
     const links = site.marker === null ? null : (this.#hookup.controls.markers.get(site.marker)?.links ?? null);
+    // A summary is painted through the `fudic` policy (SDD-84 §4.6): the page needs its name.
+    if (site.marker !== null && this.#hookup.controls.markers.get(site.marker)?.attr === 'summary') this.#hookup.paintsHtml = true;
     // `form:=@save`: the function the valid submit sends to, after the links (SDD-56 §4.7). Then
     // the ids of the form's fields, which `$issues()` links to (BUG-51). Positional, so a later
     // argument that is there writes the earlier ones that are not.
@@ -1633,6 +1635,7 @@ export class ClientMarkupEmitter {
       const expr = raw.expr.expr;
       const value = { text: this.#slice(expr), src: expr.start };
       const slot = this.#applyValue([value], ($v) => `$dom.setHtml(${v}, ${$v});`);
+      this.#hookup.paintsHtml = true;
       // `h` writes nothing — the HTML arrived inside the element — but it does record what the
       // server painted, or the first update of ANY value would find the guard empty and rebuild
       // this HTML from scratch, taking the focus, the selection and what was typed in it along.

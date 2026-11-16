@@ -10,7 +10,7 @@
  * every save.
  */
 
-import { type ManifestFile, type RouteRecord, DEFAULT_CSP } from '@fudic/transport';
+import { type ManifestFile, type ManifestHeaders, type RouteRecord } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { DEV_CLIENT_PREFIX } from './constants.js';
 
@@ -84,6 +84,7 @@ export function devManifest(
   builds: readonly RouteBuild[],
   build = 'dev',
   base = '/',
+  headers: ManifestHeaders = { page: {}, sw: {}, assets: [] },
 ): ManifestFile {
   const routes: RouteRecord[] = [];
   for (const rb of builds) {
@@ -92,5 +93,5 @@ export function devManifest(
     }
     routes.push({ pattern: rb.route.pattern, mode: 'ssr' });
   }
-  return { build, base, csp: DEFAULT_CSP, routes };
+  return { build, base, headers, routes };
 }

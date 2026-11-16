@@ -377,6 +377,9 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
       '@fudic/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -516,6 +519,9 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
@@ -763,6 +769,9 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
       '@fudic/core':
         specifier: workspace:*
         version: link:../core

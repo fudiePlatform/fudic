@@ -1,6 +1,7 @@
 # SDD-84 — Las cabeceras de la app
 
-> **Estado:** `Listo` (2026-11-13) — [tareas](./SDD-84-Task.md).
+> **Estado:** `Hecho` (2026-11-16), probada por Pedro (§6 criterio 1, [SDD-84-Prueba](./SDD-84-Prueba.md))
+> y mergeada a `main` a través de la 83 — [tareas](./SDD-84-Task.md).
 > **Paquetes:** `@fudic/config` · `@fudic/diagnostics` · `@fudic/transport` · `@fudic/server` ·
 > `@fudic/vite` · `@fudic/compiler` · `@fudic/dom` · `@fudic/forms` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` · `examples/basic`
@@ -373,7 +374,8 @@ el manifiesto, lo de fudic (más `sw` en el primero). `EarlyHints` no cambia: lo
   - `FUD1545`, `FUD1548` y `FUD1556` salen de `.fudic/csp-needs.json` (§3.4) y se recalculan cuando
     cambia ese fichero o el `.headers`.
 - **CLI**: `fudic new` y `fudic g app` escriben `page.headers` y `assets.headers`, y `sw.headers` salvo
-  con `--no-sw`. `fudic check` valida los tres.
+  con `--no-sw`. La CLI no tiene `fudic check` (SDD-35 lo retiró): la comprobación del proyecto es
+  `fudic_check` (§8.2.24).
 - **MCP**: `fudic_check` devuelve sus diagnósticos. La guía gana el tema `config` (§3.9).
 
 ### 3.9. La guía del MCP: los ficheros del proyecto
@@ -630,8 +632,8 @@ el ejemplo enseñe cómo se añade, y `assets.headers` un bloque para `/fonts/*`
 33. El language server da los diagnósticos de 4–13 y 16–17 en el editor con su span, y completa `script-`
     con las directivas de `script-src`. Tras un build, `FUD1545`, `FUD1548` y `FUD1556` salen también
     en el editor, desde `.fudic/csp-needs.json`.
-34. `fudic check` y `fudic_check` del MCP devuelven los mismos diagnósticos que el build para los tres
-    ficheros, salvo los que necesitan la salida (`FUD1545`, `FUD1548`, `FUD1551`–`FUD1553`, `FUD1556`).
+34. `fudic_check` del MCP devuelve los mismos diagnósticos que el build para los tres ficheros, salvo los
+    que necesitan la salida (`FUD1545`, `FUD1548`, `FUD1551`–`FUD1553`, `FUD1556`).
 35. El README de `@fudic/vite` trae el contrato de §4.4 y la función de sustitución en Node, Go, Java,
     Python, C# y Rust; la de Node es la que usa `@fudic/server`, y un test la compara con el pseudocódigo.
 36. `fudic_guide { topic: "config" }` devuelve el tema, y el test de §3.9 falla si se quita de
@@ -709,4 +711,115 @@ Nada.
 
 ### 8.2. Tomadas al implementar
 
-(vacío)
+1. **La rama sale de `sdd-83-diagnosticos-y-baseline`**, no de `main` (Pedro): las dos se mergean juntas
+   después.
+2. **Un `.headers` que no se puede leer es `FUD1540`** (`problem: 'unreadable'`), con su motivo. No cae a
+   la plantilla, igual que uno roto.
+3. **`parseHeaders` también devuelve los comentarios** y `readHeaders` el texto y los comentarios de cada
+   fichero que existe (`sources`): son lo que necesita `govern` de SDD-83 para aplicar los `fud-disable`.
+4. **Una necesidad dice qué pone la pieza, no qué fuente pide**: `inline-script`, `inline-style`, `script`,
+   `eval` o `policy` (con su nombre). `checkNeeds` decide con la semántica de CSP3 si pasa y, si no, qué
+   fuente añadir: el nonce para un script inline, `'unsafe-inline'` para un estilo (el nonce si hay un hash),
+   `'self'` o el nonce para un `<script src>` según haya `'strict-dynamic'`. Así «el nonce, si la CSP lleva
+   `'strict-dynamic'`» (§3.4) no tiene que estar escrito en cada pieza. Devuelve cada hallazgo con su acción
+   (`add`/`remove`), directiva, fuente y span, para las bombillas.
+5. **`FUD1556` sobre el nonce, directiva por directiva**: un `'nonce-{nonce}'` sobra en una directiva por la
+   que no pasa ninguna necesidad gracias a él (si `'self'` ya deja pasar el `<script src>`, el nonce de esa
+   directiva sobra).
+6. **Las rutas de fudic en `assets.headers`** (`FUD1542`) son `/fudic-sw.js` y `/fudic-routes.json`, los
+   nombres por defecto: el lector no conoce un manifiesto con otro nombre.
+7. **Las líneas en blanco y los comentarios no cortan una cabecera**: un comentario entre las líneas de la
+   CSP (el `fud-disable-next-line` del ejemplo de §3.2) deja la cabecera seguir. En `assets.headers`, la
+   sangría de la primera cabecera de un bloque marca el nivel; más sangrado es continuación.
+8. **Sin CSP en `page.headers` no hay `FUD1547` ni necesidades que comprobar**: quien la borra lo ha
+   decidido, y el navegador deja pasar todo.
+9. **`FUD1551` solo en un fichero con hash que declara `sw.json`** (su `shell` o un recurso `cache-first`).
+   Uno sin hash tiene que revalidarse: `no-cache` es lo correcto para él, y si avisara, la plantilla
+   (`/**` con `no-cache`) avisaría en cualquier app con SW. Los chunks que fudic mete en el shell por su
+   cuenta tampoco cuentan: son cosa suya.
+10. **Un fichero «con hash»** es uno del bundle cuyo nombre acaba en `-` y ocho caracteres base64url (el
+    `[hash]` de Vite, el id de build de fudic y las copias enlazadas). Lo de `public/` nunca lo lleva.
+11. **`.fudic/csp-needs.json` guarda las necesidades tal como las declara cada pieza** (`loads`, `piece`),
+    por fichero `.headers`, no la fuente que piden: el editor llama a `checkNeeds` con el texto que tiene
+    delante, que es lo que decide la fuente (decisión 4).
+12. **`ServerApp.files`** (`{ manifest, worker? }`) dice al servidor cuáles son los ficheros propios de
+    fudic: les da sus cabeceras pase lo que pase en `assets.headers`, y `fetch` nunca los toma por una
+    ruta. `staticHeaders` devuelve también los valores `''`: son cabeceras que no deben salir, y
+    `nodeMiddleware` necesita saberlo para quitar la del servidor de estáticos.
+13. **`nodeMiddleware` pregunta primero a `fetch`** y pone las cabeceras de estático solo a lo que no
+    contesta. Antes iba al revés, porque solo había dos rutas; con `/**` casaría cualquier página.
+14. **Sin `Referrer-Policy` en `page.headers` no sale ninguna**, también en el `103`: lo que hay en el
+    fichero es lo que sale. Desaparece `PAGE_REFERRER_POLICY`.
+15. **Sin CSP en `page.headers`, la que escriba `load` se queda**: no hay nada que gane sobre ella. En
+    dev no sale ninguna, tampoco la de `load`: el cliente de Vite no lleva nonce.
+16. **Las necesidades de las páginas viajan en `EmitOutput.needs`** desde la fase 3, vacías hasta que el
+    emit las registre (tarea 11). La parte de extremo a extremo del criterio 10 con el polyfill (que el
+    build nombre el polyfill) se prueba en la fase 4; en la 3, `checkEmitted` con las necesidades de la
+    pieza y `FUD0803` en un build real.
+17. **Un `fud-disable` en un `.headers` silencia también en el build.** El informe comparaba la ruta
+    relativa del diagnóstico (`page.headers`) con la absoluta del fichero y nunca casaban: ahora cada
+    diagnóstico se sitúa en la ruta entera de su fichero antes de aplicar sus comentarios.
+18. **También los `<script>` de código del head del autor llevan el nonce**, no solo su `importmap`: con
+    `'strict-dynamic'` un `<script src="./analytics.js">` del layout no cargaría sin él. JSON-LD y cualquier
+    `type` que no sea JavaScript, no. Un `type` interpolado se trata como código. Con un atributo
+    interpolado el nonce entra por la misma maquinaria de atributos.
+19. **El `importmap` declara `inline-script`, no `script`**: es un script inline, y `'self'` no lo deja
+    pasar. Con nonce pasa; sin nonce, solo con `'unsafe-inline'`.
+20. **Las necesidades del head viven en `HEAD_NEEDS` (`compiler/src/emit/parts.ts`)** y las del polyfill
+    en `POLYFILL_NEEDS` (`polyfill.ts`). Cada escritor devuelve lo que escribió (`writeHeadElements`,
+    `writeSharedHead`, `guideOf`/`planPageSheets`) y el módulo lo junta en `EmitOutput.needs`. El layout
+    apunta lo de su propio head; la ruta, lo de sus hojas, su guía, su head y su runtime según la forma
+    del marcador de su layout (`runtimeFormOf`). El `<script>` que registra el SW lo apunta el plugin
+    (`HEAD_NEEDS.boot`) cuando hay `sw.json`: el compilador no sabe si lo hay.
+21. **La necesidad de Trusted Types la apunta el emit del cliente** (`EmitOutput.needs` del `?client` de un
+    componente o de una ruta) cuando pinta HTML: un `@raw` o el resumen de un formulario. Solo lo que
+    hidrata pasa por la policy, así que una página N1 con `@raw` no la pide. La declaración vive en
+    `dom/src/trusted.ts` (`TRUSTED_TYPES_NEEDS`), y por eso `@fudic/compiler` depende de `@fudic/dom`
+    (sin dependencias propias). El plugin junta las necesidades de los `?client` con las de las páginas.
+22. **`dom/trusted` es una pieza del runtime** y `dom/browser` la importa por URL; `@fudic/forms` la
+    alcanza por un shim de `@fudic/dom`, como ya hacía con `@fudic/core`. Es la «lista de fronteras» de la
+    tarea 10: una sola copia de la policy en el origen. `examples/pieces-bench` la anota como pieza con
+    estado.
+23. **`FUD1555` por tipo, mirando debajo de los casts**: un valor de un tipo `TrustedHTML`,
+    `TrustedScript` o `TrustedScriptURL` no avisa aunque se escriba `as unknown as string` (lo que exige el
+    `lib.dom` de TypeScript, que tipa `innerHTML` como `string`). `any` no avisa: no se sabe. Se suman a
+    los sumideros de §4.6 `textContent`/`innerText` de un `<script>` y `parseHTMLUnsafe`. La exigencia se
+    lee del `page.headers` del proyecto del fichero (su plantilla si no hay), nunca en una lib. En el
+    editor `.fud` sale con el resto del detector en la fase 5 (tarea 15).
+24. **No hay `fudic check` en la CLI**: SDD-35 lo retiró, porque lo que el editor marca rompe el build.
+    La comprobación del proyecto es la de `@fudic/typecheck`, y los `.headers` entran en ella con
+    `createProjectChecker({ root, headers: true })`, que pide `fudic_check`. Dev y el build no la piden:
+    ya los dicen al leer los ficheros, y saldrían dos veces. Se informan como el build, sin el `FUD1523` de
+    un comentario que no silencia nada; el editor sí lo enseña, como en un `.fudapi`.
+25. **`CSP_NEEDS_FILE`, `readCspNeeds` y `cspOf` viven en `@fudic/config`**: el build escribe el fichero y el
+    editor lo lee con la misma definición. `readCspNeeds` nunca lanza; una necesidad con una forma que
+    ninguna pieza declara se descarta.
+26. **El completado** ofrece los nombres de la tabla (`Nombre: `), las directivas de CSP3, las fuentes de
+    cada directiva (`'nonce-{nonce}'` solo en `page.headers`; `'script'` en `require-trusted-types-for`,
+    `fudic` en `trusted-types`), los valores cerrados y las directivas de `Cache-Control`. Lee el texto
+    alrededor del cursor y no el parse: la línea que se escribe es la que todavía no parsea.
+27. **«Quitar la línea»** quita la cabecera que empieza en esa línea con sus continuaciones, o el bloque de
+    `assets.headers` cuya ruta está en ella con sus cabeceras; si no, esa línea sola. **«Cambiar por»**
+    propone el valor cerrado más parecido (distancia de edición hasta el 60 % del más largo) y cambia solo
+    el valor, no sus parámetros.
+28. **El lenguaje `fudheaders` reclama los tres nombres con `filenames`**, y el cliente vigila `**/*.headers`
+    y `**/.fudic/csp-needs.json`: un cambio refresca los `.headers` abiertos y los `.fud`, cuyo `FUD1555`
+    depende de `page.headers`. La activación no cambia: toda app tiene algún `.fud`.
+29. **Los campos de `sw.json` que ata el test de la guía** son `SW_CONFIG_FIELDS` y `RESOURCE_RULE_FIELDS` de
+    `@fudic/vite`, comprobados contra `SwConfigFile` en tiempo de compilación: un campo nuevo sin su nombre
+    no compila, y con su nombre y sin documentar falla el test.
+30. **La CLI escribe `/assets/**` tal cual**: el `vite.config.ts` que genera deja `build.assetsDir` en su
+    valor por defecto. El README de la app nueva nombra los tres ficheros.
+31. **El registro del SW pasa por la policy `fudic`.** Con `require-trusted-types-for 'script'`,
+    `navigator.serviceWorker.register(url)` exige un `TrustedScriptURL`: sin él, el SW no se registra
+    nunca (lo destapó el e2e de la tarea 19). La policy gana `createScriptURL` (sin sanear, como
+    `createHTML`), `@fudic/dom` exporta `trustedScriptUrlOf` y el arranque la usa. Como el arranque es
+    su propio bundle con su propia copia del módulo, **la policy se guarda en el realm**
+    (`Symbol.for('fudic.trusted-types')`), no en el módulo: la primera copia que corre la crea y las
+    demás la encuentran, y `createPolicy` se sigue llamando una vez. `HEAD_NEEDS.boot` declara también
+    la necesidad de la policy.
+32. **«Con hash» admite puntos en el nombre y extensiones dobles**: el hash va seguido solo de
+    extensiones (`x-1a2B3c4D.js.map`, `di-owner.ioc-1a2B3c4D.js`). Sin esto, `/assets/**` con
+    `immutable` daba `FUD1552` sobre los sourcemaps del ejemplo.
+33. **`FUD1554` mira el fichero `sw.json`, no el build**: un segundo build con `sw: false` (el `nosw`
+    del ejemplo) sigue sirviendo la app cuyo worker configura `sw.headers`.

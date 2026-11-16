@@ -10,6 +10,7 @@ import { parseFud } from '../src/parse.js';
 import { commandFailed } from '../src/diagnostics.js';
 import { TYPESCRIPT_VERSION } from '../src/project.js';
 import { GLOBALS_DTS } from '@fudic/language-core';
+import { HEADERS_FILES, HEADERS_TEMPLATES } from '@fudic/config';
 import { MemoryFs, RecordingRunner, contentsOf } from './helpers.js';
 import type { NewOptions } from '../src/types.js';
 
@@ -53,6 +54,9 @@ describe('fudic new', () => {
       'demo/AGENTS.md',
       'demo/CLAUDE.md',
       'demo/sw.json',
+      'demo/page.headers',
+      'demo/sw.headers',
+      'demo/assets.headers',
       'demo/src/layouts/_layout.fud',
       'demo/src/layouts/_layout.test.ts',
       'demo/src/routes/index.fud',
@@ -79,6 +83,9 @@ describe('fudic new', () => {
       'AGENTS.md',
       'CLAUDE.md',
       'sw.json',
+      'page.headers',
+      'sw.headers',
+      'assets.headers',
     ];
     for (const change of plan.changes) {
       const relative = change.path.slice('demo/'.length);
@@ -161,6 +168,17 @@ describe('fudic new', () => {
     const fs = new MemoryFs({}, CWD);
     const plan = await planNew('demo', options({ sw: false }), fs);
     expect(plan.changes.some((change) => change.path.endsWith('sw.json'))).toBe(false);
+    // And its headers with it (SDD-84 criterion 2).
+    expect(plan.changes.some((change) => change.path.endsWith('sw.headers'))).toBe(false);
+    expect(plan.changes.some((change) => change.path.endsWith('page.headers'))).toBe(true);
+  });
+
+  it('writes the three headers files with the text of their templates (SDD-84 criterion 2)', async () => {
+    const fs = new MemoryFs({}, CWD);
+    const plan = await planNew('demo', options(), fs);
+    for (const kind of ['page', 'sw', 'assets'] as const) {
+      expect(contentsOf(plan.changes.find((change) => change.path === `demo/${HEADERS_FILES[kind]}`))).toBe(HEADERS_TEMPLATES[kind]);
+    }
   });
 
   it('puts install and git in the plan, and --dry-run runs neither (§6.14)', async () => {

@@ -5,7 +5,7 @@
  *
  * Per route: its mode, its TOPOLOGICAL deps (the SW's `require` is synchronous, so it
  * must know what to load before what), and the policy of its generated data endpoint.
- * `csp` lives here so server and SW cannot diverge.
+ * The app's headers live here so server and SW cannot diverge (SDD-84 §3.7).
  *
  * What this does NOT emit is a URL — any URL (SDD-27 §5.4). Not the prerendered HTML
  * file, which belongs to the edge and whose naming here made the Service Worker download
@@ -20,8 +20,8 @@ import {
   type DataPolicy,
   type ManifestFile,
   type PagePolicy,
+  type ManifestHeaders,
   type RouteRecord,
-  DEFAULT_CSP,
 } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
@@ -31,6 +31,8 @@ import { FUD0392, FUD0396, type FileDiagnostic } from '@fudic/diagnostics';
 export interface ManifestInputs {
   readonly build: string;
   readonly base: string;
+  /** The three `.headers` files, as the manifest carries them (SDD-84 §3.7). */
+  readonly headers: ManifestHeaders;
   /**
    * The component chunk NAMES a route needs, topologically ordered, or `null` when the
    * link pass produced no entry chunk for it (FUD0399).
@@ -208,7 +210,7 @@ export function buildManifest(
     file: {
       build: inputs.build,
       base: inputs.base,
-      csp: DEFAULT_CSP,
+      headers: inputs.headers,
       routes: records,
       // Absent when nothing hydrates, or when every chunk is self-contained: an empty
       // object in the file would say "asked and answered nothing", which is not the case.

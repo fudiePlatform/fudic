@@ -91,20 +91,29 @@ async function importRenderModule(chunkPath: string): Promise<RenderModule> {
   return (await import(pathToFileURL(chunkPath).href)) as RenderModule;
 }
 
+/** How a page is prerendered. */
+export interface PrerenderOptions {
+  /** The URL rendered; the pattern by default. */
+  readonly url?: string;
+  /** `false`: `page.headers` asks for no nonce, and the HTML carries no token. */
+  readonly nonce?: boolean;
+}
+
 /**
  * Import a materialized wrapper chunk and render one route to an HTML string.
  *
  * The nonce is the literal `__FUDIC_NONCE__` token: a nonce baked at build time is a
  * constant, and a constant nonce is not a nonce. Whoever serves the file — the SW from
- * cache, or the server from disk — swaps it for a fresh one (SDD-20 §4.9.3).
+ * cache, or the server from disk — swaps it for a fresh one (SDD-20 §4.9.3). With
+ * `nonce: false` — `page.headers` asks for none (SDD-84 §4.7) — the page carries neither.
  */
 export async function renderChunkToHtml(
   chunkPath: string,
   pattern: string,
-  url = pattern,
+  options: PrerenderOptions = {},
 ): Promise<string> {
   const mod = await importRenderModule(chunkPath);
-  return renderUrl(mod, pattern, url);
+  return renderUrl(mod, pattern, options.url ?? pattern, options.nonce !== false);
 }
 
 /**
@@ -112,12 +121,12 @@ export async function renderChunkToHtml(
  * static site has no way to serve a 404 or a `Location`, so a `load` that answers one for a
  * URL the build was asked to write is a build that fails, not a page that pretends.
  */
-async function renderUrl(mod: RenderModule, pattern: string, url: string): Promise<string> {
+async function renderUrl(mod: RenderModule, pattern: string, url: string, nonce: boolean): Promise<string> {
   // Nobody to answer: what `load` writes is dropped, and only asked whether it read the session.
   const response = pendingResponse();
   let html: string;
   try {
-    html = await drain(mod.render({ ...prerenderContext(pattern, url), response }));
+    html = await drain(mod.render({ ...prerenderContext(pattern, url, nonce), response }));
   } catch (err) {
     const failure = classifyError(err, true);
     throw new Error(
@@ -143,9 +152,9 @@ export class SessionRead extends Error {
   }
 }
 
-/** The prerender context: `origin: 'ssg'` and the nonce placeholder. */
-function prerenderContext(pattern: string, url: string): RenderContext {
-  return edgeContext(pattern, url, NONCE_TOKEN, 'ssg');
+/** The prerender context: `origin: 'ssg'`, and the nonce placeholder when the page asks for a nonce. */
+function prerenderContext(pattern: string, url: string, nonce: boolean): RenderContext {
+  return edgeContext(pattern, url, nonce ? NONCE_TOKEN : '', 'ssg');
 }
 
 /**
@@ -176,7 +185,11 @@ export function urlForEntry(
 }
 
 /** Enumerate a param route via its `paths()`, prerendering one HTML per covered entry. */
-export async function prerenderEnumerated(chunkPath: string, pattern: string): Promise<EnumeratedResult> {
+export async function prerenderEnumerated(
+  chunkPath: string,
+  pattern: string,
+  options: Omit<PrerenderOptions, 'url'> = {},
+): Promise<EnumeratedResult> {
   const mod = await importRenderModule(chunkPath);
   if (typeof mod.paths !== 'function') {
     return { files: [], incomplete: [] };
@@ -192,7 +205,7 @@ export async function prerenderEnumerated(chunkPath: string, pattern: string): P
     }
     files.push({
       path: htmlPathFor(built.url),
-      html: await renderUrl(mod, pattern, built.url),
+      html: await renderUrl(mod, pattern, built.url, options.nonce !== false),
     });
   }
   return { files, incomplete };

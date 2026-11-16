@@ -17,34 +17,7 @@ import { createFudicService } from '../../src/services/plugin.js';
 import { RequestStats } from '../../src/stats.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
-import ts from 'typescript';
-import { GLOBALS_DTS } from '@fudic/language-core';
-import { memoryFs } from '../_support.js';
-
-/** A TypeScript service over the projection that, unlike the shared one, reads the `lib` from disk: the browser's names are declared there. */
-function projectionService(path: string, text: string): ts.LanguageService {
-  const files: Record<string, string> = { [path]: text, '/p/fudic-globals.d.ts': GLOBALS_DTS };
-  const read = (name: string): string | undefined => files[name] ?? ts.sys.readFile(name);
-  return ts.createLanguageService({
-    getScriptFileNames: () => Object.keys(files),
-    getScriptVersion: () => '1',
-    getScriptSnapshot: (name) => {
-      const found = read(name);
-      return found === undefined ? undefined : ts.ScriptSnapshot.fromString(found);
-    },
-    getScriptKind: () => ts.ScriptKind.TS,
-    getCurrentDirectory: () => '/p',
-    getCompilationSettings: () => ({
-      strict: true,
-      target: ts.ScriptTarget.ES2022,
-      lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
-      allowNonTsExtensions: true,
-    }),
-    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-    fileExists: (name) => read(name) !== undefined,
-    readFile: read,
-  });
-}
+import { browserProjectionService as projectionService, memoryFs } from '../_support.js';
 
 const PATH = '/p/src/app-x.fud';
 

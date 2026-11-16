@@ -56,9 +56,10 @@ const LINK = `<!DOCTYPE html>
 
 let server: ViteDevServer;
 let origin: string;
+let root: string;
 
 beforeAll(async () => {
-  const root = mkdtempSync(join(tmpdir(), 'fudic-dev-'));
+  root = mkdtempSync(join(tmpdir(), 'fudic-dev-'));
   writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
@@ -186,5 +187,38 @@ describe('vite dev server (SDD-19 §4.10)', () => {
   it('leaves a non-route path to the rest of the middlewares', async () => {
     const res = await fetch(`${origin}/nope`, { headers: { accept: 'text/html' } });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('the headers of the app in dev (SDD-84 §4.5)', () => {
+  it('criterion 25: the worker carries sw.headers, no-cache and its scope', async () => {
+    const res = await fetch(`${origin}/fudic-sw.js`);
+    expect(res.headers.get('content-security-policy')).toBe("default-src 'self'; script-src 'self' 'unsafe-eval'");
+    expect(res.headers.get('cache-control')).toBe('no-cache');
+  });
+
+  it('criterion 28: a page has page.headers but its CSP and HSTS; a change is good for the next response', async () => {
+    const page = await fetch(`${origin}/about`, { headers: { accept: 'text/html' } });
+    expect(page.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+    expect(page.headers.get('cross-origin-opener-policy')).toBe('same-origin');
+    expect(page.headers.has('content-security-policy')).toBe(false);
+    expect(page.headers.has('strict-transport-security')).toBe(false);
+    writeFileSync(join(root, 'page.headers'), 'Referrer-Policy: same-origin\nX-Custom: 1\n');
+    let custom: string | null = null;
+    for (let i = 0; i < 100 && custom === null; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      custom = (await fetch(`${origin}/about`, { headers: { accept: 'text/html' } })).headers.get('x-custom');
+    }
+    expect(custom).toBe('1');
+    // What is wrong in it is said, and the server stays up.
+    writeFileSync(join(root, 'page.headers'), 'Content-Type: text/plain\n');
+    writeFileSync(join(root, 'sw.headers'), "Content-Security-Policy: script-src 'self'\n");
+    let csp: string | null = '';
+    for (let i = 0; i < 100 && csp !== "script-src 'self'"; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      csp = (await fetch(`${origin}/fudic-sw.js`)).headers.get('content-security-policy');
+    }
+    expect(csp).toBe("script-src 'self'");
+    expect((await fetch(`${origin}/about`, { headers: { accept: 'text/html' } })).status).toBe(200);
   });
 });

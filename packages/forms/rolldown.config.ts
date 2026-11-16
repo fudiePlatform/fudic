@@ -33,6 +33,7 @@ const require = createRequire(import.meta.url);
 const { version } = read(here('./package.json'));
 const versions: Readonly<Record<string, string>> = {
   core: read(require.resolve('@fudic/core/package.json')).version,
+  dom: read(require.resolve('@fudic/dom/package.json')).version,
 };
 
 /** `/_fudic/<version>/<pkg>/<piece>.js` — the one shape §3.1 publishes. */
@@ -220,8 +221,26 @@ const CORE_EXPORTS: Readonly<Record<string, readonly string[]>> = {
   element: ['FudicElement'],
 };
 
-/** The id of the module that stands in for `@fudic/core`, and exists only during this build. */
-const CORE_SHIM = '\0fudic:core';
+/**
+ * What this package takes from `@fudic/dom`, the same way: the `fudic` Trusted Types policy the
+ * summary paints through (SDD-84 §4.6). Never inlined, and here it is not about bytes: the policy
+ * is state, and a copy inside `summary` would be a second `createPolicy('fudic')` on a page whose
+ * `@raw` already made the first — an exception under the directive.
+ */
+const DOM_EXPORTS: Readonly<Record<string, readonly string[]>> = {
+  trusted: ['trustedHtmlOf'],
+};
+
+/**
+ * The modules that stand in for another package during this build, by the specifier they
+ * replace: their id, which exists only here, and the pieces that publish each name.
+ */
+const SHIMS: Readonly<
+  Record<string, { readonly id: string; readonly pkg: string; readonly exports: Readonly<Record<string, readonly string[]>> }>
+> = {
+  '@fudic/core': { id: '\0fudic:core', pkg: 'core', exports: CORE_EXPORTS },
+  '@fudic/dom': { id: '\0fudic:dom', pkg: 'dom', exports: DOM_EXPORTS },
+};
 
 /**
  * A published piece, leaving as a URL and declared free of side effects.
@@ -250,7 +269,7 @@ const external = (url: string) =>
  * plain `true` an id starting with `/` is read as a filesystem path and renormalized against
  * the output directory, which would turn an origin-absolute URL into `../../…`.
  *
- * And a SHIM for `@fudic/core`, because the source says `import { signal, untrack }` while the
+ * And a SHIM for `@fudic/core` (and one for `@fudic/dom`), because the source says `import { signal, untrack }` while the
  * answer is two different URLs: `resolveId` is handed the specifier and never the names, so it
  * cannot split one import two ways. The shim can — it re-exports each name from its own piece,
  * rolldown inlines it, drops what this build does not use, and what survives is one external
@@ -260,7 +279,8 @@ const external = (url: string) =>
 const publishedUrls = (self: string): Plugin => ({
   name: 'fudic-published-urls',
   resolveId(source, importer) {
-    if (source === '@fudic/core') return CORE_SHIM;
+    const shim = SHIMS[source];
+    if (shim !== undefined) return shim.id;
     // The pieces the shim names: already URLs, and they leave as they are.
     if (source.startsWith('/_fudic/')) return external(source);
     if (importer === undefined || !source.startsWith('.')) return null;
@@ -275,9 +295,10 @@ const publishedUrls = (self: string): Plugin => ({
     return owner === undefined || owner === self ? null : external(published('forms', owner));
   },
   load(id) {
-    if (id !== CORE_SHIM) return null;
-    return Object.entries(CORE_EXPORTS)
-      .map(([piece, names]) => `export { ${names.join(', ')} } from '${published('core', piece)}';`)
+    const shim = Object.values(SHIMS).find((s) => s.id === id);
+    if (shim === undefined) return null;
+    return Object.entries(shim.exports)
+      .map(([piece, names]) => `export { ${names.join(', ')} } from '${published(shim.pkg, piece)}';`)
       .join('\n');
   },
 });

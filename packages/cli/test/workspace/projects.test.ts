@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { HEADERS_FILES, HEADERS_TEMPLATES } from '@fudic/config';
 import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
 import { apply } from '../../src/apply.js';
@@ -52,6 +53,8 @@ describe('fudic g app (criterion 4)', () => {
 
     expect(fs.paths()).toContain('apps/admin/vite.config.ts');
     expect(fs.paths()).toContain('apps/admin/sw.json');
+    // Its headers, as the templates write them (SDD-84 criterion 2).
+    for (const kind of ['page', 'sw', 'assets'] as const) expect(fs.at(`apps/admin/${HEADERS_FILES[kind]}`)).toBe(HEADERS_TEMPLATES[kind]);
     expect(JSON.parse(fs.at('apps/admin/fudic.json'))).toEqual({
       id: 'admin',
       kind: 'app',
@@ -99,6 +102,8 @@ describe('fudic g app (criterion 4)', () => {
     const plan = await planApp('admin', appOptions({ sw: false }), fs);
 
     expect(plan.changes.map((change) => change.path)).not.toContain('apps/admin/sw.json');
+    expect(plan.changes.map((change) => change.path)).not.toContain('apps/admin/sw.headers');
+    expect(plan.changes.map((change) => change.path)).toContain('apps/admin/page.headers');
   });
 
   it('refuses outside a workspace: FUD0780', async () => {

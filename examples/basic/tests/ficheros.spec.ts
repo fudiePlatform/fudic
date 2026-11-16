@@ -181,7 +181,8 @@ test.describe('the photo of user-form', () => {
     await foto.setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: png(3 * MB) });
     await expect(userForm(page).getByText('Como mucho 2 MB.')).toBeVisible();
     await userForm(page).getByRole('button', { name: 'Dar de alta' }).click();
-    await expect(userForm(page).getByText('Como mucho 2 MB.')).toBeVisible();
+    // On its field, and again in the form's summary (SDD-82): the field is what is asserted.
+    await expect(userForm(page).locator('small.error', { hasText: 'Como mucho 2 MB.' })).toBeVisible();
     expect(sent).toEqual([]);
 
     // Forced: the same call a good photo makes, with the big one in its place.

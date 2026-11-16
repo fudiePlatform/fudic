@@ -29,6 +29,7 @@ import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { FlatSheet, StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
+import type { CspNeed } from '@fudic/config';
 import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
@@ -64,6 +65,8 @@ import {
   writeNonceBinding,
   writeRuntimeTags,
   writeSharedHead,
+  runtimeNeeds,
+  uniqueNeeds,
 } from './parts.js';
 import {
   compactProjectCss,
@@ -239,6 +242,11 @@ export interface EmitOutput {
    * the build knows — the runtime the page loads — and writes them into the route manifest.
    */
   readonly hints?: readonly EarlyHint[];
+  /**
+   * What this module puts in a page that a Content-Security-Policy has to let in (SDD-84 §3.4),
+   * declared by the code that writes it. The build compares them with `page.headers`.
+   */
+  readonly needs: readonly CspNeed[];
 }
 
 /** The component's single `<style>` element, if it wrote one (decision 62). */
@@ -631,6 +639,7 @@ export function emitComponentModuleMapped(
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: [],
     diagnostics,
   };
 }
@@ -652,6 +661,7 @@ function buildPageModule(
   linker: AssetLinker;
   diagnostics: readonly Diagnostic[];
   sheets: PageSheets | null;
+  needs: readonly CspNeed[];
 } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(
@@ -680,7 +690,8 @@ function buildPageModule(
   const pageGraph = 'layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] };
   const sheets = planPageSheets(pageGraph, options, linker);
   // The style guides and the icon, before the linker flushes, like the project's sheets.
-  const guideExpr = guideOf(pageGraph, options, linker, sheets);
+  const guide = guideOf(pageGraph, options, linker, sheets);
+  const guideExpr = guide.expr;
   // The project's guide (SDD-42), built here — before the body codegen and long before the
   // linker's imports are flushed — because compacting it can register an asset import.
   const projectStylesLine = linkCss
@@ -742,7 +753,9 @@ function buildPageModule(
   // itself (BUG-31 §T1) — there is no layout to ask and no route slot to go through. The
   // maps are written further down, so the question is deferred to a callback that runs at
   // that point: `writeHeadElements` only decides WHERE, exactly as it does for a layout.
-  writeHeadElements(
+  // What this page puts in itself that its CSP has to let in (SDD-84 §3.4), as each writer says.
+  const needs: CspNeed[] = [...guide.needs, ...(sheets?.needs ?? [])];
+  const headNeeds = writeHeadElements(
     source,
     page.head,
     {
@@ -750,19 +763,17 @@ function buildPageModule(
       linker,
       // The form travels no further here: a standalone page writes the marker and the tags,
       // so what the author asked for is decided and emitted in one place (SDD-45 §3.6).
-      onRuntime: (form) =>
-        writeRuntimeTags(
-          headW,
-          needsRuntime(hydratable, hasDi, blocks !== undefined),
-          form,
-          (options.i18n?.locales.length ?? 0) >= 2,
-          parted,
-        ),
+      onRuntime: (form) => {
+        const hydrates = needsRuntime(hydratable, hasDi, blocks !== undefined);
+        writeRuntimeTags(headW, hydrates, form, (options.i18n?.locales.length ?? 0) >= 2, parted);
+        needs.push(...runtimeNeeds(hydrates, form));
+      },
       ...(sheets === null ? {} : { sheet: sheets.own }),
       ...(guideExpr === null ? {} : { onGuide: () => headW.line(`head += ${guideExpr};`) }),
     },
     headW,
   );
+  needs.push(...headNeeds);
 
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);
@@ -807,7 +818,7 @@ function buildPageModule(
   writeEntryCode(w, code);
   w.line("let head = '';");
   w.appendWriter(headW);
-  writeSharedHead(w, styledComps.length > 0, projectStylesLine !== null);
+  needs.push(...writeSharedHead(w, styledComps.length > 0, projectStylesLine !== null));
   // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
   // and its elements there is no context where a newline or an indent renders: the HTML
   // parser drops it before the tree is built. It is the free half of this BUG.
@@ -829,7 +840,7 @@ function buildPageModule(
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets, needs };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
@@ -838,11 +849,12 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
 
 /** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker, diagnostics, sheets } = buildPageModule(graph, options);
+  const { writer, linker, diagnostics, sheets, needs } = buildPageModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
+    needs: uniqueNeeds(needs),
     diagnostics,
     ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };
