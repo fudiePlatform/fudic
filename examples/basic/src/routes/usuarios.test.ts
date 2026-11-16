@@ -311,7 +311,8 @@ describe('criterion 11: error-pages decides before the task', () => {
   });
 
   test('a 422 nobody keeps reaches the task as a ValidationError', async () => {
-    const problem = { status: 422, title: 'Unprocessable', errors: { q: ['demasiado largo'] } };
+    // In the shape a server sends it: field, then rule, then what the rule said (`max-length 80`).
+    const problem = { status: 422, title: 'Unprocessable', errors: { q: { maxLength: 80 } } };
     await usuarios({ fetch: () => respondProblem(search, problem) });
     const t = task(search);
     expect(await t.run({ q: 'ana' })).toEqual({ ok: false, status: 'failed', error: expect.any(ValidationError) });
