@@ -405,6 +405,17 @@ Nada.
 12. **`class=""` residual, aceptado.** Quitarlo costaría un `removeAttribute` condicional en cada
     cambio, para nada.
 13. **Las props reflejadas (IDEA-08 §4) se quedan fuera** (Pedro).
+14. **La plantilla viaja en el JS, no en la página** (Pedro, 2026-11-16). Se estudió emitir en el
+    documento un `<template>` solo para los componentes que pueden crearse en el navegador. Sin
+    `innerHTML` y con menos plantillas, pero sale peor por cuatro motivos:
+    - el HTML de la página viaja en cada navegación, mientras que el chunk se cachea una vez;
+    - las plantillas de los bloques las necesita casi todo componente que hidrata;
+    - la policy `fudic` sigue haciendo falta por `@raw`, los formularios y el registro del SW;
+    - obliga a saber qué crea cada página, con un plan B si falla, y a que `mount`, el servidor y el
+      SW inyecten las plantillas.
+
+    Si el peso de las plantillas raíz que no se usan llega a importar, se recorta en el build (emitir
+    solo las de los componentes que algún bloque de la app crea), sin tocar la página.
 
 ### 8.2. Tomadas al implementar
 
