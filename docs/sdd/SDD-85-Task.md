@@ -293,11 +293,10 @@ navegador —el ejemplo y [SDD-85-Prueba.md](./SDD-85-Prueba.md)— y Pedro lo p
 `@if` con un «Enviado» visible, y `vivo-figuras` con un `@if` en `<svg>` y otro en `<math>`; la
 ruta `/clases` con `clases-demo` pintado y creado.
 
-**Encontrado al prepararla, pendiente de decisión:** el lexer convierte un `(` suelto tras un
+**Encontrado al prepararla, ya arreglado** (decisión 39): el lexer convierte un `(` suelto tras un
 nombre de atributo en un atributo llamado `(` sin ningún diagnóstico: `<span ...resto()>` compila
 a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igual con
-`@click(x)`. Propuesta: que `(` detrás de un nombre que no acaba en `:` sea `FUD0098` (o un
-código propio), en vez de un atributo.
+`@click(x)`. Ahora es `FUD0098`.
 
 - [ ] **28. e2e: crear desde cada bloque.**
   - En `/vivo`, `/spread` y `/mapas` (`vivo-item`, `vivo-otro`, `spread-card`, `bus-option`): abrir y

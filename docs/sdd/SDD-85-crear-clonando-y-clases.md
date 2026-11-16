@@ -602,3 +602,9 @@ Nada.
     verdad (`runtime-pieces.test.ts`), y el build de `examples/basic` la copia y la nombra. El
     contrato `Controller.c` y los comentarios de `FudicElement.c()` y `live()` dicen ya «clonar y
     adoptar», no «fabricar».
+39. **Un `(` pegado a un nombre de atributo es `FUD0098`** (Pedro, 2026-11-16, al preparar la
+    fase 6; fallo previo del lexer). `<span ...resto()>` compilaba a `...resto` más dos atributos
+    llamados `(` y `)`, sin aviso, y el servidor pintaba `(="" )=""`; igual `@click(x)`. Ahora el
+    lexer lee un `(` pegado a cualquier nombre como el nombre-expresión de `bus:(…)` (decisión
+    28.b de la gramática), y la clasificación, que solo admite ese nombre detrás de `bus:`, da
+    `FUD0098`. Un `(` separado por espacio sigue siendo un nombre, como en HTML.

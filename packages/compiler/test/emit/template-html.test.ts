@@ -354,7 +354,9 @@ function exampleChunks(): { chunks: Map<string, string>; attrs: Set<string>; cla
         const parts = attr.value ?? [];
         if (typeof attr.name !== 'string' || !parts.every((p) => p.type === 'attribute-text')) continue;
         const text = decodeEntities(parts.map((p) => p.value ?? '').join(''));
+        // As written too: a name of SVG keeps its case in the DOM (`viewBox`), one of HTML does not.
         attrs.add(`${attr.name.toLowerCase()}=${text}`);
+        attrs.add(`${attr.name}=${text}`);
         if (attr.name === 'class') for (const token of text.split(/\s+/u)) classes.add(token);
       }
     }

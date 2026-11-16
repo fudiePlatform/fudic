@@ -7,7 +7,7 @@ export interface FUD0098Params extends SourceInput {
   readonly prefix: string;
 }
 
-/** An expression attribute name after a prefix other than `bus:` (SDD-07). */
+/** An expression attribute name after a prefix other than `bus:`, or a `(` glued to any name (SDD-07, SDD-85). */
 export const FUD0098 = (p: FUD0098Params): SourceDiagnostic =>
   source(
     'FUD0098',

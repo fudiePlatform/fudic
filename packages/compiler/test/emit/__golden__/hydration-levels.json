@@ -144,6 +144,11 @@
     "tag": "campo-texto",
     "hydrates": false
   },
+  "examples/basic/src/components/clases-demo.fud": {
+    "kind": "component",
+    "tag": "clases-demo",
+    "hydrates": true
+  },
   "examples/basic/src/components/di-badge.fud": {
     "kind": "component",
     "tag": "di-badge",
@@ -279,6 +284,11 @@
     "tag": "vista-url",
     "hydrates": true
   },
+  "examples/basic/src/components/vivo-figuras.fud": {
+    "kind": "component",
+    "tag": "vivo-figuras",
+    "hydrates": true
+  },
   "examples/basic/src/components/vivo-item.fud": {
     "kind": "component",
     "tag": "vivo-item",
@@ -352,6 +362,14 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": []
+  },
+  "examples/basic/src/routes/clases.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "clases-demo"
+    ]
   },
   "examples/basic/src/routes/cuenta.fud": {
     "kind": "route",
@@ -592,6 +610,10 @@
     "reactive": true,
     "hydration": "gesture",
     "hydrates": [
+      "app-field",
+      "app-form",
+      "app-input",
+      "vivo-figuras",
       "vivo-item",
       "vivo-lista",
       "vivo-otro"

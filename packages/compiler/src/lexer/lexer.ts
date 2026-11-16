@@ -75,6 +75,8 @@ export class Lexer {
   #pendingTag = '';
   /** The last attribute name emitted, for the `bus:(` rule (decision 28.b). */
   #lastAttrName = '';
+  /** Where that name ended: a `(` right there belongs to the name, whatever the name is. */
+  #lastAttrNameEnd = -1;
   /** Lowercased element owning the current raw/css body. */
   #rawElement = '';
   /** Whether Razor atoms are live in the current raw body (§4.6). */
@@ -532,7 +534,10 @@ export class Lexer {
 
     // `bus:(EVENTOS.carrito)` (decision 28.b): after a name prefix ending in `:`,
     // a `(` opens an expression name — the same balancer call as in value position.
-    if (c === '(' && this.#lastAttrName.endsWith(':')) {
+    // So does a `(` glued to ANY name: `...resto()` and `@click(x)` are a name with an
+    // expression after it, which the binding layer rejects (`FUD0098`). Read as the plain
+    // characters they are, they became two silent attributes called `(` and `)`.
+    if (c === '(' && (this.#lastAttrName.endsWith(':') || start === this.#lastAttrNameEnd)) {
       const scanned = scanParens(this.#source, start);
       this.#offset = scanned.value.span.end;
       const token: Token = { type: 'explicit-expr', span: scanned.value.span, group: scanned.value };
@@ -574,6 +579,7 @@ export class Lexer {
     this.#offset = i;
     this.#transition = (): void => {
       this.#lastAttrName = name;
+      this.#lastAttrNameEnd = i;
     };
     return ok({ type: 'attr-name', span: span(start, i), name });
   }
