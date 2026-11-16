@@ -13,7 +13,7 @@
     "cert:h2": "dotnet dev-certs https --trust && dotnet dev-certs https --export-path h2/localhost.pem --format Pem --no-password",
     "preview:h2": "vite preview --config h2/vite.config.ts",
     "preview:nosw:h2": "vite preview --config h2/nosw.config.ts",
-    "test": "vitest run",
+    "test": "vitest run && tsc --noEmit",
     "test:watch": "vitest",
     "test:spec": "fudic-workbench run",
     "test:e2e": "vite build && vite build --config nosw/vite.config.ts && playwright test",
@@ -40,6 +40,7 @@
     "@fudic/vite": "workspace:*",
     "@fudic/workbench": "workspace:*",
     "@playwright/test": "1.62.0",
+    "typescript": "5.9.3",
     "vite": "8.0.16",
     "vitest": "4.1.9"
   }

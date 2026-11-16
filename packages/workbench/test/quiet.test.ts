@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { describePending, LOOK, QUIET, SHORT_TIMER, Unsettled, waitQuiet, type Pending } from '../src/quiet.js';
+import { describePending, LOOK, QUIET, QUIET_CAP, SHORT_TIMER, Unsettled, waitQuiet, type Pending } from '../src/quiet.js';
 
 const quiet: Pending = { requests: [], timers: 0, frames: 0 };
 
@@ -35,13 +35,58 @@ describe('waitQuiet', () => {
     expect(p.asked()).toBe(5);
   });
 
-  it('throws what was still pending once the time is up', async () => {
+  it('throws what was still pending once `ms` pass with nothing finishing', async () => {
     let now = 0;
     const p = probe([{ requests: ['GET /slow'], timers: 2, frames: 0 }]);
     const error = await waitQuiet(p, 100, () => (now += 60)).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(Unsettled);
-    expect(error).toMatchObject({ name: 'Unsettled', ms: 100, pending: ['GET /slow', '2 timers'] });
-    expect((error as Error).message).toBe('the page did not settle in 100 ms; still pending: GET /slow, 2 timers');
+    // Started at 60; looked at 120 and at 180, past 60 + 100.
+    expect(error).toMatchObject({ name: 'Unsettled', ms: 120, pending: ['GET /slow', '2 timers'] });
+    expect((error as Error).message).toBe('the page did not settle in 120 ms; still pending: GET /slow, 2 timers');
+  });
+
+  it('each request that finishes gives the page `ms` more: a cold dev server is slow, not stuck', async () => {
+    let now = 0;
+    // Modules arrive one by one, 60 ms apart, for far longer than 100 ms; then the page is quiet.
+    const modules = Array.from({ length: 8 }, (_, i) => ({ requests: [`GET /@fs/m${i}.js`, `GET /@fs/m${i + 1}.js`], timers: 0, frames: 0 }));
+    const p = probe([...modules, quiet, quiet]);
+    await waitQuiet(p, 100, () => (now += 60));
+    expect(p.asked()).toBe(10);
+  });
+
+  it('a request that never finishes is no progress, though others start beside it', async () => {
+    let now = 0;
+    const p = probe([
+      { requests: ['GET /never'], timers: 0, frames: 0 },
+      { requests: ['GET /never', 'GET /b'], timers: 0, frames: 0 },
+      { requests: ['GET /never', 'GET /b', 'GET /c'], timers: 0, frames: 0 },
+    ]);
+    const error = await waitQuiet(p, 100, () => (now += 60)).catch((e: unknown) => e);
+    expect(error).toMatchObject({ ms: 120, pending: ['GET /never', 'GET /b'] });
+  });
+
+  it('a page that keeps finishing and starting requests is called busy at `ms × QUIET_CAP`', async () => {
+    let now = 0;
+    let n = 0;
+    const p = { look: async () => ({ requests: [`GET /poll?${n++}`], timers: 0, frames: 0 }), held: () => 0 };
+    const error = await waitQuiet(p, 100, () => (now += 60)).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Unsettled);
+    expect((error as Unsettled).ms).toBeGreaterThanOrEqual(100 * QUIET_CAP);
+    expect((error as Unsettled).ms).toBeLessThan(100 * QUIET_CAP + 60);
+  });
+
+  it('two requests to one URL are two: one finishing is progress', async () => {
+    let now = 0;
+    const p = probe([
+      { requests: ['GET /a', 'GET /a'], timers: 0, frames: 0 },
+      { requests: ['GET /a'], timers: 0, frames: 0 },
+      { requests: ['GET /a'], timers: 0, frames: 0 },
+      quiet,
+      quiet,
+    ]);
+    // Without the progress at the second look, the third (at 180) would be past 60 + 100.
+    await waitQuiet(p, 100, () => (now += 60));
+    expect(p.asked()).toBe(5);
   });
 
   it('the default clock is the real one', async () => {

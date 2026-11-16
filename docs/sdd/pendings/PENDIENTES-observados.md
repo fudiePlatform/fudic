@@ -23,8 +23,8 @@
 | 3 | Dos specs de dev server de `@fudic/vite` fallan de forma intermitente en `pnpm test` | SDD-37 | Abierto |
 | 4 | El e2e usa **puertos fijos** y `reuseExistingServer`, así que dos worktrees se miden entre sí sin avisar | SDD-37 y SDD-38, a la vez | Abierto |
 | ~~5~~ | ~~Un `<link rel="component">` dentro del `<head>` de una ruta con layout ni registra el componente ni se borra~~ | BUG-40 | **Arreglado** el mismo día: es `FUD0438` (SDD-21), error en build y en editor |
-| 6 | `examples/basic/src/routes/usuarios.test.ts` no pasa `tsc`: un contrato con argumentos no encaja en `ServerFunction<never, unknown>` | Cierre de SDD-84 | Abierto |
-| 7 | `spec-run-e2e` de `@fudic/mcp` falla a veces en la suite completa y pasa solo | Cierre de SDD-83 y de SDD-84 | Abierto |
+| ~~6~~ | ~~`examples/basic/src/routes/usuarios.test.ts` no pasa `tsc`~~ | Cierre de SDD-84 | **Arreglado** el 2026-11-16 (rama `fix-observados-6-7`) |
+| ~~7~~ | ~~`spec-run-e2e` de `@fudic/mcp` falla a veces en la suite completa y pasa solo~~ | Cierre de SDD-83 y de SDD-84 | **Arreglado** el 2026-11-16 (rama `fix-observados-6-7`) |
 
 ---
 
@@ -219,7 +219,7 @@ vacío, y ya da igual.
 
 ---
 
-## 6. `usuarios.test.ts` del ejemplo no pasa `tsc`
+## 6. ~~`usuarios.test.ts` del ejemplo no pasa `tsc`~~ — arreglado
 
 **Visto:** 2026-11-16, cerrando SDD-84. No es de SDD-84: sale igual en la rama de SDD-83.
 
@@ -240,7 +240,24 @@ paquetes. Vitest lo ejecuta sin mirar tipos, y pasa.
 cuando debería aceptar cualquier argumento, o el `Contract` de una función con argumentos dejó de
 ser asignable a él. Y conviene que el ejemplo gane un `typecheck` para que no vuelva a pasar callado.
 
-## 7. `spec-run-e2e` del MCP, intermitente
+**Arreglo (2026-11-16).** Eran dos errores, uno debajo del otro:
+
+1. **En `@fudic/testing`, no en el ejemplo.** `respond` y `respondProblem` pedían un
+   `ServerFunction<never, …>`, con la idea de «cualquier argumento». Pero `ServerFunction` hace
+   opcional su argumento cuando `[A] extends [void]`, y `[never] extends [void]` es cierto: el tipo
+   decía «una función cuyo argumento se puede omitir». Una función de ruta con argumento obligatorio
+   (`search({ q })`, que `.fudic/api` declara como `Contract & Linkable`) no lo es. Ahora las dos son
+   genéricas en el argumento (`ServerFunction<A, R>`). `test/respond-types.test.ts` lo fija con el
+   tipo exacto que genera `.fudic/api`: con el código de antes no compila.
+2. **En el test del ejemplo.** Su 422 traía `errors: { q: ['demasiado largo'] }`, que no es la
+   forma de un error (campo → regla → valor). Ahora es `{ q: { maxLength: 80 } }`, la regla que
+   `search` declara.
+
+**Para que no vuelva a pasar callado:** `examples/basic` corre `tsc --noEmit` detrás de `vitest run`
+en su `test`, y `examples/i18n` detrás de `vite build` en su `build` (los dos, cuando el plugin ya ha
+escrito `.fudic/api`). Comprobado: con el error de vuelta, `pnpm test` del ejemplo falla.
+
+## 7. ~~`spec-run-e2e` del MCP, intermitente~~ — arreglado
 
 **Visto:** 2026-11-13 (cierre de SDD-83) y 2026-11-16 (cierre de SDD-84).
 
@@ -252,3 +269,24 @@ mismo test y el mismo resumen.
 **Por dónde empezar.** Es el único que ejecuta un flujo con el servidor de verdad dentro del banco
 en esta suite. Lo primero es guardar el `error` que devuelve en vez de solo el resumen: hoy el test
 no dice qué falló.
+
+**Causa (2026-11-16).** Volcando el resultado del criterio en vez de solo el resumen, el error era
+`FUD1508`: «the page did not settle in 5000 ms; still pending: GET /@fs/…/require.js, …». La página
+no estaba atascada: era la primera visita a la ruta en el Vite del banco, que transforma en frío los
+módulos uno detrás de otro, y con la suite completa y la cobertura la máquina va tan cargada que ese
+goteo solo pasaba de 5 s. Le tocaba al primer spec del fichero, que es quien paga el arranque en
+frío: unas veces el del flujo y otras el de la página. En la misma pasada salió un segundo síntoma de
+lo mismo: `guide-examples` fallaba porque el Vitest anidado de un proyecto de la guía agotaba los
+10 s por defecto de un hook en el `beforeAll` de `@fudic/testing`, que carga la parte de servidor de
+la app compilándola en frío.
+
+**Arreglo.** Los dos límites son del producto, no del test, y los dos fallaban igual en un CI lento:
+
+- **La página quieta** (`workbench/src/quiet.ts`) cuenta los 5 s **desde la última petición que
+  terminó**, con un tope de 30 s (`QUIET_CAP = 6`). Una petición que no acaba nunca o un
+  temporizador que se rearma no avanzan y siguen dando `FUD1508` a los 5 s. SDD-82 §4.5 y
+  `FUD1508.md` lo dicen así.
+- **El `beforeAll` de `@fudic/testing`** tiene un límite propio, `SERVER_LOAD_TIMEOUT` (60 s).
+
+Comprobado: la suite completa del MCP con cobertura, tres veces seguidas, 627 de 627 cada vez. Antes
+del arreglo, en las mismas condiciones, fallaban 2 y 1.

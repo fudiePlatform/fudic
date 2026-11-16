@@ -443,8 +443,13 @@ enseña en cada paso, y `fudic_spec_run` lo devuelve.
 Un script de inicio cuenta, en cada documento y en el SW, las peticiones en vuelo (`fetch`, XHR,
 navegación, `EventSource` abierto no cuenta), los `setTimeout` pendientes que vencen en menos de un
 segundo y los `requestAnimationFrame`. Después de cada `when` y antes de cada `then`, el banco espera
-a que los tres estén a cero y siga así durante un frame, con el tiempo límite de llamada (5 s). Si no
-llega, `FUD1508` con lo que seguía pendiente. Un `setInterval` no cuenta: un reloj en la página no la
+a que los tres estén a cero y siga así durante un frame, con el tiempo límite de llamada (5 s)
+**contado desde la última petición que terminó**, y nunca más de seis veces ese límite (30 s) en total.
+Si no llega, `FUD1508` con lo que seguía pendiente. Lo que se mide es una página atascada, no una
+lenta: la primera visita a una ruta en el servidor de desarrollo es un goteo de módulos que Vite
+transforma en frío, y en una máquina cargada ese goteo solo ya pasaba de 5 s sin que la página
+tuviera nada mal (2026-11-16, el `spec-run-e2e` intermitente del MCP). Una petición que no acaba nunca
+o un temporizador que se rearma no avanzan, y siguen saltando a los 5 s. Un `setInterval` no cuenta: un reloj en la página no la
 deja nunca quieta.
 
 Además, un `then` en positivo reintenta hasta el mismo tiempo límite (un `later(2000, …)` llega a los

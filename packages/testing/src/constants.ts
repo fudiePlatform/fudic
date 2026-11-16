@@ -30,3 +30,9 @@ export const OPTIONS_KEY = 'fudicOptions';
  * what a new environment per file gave, without starting the worker again.
  */
 export const RENEW_WINDOW = Symbol.for('fudic.testing.renewWindow');
+
+/**
+ * How long the setup may take to load the app's server implementations before the first test: a
+ * cold compile through the plugin, which a loaded machine stretches far past Vitest's 10 s.
+ */
+export const SERVER_LOAD_TIMEOUT = 60_000;

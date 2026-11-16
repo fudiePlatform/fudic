@@ -92,18 +92,45 @@ export function describePending(pending: Pending, held: number): string[] {
   return [...requests, ...count(pending.timers, 'a timer', 'timers'), ...count(pending.frames, 'a frame', 'frames')];
 }
 
+/** How many times `ms` a page that keeps finishing requests may take before it is called busy. */
+export const QUIET_CAP = 6;
+
+/** Whether a request pending in `before` is gone from `after`: one of them finished. */
+function finishedOne(before: readonly string[], after: readonly string[]): boolean {
+  const left = new Map<string, number>();
+  for (const r of after) left.set(r, (left.get(r) ?? 0) + 1);
+  return before.some((r) => {
+    const n = left.get(r) ?? 0;
+    left.set(r, n - 1);
+    return n === 0;
+  });
+}
+
 /**
- * Waits until the page is quiet twice in a row — two looks, a frame apart — or `ms` pass; then
- * throws what was still pending.
+ * Waits until the page is quiet twice in a row — two looks, a frame apart — and throws what was
+ * still pending when it is not.
+ *
+ * `ms` is how long the page may go WITHOUT PROGRESS: each request that finishes gives it `ms` more.
+ * The first visit to a route on the dev server is a stream of modules Vite transforms one after
+ * another, and on a loaded machine that stream alone outlasts any fixed limit while nothing is
+ * wrong with the page. A request that never ends, or a timer that rearms itself, makes no progress
+ * and is reported after `ms`, as before. A page that keeps finishing requests and starting new ones
+ * is reported after `ms × QUIET_CAP`.
  */
 export async function waitQuiet(probe: QuietProbe, ms: number, now: () => number = Date.now): Promise<void> {
-  const until = now() + ms;
+  const start = now();
+  const cap = start + ms * QUIET_CAP;
+  let until = start + ms;
   let quietLooks = 0;
+  let before: readonly string[] = [];
   for (;;) {
     const pending = await probe.look();
     const left = describePending(pending, probe.held());
     quietLooks = left.length === 0 ? quietLooks + 1 : 0;
     if (quietLooks === 2) return;
-    if (now() >= until) throw new Unsettled(ms, left);
+    const at = now();
+    if (finishedOne(before, pending.requests)) until = Math.min(at + ms, cap);
+    before = pending.requests;
+    if (at >= until) throw new Unsettled(at - start, left);
   }
 }

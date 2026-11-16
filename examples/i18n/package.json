@@ -6,7 +6,7 @@
   "description": "fudic translations example — two locales, prefixed routes, text translated at build time, pipes and plurals.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "translate": "fudic translate"
   },
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@fudic/cli": "workspace:*",
     "@fudic/vite": "workspace:*",
+    "typescript": "5.9.3",
     "vite": "8.0.16"
   }
 }

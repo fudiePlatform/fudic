@@ -10,7 +10,7 @@ import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { serverRoot } from './api.js';
 import { cleanup, onCleanup } from './cleanup.js';
 import { closeClientGraphs } from './client-graph.js';
-import { BASE_URL, RENEW_WINDOW } from './constants.js';
+import { BASE_URL, RENEW_WINDOW, SERVER_LOAD_TIMEOUT } from './constants.js';
 import { blankPage } from './document.js';
 import { answerWith, forgetCookies, installFetch } from './fetch.js';
 import { installInternals } from './internals.js';
@@ -37,9 +37,12 @@ onCleanup(() => {
 });
 // The implementations of the app — its handlers, and the rules of its forms — before the first test
 // (SDD-66): a test of a form validates without visiting a page, and nothing else would load them.
+// The first file of a worker compiles them cold, through the plugin: on a loaded machine (a CI, a
+// suite that runs many projects at once) that alone passes Vitest's default of 10 s for a hook, and
+// the file fails before any test of it runs. It gets a limit of its own.
 beforeAll(async () => {
   await serverRoot();
-});
+}, SERVER_LOAD_TIMEOUT);
 afterEach(cleanup);
 afterAll(closeClientGraphs);
 // The next file starts from fresh modules and a fresh window (BUG-51). A worker runs many files
