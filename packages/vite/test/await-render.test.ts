@@ -339,7 +339,8 @@ describe.each(SHAPES)('the render in parts — %s', (_name, pattern) => {
     expect(await reader.pending()).toBe(true);
     users.resolve(['Ana', 'Luis']);
     const second = (await reader.next())!;
-    expect(second).toMatch(/<li>Ana<\/li>\s*<li>Luis<\/li>/u);
+    // A row that ends with text closes with a comment, the next one opening with text (SDD-85).
+    expect(second).toMatch(/<li>Ana<\/li>\s*(<!---->)?\s*<li>Luis<\/li>/u);
     expect(second).not.toContain('class="stats"');
     const tail = await rest(reader);
     expect(tail).toContain('<p class="stats">12 personas</p>');

@@ -156,7 +156,8 @@ describe('a page of a criterion (criteria 10–12, 14, 16)', () => {
     const c = criterion({ data: [{ title: 'Usuarios', lang: 'es', users: ['ana', 'luis'], total: 2 }] });
     const html = await (await page(c.cookie)).text();
     expect(html).toContain('<h1>Usuarios</h1>');
-    expect(html).toMatch(/<li>ana<\/li>\s*<li>luis<\/li>/u);
+    // A row that ends with text closes with a comment, the next one opening with text (SDD-85).
+    expect(html).toMatch(/<li>ana<\/li>\s*(<!---->)?\s*<li>luis<\/li>/u);
     expect(html).toContain('total 2');
     const real = await (await page()).text();
     expect(real).toContain('<h1>de verdad</h1>');
