@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 25 / 34 (F1–F6 hechas) — `En curso`.
+> **Progreso:** 27 / 34 (y F1–F6) — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -271,13 +271,13 @@ Encontradas al cerrar F1–F3 (2026-11-16). No se pasa a la fase 5 con ellas abi
 
 ## Fase 5 — vite, core y testing
 
-- [ ] **26. La pieza en el manifiesto.**
+- [x] **26. La pieza en el manifiesto.**
   - `dom/template` aparece en las piezas, se reescribe su import y entra en el presupuesto
     (SDD §4.8).
   - *Depende de:* 3, 19.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/runtime-pieces.ts`, `test/runtime-pieces.test.ts`.
-- [ ] **27. `core` y `testing`.**
+- [x] **27. `core` y `testing`.**
   - Sin cambios de comportamiento: actualizar los comentarios de `FudicElement.c()` y de `live()`.
     Criterio 13: los tests de `examples/basic` con `mount` pasan sin tocarlos.
   - *Depende de:* 19, 20.

@@ -5,7 +5,9 @@
  * map names its tag and the runtime hands it its slice of the payload (SDD-17). A component
  * that first exists in the browser — a `<x-item>` inside a `@foreach` whose list just grew —
  * has none of that. Nothing painted it, so no map names it and no payload holds it, and the
- * only code that knows it exists is the parent that fabricated it.
+ * only code that knows it exists is the parent that created it — as an empty host in the clone
+ * of its own template (SDD-85 §4.1), since a shadow root is not cloned and each child carries its
+ * own template.
  *
  * So the parent raises it, and this is the one line of runtime that lets it: the parent's
  * chunk has the element and the props, and what it lacks is the child's DEFINITION, which is
@@ -18,7 +20,7 @@
  * §4.4.1). Holding them here meant hydration had to import this module to fill them in, and
  * then every page that hydrates downloaded a bridge it may never cross. Reading them makes
  * this piece optional for real: the only code that imports it is the chunk of a component
- * that fabricates, and it travels with that chunk.
+ * that creates children, and it travels with that chunk.
  */
 
 import { pageElements, tagDefiner, type ElementRegistry } from './registry.js';
@@ -42,17 +44,17 @@ interface UpdatedHost {
 const PAYLOAD_OFFSET = 2;
 
 /**
- * Raised already, so a parent that fabricates and then re-runs its own creation path cannot
+ * Raised already, so a parent that creates and then re-runs its own creation path cannot
  * hand one element two controllers. A `WeakSet` and not a flag on the element: nothing this
  * runtime does may be observable as an attribute of somebody's component.
  */
 const raised = new WeakSet<Element>();
 
 /**
- * Bring a fabricated host to life with the props its parent composed.
+ * Bring a created host to life with the props its parent composed.
  *
  * Synchronous when the tag is already defined — which is the common case, because the page
- * that fabricates the second instance of a tag already downloaded it for the first — and a
+ * that creates the second instance of a tag already downloaded it for the first — and a
  * download otherwise. `props` is the positional array `c` takes, in the child's declared
  * prop order, with `$dom` and `$shadow` left to `FudicElement` itself. `from` is the shadow
  * root of the component that created it, when one did (`scope.ts`).

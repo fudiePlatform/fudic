@@ -9,8 +9,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { runtimePieces, type RuntimeFs } from '../src/runtime-pieces.js';
+import { linkedPieces, runtimeLinkage } from '../src/runtime-link.js';
+import { nodeRuntimeFs } from '../src/io.js';
 
 /**
  * A world of files and directories, read the one way this module reads them. A piece's bytes
@@ -680,5 +684,36 @@ describe('FUD0805 — two packages claiming one URL', () => {
     // useful than a cascade of «piece not found» underneath it — the build stops anyway.
     expect(pieces).toHaveLength(1);
     expect(pieces[0]?.pkg).toBe('@acme/core');
+  });
+});
+
+describe('SDD-85 §4.8 — `dom/template`, the piece every client chunk imports', () => {
+  // The published runtime of the real `@fudic/dom`, not a world written here: what this suite
+  // has to prove is that the piece the compiler names exists, offers the names it imports and
+  // reaches `dom/trusted` by the URL the linker copies it to.
+  const DOM = fileURLToPath(new URL('../../dom', import.meta.url)).replaceAll('\\', '/');
+  const io = nodeRuntimeFs();
+  const { pieces, diagnostics } = runtimePieces(DOM, io);
+  const linkage = runtimeLinkage(pieces, { readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined) });
+  const urlOf = (name: string): string => pieces.find((p) => p.pkg === '@fudic/dom' && p.name === name)!.url;
+
+  it('is published, under the same segment as its siblings', () => {
+    expect(diagnostics).toEqual([]);
+    expect(urlOf('template')).toMatch(/^\/_fudic\/[^/]+-[0-9a-f]{8}\/dom\/template\.js$/u);
+    expect(urlOf('template').split('/')[2]).toBe(urlOf('trusted').split('/')[2]);
+  });
+
+  it('answers `template` and `templateIn`, the two names the emit imports', () => {
+    const names = linkage.urlOf.get('@fudic/dom')!;
+    expect(names.get('template')).toBe(urlOf('template'));
+    expect(names.get('templateIn')).toBe(urlOf('template'));
+  });
+
+  it('imports `dom/trusted` by its fingerprinted URL, so the copy reaches the one policy', () => {
+    const code = linkage.byUrl.get(urlOf('template'))!.code;
+    expect(code).toContain(`"${urlOf('trusted')}"`);
+    expect(code).not.toMatch(/\/_fudic\/[^/"-]+\/dom\//u);
+    const reached = linkedPieces([`import{template}from"${urlOf('template')}";`], linkage).map((p) => p.url);
+    expect(reached).toEqual([urlOf('template'), urlOf('trusted')].toSorted((a, b) => a.localeCompare(b)));
   });
 });

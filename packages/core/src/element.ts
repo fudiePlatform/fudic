@@ -74,7 +74,9 @@ export abstract class FudicElement extends Base {
   /**
    * Entry point 2 — an instance created at runtime by the parent controller. It did not
    * exist at build time, so it has no payload slice: the parent injects the props. There
-   * is no shadow to adopt, so one is opened and the controller FABRICATES the nodes.
+   * is no shadow to adopt, so one is opened and the controller CREATES the nodes: it clones its
+   * template into the shadow root and adopts the clone with the same walk `h` uses, then writes
+   * each value once (SDD-85 §4.2). Nothing here changed for that: the template lives in the chunk.
    */
   c(props: readonly unknown[]): void {
     const shadow = this.attachShadow(this.shadowInit());

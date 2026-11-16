@@ -595,3 +595,10 @@ Nada.
     alias a los `dist` del workspace, y no tenían el de `@fudic/dom`. Se añade el alias y
     `projects.test.ts` comprueba que la librería lo declara como peer, que es la guarda que un
     alias no puede dar. La tarea 26 sigue igual: va de publicar la pieza, no de resolver el import.
+38. **`dom/template` entra en el manifiesto sin tocar el plugin** (fase 5). Las piezas se
+    descubren del directorio `runtime` que declara cada paquete (SDD-45 §3.3), así que la pieza
+    aparece, su import de `dom/trusted` se reescribe al segmento con huella y el manifiesto la
+    nombra sin una línea nueva en `runtime-pieces.ts`. La prueba va contra la pieza publicada de
+    verdad (`runtime-pieces.test.ts`), y el build de `examples/basic` la copia y la nombra. El
+    contrato `Controller.c` y los comentarios de `FudicElement.c()` y `live()` dicen ya «clonar y
+    adoptar», no «fabricar».
