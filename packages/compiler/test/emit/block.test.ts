@@ -320,7 +320,7 @@ describe('a block at the ROOT level: the mount is deferred and the anchor arrive
   });
 });
 
-describe('the one marker the DOM gets (§3.4)', () => {
+describe('the comments that keep two texts apart (§3.4, SDD-85)', () => {
   const marked = (markup: string): string =>
     chunk(
       'x-mark',
@@ -331,41 +331,38 @@ describe('the one marker the DOM gets (§3.4)', () => {
       ),
     );
 
-  it('plants an empty comment between two interpolated runs a block separates', () => {
+  it('plants an empty comment between two runs a block separates', () => {
     const src = marked('<div>@a @if (on) { <b></b> } @b</div>');
     // With the block closed the two runs are ONE text node coming back from HTML, and no
     // traversal can tell them apart. The comment is the boundary the markup lost.
     expect(src).toContain('$template`<div> <!----> </div>`');
-    expect(src).toContain('$n1 = $dom.firstChild($n0);'); // reached forward, not backward
-    expect(src).toContain('$n3 = $dom.nextSibling($n1);');
   });
 
-  it('steps the marked run from the node before it when there is one', () => {
+  it('finds the texts backwards, from the end of the level and across what the block painted', () => {
     const src = marked('<div><i></i>@a @if (on) { <b></b> } @b</div>');
-    expect(src).toContain('$n2 = $dom.nextSibling($n1);');
-    expect(src).toContain('$template`<div><i></i> <!----> </div>`');
-    expect(src).toContain('$n4 = $dom.nextSibling($n2);');
+    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('u: ($p) => {'));
+    expect(hydrate).toContain('$n3 = $dom.lastChild($n0);');
+    expect(hydrate).toContain('for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n8 = $k0[$j].t($n8);');
+    expect(hydrate).toContain('$n8 = $n8 === null ? $dom.lastChild($n0) : $dom.previousSibling($n8);');
+    expect(hydrate).toContain('$n2 = $dom.previousSibling($n8);');
   });
 
-  it('gives the marker a reference of its own inside a block, so r() takes it away', () => {
+  it('closes a body that ends with text when text may follow it, and the comment is a root', () => {
     const src = marked('<ul>@foreach (const r of [1]) key (r) {@a @if (on) { <b></b> } @b}</ul>');
-    expect(src).toContain('$r.push($n4);'); // the comment, tracked like every other root
+    expect(src).toContain('$template` <!----> <!---->`');
+    expect(src).toMatch(/for \(const \$n of \[\$n\d+, \$n\d+, \$n\d+, \$n\d+\]\) \$mv\(\$anchor, \$n\);/u);
   });
 
   it('writes none when the two runs are separated by an ELEMENT', () => {
-    const src = marked('<div>@a <i></i> @b</div>');
-    expect(src).not.toContain('$dom.comment');
+    expect(marked('<div>@a <i></i> @b</div>')).not.toContain('<!---->');
   });
 
-  it('writes none when what follows the block is not an interpolated run', () => {
-    expect(marked('<div>@a @if (on) { <b></b> } <i></i></div>')).not.toContain('$dom.comment');
-    expect(marked('<div>@a @if (on) { <b></b> } plain</div>')).not.toContain('$dom.comment');
+  it('writes none when no text can meet the run in front', () => {
+    expect(marked('<div>@a @if (on) {<b></b>}<i></i></div>')).not.toContain('<!---->');
   });
 
-  it('writes none when the run in front cannot be reached forward either', () => {
-    // The comment before it is not in the DOM the server painted, so there is no node to
-    // step from — and backwards the walk would run into whatever the block rendered.
-    expect(marked('<div><!-- x -->@a @if (on) { <b></b> } @b</div>')).not.toContain('$dom.comment');
+  it('writes one when the block may open with text, though an element follows it', () => {
+    expect(marked('<div>@a @if (on) { <b></b> }<i></i></div>')).toContain('$template`<div> <!----><i></i></div>`');
   });
 });
 

@@ -16,28 +16,33 @@ export function render($dom, $shadow, props, $ioc) {
   $dom.append($n1, $n2);
   $dom.append($n0, $n1);
   const $n4 = $dom.text(" "); $dom.append($n0, $n4);
+  const $n5 = $dom.comment(''); $dom.append($n0, $n5);
   if (expanded()) {
-    const $n5 = $dom.text(" "); $dom.append($n0, $n5);
-    const $n6 = $dom.element("div");
-    $dom.setAttr($n6, 'class', "body");
-    const $n7 = $dom.element("slot");
-    $dom.append($n6, $n7);
-    $dom.append($n0, $n6);
-    const $n8 = $dom.text(" "); $dom.append($n0, $n8);
+    const $n6 = $dom.text(" "); $dom.append($n0, $n6);
+    const $n7 = $dom.element("div");
+    $dom.setAttr($n7, 'class', "body");
+    const $n8 = $dom.element("slot");
+    $dom.append($n7, $n8);
+    $dom.append($n0, $n7);
+    const $n9 = $dom.text(" "); $dom.append($n0, $n9);
+    const $n10 = $dom.comment(''); $dom.append($n0, $n10);
   }
-  const $n9 = $dom.text(" "); $dom.append($n0, $n9);
-  const $n10 = $dom.element("app-button");
-  $dom.claim($n10);
-  $dom.setAttr($n10, 'data-fud-adopt', "app-button");
-  const $n11 = $dom.attachShadow($n10);
-  renderAppButton($dom, $n11, { "variant": "ghost" }, $ioc);
-  const $n12 = $dom.text(" "); $dom.append($n10, $n12);
+  const $n11 = $dom.text(" "); $dom.append($n0, $n11);
+  const $n12 = $dom.element("app-button");
+  $dom.claim($n12);
+  $dom.setAttr($n12, 'data-fud-adopt', "app-button");
+  const $n13 = $dom.attachShadow($n12);
+  renderAppButton($dom, $n13, { "variant": "ghost" }, $ioc);
+  const $n14 = $dom.text(" "); $dom.append($n12, $n14);
+  const $n15 = $dom.comment(''); $dom.append($n12, $n15);
   if (expanded()) {
-    const $n13 = $dom.text(" Cerrar "); $dom.append($n10, $n13);
+    const $n16 = $dom.text(" Cerrar "); $dom.append($n12, $n16);
+    const $n17 = $dom.comment(''); $dom.append($n12, $n17);
   } else {
-    const $n14 = $dom.text(" Abrir "); $dom.append($n10, $n14);
+    const $n18 = $dom.text(" Abrir "); $dom.append($n12, $n18);
+    const $n19 = $dom.comment(''); $dom.append($n12, $n19);
   }
-  const $n15 = $dom.text(" "); $dom.append($n10, $n15);
-  $dom.append($n0, $n10);
+  const $n20 = $dom.text(" "); $dom.append($n12, $n20);
+  $dom.append($n0, $n12);
   $dom.append($shadow, $n0);
 }

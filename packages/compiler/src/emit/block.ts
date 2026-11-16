@@ -79,6 +79,7 @@ export function newBodies(): ClientBodies {
   return {
     create: new CodeWriter(),
     adopt: new CodeWriter(),
+    texts: new CodeWriter(),
     mount: new CodeWriter(),
     apply: new CodeWriter(),
     hook: new CodeWriter(),
@@ -261,7 +262,7 @@ export class BlockEmitter implements BlockSink {
       ns: at.ns,
     });
     em.planInPlace(branch.body);
-    em.emitBlockBody(branch.body, '$c', at.tail, node.span.start);
+    em.emitBlockBody(branch.body, '$c', at.tail, node.span.start, at.follow);
     // What `c` clones into its fragment: the walk decided before writing it whether there is one.
     const template = this.#ctx.templates.add(em.template, node.span.start);
     // What the body reads through an imported name — `@if (userForm.alias.pending())` in a row —
@@ -317,6 +318,11 @@ export class BlockEmitter implements BlockSink {
     w.line('h: ($c) => {');
     w.indent().appendWriter(bodies.adopt).line('return $c;').dedent();
     w.line('},');
+    // The texts at the root of the body, found once the level it sits in is adopted: backwards
+    // from the node that follows the block there, which is only known then (`marker.ts`).
+    w.line('t: ($e) => {');
+    w.indent().appendWriter(bodies.texts).line('return $e;').dedent();
+    w.line('},');
     // `m` can be handed the anchor again, because a block whose level is mounted LATER
     // cannot have read it while `c` ran: the variable of the node it inserts before is
     // assigned further down the same walk, and is still `undefined` at that point. The
@@ -325,7 +331,8 @@ export class BlockEmitter implements BlockSink {
     w.line('m: ($ref = $anchor) => {');
     w.indent()
       .line('$anchor = $ref;')
-      .line('for (const $n of $r) $mv($anchor, $n);')
+      // In source order: `$r` holds the same nodes, but the texts join it as they are found.
+      .line(`for (const $n of [${rootNodes(em.rootItems)}]) $mv($anchor, $n);`)
       .appendWriter(bodies.mount)
       .dedent();
     w.line('},');
@@ -650,6 +657,11 @@ export function releaseCalls(registries: readonly string[]): string {
 
 function updateCalls(update: CodeWriter): string {
   return update.empty ? '' : ` ${update.toString().trim().split('\n').join(' ')}`;
+}
+
+/** The block's own roots, in source order: what `m` places. */
+function rootNodes(items: readonly RootItem[]): string {
+  return items.flatMap((item) => (item.kind === 'node' ? [item.name] : [])).join(', ');
 }
 
 /** The reverse walk `move` unrolls: every root of the block, last one first. */

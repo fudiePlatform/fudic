@@ -469,7 +469,8 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
     }
     const html = await render(chain(withBody('@if (seccion) {\n  <i>@seccion</i>\n}')), { seccion: 'Blog' });
     // And the construct leaves its anchor behind it, for the route's chunk (§4.3).
-    expect(html).toContain('<body> <i>Blog</i> <!--fud:l--><p>hola</p></body>');
+    // Its body ends with text, and the route's may follow it: a comment keeps the two apart.
+    expect(html).toContain('<body> <i>Blog</i> <!----><!--fud:l--><p>hola</p></body>');
   });
 
   it('reports a `@{ }` over its opening, and still emits', () => {

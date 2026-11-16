@@ -68,7 +68,8 @@ import {
   type ValueSink,
 } from './attrs.js';
 import { blocksOf, headerReads, rawChild, refTarget } from './constructs.js';
-import { isConstructAt, isConstructNode, markerSite } from './marker.js';
+import { hoistInlineCode } from './hoist.js';
+import { closesBody, isConstructAt, isConstructNode, markerSites, textMayFollow, type MarkerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { SOURCE_ATTRIBUTE, type SourceStamp } from './source-locations.js';
 import { childrenNamespace, elementNamespace, TemplateHtml, type Namespace } from './template-html.js';
@@ -106,6 +107,10 @@ export interface Level {
    * everything I render" is "before what follows ME" (§3.4).
    */
   readonly end: string | null;
+  /** Whether this is the root of a block body: it may close with a comment, and has a `t`. */
+  readonly body?: true;
+  /** Whether text may come right after the end of this level (`marker.ts`, `textMayFollow`). */
+  readonly follows?: true;
 }
 
 /** What a root of a walk is: one of its own nodes, or a construct nested at its level. */
@@ -161,6 +166,11 @@ export interface BlockSite {
    */
   readonly mount: CodeWriter;
   /**
+   * Whether text may come right after the construct (`marker.ts`, `textMayFollow`): then a body
+   * of it that ends with text closes with a comment, so the two never meet in the HTML.
+   */
+  readonly follow: boolean;
+  /**
    * The slot the construct's roots go in, when it sits at the root of a hole its layout
    * slots (SDD-48 §4.5): the elements it builds on an update are roots of that hole too.
    */
@@ -174,22 +184,34 @@ export interface BlockSink {
 }
 
 /**
- * The one anchor the DOM is given (§3.4): an empty comment between two interpolated runs
- * that only constructs separate.
+ * A comment the DOM is given between two items of a level (§3.4, `marker.ts`): after a run that
+ * constructs follow, when another run or a text they may open with comes behind them.
  */
-interface Marker {
-  /** Index of the run in front, the one whose anchor the marker replaces. */
-  readonly run: number;
-  /** Index of the item the comment is written at — just before the constructs. */
-  readonly at: number;
-  /** The comment's own variable. */
-  readonly name: string;
-  /** The run in front, by variable. */
-  readonly runName: string;
-  /** What that run is stepped from on the adopt path; `null` ⇒ the level's first child. */
-  readonly front: string | null;
+interface Marker extends MarkerSite {
+  /** The comment's own variable, when it is a root of a block: it moves with the block. */
+  readonly name?: string;
   /** Where the constructs it stands in front of start, for the source map. */
   readonly src: number;
+}
+
+/** The comment that closes a block body whose last node may be text (`marker.ts`). */
+interface Closing {
+  /** Its variable: it is a root the block moves. */
+  readonly name: string;
+  /** Where the block starts, for the source map. */
+  readonly src: number;
+}
+
+/** What `#texts` walks back over: one level, as the forward walk left it. */
+interface TextWalk {
+  readonly items: readonly EmitItem[];
+  readonly names: readonly (string | undefined)[];
+  /** The comments between items, by the index of the item each one stands in front of. */
+  readonly markAt: ReadonlyMap<number, Marker>;
+  readonly closing: Closing | undefined;
+  /** The registry of each construct, by its index. */
+  readonly registries: readonly (string | undefined)[];
+  readonly level: Level;
 }
 
 /** A shared source of node variable names, so no two blocks of a file reuse one. */
@@ -229,6 +251,12 @@ export interface ClientBodies {
   readonly create: CodeWriter;
   /** `h` — take the SSR nodes with an element cursor. */
   readonly adopt: CodeWriter;
+  /**
+   * `t` of a block, on the `h` path — find the texts at its root, backwards from the node that
+   * follows it (`$e`), and give back where it begins. Its parent calls it once its own level is
+   * adopted, when that node is known.
+   */
+  readonly texts: CodeWriter;
   /** `m` of a block — put its roots in the tree, and then the blocks at its root. */
   readonly mount: CodeWriter;
   /** `$a` — put a value on a node. The ONLY body that does (BUG-12 §3.3). */
@@ -735,7 +763,7 @@ export class ClientMarkupEmitter {
     this.#root = at;
     const cursor = this.#cursorFor(children);
     if (cursor !== null) {
-      this.#adopt.line(`let ${cursor} = ${this.#first('$shadow', 'firstElementChild', 'nextElementSibling', true)};`);
+      this.#adopt.line(`let ${cursor} = ${this.#firstPainted()};`);
       this.#create.mappedLine(here(this.#root), `let ${cursor} = $dom.firstElementChild($shadow);`);
     }
     const level = { root: true, dom: '$shadow', made: '$shadow', cursor, end: null };
@@ -767,7 +795,8 @@ export class ClientMarkupEmitter {
     slot?: string,
   ): void {
     this.#slot = slot;
-    this.#items(this.#itemsOf(children), { root: true, dom: parent, made: parent, cursor, end: null }, tail);
+    // What follows a hole is the layout's, and may be text.
+    this.#items(this.#itemsOf(children), { root: true, dom: parent, made: parent, cursor, end: null, follows: true }, tail);
     this.#slot = undefined;
   }
 
@@ -779,12 +808,14 @@ export class ClientMarkupEmitter {
    * anything to clone — `fragment` says whether it does, decided here before the walk from the
    * same items the template is written from.
    */
-  emitBlockBody(children: readonly HtmlContent[], cursor: string, tail: Tail, at: number): void {
+  emitBlockBody(children: readonly HtmlContent[], cursor: string, tail: Tail, at: number, follow: boolean): void {
     const items = this.#itemsOf(children);
-    this.#fragment = templateHolds(items);
+    this.#root = at;
+    this.#fragment = templateHolds(items, follow);
     if (this.#fragment) this.#create.mappedLine(here(at), `let ${cursor} = $dom.firstElementChild($f);`);
     const made = this.#fragment ? '$f' : null;
-    this.#items(items, { root: true, dom: '$parent', made, cursor, end: '$anchor' }, tail);
+    const follows = follow ? { follows: true as const } : {};
+    this.#items(items, { root: true, dom: '$parent', made, cursor, end: '$anchor', body: true, ...follows }, tail);
   }
 
   /** Where the component's template starts: what the lines of its root level map to. */
@@ -816,23 +847,25 @@ export class ClientMarkupEmitter {
    *
    * Two passes, and the first is not an optimization. Node variables are handed out BEFORE
    * anything is written because a construct needs the name of what FOLLOWS it — that name is
-   * its anchor (§3.4), and it is the reason no marker has to be planted in the DOM. The
-   * tails are computed backwards for the same reason: a run is located by what comes after
-   * it, since the cursor has already passed everything before.
+   * its anchor (§3.4).
    *
-   * On the `c` path a block body is its own fragment, with nothing after it: its tails start
-   * from nothing. And the constructs it creates are mounted once the whole level is adopted,
+   * The walk itself goes forwards: elements by the cursor, constructs in their place, the
+   * template as it goes. Texts are found afterwards, backwards (`#texts`), once everything the
+   * level holds is known.
+   *
+   * On the `c` path the constructs it creates are mounted once the whole level is adopted,
    * because what each one goes before is a node of the level the adoption reaches after it.
    */
   #items(items: readonly EmitItem[], level: Level, tail: Tail): void {
     const tails = tailsOf(items, tail);
-    const madeTails = level.made === level.dom ? tails : tailsOf(items, NOTHING_AHEAD);
+    const tracked = this.#tracked(level);
 
+    const markers = this.#markersFor(items, tracked);
     const names = this.#namesFor(items, level);
-    const marker = this.#markerFor(items, names);
-    const built = builtRuns(items, marker?.at);
+    const closes = level.body === true && level.follows === true && closesBody(items);
+    const closing = closes ? this.#closing() : undefined;
     // A block body's root mounts in the block's `m`; every other level, right after its walk.
-    const mount = this.#tracked(level) ? this.#bodies.mount : new CodeWriter();
+    const mount = tracked ? this.#bodies.mount : new CodeWriter();
     const anchors: (string | null)[] = [];
     let anchor: string | null = null;
     for (let i = items.length - 1; i >= 0; i -= 1) {
@@ -859,27 +892,46 @@ export class ClientMarkupEmitter {
       return `${name}()`;
     });
 
+    const markAt = new Map(markers.map((m) => [m.at, m]));
     items.forEach((item, i) => {
       const at = tails[i]!;
-      if (marker !== undefined && marker.at === i) this.#marker(marker, level);
+      const mark = markAt.get(i);
+      if (mark !== undefined) {
+        this.#template.comment();
+        if (mark.name !== undefined) this.#rootItems.push({ kind: 'node', name: mark.name });
+      }
       if (item.kind === 'run') {
-        const where = { tail: at, made: madeTails[i]!, built: built[i]! };
-        this.#run(item, level, where, names[i], marker?.run === i ? marker : undefined, i === 0);
+        this.#run(item, level, names[i]);
       } else if (isControl(item.node)) {
         // The body of a construct is at the container's edge only when nothing of the level
         // renders on that side of it — which is a fact about this list (BUG-21 §4.2.b).
         const body = bodyContext(this.#at, i === 0, i === items.length - 1);
-        const site = { tail: at, anchor: anchors[i] ?? null, at: body, mount };
+        const follow = textMayFollow(items, i, level.follows === true);
+        const site = { tail: at, anchor: anchors[i] ?? null, at: body, mount, follow };
         const registry = this.#construct(asControl(item.node), level, site, liveAnchors[i]);
         registries[i] = registry;
-        if (this.#tracked(level)) this.#rootItems.push({ kind: 'block', registry });
+        if (tracked) this.#rootItems.push({ kind: 'block', registry });
       } else {
         this.#node(item.node, level, names[i]);
       }
       const name = names[i];
-      if (name !== undefined && this.#tracked(level)) this.#rootItems.push({ kind: 'node', name });
+      if (name !== undefined && tracked) this.#rootItems.push({ kind: 'node', name });
     });
-    if (!this.#tracked(level)) this.#create.appendWriter(mount);
+    if (closing !== undefined) {
+      this.#template.comment();
+      this.#rootItems.push({ kind: 'node', name: closing.name });
+    }
+
+    const walk = { items, names, markAt, closing, registries, level };
+    // On `h`: at the root of a block body, in its `t`, from the node its parent says follows it.
+    if (level.body === true) this.#texts(this.#bodies.texts, walk, level.dom, '$e', true);
+    else this.#texts(this.#adopt, walk, level.dom, this.#endOf(level, tail), true);
+    // On `c`, over the clone, where nothing but the template is yet: a block body's ends with it.
+    if (level.made !== null) {
+      this.#texts(this.#create, walk, level.made, level.body === true ? 'null' : this.#endOf(level, tail), false);
+    }
+
+    if (!tracked) this.#create.appendWriter(mount);
     // Back to front, as `move` places: what each step hands back is where that block begins,
     // and a block already in place is not moved — this only finds the reference.
     for (const { name, base, after } of live) {
@@ -889,6 +941,91 @@ export class ClientMarkupEmitter {
         .join(' ');
       this.#bodies.decls.line(`const ${name} = () => { let $ref = ${base}; ${steps} return $ref; };`);
     }
+  }
+
+  /**
+   * The node right after a level, which is where its texts are found from: nothing past the end
+   * of a parent — `null` — or, in a route's hole, the layout's next element when there is one.
+   */
+  #endOf(level: Level, tail: Tail): string {
+    return level.cursor !== null && (tail.element || tail.any) ? level.cursor : 'null';
+  }
+
+  /**
+   * Find the texts of a level — runs and comments — backwards, from `end`, the node that follows
+   * the level: each one is the node in front of the node after it. No text of the HTML touches
+   * another (`marker.ts`), so in front of a run there is never a text that is not it; a run painted
+   * as `''` left no node, and is created where it goes.
+   *
+   * On `h` a construct is the server's: each of its instances finds its own texts in its `t` and
+   * says where it begins. On `c` the constructs are not mounted yet, and nothing stands between.
+   *
+   * A block's `t` (`end` is `$e`) walks its whole level: it has to say where the block begins.
+   * Anything else stops at the leftmost item that has a node to find.
+   */
+  #texts(out: CodeWriter, walk: TextWalk, dom: string, end: string, painted: boolean): void {
+    const { items, names, markAt, closing, registries, level } = walk;
+    const tracked = this.#tracked(level);
+    // What has a node to find: a named run, and on `h` every construct, whose `t` finds its own
+    // texts. A comment is named only where every run is too, and there is a run in front of it.
+    const wants = (i: number): boolean =>
+      items[i]!.kind === 'run' ? names[i] !== undefined : painted && registries[i] !== undefined;
+    const stop = end === '$e' ? 0 : items.findIndex((_, i) => wants(i));
+    // Nothing to find. A body that closes with a comment has a run, and every run of a body is named.
+    if (stop === -1) return;
+
+    // `cur` is the node after the one being found: a variable that names it, `null` past the end of
+    // the parent, or `e` when only the runtime knows — what a block's `t` hands back. What is known
+    // of it decides how the one in front is reached.
+    let held: string | undefined = end === '$e' ? '$e' : undefined;
+    // Declared only by a level that needs one.
+    const e = (): string => (held ??= this.#fresh());
+    let state: 'end' | 'node' | 'unknown' = end === 'null' ? 'end' : 'unknown';
+    let cur = end;
+    const prev = (): string => {
+      if (state === 'end') return `$dom.lastChild(${dom})`;
+      if (state === 'node') return `$dom.previousSibling(${cur})`;
+      return `${cur} === null ? $dom.lastChild(${dom}) : $dom.previousSibling(${cur})`;
+    };
+    /** The node after the next one is in `e`, whatever it was named. */
+    const settle = (): void => {
+      if (cur !== held) out.line(`${e()} = ${cur};`);
+      cur = e();
+    };
+    const find = (name: string | undefined, at: number, run?: TextRun): void => {
+      if (name === undefined) {
+        out.mappedLine(here(at), `${e()} = ${prev()};`);
+        cur = e();
+      } else {
+        out.mappedLine(here(at), `${name} = ${prev()};`);
+        // Painted as `''`, the run left no node in the HTML: what stands in front is not it.
+        if (run?.interpolated === true) out.mappedLine(here(at), `${name} = $dom.textAt(${dom}, ${name}, ${cur});`);
+        if (tracked) out.mappedLine(here(at), `$r.push(${name});`);
+        cur = name;
+      }
+      state = 'node';
+    };
+
+    if (closing !== undefined) find(closing.name, closing.src);
+    for (let i = items.length - 1; i >= stop; i -= 1) {
+      const item = items[i]!;
+      const name = names[i];
+      if (item.kind === 'run') {
+        find(name, item.at, item);
+      } else if (item.node.type === 'element') {
+        [cur, state] = [name!, 'node'];
+      } else if (painted && registries[i] !== undefined) {
+        const r = registries[i]!;
+        settle();
+        out.mappedLine(here(item.node.span.start), `for (let $j = ${r}.length - 1; $j >= 0; $j -= 1) ${e()} = ${r}[$j].t(${e()});`);
+        state = 'unknown';
+      }
+      // The comment in front of this item: stepped over when the walk goes on past it.
+      const mark = markAt.get(i);
+      if (mark !== undefined && i > stop) find(mark.name, mark.src);
+    }
+    // A block's `t` says where it begins.
+    if (end === '$e') settle();
   }
 
   /**
@@ -920,33 +1057,21 @@ export class ClientMarkupEmitter {
   }
 
   /**
-   * The ONE marker the DOM gets, where `marker.ts` says it goes — the rule is stated there
-   * because the SERVER has to paint the same comment, and a marker on one side only is
-   * worse than none: the two trees would differ by a node.
-   *
-   * What this adds is what only the client needs: the comment's own variable, and the node
-   * the run in front is stepped from on the adopt path.
+   * The comments between the items of a level, where `marker.ts` says they go — the rule is
+   * stated there because the SERVER has to paint the same comments, and a marker on one side only
+   * is worse than none: the two trees would differ by a node. What this adds is what only the
+   * client needs: a variable, for a comment that is a root of a block and moves with it.
    */
-  #markerFor(
-    items: readonly EmitItem[],
-    names: readonly (string | undefined)[],
-  ): Marker | undefined {
-    const site = markerSite(items);
-    if (site === undefined) return undefined;
-    const front = site.run === 0 ? null : names[site.run - 1]!;
-    const src = (items[site.at] as { readonly node: HtmlContent }).node.span.start;
-    return { ...site, name: this.#fresh(), front, runName: names[site.run]!, src };
+  #markersFor(items: readonly EmitItem[], tracked: boolean): readonly Marker[] {
+    return markerSites(items).map((site) => {
+      const src = (items[site.at] as { readonly node: HtmlContent }).node.span.start;
+      return tracked ? { ...site, name: this.#fresh(), src } : { ...site, src };
+    });
   }
 
-  /**
-   * The empty comment, in the template and found from the run in front of it on both paths. That
-   * run is located the same way on both: nothing but an element, or the start of the level, is
-   * in front of it (`markerSite`).
-   */
-  #marker(marker: Marker, level: Level): void {
-    this.#template.comment();
-    this.#adoptLine(`${marker.name} = $dom.nextSibling(${marker.runName});`, marker.src);
-    if (this.#tracked(level)) this.#adoptLine(`$r.push(${marker.name});`, marker.src);
+  /** The comment that closes a block body: a root the block moves, so it has a name. */
+  #closing(): Closing {
+    return { name: this.#fresh(), src: this.#root };
   }
 
   #node(node: HtmlContent, level: Level, name: string | undefined): void {
@@ -975,7 +1100,11 @@ export class ClientMarkupEmitter {
    * lands in is the one decision 17 promises — the block that contains it.
    */
   #inlineCode(node: InlineCodeNode): void {
-    const js = this.#slice(node.group.inner);
+    // What it declares, the closure declares and every body assigns, in its place: a block of this
+    // closure, or `$a`, reads the name as the server's single function does. Once per name: the
+    // server declares them all in that one function, where a second declaration does not compile.
+    const { js, names } = hoistInlineCode(this.#source, node.group.inner, this.#hookup.template);
+    if (names.length > 0) this.#bodies.decls.line(`let ${names.join(', ')};`);
     this.#adoptLine(js, node.group.inner.start);
     // And into the UPDATE pass, because that pass is a render too. It is what makes a
     // `@while` reconcilable: its header declares no iteration, so it terminates by consuming
@@ -997,163 +1126,34 @@ export class ClientMarkupEmitter {
   }
 
   /**
-   * One coalesced text run. A run with no name is one nobody will ever rewrite, move or remove,
-   * so nothing looks for it: a reference to it would only be weight in the `let` header.
-   *
-   * The `c` path finds it in the clone the way `h` finds it in the server's markup — unless the
-   * run shares its stretch of text with a construct (`built`). A closed construct is no boundary
-   * between two texts: the template has them as ONE node, and the construct, once open, would
-   * land beside that node instead of between them. So those runs are not in the template: `c`
-   * creates each one where it goes, and the construct between them goes before the one behind.
+   * One coalesced text run: its value, and its place in the template. It is found afterwards,
+   * with the other texts of its level (`#texts`). A run with no name is one nobody will ever
+   * rewrite, move or remove: a reference to it would only be weight in the `let` header.
    */
-  #run(
-    run: TextRun,
-    level: Level,
-    where: { readonly tail: Tail; readonly made: Tail; readonly built: boolean },
-    name: string | undefined,
-    marker: Marker | undefined,
-    first: boolean,
-  ): void {
+  #run(run: TextRun, level: Level, name: string | undefined): void {
     // The value is `$a`'s, on both paths: the node is structure and the text is state.
     if (name !== undefined && run.interpolated) {
       this.#applyValue(run.value, ($v) => `$dom.setText(${name}, ${$v});`);
     }
-    // A block body with nothing to clone has no level to find a run in: it creates them all.
-    const creates = where.built || level.made === null;
-    if (creates) this.#createRun(run, level, where.made, name);
-    else {
+    if (level.made !== null) {
       // Its static text, with every hole empty: an interpolated run that is nothing else leaves
       // no node, and the adoption creates it where it goes (`textAt`), as after the server (§4.4).
       this.#template.text(run.text);
-      if (name !== undefined) this.#locate(this.#create, run, level, where.made, name, marker, level.made!, false);
-    }
-    if (name === undefined) return;
-    const via = this.#locate(this.#adopt, run, level, where.tail, name, marker, level.dom, true);
-    if (this.#tracked(level) && !this.#shared(run, via, level, first)) this.#adopt.mappedLine(here(run.at), `$r.push(${name});`);
-  }
-
-  /**
-   * The lines that find a named run in a level, on one path: in `dom`, from the element beside it
-   * or from the run's marker. Returns how it was reached, which is what `#shared` reads.
-   */
-  #locate(
-    out: CodeWriter,
-    run: TextRun,
-    level: Level,
-    tail: Tail,
-    name: string,
-    marker: Marker | undefined,
-    dom: string,
-    painted: boolean,
-  ): string {
-    const via = marker === undefined ? this.#anchor(dom, level.cursor, tail) : this.#front(marker, dom, painted);
-    out.mappedLine(here(run.at), `${name} = ${via};`);
-    if (run.interpolated) {
-      // Painted as `''`, the run left no node in the HTML: what `via` found is the node beside
-      // it, or nothing. Before the cursor when it was reached backwards, before what was found
-      // when forwards (a marker's run).
-      const before = marker !== undefined ? name : tail.element || tail.any ? (level.cursor ?? 'null') : 'null';
-      out.mappedLine(here(run.at), `${name} = $dom.textAt(${dom}, ${name}, ${before});`);
-    }
-    // On `c` every root is the block's own: nothing merged with the level around it.
-    if (!painted && this.#tracked(level)) out.mappedLine(here(run.at), `$r.push(${name});`);
-    return via;
-  }
-
-  /**
-   * A run the `c` path creates instead of finding: its static text, or nothing for `$a` to fill,
-   * put before the next element of the level, or at its end. In a block body with nothing to
-   * clone it stays unattached, in `$r`, until `m` places it.
-   */
-  #createRun(run: TextRun, level: Level, tail: Tail, name: string | undefined): void {
-    const text: readonly LinePart[] = run.interpolated ? ["''"] : run.value;
-    const node: readonly LinePart[] = ['$dom.text(', ...text, ')'];
-    // Only ever with a level to go in: a run with no name is in no block body, and every root of
-    // a block body has one.
-    const place = (n: readonly LinePart[]): readonly LinePart[] =>
-      tail.element ? [`$dom.before(${level.cursor!}, `, ...n, ')'] : [`$dom.append(${level.made!}, `, ...n, ')'];
-    if (name === undefined) {
-      this.#create.mappedLine(here(run.at), ...place(node), ';');
       return;
     }
-    this.#create.mappedLine(here(run.at), `${name} = `, ...node, ';');
-    if (level.made !== null) this.#create.mappedLine(here(run.at), ...place([name]), ';');
-    if (this.#tracked(level)) this.#create.mappedLine(here(run.at), `$r.push(${name});`);
+    // A block body with nothing to clone: its runs are holes with nothing around them — a run
+    // with characters would be in a template — created unattached, in `$r`, until `m` places them.
+    this.#create.mappedLine(here(run.at), `${name!} = $dom.text('');`);
+    this.#create.mappedLine(here(run.at), `$r.push(${name!});`);
   }
-
   /**
-   * Whether a run of a BLOCK body is a node the block must not claim as its own.
-   *
-   * A tree that goes through HTML and back does not preserve text-node boundaries: the
-   * blank run that closes a block body and the blank run that follows the construct in its
-   * level serialize to one stretch of characters, and the parser hands back ONE node. On
-   * the create path they are two nodes and each side owns its own; on the adopt path both
-   * sides resolve to the same one — the block through `lastChild($parent)`, the level as
-   * the ANCHOR it hands the block emitter (SDD-30 §3.4).
-   *
-   * Claiming it is what breaks `@if`: `r()` removes the node the next insertion anchors on,
-   * and `ChildNode.before()` on a node with no parent does nothing and throws nothing — the
-   * old branch leaves, the new one never arrives, and the console stays clean. `@foreach`
-   * and `@for` survive it only while a row is left to hold the anchor, and die the moment
-   * the list reaches zero.
-   *
-   * So the block adopts it as a REFERENCE and does not put it in `$r`. What it costs is one
-   * blank text node left behind when a block is torn down after hydrating; a static run
-   * carries no state, and formatting whitespace is not something anybody can see. What it
-   * buys is that the level's anchor cannot be pulled out from under the next insertion.
-   *
-   * Only a STATIC run: an interpolated one is state the block rewrites, so it is the
-   * block's whatever the serializer did, and it always has a marker or an element beside it
-   * to be located by.
+   * The first element of the component's root, on the markup the server painted: the one after
+   * the `<link>`s its sheets open it with, when they are files (SDD-73 §3.5). The clone has none
+   * in front — the runtime only puts them there afterwards — and starts at the first.
    */
-  #shared(run: TextRun, via: string, level: Level, first: boolean): boolean {
-    if (run.interpolated) return false;
-    // The run that CLOSES the body: nothing of the block follows it, so what it merged with
-    // is the level's next run — the very node handed back as the insertion anchor.
-    if (via === `$dom.lastChild(${level.dom})`) return true;
-    // And the run that OPENS it, which merged with the level's run in front. That one is not
-    // an anchor, so nothing breaks when it goes — it is simply the level's TEXT, and a block
-    // that took it with it deleted a sentence the author wrote outside the construct. An
-    // interior run of the body has the block's own elements on both sides and is safe: it
-    // reaches this only when it is the first item of the level.
-    return first && via === `$dom.previousSibling(${String(level.cursor)})`;
-  }
-
-  /** The forward step the marked run takes instead of an anchor it cannot use. */
-  #front(marker: Marker, dom: string, painted: boolean): string {
-    return marker.front === null
-      ? this.#first(dom, 'firstChild', 'nextSibling', painted)
-      : `$dom.nextSibling(${marker.front})`;
-  }
-
-  /**
-   * How the adoption finds a run: from the element beside it. The cursor sits on the next
-   * element of the level, so the run is its previous sibling; with no element left ahead,
-   * the run is the last node of the level.
-   */
-  #anchor(dom: string, cursor: string | null, tail: Tail): string {
-    if (tail.element) return `$dom.previousSibling(${cursor!})`;
-    if (tail.any && cursor !== null) {
-      return `${cursor} ? $dom.previousSibling(${cursor}) : $dom.lastChild(${dom})`;
-    }
-    return `$dom.lastChild(${dom})`;
-  }
-
-  /**
-   * The first node — or element — of a level the author wrote. At the component's root, on the
-   * markup the server painted, it is the one after the `<link>`s its sheets open it with, when
-   * they are files (SDD-73 §3.5); anywhere else — the clone included, which the runtime only
-   * puts the links in front of afterwards — simply the first.
-   */
-  #first(
-    dom: string,
-    first: 'firstChild' | 'firstElementChild',
-    next: 'nextSibling' | 'nextElementSibling',
-    painted: boolean,
-  ): string {
-    let at = `$dom.${first}(${dom})`;
-    if (dom !== '$shadow' || !painted) return at;
-    for (let i = 0; i < (this.#scope.leading ?? 0); i += 1) at = `$dom.${next}(${at})`;
+  #firstPainted(): string {
+    let at = '$dom.firstElementChild($shadow)';
+    for (let i = 0; i < (this.#scope.leading ?? 0); i += 1) at = `$dom.nextElementSibling(${at})`;
     return at;
   }
 
@@ -1801,7 +1801,13 @@ export class ClientMarkupEmitter {
   #construct(
     node: ControlConstruct,
     level: Level,
-    site: { readonly tail: Tail; readonly anchor: string | null; readonly at: RunContext; readonly mount: CodeWriter },
+    site: {
+      readonly tail: Tail;
+      readonly anchor: string | null;
+      readonly at: RunContext;
+      readonly mount: CodeWriter;
+      readonly follow: boolean;
+    },
     liveAnchor?: string,
   ): string {
     // What decides the construct is read by the parent, like a value write: watched the same way.
@@ -1832,44 +1838,15 @@ function tailsOf(items: readonly EmitItem[], tail: Tail): readonly Tail[] {
 }
 
 /**
- * Which runs of a level the `c` path creates: the ones that share their stretch — everything
- * between two elements, or between an element and the marker — with another run. Only a construct
- * or an `@{ }` stands between two runs there, and neither is a node of the template: closed, the
- * two texts are one node of it, and an opened construct would land beside that node instead of
- * between them. A run alone in its stretch is its own node, and is found like any other.
+ * Whether a block body's template has anything to clone: an element, a comment, or the text of a
+ * run. Decided from the items, before the walk that writes the template from them, so the `c`
+ * path knows whether `$f` exists.
  */
-function builtRuns(items: readonly EmitItem[], markerAt: number | undefined): readonly boolean[] {
-  const built = items.map(() => false);
-  let start = 0;
-  const close = (end: number): void => {
-    const runs = items.slice(start, end).filter((item) => item.kind === 'run').length;
-    if (runs > 1) for (let i = start; i < end; i += 1) built[i] = items[i]!.kind === 'run';
-  };
-  items.forEach((item, i) => {
-    if (i === markerAt) {
-      close(i);
-      start = i;
-    }
-    if (item.kind === 'node' && isElement(item.node)) {
-      close(i);
-      start = i + 1;
-    }
-  });
-  close(items.length);
-  return built;
-}
-
-/**
- * Whether a block body's template has anything to clone: an element, the marker, or the text of
- * a run the `c` path finds rather than creates. Decided from the items, before the walk that
- * writes the template from them, so the `c` path knows whether `$f` exists.
- */
-function templateHolds(items: readonly EmitItem[]): boolean {
-  const site = markerSite(items);
-  const built = builtRuns(items, site?.at);
+function templateHolds(items: readonly EmitItem[], follow: boolean): boolean {
   return (
-    site !== undefined ||
-    items.some((item, i) => (item.kind === 'run' ? !built[i] && item.text !== '' : isElement(item.node)))
+    markerSites(items).length > 0 ||
+    (follow && closesBody(items)) ||
+    items.some((item) => (item.kind === 'run' ? item.text !== '' : isElement(item.node)))
   );
 }
 

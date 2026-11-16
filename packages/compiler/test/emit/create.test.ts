@@ -115,14 +115,15 @@ describe('a block body with nothing of its own to clone', () => {
       'x-bare': component(
         'x-bare',
         '  const { on = false, t = "" } = props<{ on?: boolean; t?: string }>();',
-        '<p>a @if (on) {@(t)@if (on) {<b>b</b>}} c</p>',
+        // Nothing follows the block in the `<p>`, so its body does not close with a comment.
+        '<p>a @if (on) {@(t)@if (on) {<b>b</b>}}</p>',
       ),
     });
     const code = emitComponentClientModule(g, g.components.get('x-bare')!);
     // No template for the body of the outer `@if`: nothing to declare `$f` for.
     expect(code.match(/const \$f = /gu)).toHaveLength(1);
     const { shadow } = create(g, 'x-bare', [true, 'T']);
-    expect(shadow.querySelector('p')!.textContent).toBe('a Tb c');
+    expect(shadow.querySelector('p')!.textContent).toBe('a Tb');
     expect(treeOf(shadow)).toBe(painted(g, 'x-bare', { on: true, t: 'T' }));
   });
 });

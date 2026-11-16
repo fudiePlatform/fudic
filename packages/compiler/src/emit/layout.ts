@@ -377,8 +377,9 @@ function buildRouteModule(
   // the route builds the nodes, so the route is the one that stamps them — and a route has
   // exactly one layout, which its graph already holds.
   const bodySlot = holeSlot(graph, { kind: 'body' });
-  if (bodySlot === undefined) em.emitChildren(route.markup, PARENT);
-  else em.emitSlotted(route.markup, PARENT, bodySlot);
+  // What follows a hole is the layout's, and may be text (`marker.ts`): the route's chunk says the same.
+  if (bodySlot === undefined) em.emitChildren(route.markup, PARENT, true);
+  else em.emitSlotted(route.markup, PARENT, bodySlot, true);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
@@ -407,8 +408,8 @@ function buildRouteModule(
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
     sectionW.indent();
     const slot = holeSlot(graph, { kind: 'section', name: section.name });
-    if (slot === undefined) sectionEm.emitChildren(section.children, PARENT);
-    else sectionEm.emitSlotted(section.children, PARENT, slot);
+    if (slot === undefined) sectionEm.emitChildren(section.children, PARENT, true);
+    else sectionEm.emitSlotted(section.children, PARENT, slot, true);
     sectionW.dedent();
     sectionW.line('}');
   }

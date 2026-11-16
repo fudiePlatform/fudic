@@ -7,37 +7,42 @@ export function render($dom, $shadow, props, $ioc) {
   const $n0 = $dom.element("ul");
   $dom.setAttr($n0, 'class', "list");
   const $n1 = $dom.text(" "); $dom.append($n0, $n1);
-  let $n2 = false;
+  const $n2 = $dom.comment(''); $dom.append($n0, $n2);
+  let $n3 = false;
   for (const row of rows) {
-    $n2 = true;
-    const $n3 = $dom.text(" "); $dom.append($n0, $n3);
-    const $n4 = $dom.element("li");
-    $dom.setAttr($n4, 'class', "row");
-    const $n5 = $dom.text(" "); $dom.append($n4, $n5);
-    const $n6 = $dom.element("span");
-    const $n7 = $dom.text(String((row.label) ?? '')); $dom.append($n6, $n7);
-    $dom.append($n4, $n6);
-    const $n8 = $dom.text(" "); $dom.append($n4, $n8);
+    $n3 = true;
+    const $n4 = $dom.text(" "); $dom.append($n0, $n4);
+    const $n5 = $dom.element("li");
+    $dom.setAttr($n5, 'class', "row");
+    const $n6 = $dom.text(" "); $dom.append($n5, $n6);
+    const $n7 = $dom.element("span");
+    const $n8 = $dom.text(String((row.label) ?? '')); $dom.append($n7, $n8);
+    $dom.append($n5, $n7);
+    const $n9 = $dom.text(" "); $dom.append($n5, $n9);
+    const $n10 = $dom.comment(''); $dom.append($n5, $n10);
     for (const mark of row.tags) {
-      const $n9 = $dom.text(" "); $dom.append($n4, $n9);
-      const $n10 = $dom.element("span");
-      $dom.setAttr($n10, 'class', "tag");
-      const $n11 = $dom.text(String((mark) ?? '')); $dom.append($n10, $n11);
-      $dom.append($n4, $n10);
-      const $n12 = $dom.text(" "); $dom.append($n4, $n12);
+      const $n11 = $dom.text(" "); $dom.append($n5, $n11);
+      const $n12 = $dom.element("span");
+      $dom.setAttr($n12, 'class', "tag");
+      const $n13 = $dom.text(String((mark) ?? '')); $dom.append($n12, $n13);
+      $dom.append($n5, $n12);
+      const $n14 = $dom.text(" "); $dom.append($n5, $n14);
+      const $n15 = $dom.comment(''); $dom.append($n5, $n15);
     }
-    const $n13 = $dom.text(" "); $dom.append($n4, $n13);
-    $dom.append($n0, $n4);
-    const $n14 = $dom.text(" "); $dom.append($n0, $n14);
+    const $n16 = $dom.text(" "); $dom.append($n5, $n16);
+    $dom.append($n0, $n5);
+    const $n17 = $dom.text(" "); $dom.append($n0, $n17);
+    const $n18 = $dom.comment(''); $dom.append($n0, $n18);
   }
-  if (!$n2) {
-    const $n15 = $dom.text(" "); $dom.append($n0, $n15);
-    const $n16 = $dom.element("li");
-    $dom.setAttr($n16, 'class', "empty");
-    const $n17 = $dom.text(String((empty) ?? '')); $dom.append($n16, $n17);
-    $dom.append($n0, $n16);
-    const $n18 = $dom.text(" "); $dom.append($n0, $n18);
+  if (!$n3) {
+    const $n19 = $dom.text(" "); $dom.append($n0, $n19);
+    const $n20 = $dom.element("li");
+    $dom.setAttr($n20, 'class', "empty");
+    const $n21 = $dom.text(String((empty) ?? '')); $dom.append($n20, $n21);
+    $dom.append($n0, $n20);
+    const $n22 = $dom.text(" "); $dom.append($n0, $n22);
+    const $n23 = $dom.comment(''); $dom.append($n0, $n23);
   }
-  const $n19 = $dom.text(" "); $dom.append($n0, $n19);
+  const $n24 = $dom.text(" "); $dom.append($n0, $n24);
   $dom.append($shadow, $n0);
 }

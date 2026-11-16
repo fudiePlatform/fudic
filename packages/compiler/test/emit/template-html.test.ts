@@ -195,7 +195,8 @@ describe('criterion 2 — what a template holds', () => {
 
   it('gives the block its own template, and the child its own', () => {
     const own = declared(chunkOf(graph, 'x-tpl')).map((d) => cooked(d.literal));
-    expect(own).toContain(' <b>si</b> ');
+    // Text may follow the `@if` in its `<p>`: the body that ends with text closes with a comment.
+    expect(own).toContain(' <b>si</b> <!---->');
     expect(own).toContain(' <em>abierto</em> ');
     expect(own.join('')).not.toContain('<i>child</i>');
     expect(declared(chunkOf(graph, 'x-child')).map((d) => cooked(d.literal))).toEqual(['<i>child</i>']);
@@ -216,7 +217,10 @@ describe('criterion 2 — what a template holds', () => {
         '@for (let i = 0; i < 2; i++) key (i) { <i>7</i> }',
     );
     const html = declared(chunkOf(blocks, 'x-arms')).map((d) => cooked(d.literal).trim());
-    for (const n of ['1', '2', '3', '4', '7']) expect(html).toContain(`<i>${n}</i>`);
+    // A body that ends with text closes with a comment when text may follow it: the `@switch`
+    // behind the `@if` opens with some, and so does the next row of the `@for` (`marker.ts`).
+    for (const n of ['1', '2', '7']) expect(html).toContain(`<i>${n}</i> <!---->`);
+    for (const n of ['3', '4']) expect(html).toContain(`<i>${n}</i>`);
     expect(html).toContain('<li>5</li>');
     expect(html).toContain('<li>6</li>');
   });
@@ -246,7 +250,8 @@ describe('a route has no root template, and each branch of its `@await` has one'
       api: (path) => (path === '/r.fudapi' ? api : undefined),
     };
     const html = declared(emitRouteClientModule(resolveDocument('/r.fud', io).value)!).map((d) => cooked(d.literal));
-    expect(html).toEqual([' <ul class="users"></ul> ', ' <p class="error"> ()</p> ']);
+    // What follows a route is its layout's, which may be text: each body closes with a comment.
+    expect(html).toEqual([' <ul class="users"></ul> <!---->', ' <p class="error"> ()</p> <!---->']);
   });
 });
 

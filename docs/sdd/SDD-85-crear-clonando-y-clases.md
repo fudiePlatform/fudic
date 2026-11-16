@@ -163,7 +163,7 @@ plantilla.
 | `class="a b"` | `class="a b"`, menos los tokens que tienen su propio `class:` (§4.5) |
 | Texto estático | El texto, escapado |
 | Un tramo de texto con partes dinámicas | El tramo con cada parte dinámica vacía; si queda vacío, nada |
-| El comentario que separa dos tramos interpolados | El comentario |
+| Un comentario que separa dos textos (§8.2, decisión 34) | El comentario |
 | Un bloque | Nada: todos cerrados, todas las listas vacías |
 | Un componente hijo | Su host vacío, con sus atributos estáticos, sin `<template shadowrootmode>` |
 | `@raw(…)` | El elemento que lo contiene, vacío |
@@ -217,7 +217,8 @@ En el emisor esto es un parámetro del recorrido de adopción: «el servidor pin
 
 - Un tramo con partes dinámicas va en la plantilla con esas partes vacías. Si queda vacío no hay nodo,
   y `textAt` lo crea en su sitio al adoptar, como hace hoy con un valor `''` del servidor.
-- Dos tramos interpolados seguidos llevan su comentario separador, también en la plantilla.
+- Dos textos que el HTML juntaría van separados por un comentario, también en la plantilla (§8.2,
+  decisión 34).
 - El paso 3 de §4.2 escribe el texto entero del tramo con `setText`.
 
 ### 4.5. Las clases
@@ -510,7 +511,8 @@ Nada.
     siembra para un spread, `class=@expr` y `@raw` no se siembra; y el texto que se funde se crea
     (decisión 25). Es el «parámetro del recorrido» de §4.3, hecho cuerpo. El componente ya no
     tiene `$r` ni `$m`: el clon entra entero en el shadow root.
-25. **El texto que comparte trozo con otro texto lo crea el `c`, no la plantilla** (fase 4). En un
+25. **El texto que comparte trozo con otro texto lo crea el `c`, no la plantilla** (fase 4;
+    **sustituida por la decisión 34**: ningún texto comparte ya trozo con otro). En un
     trozo de un nivel (lo que hay entre dos elementos, o entre un elemento y el marcador) con dos
     o más tramos, lo único que los separa es un bloque o un `@{ }`, y ninguno es nodo de la
     plantilla: cerrados, los dos textos serían un solo nodo y el bloque, al abrirse, caería al
@@ -552,3 +554,25 @@ Nada.
 33. **Deuda saldada de paso** (fase 4): el `setAttrs` «en su sitio» del cliente sobraba (el orden
     no se compara) y se va; el compilador queda sin imports ni parámetros muertos
     (`--noUnusedLocals --noUnusedParameters` limpio, `src` y `test`).
+34. **Ningún texto del HTML toca a otro** (Pedro, 2026-11-16, antes de la fase 5; arregla un fallo
+    previo de la hidratación). El HTML no guarda dónde acaba un texto y empieza otro: con un bloque
+    cerrado entre `Hola ` y ` adiós`, el navegador recibe un solo nodo, y al abrirse el bloque la
+    página quedaba `<b>…</b>Hola adiós` o perdía texto. El servidor, la plantilla y el cliente
+    escriben un comentario vacío, con una regla única en `marker.ts`: tras un tramo al que siguen
+    bloques o `@{ }` si detrás viene otro tramo o uno de esos bloques puede empezar con texto; y al
+    final del cuerpo de un bloque que acaba en texto si detrás de él puede venir texto (su fila
+    siguiente, otro bloque, un tramo, o lo que sigue al nivel: un hueco de layout cuenta como que
+    sí). Con eso el cliente busca los textos **hacia atrás**, cuando el nivel ya está adoptado:
+    cada uno es el nodo de delante del siguiente, desde el final del padre; cada bloque tiene un
+    `t($e)` que encuentra los suyos y dice dónde empieza. `m` coloca las raíces en el orden del
+    fuente. Sustituye a la decisión 25 y a la regla de «un solo marcador, entre dos tramos
+    interpolados» de SDD-30 §3.4. Prueba: `hydrate/text-between-blocks.test.ts`, 18 formas,
+    hidratando y creando, contra el HTML del servidor en cada cambio de estado.
+35. **Lo que declara un `@{ }` lo ve todo lo que viene detrás, también en el cliente** (Pedro,
+    2026-11-16, antes de la fase 5; fallo previo). El servidor escribe la vista en una función; el
+    cliente, en `c`, `h` y `u`, y un bloque es una función de al lado: `@{ let x = … }` seguido de
+    `@if (on) { @x }` lanzaba `x is not defined` al crear. Ahora la declaración sube al cierre
+    (`let x;`, junto a los bloques) y cada cuerpo la deja en su sitio como asignación
+    (`hoist.ts`); un patrón va entre paréntesis y sin su tipo. Solo las declaraciones de primer
+    nivel del `@{ }`: un bloque `{ }` del autor dentro sigue siendo suyo. Prueba:
+    `hydrate/inline-scope.test.ts`.

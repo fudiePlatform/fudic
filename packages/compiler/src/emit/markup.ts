@@ -38,8 +38,8 @@ import {
   type Display,
   type RunContext,
 } from './display.js';
-import { emitItems, type TextRun } from './runs.js';
-import { markerSite } from './marker.js';
+import { emitItems, type EmitItem, type TextRun } from './runs.js';
+import { closesBody, isConstructNode, markerSites, textMayFollow } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { awaitedField, blocksOf, loopHead, rawChild, type LoopNode } from './constructs.js';
 import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
@@ -403,9 +403,9 @@ export class MarkupEmitter {
    * As `emitChildren`, for the roots of a hole its layout puts in the named slot `slot`
    * (SDD-48): every element appended straight under `parent` gets `slot="<slot>"`.
    */
-  emitSlotted(children: readonly HtmlContent[], parent: string, slot: string): void {
+  emitSlotted(children: readonly HtmlContent[], parent: string, slot: string, follows = false): void {
     this.#rootSlot = { parent, name: slot };
-    this.emitChildren(children, parent);
+    this.emitChildren(children, parent, follows);
     this.#rootSlot = undefined;
   }
 
@@ -417,23 +417,28 @@ export class MarkupEmitter {
    * the markup makes the round trip (see `runs.ts`). Emitting them one by one would build
    * a server tree the client cannot adopt.
    */
-  emitChildren(children: readonly HtmlContent[], parent: string): void {
+  emitChildren(children: readonly HtmlContent[], parent: string, follows = false): readonly EmitItem[] {
     const items = emitItems(this.#source, children, this.#at);
-    // The one comment the DOM ever gets (SDD-30 §3.4). It is painted HERE too, and by the
-    // same rule: two interpolated runs a block separates come back from HTML as one text
-    // node, so the client plants a boundary — and a boundary the server did not paint is a
-    // node of difference between the two trees, which is a hydration that adopts nothing.
-    const marker = markerSite(items);
+    // The comments the DOM gets (SDD-30 §3.4, `marker.ts`). They are painted HERE too, and by
+    // the same rule: two runs only blocks separate come back from HTML as one text node, so the
+    // client needs a boundary — and a boundary the server did not paint is a node of difference
+    // between the two trees, which is a hydration that adopts nothing.
+    const marks = new Set(markerSites(items).map((site) => site.at));
     items.forEach((item, i) => {
-      if (marker !== undefined && marker.at === i) {
+      if (marks.has(i)) {
         const v = this.#fresh();
         this.#w.line(`const ${v} = $dom.comment(''); $dom.append(${parent}, ${v});`);
       }
       if (item.kind === 'run') this.#run(item, parent);
       // Where the item sits in its level is what a construct's body needs: its own edges
       // are the container's only when nothing renders on that side of it (BUG-21 §4.2.b).
-      else this.#emit(item.node, parent, bodyContext(this.#at, i === 0, i === items.length - 1));
+      else {
+        // Whether text may follow it is what decides if a body of it closes with a comment.
+        const follow = isConstructNode(item.node) && textMayFollow(items, i, follows);
+        this.#emit(item.node, parent, bodyContext(this.#at, i === 0, i === items.length - 1), follow);
+      }
     });
+    return items;
   }
 
   /** One coalesced text run — one node, because that is what the parser will give back. */
@@ -450,19 +455,19 @@ export class MarkupEmitter {
    * Emit the build statements for a node and append it under `parent`. `body` is the context
    * a CONSTRUCT's branches are written in — the level's own, narrowed to where this item sits.
    */
-  #emit(node: HtmlContent, parent: string, body: RunContext): void {
+  #emit(node: HtmlContent, parent: string, body: RunContext, follow = false): void {
     switch (SERVER_ROLE[node.type]) {
       case 'element':
         this.#element(node as ElementNode, parent);
         return;
       case 'if':
-        this.#construct(parent, () => this.#if(asIf(node), parent, body));
+        this.#construct(parent, () => this.#if(asIf(node), parent, body, follow));
         return;
       case 'loop':
-        this.#construct(parent, () => this.#loop(asLoop(node), parent, body));
+        this.#construct(parent, () => this.#loop(asLoop(node), parent, body, follow));
         return;
       case 'switch':
-        this.#construct(parent, () => this.#switch(asSwitch(node), parent, body));
+        this.#construct(parent, () => this.#switch(asSwitch(node), parent, body, follow));
         return;
       case 'render-body':
         // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
@@ -478,7 +483,7 @@ export class MarkupEmitter {
         return;
       }
       case 'await':
-        this.#await(node as unknown as AwaitNode, parent, body);
+        this.#await(node as unknown as AwaitNode, parent, body, follow);
         return;
       case 'inline-code':
         // Verbatim, in place: the author's statements are the author's, and this walk is
@@ -759,25 +764,30 @@ export class MarkupEmitter {
     }
   }
 
-  #branch(children: readonly HtmlContent[], parent: string, body: RunContext): void {
+  #branch(children: readonly HtmlContent[], parent: string, body: RunContext, follow: boolean): void {
     const outer = this.#at;
     this.#at = body;
-    this.emitChildren(children, parent);
+    // A body whose last node may be text closes with a comment (`marker.ts`), or that text
+    // would be one node with whatever text follows the block in the HTML.
+    if (closesBody(this.emitChildren(children, parent, follow)) && follow) {
+      const v = this.#fresh();
+      this.#w.line(`const ${v} = $dom.comment(''); $dom.append(${parent}, ${v});`);
+    }
     this.#at = outer;
   }
 
-  #if(node: IfNode, parent: string, body: RunContext): void {
+  #if(node: IfNode, parent: string, body: RunContext, follow: boolean): void {
     node.branches.forEach((branch, i) => {
       const head = i === 0 ? 'if' : '} else if';
       this.#w.mappedLine(`${head} (`, { text: this.#slice(branch.header.inner), src: branch.header.inner.start }, ') {');
       this.#w.indent();
-      this.#branch(branch.body, parent, body);
+      this.#branch(branch.body, parent, body, follow);
       this.#w.dedent();
     });
     if (node.elseBody) {
       this.#w.line('} else {');
       this.#w.indent();
-      this.#branch(node.elseBody, parent, body);
+      this.#branch(node.elseBody, parent, body, follow);
       this.#w.dedent();
     }
     this.#w.line('}');
@@ -795,7 +805,7 @@ export class MarkupEmitter {
    * The `key` is NOT read here, and that is the whole difference between the two branches:
    * row identity belongs to the client's reconciliation (§4.4).
    */
-  #loop(loop: LoopNode, parent: string, body: RunContext): void {
+  #loop(loop: LoopNode, parent: string, body: RunContext, follow: boolean): void {
     const head = loopHead(loop, this.#source);
     // `while (` or `for (` — the keyword holds no parenthesis, so the first one is the head's.
     const open = head.slice(0, head.indexOf('(') + 1);
@@ -806,13 +816,13 @@ export class MarkupEmitter {
     this.#w.mappedLine(open, { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
     if (turned !== undefined) this.#w.line(`${turned} = true;`);
-    this.#branch(loop.body, parent, body);
+    this.#branch(loop.body, parent, body, follow);
     this.#w.dedent();
     this.#w.line('}');
     if (loop.empty === undefined) return;
     this.#w.line(`if (!${turned}) {`);
     this.#w.indent();
-    this.#branch(loop.empty.body, parent, body);
+    this.#branch(loop.empty.body, parent, body, follow);
     this.#w.dedent();
     this.#w.line('}');
   }
@@ -828,7 +838,7 @@ export class MarkupEmitter {
    *
    * Where there are no parts (a component, a layout) it paints nothing: it is `FUD1322`.
    */
-  #await(node: AwaitNode, parent: string, body: RunContext): void {
+  #await(node: AwaitNode, parent: string, body: RunContext, follow: boolean): void {
     const field = awaitedField(node, this.#source);
     if (this.#parts === undefined || field === undefined) return;
     const settled = this.#fresh();
@@ -843,7 +853,7 @@ export class MarkupEmitter {
     this.#w.line('{');
     this.#w.indent();
     this.#w.line(`const data = { ...${outer}, ${field}: ${settled}.ok };`);
-    this.#branch(node.body, parent, body);
+    this.#branch(node.body, parent, body, follow);
     this.#w.dedent();
     this.#w.line('}');
     this.#w.dedent();
@@ -854,7 +864,7 @@ export class MarkupEmitter {
     this.#w.line('} else {');
     this.#w.indent();
     this.#w.mappedLine('const ', { text: this.#slice(node.catch.header.inner), src: node.catch.header.inner.start }, ` = ${settled}.error;`);
-    this.#branch(node.catch.body, parent, body);
+    this.#branch(node.catch.body, parent, body, follow);
     this.#w.dedent();
     this.#w.line('}');
   }
@@ -869,7 +879,7 @@ export class MarkupEmitter {
    * `switch` — the ids are unique per emission, so today nothing would collide, and the
    * braces are there so it does not depend on that (SDD-30 §4.1).
    */
-  #switch(node: SwitchNode, parent: string, body: RunContext): void {
+  #switch(node: SwitchNode, parent: string, body: RunContext, follow: boolean): void {
     this.#w.mappedLine(
       'switch (',
       { text: this.#slice(node.header.inner), src: node.header.inner.start },
@@ -880,7 +890,7 @@ export class MarkupEmitter {
       if (branch.test === undefined) this.#w.line('default: {');
       else this.#w.mappedLine('case ', { text: this.#slice(branch.test), src: branch.test.start }, ': {');
       this.#w.indent();
-      this.#branch(branch.body, parent, body);
+      this.#branch(branch.body, parent, body, follow);
       this.#w.line('break;');
       this.#w.dedent();
       this.#w.line('}');

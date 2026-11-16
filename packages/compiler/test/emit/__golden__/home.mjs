@@ -27,37 +27,40 @@ export function* page(data, io, $ioc) {
   const $n1 = $dom.text(String((data.title) ?? '')); $dom.append($n0, $n1);
   $dom.append($body, $n0);
   const $n2 = $dom.text(" "); $dom.append($body, $n2);
+  const $n3 = $dom.comment(''); $dom.append($body, $n3);
   if (data.items.length === 0) {
-    const $n3 = $dom.text(" "); $dom.append($body, $n3);
-    const $n4 = $dom.element("p");
-    $dom.setAttr($n4, 'class', "empty");
-    const $n5 = $dom.text("No hay elementos todavía."); $dom.append($n4, $n5);
-    $dom.append($body, $n4);
+    const $n4 = $dom.text(" "); $dom.append($body, $n4);
+    const $n5 = $dom.element("p");
+    $dom.setAttr($n5, 'class', "empty");
+    const $n6 = $dom.text("No hay elementos todavía."); $dom.append($n5, $n6);
+    $dom.append($body, $n5);
   } else {
-    const $n6 = $dom.text(" "); $dom.append($body, $n6);
-    const $n7 = $dom.element("section");
-    $dom.setAttr($n7, 'class', "grid");
+    const $n7 = $dom.text(" "); $dom.append($body, $n7);
+    const $n8 = $dom.element("section");
+    $dom.setAttr($n8, 'class', "grid");
     for (const item of data.items) {
-      const $n8 = $dom.element("app-card");
-      $dom.claim($n8);
-      $dom.setAttr($n8, 'data-fud-adopt', "app-card");
-      const $n9 = $dom.attachShadow($n8);
-      renderAppCard($dom, $n9, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') }, $ioc);
-      const $n10 = $dom.text(" "); $dom.append($n8, $n10);
+      const $n9 = $dom.element("app-card");
+      $dom.claim($n9);
+      $dom.setAttr($n9, 'data-fud-adopt', "app-card");
+      const $n10 = $dom.attachShadow($n9);
+      renderAppCard($dom, $n10, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') }, $ioc);
+      const $n11 = $dom.text(" "); $dom.append($n9, $n11);
+      const $n12 = $dom.comment(''); $dom.append($n9, $n12);
       if (item.featured) {
-        const $n11 = $dom.text(" "); $dom.append($n8, $n11);
-        const $n12 = $dom.element("app-badge");
-        $dom.setAttr($n12, 'data-fud-adopt', "app-badge");
-        const $n13 = $dom.attachShadow($n12);
-        renderAppBadge($dom, $n13, { "tone": "success" }, $ioc);
-        const $n14 = $dom.text("Destacado"); $dom.append($n12, $n14);
-        $dom.append($n8, $n12);
-        const $n15 = $dom.text(" "); $dom.append($n8, $n15);
+        const $n13 = $dom.text(" "); $dom.append($n9, $n13);
+        const $n14 = $dom.element("app-badge");
+        $dom.setAttr($n14, 'data-fud-adopt', "app-badge");
+        const $n15 = $dom.attachShadow($n14);
+        renderAppBadge($dom, $n15, { "tone": "success" }, $ioc);
+        const $n16 = $dom.text("Destacado"); $dom.append($n14, $n16);
+        $dom.append($n9, $n14);
+        const $n17 = $dom.text(" "); $dom.append($n9, $n17);
+        const $n18 = $dom.comment(''); $dom.append($n9, $n18);
       }
-      const $n16 = $dom.text(` ${(item.description) ?? ''} `); $dom.append($n8, $n16);
-      $dom.append($n7, $n8);
+      const $n19 = $dom.text(` ${(item.description) ?? ''} `); $dom.append($n9, $n19);
+      $dom.append($n8, $n9);
     }
-    $dom.append($body, $n7);
+    $dom.append($body, $n8);
   }
   const $state = $dom.hydrationState();
   if ($state.offsets.length > 1) {

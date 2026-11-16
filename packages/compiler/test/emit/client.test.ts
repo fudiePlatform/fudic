@@ -116,11 +116,11 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   it('gives a reference only to the text that needs one', () => {
     // `@title` is adopted, from the <h2> that holds it. A whitespace run OUTSIDE a block
     // gets none — nobody rewrites a space — unless a construct sits in front of it, and
-    // then the run is the anchor an update inserts before (SDD-30 §3.4). Both runs around the
-    // `@if` are created by `c` in their place: in the clone they would be one node (SDD-85).
+    // then the run is the anchor an update inserts before (SDD-30 §3.4). The run in front of the
+    // `@if` stays in the template, kept apart by a comment from the text the block opens with.
     expect(controller(src)).toContain('$n5 = $dom.lastChild($n4);');
-    expect(src).toContain('$dom.before($c1, $dom.text(" "));'); // no construct behind it
-    expect(src).toContain('$n2 = $dom.text(" ");'); // the run right after the first @if
+    expect(src).toContain('<header><h2></h2></header> <!----> <app-button');
+    expect(controller(src)).toContain('$n2 = $dom.previousSibling($n3);'); // the run right after the first @if
   });
 
   it('names every root of a BLOCK, whitespace included', () => {
@@ -129,12 +129,14 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     const block = src.slice(src.indexOf('const $b0 ='), src.indexOf('const $q0 ='));
     // On `c` the run in front of the body's element is the block's own, found in its clone.
     const create = block.slice(block.indexOf('c: () => {'), block.indexOf('h: ($c) => {'));
-    expect(create).toContain('$n6 = $dom.previousSibling($c);\n            $r.push($n6);');
+    expect(create).toContain('$n6 = $dom.previousSibling($n7);\n            $r.push($n6);');
+    // `m` places them in source order, the comment that closes the body included.
+    expect(block).toContain('for (const $n of [$n6, $n7, $n8, $n9]) $mv($anchor, $n);');
     expect(block).toContain('for (const $n of $r) $dom.remove($n);');
   });
 
   it('creates a child host without opening its shadow, and raises it with its props', () => {
-    expect(src).toContain('<app-button data-fud-adopt="app-button"></app-button>');
+    expect(src).toContain('<app-button data-fud-adopt="app-button"> <!----> </app-button>');
     expect(src).toContain('$live($n3, ["ghost"]);');
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
@@ -329,11 +331,12 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
 });
 
 /**
- * How the adopt path FINDS a text node it may have to rewrite. It never counts: a run is
- * reached from the element beside it, and which element that is decides the form. The four
- * cases below are every form the emit can write, and the fixtures only ever produce one.
+ * How the adopt path FINDS a text node it may have to rewrite. It never counts: once the level is
+ * adopted, its texts are found backwards — each one is the node in front of the node after it,
+ * from the end of the parent. No text of the HTML touches another (`marker.ts`), so in front of a
+ * run there is never a text that is not it.
  */
-describe('emitComponentClientModule — anchoring an interpolated run', () => {
+describe('emitComponentClientModule — finding an interpolated run', () => {
   const runChunk = (tag: string, markup: string): string =>
     inlineChunk(
       tag,
@@ -342,34 +345,30 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     );
 
   it('coalesces a run of text and interpolation into ONE node', () => {
-    // The reason the anchors work at all: HTML has no boundary between two text nodes, so
+    // The reason the walk works at all: HTML has no boundary between two text nodes, so
     // what the parser gives back is one. The emit builds one to match — on both paths.
     const src = runChunk('x-run', '<b>hello @name<i></i></b>');
     expect(src).toContain("$v = `hello ${(name) ?? ''}`;");
     expect(src).toContain('$dom.setText($n1, $v);');
     expect(src).toContain('$template`<b>hello <i></i></b>`');
-    expect(src.match(/\$n1 = \$dom\.previousSibling\(\$c1\);/gu)).toHaveLength(2); // `c` and `h`
+    expect(src.match(/\$n1 = \$dom\.previousSibling\(\$n2\);/gu)).toHaveLength(2); // `c` and `h`
   });
 
-  it('takes the previous sibling of the cursor when an element follows', () => {
+  it('takes the previous sibling of the element behind it', () => {
     const src = runChunk('x-prev', '<b>@name<i></i></b>');
-    expect(src).toContain('$n1 = $dom.previousSibling($c1);');
+    expect(src).toContain('$n1 = $dom.previousSibling($n2);');
   });
 
-  it('asks at runtime when only a construct follows, because it may render nothing', () => {
+  it('asks at runtime when a construct is behind it, because it may render nothing', () => {
     const src = runChunk('x-tern', '<b>@name @if (on) { <i></i> }</b>');
-    expect(src).toContain('$n1 = $c1 ? $dom.previousSibling($c1) : $dom.lastChild($n0);');
+    const hydrate = src.slice(src.lastIndexOf('h: () => {'));
+    expect(hydrate).toMatch(/(\$n\d+) = \1 === null \? \$dom\.lastChild\(\$n0\) : \$dom\.previousSibling\(\1\);/u);
   });
 
-  it('takes the last node when nothing that follows can be an element', () => {
-    const src = runChunk('x-notxt', '<b>@name @if (on) { x }</b>');
-    expect(src).toContain('$n1 = $dom.lastChild($n0);');
-    expect(src).not.toContain('let $c1'); // no element at that level: no cursor either
-  });
-
-  it('takes the last node for a trailing run, past the elements before it', () => {
+  it('takes the last node of the parent for the last run', () => {
     const src = runChunk('x-last', '<b><i></i>@name</b>');
     expect(src).toContain('$n2 = $dom.lastChild($n0);');
+    expect(src).toContain('$n2 = $dom.textAt($n0, $n2, null);');
   });
 
   it('adopts through a branch whose element is only in the else', () => {
@@ -378,7 +377,7 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     // gives back the advanced one, and the arm with only text gives it back untouched.
     expect(src).toContain('$c1 = $i.h($c1);');
     // The `<i>` is the ELSE arm's, so the step over it belongs to that arm's block.
-    expect(src).toContain('$n3 = $c; $c = $dom.nextElementSibling($c);');
+    expect(src).toMatch(/\$n\d+ = \$c; \$c = \$dom\.nextElementSibling\(\$c\);/u);
   });
 });
 

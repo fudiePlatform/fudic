@@ -232,6 +232,20 @@ Lo que la siguiente sesión tiene que saber antes de empezar, decidido con Pedro
   navegador no da contenedor a sus hijos; (3) un `let` de un `@{ }` no lo ve un bloque posterior
   en el cliente (en el servidor sí).
 
+## Antes de la fase 5 — los tres fallos previos
+
+Decidido con Pedro el 2026-11-16: no se pasa a la fase 5 sin arreglarlos, y de raíz.
+
+- [x] **F1. Ningún texto del HTML toca a otro.** Comentarios de `marker.ts` en el servidor, la
+  plantilla y el cliente; textos buscados hacia atrás, con el `t` de cada bloque (SDD §8.2,
+  decisión 34). *Ficheros:* `compiler/src/emit/marker.ts`, `markup.ts`, `markup-client.ts`,
+  `block.ts`, `layout.ts`; `test/emit/hydrate/text-between-blocks.test.ts`.
+- [x] **F3. Lo que declara un `@{ }` lo ve el cliente.** La declaración sube al cierre (SDD §8.2,
+  decisión 35). *Ficheros:* `compiler/src/emit/hoist.ts`, `markup-client.ts`;
+  `test/emit/hydrate/inline-scope.test.ts`.
+- [ ] **F2. Un dueño de servicio creado en el navegador da su contenedor a sus hijos.** Pendiente de
+  decidir con Pedro: SDD-38 dice que un componente creado en el navegador solo ve la raíz.
+
 ## Fase 5 — vite, core y testing
 
 - [ ] **26. La pieza en el manifiesto.**
