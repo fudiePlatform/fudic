@@ -55,6 +55,18 @@ export interface Dom<N> {
    * taken off. `except` are the attributes the element writes itself, which the spread leaves.
    */
   setAttrs(el: N, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void;
+  /**
+   * Put `token` in the element's class list when `on`, take it out otherwise: `class:x=@cond`.
+   * Only that token moves, so a class some other code added stays. On the server the list is
+   * written as the `class` attribute, and with no token left there is no attribute.
+   */
+  toggleClass(el: N, token: string, on: boolean): void;
+  /**
+   * Take out the tokens of `prev` that are not in `next` and put in the ones of `next`:
+   * `class=@expr` and the `class` of a spread. `prev` is `''` the first time. Tokens are split
+   * on ASCII white space, as the browser splits them.
+   */
+  swapClass(el: N, next: string, prev: string): void;
   removeAttr(el: N, name: string): void;
   /**
    * Write a live property of a control — `checked`, `value`, `selected` — from `name=@expr`

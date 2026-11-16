@@ -13,6 +13,17 @@ import { guardUrl } from './url.js';
 import { htmlOf } from './html.js';
 import { trustedHtmlOf } from './trusted.js';
 import { attrsDiff } from './attrs.js';
+import { classDiff, type ClassDiff } from './classes.js';
+
+/**
+ * A class change on the element's own list: no other token is touched. An empty side is not
+ * called at all: on an element with a class, `add()` with no tokens still rewrites the attribute,
+ * which is a mutation every observer sees for nothing.
+ */
+function applyClass(el: Element, diff: ClassDiff): void {
+  if (diff.remove.length > 0) el.classList.remove(...diff.remove);
+  if (diff.add.length > 0) el.classList.add(...diff.add);
+}
 
 export const browserDom: DomClient<Node> = {
   element(tag: string, ns: Ns = 'html'): Node {
@@ -42,6 +53,13 @@ export const browserDom: DomClient<Node> = {
     const diff = attrsDiff(element.localName, next, prev, except);
     for (const name of diff.remove) element.removeAttribute(name);
     for (const [name, value] of diff.set) element.setAttribute(name, value);
+    applyClass(element, diff.class);
+  },
+  toggleClass(el: Node, token: string, on: boolean): void {
+    (el as Element).classList.toggle(token, on);
+  },
+  swapClass(el: Node, next: string, prev: string): void {
+    applyClass(el as Element, classDiff(next, prev));
   },
   removeAttr(el: Node, name: string): void {
     (el as Element).removeAttribute(name);

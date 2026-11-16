@@ -14,6 +14,7 @@
  * attribute goes through the same guard `setUrl` applies.
  */
 
+import { classDiff, type ClassDiff } from './classes.js';
 import { guardUrl, isTrustedUrl, safeUrl } from './url.js';
 
 /**
@@ -81,10 +82,14 @@ export function attrsOf(tag: string, objects: readonly unknown[], except: readon
   return read(tag, objects, except, guardUrl);
 }
 
-/** What one spread write changes: the attributes to set, and the ones to take off. */
+/**
+ * What one spread write changes: the attributes to set, the ones to take off, and the `class`
+ * apart — token by token, so a spread never takes a class off that some other code put on.
+ */
 export interface AttrsDiff {
   readonly set: readonly (readonly [name: string, value: string])[];
   readonly remove: readonly string[];
+  readonly class: ClassDiff;
 }
 
 /**
@@ -103,7 +108,15 @@ export function attrsDiff(
   // `safeUrl` and not the guard: the previous values already warned when they were written.
   const before = prev === undefined ? new Map<string, string>() : read(tag, prev, except, safeUrl);
   return {
-    set: [...now].filter(([name, text]) => before.get(name) !== text),
-    remove: [...before.keys()].filter((name) => !now.has(name)),
+    set: [...now].filter(([name, text]) => !isClass(name) && before.get(name) !== text),
+    remove: [...before.keys()].filter((name) => !isClass(name) && !now.has(name)),
+    class: classDiff(classOf(now), classOf(before)),
   };
 }
+
+/** `class` is case-insensitive in HTML, as every attribute name is. */
+const isClass = (name: string): boolean => name.toLowerCase() === 'class';
+
+/** The class text a spread writes: every `class` key it has, in order. */
+const classOf = (attrs: ReadonlyMap<string, string>): string =>
+  [...attrs].filter(([name]) => isClass(name)).map(([, text]) => text).join(' ');

@@ -419,4 +419,22 @@ Nada.
 
 ### 8.2. Tomadas al implementar
 
-—
+1. **Una función pura para las clases, como `attrsDiff`.** `classDiff(next, prev)` y `classTokens`
+   viven en `@fudic/dom` y los aplican los dos adaptadores. `attrsDiff` devuelve la `class` del
+   spread aparte (`class: { remove, add }`) y ya no la mete en `set` / `remove`.
+2. **En `SsrDom` la lista es el propio atributo `class`**, no un conjunto aparte en el nodo: se
+   parte, se cambia y se reescribe, y sin tokens se borra. Así `setAttr(el, 'class', …)` estático y
+   los `class:` comparten un solo sitio y el orden sale solo (§4.5, regla 2).
+3. **La `class` de un spread en el servidor va en su sitio por nombre**, como el resto de atributos
+   del spread (SDD-61 §3.8): un backend que pinta el spread desde el tipo escribe el mismo HTML.
+4. **El navegador no llama a `classList.add()` / `remove()` sin tokens.** En un elemento con clase,
+   `add()` vacío reescribe el atributo y es una mutación que todo observador ve para nada. De paso,
+   happy-dom (que crea `class=""` con cualquier llamada) da el mismo árbol que un navegador.
+5. **`template` comprueba también `Array.isArray(strings.raw)` y que el texto se pueda cocinar.**
+   `Object.freeze(['…'])` es un array congelado de longitud 1 sin ser un literal, y un string de un
+   carácter también pasa `length === 1` y `isFrozen`.
+6. **El espacio de nombres MathML se prueba en el navegador.** happy-dom parsea `<math>` como HTML;
+   en los tests unitarios se prueba que `templateIn` quita el envoltorio, y el espacio de nombres SVG.
+7. **Deuda saldada de paso:** `@fudic/ssr` tenía umbrales 95/95/90 y sin `coverage.include`; ahora
+   100 en las cuatro métricas con el denominador anclado al paquete. `@fudic/testing` tenía su copia
+   del escape y ahora usa la de `@fudic/dom`.
