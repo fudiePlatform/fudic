@@ -4,8 +4,9 @@
  * down only when the browser says so.
  *
  * Acceptance criteria covered: §6.9 (the base routes to the subclass's factory), §6.10
- * (no `connectedCallback`), §6.11 (the public interface is exactly `{c, h, u, r}`), and
- * BUG-12 §6.1–§6.2 (`u` is the third entry point, and a no-op with no controller).
+ * (connecting starts nothing), §6.11 (the base calls `{c, h, r}` and, since SDD-86, the
+ * optional `on` / `off`), BUG-12 §6.1–§6.2 (`u` is the third entry point, and a no-op with no
+ * controller), and SDD-86 §4.2 / §4.6 (connect and disconnect, without repeating).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -291,7 +292,7 @@ describe('FudicElement — §6.9 the base routes to the subclass factory', () =>
   });
 });
 
-describe('FudicElement — §6.10 no connectedCallback', () => {
+describe('FudicElement — §6.10 connecting starts nothing', () => {
   it('stays inert when the host is connected: no factory, no hookup', () => {
     const s = spy();
     const tag = define(s);
@@ -371,7 +372,7 @@ describe('FudicElement — teardown', () => {
   });
 });
 
-describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, r}', () => {
+describe('FudicElement — §6.11 the controller interface is {c, h, u, r} plus on / off (SDD-86 §3.4)', () => {
   it('the base calls nothing else on it, and exposes no controller surface', async () => {
     const seen: string[] = [];
     const tag = freshTag();
@@ -398,7 +399,166 @@ describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, 
 
     // Never `m`, never `s` — those are private closures of the factory. `u` is part of
     // the contract, but the base never invokes it on its own: its caller is the parent.
-    expect(seen).toEqual(['h', 'r']);
+    // `on` / `off` (SDD-86): connected after `h`, disconnected before the release.
+    expect(seen).toEqual(['h', 'on', 'off', 'r']);
     expect(Object.keys(host)).toEqual([]); // `#controller` is private, not a property
+  });
+});
+
+/** SDD-86 §4.2, §4.6 — `on` / `off` forwarded to the controller, never twice in a row. */
+describe('FudicElement — connect and disconnect (SDD-86)', () => {
+  /** A controller with `on` / `off` that, like `hooks()`, ignores a repeated one. */
+  function defineLive(log: string[]): string {
+    const tag = freshTag();
+    customElements.define(
+      tag,
+      class extends FudicElement {
+        static c(): Controller {
+          let connected = false;
+          return {
+            c: () => log.push('c'),
+            h: () => log.push('h'),
+            u: () => log.push('u'),
+            r: () => log.push('r'),
+            on: () => {
+              log.push(connected ? 'on (again!)' : 'on');
+              connected = true;
+            },
+            off: () => {
+              log.push(connected ? 'off' : 'off (again!)');
+              connected = false;
+            },
+          };
+        }
+      },
+    );
+    return tag;
+  }
+
+  /** A controller with `on` / `off` that records every call, repeated or not. */
+  function defineRaw(log: string[]): string {
+    const tag = freshTag();
+    customElements.define(
+      tag,
+      class extends FudicElement {
+        static c(): Controller {
+          return {
+            c: () => log.push('c'),
+            h: () => log.push('h'),
+            u: () => log.push('u'),
+            r: () => log.push('r'),
+            on: () => log.push('on'),
+            off: () => log.push('off'),
+          };
+        }
+      },
+    );
+    return tag;
+  }
+
+  it('hydrated already in the document: h, then on — connectedCallback came before the controller', () => {
+    const log: string[] = [];
+    const tag = defineRaw(log);
+    document.body.innerHTML = `<${tag}><template shadowrootmode="open"></template></${tag}>`;
+    const host = document.body.firstElementChild as FudicElement;
+    expect(log).toEqual([]);
+    host.h([]);
+    expect(log).toEqual(['h', 'on']);
+    document.body.innerHTML = '';
+  });
+
+  it('hydrated out of the document: no on until it is inserted', () => {
+    const log: string[] = [];
+    const host = document.createElement(defineRaw(log)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    host.h([]);
+    expect(log).toEqual(['h']);
+    document.body.append(host);
+    expect(log).toEqual(['h', 'on']);
+    host.remove();
+  });
+
+  it('created in the browser (c) and then inserted: on comes with the insertion, once', () => {
+    const log: string[] = [];
+    const host = document.createElement(defineRaw(log)) as FudicElement;
+    host.c([]);
+    expect(log).toEqual(['c']);
+    document.body.append(host);
+    expect(log).toEqual(['c', 'on']);
+    host.remove();
+  });
+
+  it('created while already connected: on right after c', () => {
+    const log: string[] = [];
+    const host = document.createElement(defineRaw(log)) as FudicElement;
+    document.body.append(host);
+    host.c([]);
+    expect(log).toEqual(['c', 'on']);
+    host.remove();
+  });
+
+  it('off at once on removal, r on the next microtask', async () => {
+    const log: string[] = [];
+    const host = document.createElement(defineRaw(log)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    host.h([]);
+    host.remove();
+    expect(log).toEqual(['h', 'on', 'off']);
+    await Promise.resolve();
+    expect(log).toEqual(['h', 'on', 'off', 'r']);
+  });
+
+  it('a move gives off + on and no r', async () => {
+    const log: string[] = [];
+    const from = document.createElement('div');
+    const to = document.createElement('div');
+    document.body.append(from, to);
+    const host = document.createElement(defineLive(log)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    from.append(host);
+    host.h([]);
+    to.append(host);
+    await Promise.resolve();
+    expect(log).toEqual(['h', 'on', 'off', 'on']);
+    from.remove();
+    to.remove();
+    await Promise.resolve();
+    expect(log).toEqual(['h', 'on', 'off', 'on', 'off', 'r']);
+  });
+
+  it('never two on or two off in a row through the element, whatever the order', async () => {
+    const log: string[] = [];
+    const tag = defineLive(log);
+    document.body.innerHTML = `<${tag}><template shadowrootmode="open"></template></${tag}>`;
+    const host = document.body.firstElementChild as FudicElement;
+    host.h([]);
+    host.remove();
+    document.body.append(host);
+    host.remove();
+    await Promise.resolve();
+    expect(log.filter((l) => l.includes('again'))).toEqual([]);
+    expect(log).toEqual(['h', 'on', 'off', 'on', 'off', 'r']);
+  });
+
+  it('a controller without on / off (a component with no connect hooks) works as before', async () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    expect(() => host.h([])).not.toThrow();
+    host.remove();
+    document.body.append(host);
+    host.remove();
+    await Promise.resolve();
+    expect(s.calls).toEqual(['h', 'r']);
+  });
+
+  it('a connected element with no controller yet does nothing on connect or disconnect', () => {
+    const log: string[] = [];
+    const host = document.createElement(defineRaw(log));
+    document.body.append(host);
+    host.remove();
+    expect(log).toEqual([]);
   });
 });
