@@ -253,6 +253,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1550({ file: F, problem: 'subdomains' }), 'preload needs includeSubDomains'],
   [c.FUD1554({ file: F, reason: 'lib' }), 'a library is not served'],
   [c.FUD1554({ file: F, reason: 'no-sw' }), 'the app has no sw.json'],
+  [c.FUD1561({ span: S, hook: 'beforeCreate', role: 'route' }), 'beforeCreate never runs in a route: a route always comes painted from the server, so it hydrates and is never created; use beforeHydrate'],
+  [c.FUD1561({ span: S, hook: 'afterCreate', role: 'layout' }), 'afterCreate never runs in a layout: a layout always comes painted from the server, so it hydrates and is never created; use afterHydrate'],
 ];
 
 describe('every variant says its own sentence', () => {

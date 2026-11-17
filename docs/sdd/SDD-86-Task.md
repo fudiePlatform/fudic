@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 0 / 28 — `Listo`. (Implementación 3 / 28 · Tests 1 / 28)
+> **Progreso:** 0 / 28 — `Listo`. (Implementación 3 / 28 · Tests 2 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -23,7 +23,7 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 1 — Los diagnósticos y el análisis
 
-- impl [x] · tests [ ] — **1. `FUD1560`, `FUD1561` y `FUD1562`.**
+- impl [x] · tests [x] — **1. `FUD1560`, `FUD1561` y `FUD1562`.**
   - Un fichero por código, con su `.md` en inglés y su línea en `index.ts` (SDD §3.3).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
