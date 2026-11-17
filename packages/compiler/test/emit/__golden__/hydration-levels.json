@@ -678,6 +678,18 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/workspace/apps/admin/src/routes/entrar.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/admin/src/routes/fallos.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "eager",
+    "hydrates": []
+  },
   "examples/workspace/apps/admin/src/routes/index.fud": {
     "kind": "route",
     "reactive": false,
@@ -701,6 +713,12 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/workspace/apps/tienda/src/routes/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "examples/workspace/apps/tienda/src/routes/catalogo.fud": {
     "kind": "route",
     "reactive": false,
@@ -713,10 +731,22 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/workspace/libs/ui/src/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "examples/workspace/libs/ui/src/components/ui-card/ui-card.fud": {
     "kind": "component",
     "tag": "ui-card",
     "hydrates": false
+  },
+  "packages/cli/templates/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
   },
   "packages/cli/templates/layout.fud": {
     "kind": "route",
@@ -1429,6 +1459,24 @@
     "kind": "component",
     "tag": "x-pair",
     "hydrates": false
+  },
+  "packages/testing/test/lib-workspace/apps/admin/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/lib-workspace/apps/admin/src/routes/missing.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/lib-workspace/libs/ui/src/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
   },
   "packages/testing/test/locales-app/src/components/l-precio.fud": {
     "kind": "component",

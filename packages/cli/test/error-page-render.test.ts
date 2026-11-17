@@ -15,7 +15,7 @@ import { fudic } from '@fudic/vite';
 import { parseFud } from '../src/parse.js';
 import { renderTemplate } from '../src/templates.js';
 
-const PAGE = renderTemplate('error-page.fud', { lang: 'es' });
+const PAGE = renderTemplate('_error.fud', { lang: 'es' });
 
 /** The runtime a painted page imports, aliased to its `dist`: a temp root has no `node_modules`. */
 const dist = (pkg: string, entry = 'index.js'): string => fileURLToPath(new URL(`../../${pkg}/dist/${entry}`, import.meta.url));

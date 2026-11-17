@@ -4,7 +4,7 @@
  * (`pnpm install`, `git init`) are never run: `spawnSync` is replaced, and says what it was asked.
  */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -241,6 +241,7 @@ describe('fudic_generate (criteria 18 and 19)', { timeout: 60_000 }, () => {
     ['form', { kind: 'form', name: 'person', skipTest: true }, ['g', 'form', 'person', '--skip-test']],
     ['pipe', { kind: 'pipe', name: 'money', on: 'number' }, ['g', 'pipe', 'money', '--on', 'number']],
     ['style', { kind: 'style', name: 'theme' }, ['g', 'style', 'theme']],
+    ['error-page', { kind: 'error-page' }, ['g', 'error-page']],
   ])('%s: what `fudic g` writes', async (_kind, input, argv) => {
     const answer = await call(client, 'fudic_generate', input);
     expect(answer.isError, JSON.stringify(answer.body)).toBe(false);
@@ -401,5 +402,28 @@ describe('runPlan', () => {
       ['FUD0448', undefined],
       ['FUD0540', '/p/src/b.fud'],
     ]);
+  });
+});
+
+/** SDD-87 criterion 24: in a library, `fudic_generate { kind: "error-page" }` writes what the CLI does. */
+describe('fudic_generate error-page in a library', { timeout: 60_000 }, () => {
+  it('src/_error.fud, and nothing else, as `fudic g error-page`', async () => {
+    quietCommands();
+    const mcp = folder('ui');
+    for (const [path, text] of Object.entries({
+      'package.json': JSON.stringify({ name: '@acme/ui', version: '0.0.0' }),
+      'fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui' }),
+    })) {
+      mkdirSync(join(mcp, path, '..'), { recursive: true });
+      writeFileSync(join(mcp, path), text);
+    }
+    const cli = folder('ui');
+    cpSync(mcp, cli, { recursive: true });
+    const before = tree(mcp);
+    const answer = await call(await clientIn(mcp), 'fudic_generate', { kind: 'error-page' });
+    expect(answer.isError, JSON.stringify(answer.body)).toBe(false);
+    expect(Object.keys(tree(mcp)).filter((p) => !(p in before))).toEqual(['src/_error.fud']);
+    await cliWrites(['g', 'error-page'], cli);
+    expect(tree(mcp)).toEqual(tree(cli));
   });
 });

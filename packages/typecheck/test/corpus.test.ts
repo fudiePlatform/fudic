@@ -45,6 +45,8 @@ const ROOTS = [
   'packages/testing/test/call-project',
   'packages/testing/test/conformance',
   'packages/testing/test/fixtures',
+  'packages/testing/test/lib-workspace/apps/admin',
+  'packages/testing/test/lib-workspace/libs/ui',
   'packages/testing/test/locales-app',
   'packages/testing/test/render-project',
   'packages/testing/test/run-project',
