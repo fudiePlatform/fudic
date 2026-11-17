@@ -20,7 +20,7 @@ import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
 import { FUD0290, FUD0684 } from '@fudic/diagnostics';
-import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { JsBatch, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import {
   awaitedReads,
@@ -460,6 +460,13 @@ export interface ExtractedCode {
   /** Every name the `@code` declares at its top level, whatever its zone: what a linked `.fudapi` may not give again (`FUD1113`). */
   readonly declared: readonly string[];
   /**
+   * Every call to a lifecycle hook (`afterHydrate(…)`, `onConnect(…)`…), in source order. The
+   * client registers the top-level ones; the server and the Service Worker drop them.
+   */
+  readonly hooks: readonly HookUse[];
+  /** Every declaration or import of the `@code` named like a hook (`FUD1562`). */
+  readonly hookShadows: readonly HookShadow[];
+  /**
    * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
    *
    * `load` runs on the server and its result lives there; the moment a `@client` handler can
@@ -684,6 +691,8 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     own.push(...formSendDiagnostics(source, templateRootsOf(doc), new Set()));
   }
 
+  const lifecycle = scanHooks(allStatements, result.value.mapSpan);
+
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
   if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls, 0);
@@ -744,6 +753,8 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     tasks: topLevelTasks(sliced ? allStatements : clientStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
     declared: topLevelBindings(allStatements),
+    hooks: lifecycle.uses,
+    hookShadows: lifecycle.shadows,
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.

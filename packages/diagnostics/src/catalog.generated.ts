@@ -473,6 +473,9 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1554: ['warning', "A headers file that applies to nothing"],
   FUD1555: ['warning', "Trusted Types will block this assignment"],
   FUD1556: ['hint', "The policy allows what fudic no longer needs"],
+  FUD1560: ['error', "Lifecycle hook outside the top level of `@code`"],
+  FUD1561: ['error', "A create hook in a file that is never created"],
+  FUD1562: ['error', "A declaration hides a lifecycle hook"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */

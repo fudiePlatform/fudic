@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 0 / 28 — `Listo`. (Implementación 0 / 28 · Tests 1 / 28)
+> **Progreso:** 0 / 28 — `Listo`. (Implementación 3 / 28 · Tests 1 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -23,20 +23,20 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 1 — Los diagnósticos y el análisis
 
-- impl [ ] · tests [ ] — **1. `FUD1560`, `FUD1561` y `FUD1562`.**
+- impl [x] · tests [ ] — **1. `FUD1560`, `FUD1561` y `FUD1562`.**
   - Un fichero por código, con su `.md` en inglés y su línea en `index.ts` (SDD §3.3).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/codes/FUD1560.ts` · `.md`, `src/codes/FUD1561.ts` · `.md`,
     `src/codes/FUD1562.ts` · `.md`, `src/index.ts`.
-- impl [ ] · tests [ ] — **2. Los hooks en `ExtractedCode`.**
+- impl [x] · tests [ ] — **2. Los hooks en `ExtractedCode`.**
   - Una lista de los hooks que usa el `@code` (`hooks: readonly HookUse[]`, con el tipo de hook, el
     span de la llamada y si es sentencia de nivel superior), leída del AST de Oxc como `props`. Para
     componentes, rutas, páginas y layouts.
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/oxc-code.ts`, `test/emit/oxc-code-hooks.test.ts`.
-- impl [ ] · tests [ ] — **3. El analizador `lifecycle`.**
+- impl [x] · tests [ ] — **3. El analizador `lifecycle`.**
   - `FUD1560` fuera del nivel superior; `FUD1561` con `beforeCreate` / `afterCreate` en una ruta, una
     página o un layout; `FUD1562` en una declaración o un import con el nombre de un hook (SDD §3.2).
     El span, en la llamada o en la declaración.
