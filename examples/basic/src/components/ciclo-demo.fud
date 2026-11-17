@@ -1,0 +1,47 @@
+@code {
+  /**
+   * Una instancia que apunta en el registro de la página cada momento de su vida: los siete
+   * hooks. Refleja su prop `estado` en su propio tag, y el borde cambia con él.
+   */
+  const { nombre = "", estado = "inactivo" } = props<{
+    /** Cómo se llama esta instancia en el registro. */
+    nombre?: string;
+    /** "activo" pinta el borde verde. */
+    estado?: "activo" | "inactivo";
+  }>();
+
+  import { note } from "../store/ciclo.js";
+
+  beforeHydrate(() => note(nombre, "beforeHydrate"));
+  afterHydrate(() => note(nombre, "afterHydrate"));
+  beforeCreate(() => note(nombre, "beforeCreate"));
+  afterCreate(() => note(nombre, "afterCreate"));
+  onConnect(() => {
+    note(nombre, "onConnect");
+  });
+  onDisconnect(() => note(nombre, "onDisconnect"));
+  onDispose(() => note(nombre, "onDispose"));
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      border: 2px solid #9aa0a6;
+      border-radius: var(--radius-box);
+      padding: 0.5rem 0.8rem;
+    }
+    :host([estado="activo"]) {
+      border-color: #34a853;
+    }
+    p {
+      margin: 0;
+    }
+  </style>
+</head>
+
+<ciclo-demo estado=@estado>
+  <template shadowrootmode="open">
+    <p><strong>@nombre</strong> · @estado</p>
+  </template>
+</ciclo-demo>

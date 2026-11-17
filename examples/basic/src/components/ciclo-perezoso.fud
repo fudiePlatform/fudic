@@ -1,0 +1,25 @@
+@code {
+  /**
+   * Nadie le pasa nada: se hidrata con el primer gesto sobre él, y hasta entonces no ha
+   * ejecutado ningún hook.
+   */
+  import { signal } from "@fudic/core";
+  import { note } from "../store/ciclo.js";
+
+  const pulsado = signal(0);
+
+  afterHydrate(() => note("perezoso", "afterHydrate"));
+  onConnect(() => {
+    note("perezoso", "onConnect");
+  });
+
+  function pulsar() {
+    pulsado.set(pulsado() + 1);
+  }
+}
+
+<ciclo-perezoso>
+  <template shadowrootmode="open">
+    <button type="button" class="perezoso" @click=@pulsar>Despiértame (@pulsado())</button>
+  </template>
+</ciclo-perezoso>

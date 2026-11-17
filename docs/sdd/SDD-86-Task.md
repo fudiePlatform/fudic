@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 19 / 28 — `Listo`. (Implementación 24 / 28 · Tests 19 / 28)
+> **Progreso:** 19 / 28 — `Listo`. (Implementación 27 / 28 · Tests 19 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -212,21 +212,21 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* 3, 8, 12.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/pages.md`, `guide/es/pages.md`.
-- impl [ ] · tests [ ] — **25. El ejemplo `/ciclo`.**
+- impl [x] · tests [ ] — **25. El ejemplo `/ciclo`.**
   - `ciclo-demo` y la ruta `/ciclo` con su contador en IndexedDB (SDD §4.9), con su e2e del criterio 1,
     y el test de `mount` del criterio 13.
   - *Depende de:* 11, 12, 13, 21.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/components/ciclo-demo.fud`, `src/components/ciclo-demo.test.ts`,
     `src/stores/contador.ts`, `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
-- impl [ ] · tests [ ] — **26. La bfcache, de verdad.**
+- impl [x] · tests [ ] — **26. La bfcache, de verdad.**
   - En el e2e: ir de `/ciclo` a otra página y volver atrás restaura desde la bfcache, con
     `onDisconnect` / `onConnect`, sin `onDispose` y con el estado intacto; navegar sin volver ejecuta
     `onDispose` (criterios 27, 28).
   - *Depende de:* 25.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/ciclo.spec.ts`.
-- impl [ ] · tests [ ] — **27. Un componente que se hidrata por interacción.**
+- impl [x] · tests [ ] — **27. Un componente que se hidrata por interacción.**
   - Criterio 11, en el e2e: ningún hook antes de la interacción.
   - *Depende de:* 25.
   - *Paquete:* `examples/basic`.
