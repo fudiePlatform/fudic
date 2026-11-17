@@ -20,7 +20,7 @@ import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
 import { FUD0290, FUD0684 } from '@fudic/diagnostics';
-import { JsBatch, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { JsBatch, isHookKind, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import {
   awaitedReads,
@@ -657,6 +657,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
       const reactives = signals.length;
       const remaining = readDeclarators(stmt, source, map, props, signals, named);
       let zone: CodeZone = cut === undefined || cut.has(stmt) ? 'neutral' : 'client';
+      // A hook is the browser's alone, in every role: the server and the Service Worker never
+      // see it, and a layout's travels in its route's chunk.
+      if (registersHook(stmt)) zone = 'client';
       // A reactive the markup reads is still the browser's own declaration: the server renders
       // it inert from what was just read, and the chunk declares it — and hands it to a child
       // as a cell (SDD-60 §4.8).
@@ -692,6 +695,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   }
 
   const lifecycle = scanHooks(allStatements, result.value.mapSpan);
+  const hookEdits = lifecycle.uses.flatMap((use) => (use.topLevel ? hookRewrite(use, source) : []));
 
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
@@ -734,7 +738,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     // the chunk: it belongs to the IoC module like every other registration, and `$own` — the container it registers into —
     // does not exist on this side at all.
     if (holdsDi(stmt, map, di, 'client', 'provide')) continue;
-    readClientStatement(stmt, source, map, client, emitCalls, cellReads, diEdits);
+    readClientStatement(stmt, source, map, client, emitCalls, cellReads, [...diEdits, ...hookEdits]);
   }
 
   return {
@@ -1488,6 +1492,26 @@ interface Edit {
   /** How many characters it replaces. `0` for an insertion, which most of them are. */
   readonly remove: number;
   readonly text: string;
+}
+
+/** Whether a top-level statement is, by itself, a call to a hook. */
+function registersHook(stmt: OxcNode): boolean {
+  const call = field(stmt, 'expression');
+  const callee = call === undefined ? undefined : field(call, 'callee');
+  return is(call, 'CallExpression') && is(callee, 'Identifier') && isHookKind(name(callee));
+}
+
+/**
+ * `afterHydrate(fn)` → `$hk.add("afterHydrate", fn)`: the callee replaced, the kind inserted as
+ * the first argument. The instance's hook list, `$hk`, is the emit's.
+ */
+function hookRewrite(use: HookUse, source: string): Edit[] {
+  const open = source.indexOf('(', use.callee.end);
+  const empty = source.slice(open + 1, use.span.end - 1).trim() === '';
+  return [
+    { at: use.callee.start, remove: use.callee.end - use.callee.start, text: '$hk.add' },
+    { at: open + 1, remove: 0, text: empty ? `"${use.kind}"` : `"${use.kind}", ` },
+  ];
 }
 
 /** `emit('x', d)` → `emit.call($host, 'x', d)`, as two insertions per call. */

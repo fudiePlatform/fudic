@@ -24,10 +24,10 @@ export const lifecycle: Analyzer = {
     const map = input.js.mapSpan;
     const { uses, shadows } = scanHooks(codeStatements(input), map);
     const role = NEVER_CREATED[input.document.type];
-    for (const use of uses) {
-      if (!use.topLevel) report(FUD1560({ span: use.span, hook: use.kind }));
-      else if (role !== undefined && CREATE_HOOKS.has(use.kind)) report(FUD1561({ span: use.span, hook: use.kind, role }));
-    }
+    for (const use of uses.filter((u) => !u.topLevel)) report(FUD1560({ span: use.span, hook: use.kind }));
+    // A create hook nested somewhere is already FUD1560: one voice per call.
+    const created = uses.filter((u) => u.topLevel && CREATE_HOOKS.has(u.kind));
+    if (role !== undefined) for (const use of created) report(FUD1561({ span: use.span, hook: use.kind, role }));
     for (const shadow of shadows) report(FUD1562({ span: shadow.span, name: shadow.name }));
     // The view's JS: interpolations, attribute values, handlers, `@{ }`, headers of its
     // constructs. None of it is the top level of `@code`.

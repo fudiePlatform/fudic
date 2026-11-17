@@ -36,14 +36,20 @@ import {
   authorCode,
   cellNameAt,
   closeOwned,
+  connectHooks,
+  disposeHooks,
+  hooksUsed,
   lines,
+  openHooks,
   openOwned,
   ownedTeardown,
   ownsCode,
+  runHooks,
   watchTasks,
   withCells,
   writeClosure,
 } from './client.js';
+import { layoutHooksOf } from './layout-code.js';
 import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.js';
 import { inParts, LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
@@ -282,7 +288,10 @@ function buildRouteClientModule(
   const resow = code.signals.flatMap((s) => (s.seeded === true ? [`${s.name}.set(${s.init}); `] : [])).join('');
   if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${resow}${pass} }, $root));`);
 
-  const owns = ownsCode(code.neutral, code.client.body);
+  // The layout's hooks run in this chunk, before the route's: it hydrates the page they share.
+  const layout = layoutHooksOf(graph.layouts, graph.entryPath);
+  const used = new Set([...layout.kinds, ...hooksUsed(code.hooks)]);
+  const owns = ownsCode(code.neutral, code.client.body) || layout.body.length > 0;
   const w = new CodeWriter();
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
@@ -290,6 +299,7 @@ function buildRouteClientModule(
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(usage.creates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
+    ...(used.size > 0 ? ['hooks as $hooks'] : []),
     ...(refreshes ? ['onStaleData as $stale'] : []),
     ...(shape !== undefined ? ['unpackData as $unpackData'] : []),
   ];
@@ -297,7 +307,7 @@ function buildRouteClientModule(
   if (hookup.binds.size > 0) {
     w.line(`import { ${[...hookup.binds].sort().join(', ')} } from '@fudic/forms/dom';`);
   }
-  writeImports(w, code);
+  writeImports(w, code, layout.imports);
   for (const line of linker.imports()) w.line(line);
   // The functions and forms of the `.fudapi` it links, from their modules, at module scope: the
   // `@code` and the template's handlers below both reach them by name (SDD-60 §3.14).
@@ -320,12 +330,13 @@ function buildRouteClientModule(
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(cells));
+  openHooks(w, used, '$root');
   // The host a `bus:` subscribes through and an `emit` dispatches from, materialized where
   // something reads it, as a component's is. A route has no host element: its `<body>` is the
   // node it holds, and what both ask of a host — its document, and a node that bubbles to
   // it — the `<body>` answers the same.
   if (code.emitCalls.length > 0 || hookup.hostUsed) w.line('const $host = $root;');
-  writeBody(w, code, cells, refreshes, shape, awaits);
+  writeBody(w, code, cells, refreshes, shape, awaits, layout.body);
   w.line('');
   w.appendWriter(bodies.decls);
   writeClosure(w, '$s', bodies.hook);
@@ -338,8 +349,10 @@ function buildRouteClientModule(
   // the payload stays the authority on state, so nothing is applied and nothing is mounted.
   w.line('h: () => {');
   w.indent();
+  runHooks(w, used, 'beforeHydrate');
   w.appendWriter(bodies.adopt);
   w.line('$s();');
+  runHooks(w, used, 'afterHydrate');
   w.dedent();
   w.line('},');
   // A route declares no props, so `u` carries nothing positional: it is the pass itself, for
@@ -350,8 +363,10 @@ function buildRouteClientModule(
   // hands a route props. Every `control` a route writes is one it already holds.
   w.line(`u: () => { ${pass} },`);
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d());${ownedTeardown(owns)} },`,
+    `r: () => { ${disposeHooks(used)}${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d());${ownedTeardown(owns)} },`,
   );
+  // `onDispose` too: `off` is what tells the runtime to follow the page's `pagehide`.
+  connectHooks(w, used, ['onConnect', 'onDisconnect', 'onDispose']);
   w.dedent();
   w.line('};');
   closeOwned(w, owns);
@@ -377,14 +392,23 @@ function declaration(cells: readonly CellSlot[]): string {
   return `let [$dom, $root, $data${slots.map((n) => `, ${n}`).join('')}] = $props;`;
 }
 
-/** The hoisted imports of both zones — an `import` is only legal at module scope. */
-function writeImports(w: CodeWriter, code: ExtractedCode): void {
+/**
+ * The hoisted imports of both zones — an `import` is only legal at module scope — and then the
+ * layout's, minus any the route already wrote word for word.
+ */
+function writeImports(w: CodeWriter, code: ExtractedCode, layout: readonly string[]): void {
+  const written = new Set<string>();
   for (const statement of code.neutral) {
     if (statement.hoisted) {
       w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
+      written.add(statement.text);
     }
   }
-  for (const line of code.client.imports) w.line(line);
+  for (const line of [...code.client.imports, ...layout]) {
+    if (written.has(line)) continue;
+    written.add(line);
+    w.line(line);
+  }
 }
 
 /**
@@ -401,6 +425,7 @@ function writeBody(
   refreshes: boolean,
   shape: DataShape | undefined,
   awaits: boolean,
+  layout: readonly string[],
 ): void {
   // `data`, under the name the author writes it by — the same one the render module's
   // `page(data, io)` binds, so a `@client` handler reads it by the name it was written with.
@@ -411,6 +436,8 @@ function writeBody(
   // what the server's `data` holds them as once awaited, and what each `@await` picks its block by.
   const intake = awaits ? `{ ...${read}, ...$fields }` : read;
   w.line(`${refreshes ? 'let' : 'const'} data = ${intake};`);
+  // The layout's hooks, registered before the route's. Another file: no source map into this one.
+  for (const line of layout) w.line(line);
   for (const part of authorCode(code.neutral, code.client.body, (s) => withCells(s, code.signals, cells, ROUTE_BASE))) {
     w.mappedLine(part);
   }

@@ -601,4 +601,14 @@ Nada.
 15. **Los hooks se buscan en todo el `@code`** (al implementar). `FUD1562` cuenta cualquier nombre que
     declare el `@code`, a cualquier profundidad: `const`, `let`, `function`, sus parámetros, `class`,
     el parámetro de un `catch` y los imports. `FUD1561` solo se da a una llamada de nivel superior:
-    una que no lo es ya es `FUD1560`.
+    una que no lo es ya es `FUD1560`. Las llamadas en el JS de la vista (handlers, interpolaciones,
+    `@{ }`, cabeceras de bloques) también son `FUD1560`: no son el nivel superior de `@code`.
+16. **El `@code` de un layout admite sus hooks y los imports que usan** (al implementar). Hasta ahora
+    solo admitía props (`FUD0700` para lo demás) porque un layout no tiene mitad de cliente. Sus
+    llamadas a hooks, reescritas, y sus imports viajan al chunk de la ruta, delante de los de la
+    ruta; un import relativo se reescribe relativo a la ruta, y uno idéntico al de la ruta no se
+    repite. Un layout con hooks hace que su ruta lleve chunk (`isReactiveRoute`). Dentro de un hook
+    de layout no hay props del layout: son del servidor.
+17. **Toda sentencia de hook va a la zona de cliente** (al implementar), sea cual sea el corte del
+    servidor. Eso es lo que la quita de la salida de servidor y de Service Worker, que solo
+    escriben la zona neutral.

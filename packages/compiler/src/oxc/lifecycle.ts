@@ -68,6 +68,8 @@ const FUNCTIONS: ReadonlySet<string> = new Set([
   'FunctionDeclaration',
 ]);
 
+const CLASSES: readonly string[] = ['ClassDeclaration', 'ClassExpression'];
+
 const IMPORTS: ReadonlySet<string> = new Set([
   'ImportSpecifier',
   'ImportDefaultSpecifier',
@@ -95,41 +97,44 @@ export function scanHooks(roots: FragmentRoot, mapSpan: MapSpan, code = true): H
   };
   const bind = (pattern: unknown): void => walkPattern(pattern, { name: shadow, expression: visit });
 
+  const call = (node: OxcNode): void => {
+    const callee = node['callee'] as OxcNode;
+    if (callee.type !== 'Identifier' || !isHookKind(String(callee['name']))) return;
+    uses.push({
+      kind: String(callee['name']) as HookKind,
+      span: mapSpan(node.start, node.end),
+      callee: mapSpan(callee.start, callee.end),
+      topLevel: topLevel.has(node),
+    });
+  };
+
+  // The nodes that call a hook or bind a name, and how the walk goes on from each. Any other
+  // node binds nothing, and is descended whole.
+  const special = new Map<string, (node: OxcNode) => void>([
+    ['CallExpression', (node) => (call(node), descend(node))],
+    ['VariableDeclarator', (node) => (bind(node['id']), visit(node['init']))],
+    ['CatchClause', (node) => (bind(node['param']), visit(node['body']))],
+    ...[...FUNCTIONS].map((type): [string, (node: OxcNode) => void] => [
+      type,
+      (node) => {
+        shadow(node['id']);
+        for (const param of node['params'] as readonly unknown[]) bind(param);
+        visit(node['body']);
+      },
+    ]),
+    ...CLASSES.map((type): [string, (node: OxcNode) => void] => [type, (node) => (shadow(node['id']), descend(node))]),
+    ...[...IMPORTS].map((type): [string, (node: OxcNode) => void] => [type, (node) => shadow(node['local'])]),
+  ]);
+
   function visit(node: unknown): void {
     if (Array.isArray(node)) {
       for (const child of node) visit(child);
       return;
     }
-    if (!isNode(node)) return;
-    if (node.type === 'CallExpression') {
-      const callee = node['callee'];
-      if (isNode(callee) && callee.type === 'Identifier' && isHookKind(String(callee['name']))) {
-        uses.push({
-          kind: String(callee['name']) as HookKind,
-          span: mapSpan(node.start, node.end),
-          callee: mapSpan(callee.start, callee.end),
-          topLevel: topLevel.has(node),
-        });
-      }
-    } else if (node.type === 'VariableDeclarator') {
-      bind(node['id']);
-      visit(node['init']);
-      return;
-    } else if (FUNCTIONS.has(node.type)) {
-      shadow(node['id']);
-      for (const param of node['params'] as readonly unknown[]) bind(param);
-      visit(node['body']);
-      return;
-    } else if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
-      shadow(node['id']);
-    } else if (node.type === 'CatchClause') {
-      bind(node['param']);
-      visit(node['body']);
-      return;
-    } else if (IMPORTS.has(node.type)) {
-      shadow(node['local']);
-      return;
-    }
+    if (isNode(node)) (special.get(node.type) ?? descend)(node);
+  }
+
+  function descend(node: OxcNode): void {
     for (const value of Object.values(node)) visit(value);
   }
 

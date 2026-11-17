@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 8 / 28 — `Listo`. (Implementación 8 / 28 · Tests 9 / 28)
+> **Progreso:** 8 / 28 — `Listo`. (Implementación 16 / 28 · Tests 9 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -90,21 +90,21 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 3 — El emit
 
-- impl [ ] · tests [ ] — **9. Fixtures `app-lifecycle.fud` y `ruta-ciclo.fud`.**
+- impl [x] · tests [ ] — **9. Fixtures `app-lifecycle.fud` y `ruta-ciclo.fud`.**
   - Un componente con los siete hooks, un `ref`, `role="group"` y `variant="@variant"` en su tag de
     identidad, y un `@foreach` con clave de hijos que también usan hooks.
   - Una ruta con layout, los dos con hooks (los cinco permitidos).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `fixtures/app-lifecycle.fud`, `fixtures/ruta-ciclo.fud`, `fixtures/_ciclo-layout.fud`.
-- impl [ ] · tests [x] — **10. Golden sin hooks, fijado.**
+- impl [x] · tests [x] — **10. Golden sin hooks, fijado.**
   - Antes de tocar el emit, un test que compara la salida de cliente y de servidor de todos los fixtures
     sin hooks, componentes y rutas, con sus goldens. Tiene que seguir en verde al acabar la fase
     (criterio 15).
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/lifecycle-untouched.test.ts`.
-- impl [ ] · tests [ ] — **11. El componente registra y ejecuta.**
+- impl [x] · tests [ ] — **11. El componente registra y ejecuta.**
   - `const $hk = $hooks();` dentro del `$owned`, antes del código del autor; cada llamada reescrita a
     `$hk.add("…", fn)` con el mapa de fuentes en la llamada; `run` de `before*` / `after*` en `h` y en
     `c`, el `after*` después de `$s()`; `$hk.dispose(host)` como primera línea de `r`; el host guardado
@@ -114,7 +114,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `src/emit/markup-client.ts`,
     `test/emit/__golden__/app-lifecycle.client.mjs`, `test/emit/lifecycle.test.ts`.
-- impl [ ] · tests [ ] — **12. La ruta registra y ejecuta.**
+- impl [x] · tests [ ] — **12. La ruta registra y ejecuta.**
   - Lo mismo en el chunk de la ruta, sin `c` y con `$root` como host; los hooks del layout y después
     los de la ruta, en el mismo `$hk` (SDD §4.5).
   - Golden de `ruta-ciclo`.
@@ -122,12 +122,12 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/route-client.ts`, `test/emit/__golden__/ruta-ciclo.client.mjs`,
     `test/emit/route-lifecycle.test.ts`.
-- impl [ ] · tests [ ] — **13. `on` y `off`, solo si hacen falta.**
+- impl [x] · tests [ ] — **13. `on` y `off`, solo si hacen falta.**
   - Emitidos solo con `onConnect` u `onDisconnect`, en componentes y en rutas (criterio 17).
   - *Depende de:* 11, 12.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `test/emit/lifecycle.test.ts`.
-- impl [ ] · tests [ ] — **14. El servidor y el SW no ven los hooks.**
+- impl [x] · tests [ ] — **14. El servidor y el SW no ven los hooks.**
   - Las sentencias de hook se quitan, enteras, de la salida de servidor y de SW (criterio 16).
   - Goldens de servidor de `app-lifecycle` y `ruta-ciclo`, iguales que los de los mismos ficheros sin
     hooks.
@@ -136,13 +136,13 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Ficheros:* `src/emit/module.ts`, `src/emit/markup.ts`, `src/emit/layout.ts`,
     `test/emit/__golden__/app-lifecycle.server.mjs`, `test/emit/__golden__/ruta-ciclo.server.mjs`,
     `test/emit/lifecycle.test.ts`.
-- impl [ ] · tests [ ] — **15. Un hook hidrata.**
+- impl [x] · tests [ ] — **15. Un hook hidrata.**
   - Test de nivel: un `@code` con solo `afterHydrate(() => {})` hace hidratable el componente y da
     chunk de cliente a la ruta (criterios 14 y 30). Sin cambios en `level.ts`.
   - *Depende de:* 2.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/level.test.ts`.
-- impl [ ] · tests [ ] — **16. Los hooks de punta a punta.**
+- impl [x] · tests [ ] — **16. Los hooks de punta a punta.**
   - Con el harness de hidratación del compilador: el orden al hidratar y al crear, los `ref` en
     `beforeHydrate` / `afterHydrate` / `onDispose`, el movimiento sin `onDispose`, tres
     `afterHydrate` en orden, el que lanza, el host en `fn`, el hijo antes que el padre (criterios

@@ -450,9 +450,12 @@ export function refreshesData(graph: ComponentGraph): boolean {
 export function isReactiveRoute(graph: ComponentGraph): boolean {
   const entry = entryHalf(graph);
   if (entry === undefined) return false;
+  // A layout's hooks run in its route's chunk, so they are a reason to have one.
+  const layouts = 'layouts' in graph ? (graph as DocumentGraph).layouts : [];
   return (
     entry.code.signals.length > 0 ||
     entry.code.clientRuns ||
+    layouts.some((l) => codeOfDocument(l.source, l.doc).client.body.length > 0) ||
     hasHookupIn(graph.entrySource, entry.roots) ||
     passesFunctionIn(graph.entrySource, entry.roots, entry.code.clientFunctions)
   );

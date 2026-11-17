@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>@RenderHead()</head>
+  <body>
+    @code {
+      const { site = 'fudic' } = props<{ site?: string }>();
+
+      afterHydrate((host) => {
+        host.dataset.layout = 'up';
+      });
+
+      onDisconnect(() => {
+        sessionStorage.setItem('layout', 'left');
+      });
+    }
+    <header>@site</header>
+    <main>@RenderBody()</main>
+  </body>
+</html>
