@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 0 / 28 — `Listo`. (Implementación 0 / 28 · Tests 0 / 28)
+> **Progreso:** 0 / 28 — `Listo`. (Implementación 0 / 28 · Tests 1 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -97,7 +97,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `fixtures/app-lifecycle.fud`, `fixtures/ruta-ciclo.fud`, `fixtures/_ciclo-layout.fud`.
-- impl [ ] · tests [ ] — **10. Golden sin hooks, fijado.**
+- impl [ ] · tests [x] — **10. Golden sin hooks, fijado.**
   - Antes de tocar el emit, un test que compara la salida de cliente y de servidor de todos los fixtures
     sin hooks, componentes y rutas, con sus goldens. Tiene que seguir en verde al acabar la fase
     (criterio 15).
