@@ -44,6 +44,7 @@ import {
   openOwned,
   ownedTeardown,
   ownsCode,
+  repaintIfWritten,
   runHooks,
   watchTasks,
   withCells,
@@ -277,7 +278,7 @@ function buildRouteClientModule(
     if (em.watchImports(watched, bodies.hook)) usage.subscribes = true;
     watchTasks(code.tasks, bodies.hook, usage);
     // A write before these subscriptions reached nobody: one repaint (see the component's).
-    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
+    repaintIfWritten(bodies.hook, reactive, imported);
   }
   // The new `data` replaces the old one and the pass re-applies every write that reads it, the
   // `@foreach` included, which reconciles by key. Torn down with the route.
@@ -297,6 +298,7 @@ function buildRouteClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
+    ...(renews && imported.length > 0 ? ['writtenIf as $writtenIf'] : []),
     ...(usage.creates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
     ...(used.size > 0 ? ['hooks as $hooks'] : []),

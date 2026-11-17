@@ -50,7 +50,7 @@ export {
 } from './task.js';
 export { untrack } from './tracking.js';
 export { now } from './now.js';
-export { subscribe, subscribeIf, written } from './subscribe.js';
+export { subscribe, subscribeIf, written, writtenIf } from './subscribe.js';
 // Pipes (SDD-71): the six presets, one module each, and the two names the compiler replaces.
 export type { Pipe } from './pipe.js';
 export { date } from './pipes/date.js';

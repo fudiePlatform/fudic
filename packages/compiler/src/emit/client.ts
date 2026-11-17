@@ -395,9 +395,10 @@ function buildComponentClientModule(
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(watched, bodies.hook)) usage.subscribes = true;
     watchTasks(tasks, bodies.hook, usage);
-    // A write that came before these subscriptions — an `effect` that ran with the factory —
-    // reached nobody, and the markup still says what the server painted: one repaint.
-    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
+    // A write that came before these subscriptions — an `effect` that ran with the factory, or
+    // another component writing a store — reached nobody, and the markup still says what the
+    // server painted: one repaint.
+    repaintIfWritten(bodies.hook, reactive, imported);
   }
 
   const owns = ownsCode(neutral, client.body);
@@ -417,6 +418,7 @@ function buildComponentClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
+    ...(renews && imported.length > 0 ? ['writtenIf as $writtenIf'] : []),
     // Only a file that creates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.creates ? ['live as $live'] : []),
@@ -706,6 +708,18 @@ export function closeOwned(w: CodeWriter, owns: boolean): void {
  */
 export function ownedTeardown(owns: boolean): string {
   return owns ? ' $owns.forEach((d) => d());' : '';
+}
+
+/**
+ * One repaint at hookup when what the view reads was written before it subscribed: its own
+ * signals (`$written`), or the names it imports (`$writtenIf`, which asks the value).
+ */
+export function repaintIfWritten(hook: CodeWriter, reactive: readonly string[], imported: readonly string[]): void {
+  const asked = [
+    ...(reactive.length > 0 ? [`$written(${reactive.join(', ')})`] : []),
+    ...(imported.length > 0 ? [`$writtenIf(${imported.join(', ')})`] : []),
+  ];
+  if (asked.length > 0) hook.line(`if (${asked.join(' || ')}) $u();`);
 }
 
 /** The hooks a `@code` registers, by kind: what decides which moments the controller runs. */

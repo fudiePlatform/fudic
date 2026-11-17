@@ -57,6 +57,17 @@ export function written(...sources: readonly Readable<unknown>[]): boolean {
   return sources.some((source) => leafOf(source)!.version() > 0);
 }
 
+/**
+ * `written`, for names the compiler could not prove are signals — IMPORTS, a store in practice.
+ *
+ * A store is the page's, not the instance's: another component may have written it long before
+ * this one hydrates, and the markup this one adopts still says what the server painted. A name
+ * that is not a signal answers no, and so does a derived one: it has no version of its own.
+ */
+export function writtenIf(...sources: readonly unknown[]): boolean {
+  return sources.some((source) => isSource(source) && (leafOf(source as Readable<unknown>)?.version() ?? 0) > 0);
+}
+
 /** One disposer for every name that turned out not to be reactive. */
 const NOTHING = (): void => {};
 
