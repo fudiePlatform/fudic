@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 14 / 24 — `En curso`.
+> **Progreso:** 17 / 24 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -121,7 +121,7 @@
 
 ## Fase 3 — El CLI
 
-- [ ] **15. `fudic g error-page`.**
+- [x] **15. `fudic g error-page`.**
   - `args.ts` (`error-page`, con `--project` y `--force`), `run.ts`, `plans/error-page.ts`, la
     plantilla `error-page.fud` y la ayuda (SDD §3.6). En una librería no pasa por `routeRefusal`. El
     informe, con `errorPageOf` (criterios 19, 21, 22).
@@ -129,12 +129,12 @@
   - *Paquete:* `cli`.
   - *Ficheros:* `src/args.ts`, `src/run.ts`, `src/types.ts`, `src/plans/error-page.ts`,
     `templates/error-page.fud`, `src/help/commands.ts`, `test/error-page.test.ts`.
-- [ ] **16. La plantilla, renderizada.**
+- [x] **16. La plantilla, renderizada.**
   - La plantilla generada compila sin diagnósticos y pinta `home` o `back` según el criterio 20.
   - *Depende de:* 8, 15.
   - *Paquete:* `cli`.
   - *Ficheros:* `test/error-page-render.test.ts`.
-- [ ] **17. `g app` añade las librerías con página de error.**
+- [x] **17. `g app` añade las librerías con página de error.**
   - `withGuides` pasa a añadir también las librerías con `src/_error.fud` (con el `io` para mirarlo);
     solo en `g app`, no en `g lib` (criterio 23).
   - *Depende de:* 9.

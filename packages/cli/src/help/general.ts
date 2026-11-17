@@ -30,6 +30,7 @@ Add to a project
   generate term <kind> <name>     a step you can use in .fudspec criteria
   generate api <piece>            the server of a route or a component: its .fudapi and handler
   generate showcase [<library>]   a page per component that shows each case of its fixture
+  generate error-page             the error page: an app's own, or the one a library offers its apps
   add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run

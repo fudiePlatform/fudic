@@ -315,6 +315,8 @@ export async function planOf(
       return (await import('./plans/pipe.js')).planPipe(command.name, command.opts, io);
     case 'style':
       return (await import('./plans/style.js')).planStyle(command.name, command.opts, io);
+    case 'error-page':
+      return (await import('./plans/error-page.js')).planErrorPage(command.opts, io);
     case 'guide':
       return (await import('./plans/guide.js')).planGuide(command.name, command.opts, io);
     case 'translate':

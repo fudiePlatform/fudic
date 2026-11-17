@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@data.status · @data.title</title>
+  </head>
+  <body>
+    @* The error page: no URL of its own and no `load`. Its `data` is the error that brought the
+       user here: `status`, `title`, `detail` when the server said something, `path` (what was
+       asked, without the app's base), `back` (where the user came from, when it is of this app)
+       and `home` (the app's home). `back` and `home` already carry the app's base: write them
+       as they are in an `href`.
+       With a layout: `<link rel="layout" href="../layouts/_layout.fud">`, one that needs no
+       `load` to paint. *@
+    <h1>@data.status · @data.title</h1>
+    @if (data.detail !== undefined) {
+      <p>@data.detail</p>
+    }
+    @if (data.back !== undefined) {
+      <p><a href=@data.back>Back</a></p>
+    } @else {
+      <p><a href=@data.home>Home</a></p>
+    }
+  </body>
+</html>

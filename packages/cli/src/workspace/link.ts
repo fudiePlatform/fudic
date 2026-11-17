@@ -25,7 +25,7 @@ export type ComponentLink =
   | { readonly error: CliError };
 
 /** The `ReadIo` of the CLI as the port `@fudic/resolve` walks packages through. */
-function packageFs(io: ReadIo): PackageFs {
+export function packageFs(io: ReadIo): PackageFs {
   return {
     readFile: (path) => (io.exists(path) ? io.read(path) : undefined),
     realPath: (path) => io.realPath(path),

@@ -67,6 +67,7 @@ export type ParsedCommand =
   | { readonly kind: 'flow'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'api'; readonly piece: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'showcase'; readonly opts: ShowcaseOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'error-page'; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'snippet'; readonly name: string; readonly opts: SnippetOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
@@ -80,7 +81,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'guide' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'flow' | 'term' | 'api' | 'showcase';
+export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'guide' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'flow' | 'term' | 'api' | 'showcase' | 'error-page';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -106,6 +107,7 @@ export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   t: 'term',
   api: 'api',
   showcase: 'showcase',
+  'error-page': 'error-page',
 };
 
 /** What a `fudic generate <type>` without a name could have been. */
@@ -126,6 +128,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   term: 'then cart-has',
   api: 'src/components/button',
   showcase: 'ui',
+  'error-page': '',
 };
 
 /** The command a help or an error is about, from what was typed before it. */
@@ -479,6 +482,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     const unknown = unknownFlag(tokens, [...GLOBAL, 'dir'], topic);
     if (unknown !== null) return unknown;
     return { kind: 'guide', name: name ?? GUIDE_NAME, opts: { ...base, dir: single(tokens, 'dir', LIBS_DIR) }, flags };
+  }
+  // `g error-page` has no name: a project has one error page, in a place fixed by its kind (SDD-87).
+  if (type === 'error-page') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+    if (unknown !== null) return unknown;
+    return { kind: 'error-page', opts: { ...base, ...target(tokens) }, flags };
   }
   if (name === undefined) {
     return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g ${type} ${EXAMPLE[type]}`);
