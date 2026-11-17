@@ -13,7 +13,7 @@ import { viewDiagnostics } from './_view.js';
 
 const HOOKS = ['beforeHydrate', 'afterHydrate', 'beforeCreate', 'afterCreate', 'onConnect', 'onDisconnect', 'onDispose'];
 const NOT_CREATE = HOOKS.filter((h) => !h.endsWith('Create'));
-const OURS = new Set(['FUD1560', 'FUD1561', 'FUD1562']);
+const OURS = new Set(['FUD1560', 'FUD1561', 'FUD1562', 'FUD1563']);
 
 const component = (code: string, view = '<p>x</p>'): string =>
   `@code {\n${code}\n}\n<app-test>\n  <template shadowrootmode="open">${view}</template>\n</app-test>\n`;
@@ -249,5 +249,33 @@ describe('valid files say nothing else either', () => {
   it('a component with the seven hooks has no diagnostic at all', () => {
     const code = HOOKS.map((h) => `${h}((host) => {});`).join('\n');
     expect(everything(component(code))).toEqual([]);
+  });
+});
+
+describe('FUD1563 — a layout hook reads a prop of the layout (decision 21)', () => {
+  const PROPS = "const { site = 'fudic', lang } = props<{ site?: string; lang?: string }>();";
+
+  it('on the read, once per read', () => {
+    expect(said(layout(`${PROPS}\nafterHydrate((host) => { host.title = site; });`))).toEqual(['FUD1563 site']);
+    expect(said(layout(`${PROPS}\nonDisconnect(() => { console.log(site, lang); });`))).toEqual([
+      'FUD1563 site',
+      'FUD1563 lang',
+    ]);
+  });
+
+  it('an imported name read in a layout hook is fine', () => {
+    expect(said(layout(`import { items } from './store';\n${PROPS}\nafterHydrate(() => { items(); });`))).toEqual([]);
+  });
+
+  it('a hook that reads no prop, and a prop read outside any hook, say nothing', () => {
+    expect(said(layout(`${PROPS}\nafterHydrate((host) => { host.dataset.up = '1'; });`))).toEqual([]);
+  });
+
+  it('a local binding of the hook with a prop’s name is not the prop', () => {
+    expect(said(layout(`${PROPS}\nafterHydrate(() => { const site = 'x'; console.log(site); });`))).toEqual([]);
+  });
+
+  it('only a layout: a component or a route hook may read its own props', () => {
+    expect(said(component(`${PROPS}\nafterHydrate(() => { console.log(site); });`))).toEqual([]);
   });
 });

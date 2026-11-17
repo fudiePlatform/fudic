@@ -22,7 +22,7 @@ export default ($props) => {
     const $a = () => {
       let $v;
       $v = String((n()) ?? '');
-      if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n2, $v); }
+      if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.setText($n2, $v); }
     };
     const $u = () => { $a(); };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { computed, effect, signal, subscribe, subscribeIf, written } from '../src/index.js';
+import { computed, effect, signal, subscribe, subscribeIf, written, writtenIf } from '../src/index.js';
 
 describe('written: a write that came before the hookup', () => {
   it('is false for signals nobody wrote, and for none at all', () => {
@@ -176,5 +176,37 @@ describe('subscribeIf over a name of unknown shape', () => {
     subscribeIf(s, fn)();
     s.set(2);
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+/** SDD-86 (framework fix): `writtenIf`, the hookup question for names that may not be signals. */
+describe('writtenIf: a store written before the view hydrated', () => {
+  it('a signal written since its creation answers yes, an untouched one no', () => {
+    const store = signal(0);
+    expect(writtenIf(store)).toBe(false);
+    store.set(1);
+    expect(writtenIf(store)).toBe(true);
+  });
+
+  it('any of several: one written is enough', () => {
+    const a = signal('a');
+    const b = signal('b');
+    b.set('B');
+    expect(writtenIf(a, b)).toBe(true);
+  });
+
+  it('a name that is not a signal answers no — a helper, a number, null, undefined', () => {
+    expect(writtenIf(() => 1, 42, null, undefined, { version: () => 3 })).toBe(false);
+  });
+
+  it('a derived value answers no: it has no version of its own', () => {
+    const base = signal(1);
+    const twice = computed(() => base() * 2);
+    base.set(2);
+    expect(writtenIf(twice)).toBe(false);
+  });
+
+  it('no names: no', () => {
+    expect(writtenIf()).toBe(false);
   });
 });

@@ -21,11 +21,11 @@ customElements.define("app-button", class extends FudicElement {
       const $a = () => {
         let $v;
         $v = (disabled);
-        if ($v !== $w[0]) { $w[0] = $v; if ($v === true) $dom.setAttr($n0, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n0, "disabled", String($v)); else $dom.removeAttr($n0, "disabled"); }
+        if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; if ($v === true) $dom.setAttr($n0, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n0, "disabled", String($v)); else $dom.removeAttr($n0, "disabled"); }
         $v = !!((variant === 'primary'));
-        if ($v !== $w[1]) { $w[1] = $v; $dom.toggleClass($n0, "primary", $v); }
+        if ($v !== $w[1] || !(1 in $w)) { $w[1] = $v; $dom.toggleClass($n0, "primary", $v); }
         $v = !!((variant === 'ghost'));
-        if ($v !== $w[2]) { $w[2] = $v; $dom.toggleClass($n0, "ghost", $v); }
+        if ($v !== $w[2] || !(2 in $w)) { $w[2] = $v; $dom.toggleClass($n0, "ghost", $v); }
       };
 
       return {

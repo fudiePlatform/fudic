@@ -13,7 +13,7 @@ customElements.define("app-lifecycle", class extends FudicElement {
       const $hk = $hooks();
       const $hh = $dom.host($shadow);
       let $host = $dom.host($shadow);
-      let box;
+      let box: HTMLElement | null = null;
       const log: string[] = [];
       $hk.add("beforeHydrate", () => {
     log.push('beforeHydrate');
@@ -104,7 +104,7 @@ customElements.define("app-lifecycle", class extends FudicElement {
       const $a = () => {
         let $v;
         $v = (variant);
-        if ($v !== $w[0]) { $w[0] = $v; if ($v === true) $dom.setAttr($host, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($host, "variant", String($v)); else $dom.removeAttr($host, "variant"); }
+        if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; if ($v === true) $dom.setAttr($host, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($host, "variant", String($v)); else $dom.removeAttr($host, "variant"); }
       };
 
       return {

@@ -201,9 +201,9 @@ customElements.define("app-card", class extends FudicElement {
       const $a = () => {
         let $v;
         $v = !!((variant === 'highlight'));
-        if ($v !== $w[0]) { $w[0] = $v; $dom.toggleClass($n0, "highlight", $v); }
+        if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.toggleClass($n0, "highlight", $v); }
         $v = String((title) ?? '');
-        if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n5, $v); }
+        if ($v !== $w[1] || !(1 in $w)) { $w[1] = $v; $dom.setText($n5, $v); }
       };
       const $u = () => { $a(); $u0(); $u1(); };
 

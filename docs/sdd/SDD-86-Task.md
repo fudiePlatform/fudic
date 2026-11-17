@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 19 / 28 — `Listo`. (Implementación 27 / 28 · Tests 19 / 28)
+> **Progreso:** 22 / 28 — `Listo`. (Implementación 27 / 28 · Tests 22 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -142,7 +142,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* 2.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/level.test.ts`.
-- impl [x] · tests [ ] — **16. Los hooks de punta a punta.**
+- impl [x] · tests [x] — **16. Los hooks de punta a punta.**
   - Con el harness de hidratación del compilador: el orden al hidratar y al crear, los `ref` en
     `beforeHydrate` / `afterHydrate` / `onDispose`, el movimiento sin `onDispose`, tres
     `afterHydrate` en orden, el que lanza, el host en `fn`, el hijo antes que el padre (criterios
@@ -173,13 +173,13 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 5 — Las props reflejadas
 
-- impl [x] · tests [ ] — **20. El host en el servidor, al hidratar y al actualizar.**
+- impl [x] · tests [x] — **20. El host en el servidor, al hidratar y al actualizar.**
   - Criterio 23: el servidor escribe; `h` no reescribe; `u` cambia, vacía con `true` y quita con
     `false`, `null` y `undefined`; `0` es `"0"`.
   - *Depende de:* 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/hydrate/host-reflect.test.ts`.
-- impl [x] · tests [ ] — **21. El host al crear.**
+- impl [x] · tests [x] — **21. El host al crear.**
   - Criterio 24: creado desde un `@foreach`, el host lleva `role="group"` y `variant` como en el
     servidor. Si falta alguno, se arregla en el emit de `emitHost`.
   - *Depende de:* 9.

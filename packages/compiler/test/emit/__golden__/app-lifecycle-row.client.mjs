@@ -28,7 +28,7 @@ customElements.define("app-lifecycle-row", class extends FudicElement {
       const $a = () => {
         let $v;
         $v = String((label) ?? '');
-        if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n1, $v); }
+        if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.setText($n1, $v); }
       };
 
       return {

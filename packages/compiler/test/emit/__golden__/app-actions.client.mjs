@@ -40,7 +40,7 @@ customElements.define("app-actions", class extends FudicElement {
         const $a = () => {
           let $v;
           $v = String((row.label) ?? '');
-          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n13, $v); }
+          if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.setText($n13, $v); }
         };
         const $s = () => {
           $n7 && $d.push($dom.event($n7, "click", ($event) => del()));
