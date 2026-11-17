@@ -32,6 +32,12 @@ ${body}
     expect(diagnosticsOf(ERROR, error('<h1>@data.status @data.title</h1><p>@data.detail</p>'))).toEqual([]);
   });
 
+  it('`@data.home` is a string, always there, and `@data.back` maybe (SDD-87 §3.4)', () => {
+    expect(diagnosticsOf(ERROR, error('<a href=@data.home>home</a>@if (data.back !== undefined) { <a href=@data.back>back</a> }'))).toEqual([]);
+    const diags = diagnosticsOf(ERROR, error('@code { const n: number = data.home; const s: string = data.back; }'));
+    expect(diags.map((d) => [d.code, d.sourceText])).toEqual([[2322, 'n'], [2322, 's']]);
+  });
+
   it('anything else is not', () => {
     const diags = diagnosticsOf(ERROR, error('<p>@data.stack</p>'));
 

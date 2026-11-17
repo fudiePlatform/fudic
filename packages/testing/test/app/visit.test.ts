@@ -50,6 +50,8 @@ describe('criterion 23: a load that throws notFound()', () => {
     expect(page.getByText('no post "nope"')).toBeInTheDocument();
     // `_error.fud` uses the layout with nothing to say: the default of its prop.
     expect(page.document.documentElement.lang).toBe('es');
+    // Home is the app's base: `/` here (SDD-87 §3.4).
+    expect(page.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/');
   });
 });
 
