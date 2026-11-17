@@ -31,6 +31,13 @@ const HOOKS: ReadonlySet<string> = new Set(HOOK_KINDS);
 
 export const isHookKind = (name: string): name is HookKind => HOOKS.has(name);
 
+/** Whether a top-level statement is, by itself, a call to a hook: what registers one. */
+export function isHookStatement(stmt: OxcNode): boolean {
+  const call = stmt['expression'] as OxcNode | undefined;
+  const callee = call?.['callee'] as OxcNode | undefined;
+  return call?.type === 'CallExpression' && callee?.type === 'Identifier' && isHookKind(String(callee['name']));
+}
+
 /** One call to a hook, in source coordinates. */
 export interface HookUse {
   readonly kind: HookKind;

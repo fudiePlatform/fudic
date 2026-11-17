@@ -20,7 +20,7 @@ import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
 import { FUD0290, FUD0684 } from '@fudic/diagnostics';
-import { JsBatch, isHookKind, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { JsBatch, isHookStatement, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import {
   awaitedReads,
@@ -34,6 +34,7 @@ import { formSendDiagnostics } from './controls.js';
 import { deferredSpans, serverCut } from './server-cut.js';
 import {
   changeableBindings,
+  freeReferenceNodes,
   freeReferences,
   reservedIdentifiers,
   setCalls,
@@ -466,6 +467,8 @@ export interface ExtractedCode {
   readonly hooks: readonly HookUse[];
   /** Every declaration or import of the `@code` named like a hook (`FUD1562`). */
   readonly hookShadows: readonly HookShadow[];
+  /** Every name the top-level hook calls read from outside them: in a layout, a prop is `FUD1563`. */
+  readonly hookReads: readonly { readonly name: string; readonly span: Span }[];
   /**
    * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
    *
@@ -659,7 +662,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
       let zone: CodeZone = cut === undefined || cut.has(stmt) ? 'neutral' : 'client';
       // A hook is the browser's alone, in every role: the server and the Service Worker never
       // see it, and a layout's travels in its route's chunk.
-      if (registersHook(stmt)) zone = 'client';
+      if (isHookStatement(stmt)) zone = 'client';
       // A reactive the markup reads is still the browser's own declaration: the server renders
       // it inert from what was just read, and the chunk declares it — and hands it to a child
       // as a cell (SDD-60 §4.8).
@@ -759,6 +762,10 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     declared: topLevelBindings(allStatements),
     hooks: lifecycle.uses,
     hookShadows: lifecycle.shadows,
+    hookReads: freeReferenceNodes(allStatements.filter(isHookStatement)).map((node) => ({
+      name: String(node['name']),
+      span: result.value.mapSpan(node.start, node.end),
+    })),
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
@@ -1492,13 +1499,6 @@ interface Edit {
   /** How many characters it replaces. `0` for an insertion, which most of them are. */
   readonly remove: number;
   readonly text: string;
-}
-
-/** Whether a top-level statement is, by itself, a call to a hook. */
-function registersHook(stmt: OxcNode): boolean {
-  const call = field(stmt, 'expression');
-  const callee = call === undefined ? undefined : field(call, 'callee');
-  return is(call, 'CallExpression') && is(callee, 'Identifier') && isHookKind(name(callee));
 }
 
 /**

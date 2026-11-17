@@ -24,6 +24,7 @@ import { FUD0700, FUD0701, FUD0702 } from '@fudic/diagnostics';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import type { HookKind } from '../oxc/index.js';
 import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
+import { codeHookDiagnostics } from '../semantic/analyzers/lifecycle.js';
 import { EXPORTED_LOAD } from '../semantic/analyzers/layout-load.js';
 
 /**
@@ -99,6 +100,16 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // are the semantic pass's; the build reads a layout's diagnostics off its emit, so they are
   // asked here too. (`FUD0706` is retired: Razor in any `<style>` is `FUD0132`, decision 136.)
   diagnostics.push(...layoutBodyDiagnostics(doc.body));
+  // Its hooks, for the same reason: where they are written, and that they read no prop.
+  diagnostics.push(
+    ...codeHookDiagnostics({
+      type: doc.type,
+      uses: code.hooks,
+      shadows: code.hookShadows,
+      reads: code.hookReads,
+      declared: code.declared,
+    }),
+  );
   return { props, diagnostics };
 }
 

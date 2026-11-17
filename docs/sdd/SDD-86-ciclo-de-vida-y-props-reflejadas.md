@@ -7,7 +7,7 @@
 > postorden), 20 (navegar sustituye el documento), 28 (los snippets), 34 (`FudicControlElement`), 39
 > (la mitad de cliente de una ruta), 68 (`owned` y la limpieza de `r`), 85 (crear clonando). SDD-85
 > tiene que estar en `main` antes de empezar.
-> **Rango de diagnósticos:** `FUD1560`–`FUD1569` (nuevo). Usados: `FUD1560`–`FUD1562`.
+> **Rango de diagnósticos:** `FUD1560`–`FUD1569` (nuevo). Usados: `FUD1560`–`FUD1563`.
 > **Decisiones de gramática:** ninguna. Los hooks son funciones intrínsecas de `@code`, como `props`.
 > **Origen:** [IDEA-08](./ideas/IDEA-08-adelgazar-el-cliente.md) §4, y lo hablado con Pedro el
 > 2026-11-16. Con esta SDD la IDEA-08 queda cerrada.
@@ -147,6 +147,7 @@ en que se escribieron.
 | `FUD1560` | error | Lifecycle hook outside the top level of `@code` | La llamada no es una sentencia de nivel superior del `@code` |
 | `FUD1561` | error | A create hook in a file that is never created | `beforeCreate` o `afterCreate` en una ruta, una página o un layout: siempre vienen del servidor |
 | `FUD1562` | error | A declaration hides a lifecycle hook | El `@code` declara o importa un nombre que es el de un hook |
+| `FUD1563` | error | A layout hook reads a prop of the layout | Un hook del `@code` de un layout lee una de sus props, que solo tienen valor en el servidor (§8.1, 22) |
 
 Cada uno es un fichero en `packages/diagnostics/src/codes/`, con su `.md` y su línea en `index.ts`,
 como manda `CLAUDE.md`. `FUD1563`–`FUD1569` quedan libres.
@@ -626,3 +627,12 @@ Nada.
     de servidor que traen los hooks; el HTML pintado es el mismo.
 21. **El `@code` de un layout va en su `<head>`**, como siempre (`FUD0153` fuera de él). Los hooks
     de un `@code` mal colocado no viajan, igual que sus props.
+22. **Un hook de layout no lee las props del layout: `FUD1563`** (al implementar). Las resuelve el
+    `layout` del `.fudapi` de la ruta, en el servidor, y no viajan al navegador, donde corre el
+    hook. Leer una sería un `ReferenceError` silencioso (el hook lo captura y lo reporta). El
+    diagnóstico sale en el editor y en el build (que lee los de un layout de su emit). El «código
+    de nivel superior del layout» del criterio 26 es, por tanto, sus hooks y sus imports: nada más
+    cabe en el `@code` de un layout (`FUD0700`).
+23. **Un `ref` vale `null` en `beforeHydrate` si se declara como dice la guía**
+    (`let box: HTMLElement | null = null;`). Declarado sin valor, vale `undefined` hasta el
+    enganche: el compilador no inicializa las variables del autor.
