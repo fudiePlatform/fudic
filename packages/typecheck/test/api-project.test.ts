@@ -167,3 +167,33 @@ describe('writeApiDeclarations', () => {
     expect(writeApiDeclarations(project({}))).toEqual([]);
   });
 });
+
+/** SDD-87 §4.3, criterion 18: the `.fudapi` beside the error page a library offers. */
+describe('the error page of a library', () => {
+  const ERROR_PAGE = PAGE.replace('[id]', '_error');
+  const LIB = JSON.stringify({ kind: 'lib', prefix: 'ui' });
+
+  it('src/_error.fudapi of a library is an error page’s: load is FUD1010, not FUD1090', () => {
+    const root = project({ 'fudic.json': LIB, 'src/_error.fudapi': 'load\n  n  i32\n', 'src/_error.fud': ERROR_PAGE });
+    expect(apiContextOf(root, readApiProject(root).sources[0]!)).toEqual({ route: { params: [], error: true } });
+    expect(apiDiagnostics(root).map((f) => [f.file.slice(root.length + 1), f.diagnostics.map((d) => d.code)])).toEqual([
+      ['src/_error.fudapi', ['FUD1010']],
+    ]);
+  });
+
+  it('a function there is FUD1010 too', () => {
+    const root = project({ 'fudic.json': LIB, 'src/_error.fudapi': 'get x\n  -> str\n', 'src/_error.fud': ERROR_PAGE });
+    expect(apiDiagnostics(root).flatMap((f) => f.diagnostics.map((d) => d.code))).toEqual(['FUD1010']);
+  });
+
+  it('not without its _error.fud, not in an app, and not anywhere else in the library', () => {
+    const lonely = project({ 'fudic.json': LIB, 'src/_error.fudapi': 'load\n  n  i32\n' });
+    expect(apiContextOf(lonely, readApiProject(lonely).sources[0]!)).toEqual({});
+    for (const config of [JSON.stringify({ kind: 'app', prefix: 'a' }), undefined]) {
+      const app = project({ ...(config !== undefined ? { 'fudic.json': config } : {}), 'src/_error.fudapi': 'load\n  n  i32\n', 'src/_error.fud': ERROR_PAGE });
+      expect(apiContextOf(app, readApiProject(app).sources[0]!)).toEqual({});
+    }
+    const nested = project({ 'fudic.json': LIB, 'src/components/_error.fudapi': 'load\n  n  i32\n', 'src/components/_error.fud': ERROR_PAGE });
+    expect(apiContextOf(nested, readApiProject(nested).sources[0]!)).toEqual({});
+  });
+});

@@ -74,3 +74,21 @@ ${body}
     expect(hoverAt(source, 'detail').docs).toBe("What the server said, when it said something: `notFound('no such user')`.");
   });
 });
+
+/** SDD-87 §4.3, criterion 17: the page a library offers, `src/_error.fud`, is typed by its name. */
+describe('_error.fud of a library', () => {
+  const PAGE = (body: string): string => `<!DOCTYPE html>\n<html lang="es">\n<head><title>@data.status</title></head>\n<body>${body}</body>\n</html>\n`;
+
+  it('data.status is a number and data.home a string', () => {
+    // A number has toFixed and no toUpperCase; a string, the other way round (2551: TS suggests `fixed`).
+    expect(diagnosticsOf('libs/ui/src/_error.fud', PAGE('<p>@(data.status.toFixed(0)) @(data.home.toUpperCase())</p>'))).toEqual([]);
+    const diags = diagnosticsOf('libs/ui/src/_error.fud', PAGE('<p>@(data.status.toUpperCase()) @(data.home.toFixed(0))</p>'));
+    expect(diags.map((d) => [d.code, d.sourceText])).toEqual([[2339, 'toUpperCase'], [2551, 'toFixed']]);
+    expect(diagnosticsOf('libs/ui/src/_error.fud', PAGE('<h1>@data.status</h1><a href=@data.home>i</a>'))).toEqual([]);
+  });
+
+  it('data.foo is a type error', () => {
+    const diags = diagnosticsOf('libs/ui/src/_error.fud', PAGE('<p>@data.foo</p>'));
+    expect(diags.map((d) => [d.code, d.sourceText])).toEqual([[2339, 'foo']]);
+  });
+});

@@ -1,6 +1,18 @@
+import { existsSync, mkdirSync, symlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { fudicTest } from './src/config.js';
+
+/**
+ * `lib-workspace/apps/admin` depends on `lib-workspace/libs/ui`, installed as pnpm installs a
+ * workspace package: a link under its `node_modules`. `node_modules` is never committed, so the
+ * link is made here, before the project that needs it is read.
+ */
+const LIB_LINK = fileURLToPath(new URL('./test/lib-workspace/apps/admin/node_modules/@fixture/ui', import.meta.url));
+if (!existsSync(LIB_LINK)) {
+  mkdirSync(fileURLToPath(new URL('./test/lib-workspace/apps/admin/node_modules/@fixture', import.meta.url)), { recursive: true });
+  symlinkSync(fileURLToPath(new URL('./test/lib-workspace/libs/ui', import.meta.url)), LIB_LINK, 'junction');
+}
 
 export default defineConfig({
   test: {
@@ -31,6 +43,13 @@ export default defineConfig({
         plugins: [fudicTest()],
         root: 'test/locales-app',
         test: { name: 'locales-app', include: ['*.test.ts'] },
+      },
+      // An app under `/admin/` without `_error.fud`, whose library offers one (SDD-87 §3.2).
+      {
+        plugins: [fudicTest()],
+        root: 'test/lib-workspace/apps/admin',
+        base: '/admin/',
+        test: { name: 'lib-workspace', include: ['*.test.ts'] },
       },
     ],
     coverage: {
