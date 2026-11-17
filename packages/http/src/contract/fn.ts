@@ -16,13 +16,14 @@ import { decode } from '../client/codec.js';
 import { join, pageParams } from '../client/url.js';
 import { isForm } from '../client/form.js';
 import { announceStale, invalidate } from '../client/invalidate.js';
+import type { Download } from '../client/download.js';
 import { runPipeline } from '../client/pipeline.js';
-import { multipartBody, send } from '../client/send.js';
+import { send } from '../client/send.js';
 import { STAGES } from '../client/stages/index.js';
+import type { Upload } from '../client/upload.js';
 import { run } from '../compose.js';
 import { ValidationError } from '../errors.js';
 import type { CallOptions, ClientContext, Method, ServerContext, ServerFunction } from '../types.js';
-import { toBase64url } from '../wire/base64url.js';
 import type { Wire } from '../wire/wire.js';
 import { compose, type Level } from './middleware.js';
 import { checkRules, type ArgRule } from './rules.js';
@@ -63,6 +64,10 @@ export interface FnSpec {
   readonly sig?: string;
   /** Whether a call may carry a file: then it travels as `multipart/form-data` (SDD-81 §3.3). */
   readonly files?: boolean;
+  /** The browser variant of a function with `files`: how its call goes out (`upload`, piece `http/files`). */
+  readonly upload?: Upload;
+  /** The browser variant of a function whose `->` reaches a `file`: how its value is read (`download`). */
+  readonly download?: Download;
   /** The `max-size` of each file slot that declares one, by path: where the server cuts a part (SDD-81 §3.5). */
   readonly fileLimits?: Readonly<Record<string, number>>;
   /** The type of `->`; absent when it returns nothing (204). */
@@ -144,6 +149,12 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
   const { wire } = spec;
   const types = spec.args ?? {};
   const { steps, compression } = compose(spec.chain, 'client');
+  const decodeSpec = {
+    wire,
+    ...(spec.returns !== undefined ? { returns: spec.returns } : {}),
+    ...(spec.fails !== undefined ? { fails: spec.fails } : {}),
+    ...(spec.download !== undefined ? { download: spec.download } : {}),
+  };
 
   const call = async (input?: unknown, options: CallOptions = {}): Promise<unknown> => {
     // The client halves of the chain and the browser rules are registered by the browser root,
@@ -193,26 +204,24 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       const headers = new Headers(c.headers);
       if (spec.sig !== undefined) headers.set(SIG_HEADER, spec.sig);
       let sent: BodyInit | undefined;
-      if (spec.files === true && c.method !== 'GET') {
+      const { upload } = spec;
+      if (upload !== undefined && c.method !== 'GET') {
         // A call that may carry files is always multipart, carrying one this time or not, and is
         // never compressed: its files are compressed already, or will not be (SDD-81 §3.3).
-        sent = multipartBody(wire, types, (isForm(c.args) ? c.args.$value() : (c.args ?? {})) as Readonly<Record<string, unknown>>);
-      } else if (c.args !== undefined && Object.keys(types).length > 0) {
+        const body = upload.body(wire, types, (isForm(c.args) ? c.args.$value() : (c.args ?? {})) as Readonly<Record<string, unknown>>);
+        return decode(await upload.send(target, { method: c.method, headers, signal: c.signal, body }, options.onProgress), decodeSpec);
+      }
+      if (c.args !== undefined && Object.keys(types).length > 0) {
         if (c.method === 'GET') {
-          const out = wire.encodeArgs(types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>)!;
-          target.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
+          target.searchParams.set('a', queryText(types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>));
         } else {
           const out = await runPipeline(STAGES, { value: c.args, headers: {} }, { method: c.method, compress: compression, wire, types });
           for (const [name, v] of Object.entries(out.headers)) headers.set(name, v);
           sent = out.value as string | Uint8Array<ArrayBuffer>;
         }
       }
-      const response = await send(
-        target,
-        { method: c.method, headers, signal: c.signal, credentials: 'same-origin', ...(sent !== undefined ? { body: sent } : {}) },
-        options.onProgress,
-      );
-      return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}), ...(spec.fails !== undefined ? { fails: spec.fails } : {}) });
+      const response = await send(target, { method: c.method, headers, signal: c.signal, ...(sent !== undefined ? { body: sent } : {}) }, options.onProgress);
+      return decode(response, decodeSpec);
     }
     const own = (spec.invalidates ?? []).map((path) => join(base, path));
     const stale = spec.method === 'GET' ? own : [globalThis.location.pathname, ...own];
@@ -234,6 +243,15 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
   }) as unknown as Contract<C, R, A>;
 }
 
+/**
+ * The body arguments of a `get`, as `?a=` carries them: JSON text, whatever the function's
+ * format. A URL is text people read, log and share; bytes in base64url were none of that, and
+ * made a page that speaks only JSON download the binary codec to write one.
+ */
+function queryText(types: Readonly<Record<string, Ty>>, args: Readonly<Record<string, unknown>>): string {
+  return JSON.stringify(Object.fromEntries(Object.keys(types).map((name) => [name, args[name]])));
+}
+
 /** `/_fudic/fn/<id with the page's values>/<name>/<route with its values>`. */
 export function pathOf(
   spec: Pick<FnSpec, 'id' | 'name' | 'route'>,
@@ -250,7 +268,7 @@ export function pathOf(
 
 /**
  * The URL that calls a `get` with `input` (SDD-81 §3.4): its route and query filled, its body
- * arguments in `?a=` in its format, the page's params and the app's `base`, as the call writes
+ * arguments in `?a=` as JSON text, the page's params and the app's `base`, as the call writes
  * it. For a `href`, a `src`: the browser asks it without any script. Path and query only: it is
  * of this origin wherever it is painted, the server's render included.
  */
@@ -264,11 +282,7 @@ export function linkOf(spec: FnSpec, input: unknown, options: Pick<CallOptions, 
   const page = options.params ?? pageParams(spec.page, base, (globalThis as { readonly location?: Location }).location?.pathname ?? '/');
   const url = new URL(join(base, pathOf(spec, page, route)), 'http://link');
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, toText(value));
-  if (Object.keys(types).length > 0) {
-    // With arguments to write, a wire always writes something (`undefined` is for none).
-    const out = spec.wire.encodeArgs(types, conformAll(types, record, 'argument'))!;
-    url.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
-  }
+  if (Object.keys(types).length > 0) url.searchParams.set('a', queryText(types, conformAll(types, record, 'argument')));
   if (spec.sig !== undefined) url.searchParams.set(SIG_PARAM, spec.sig);
   return `${url.pathname}${url.search}`;
 }

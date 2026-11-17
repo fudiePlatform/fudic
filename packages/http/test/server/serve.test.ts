@@ -15,7 +15,6 @@ import { serve } from '../../src/contract/server.js';
 import { badRequest, notFound, redirect } from '../../src/errors.js';
 import type { DispatchOptions } from '../../src/server/dispatch.js';
 import type { ServerContext } from '../../src/types.js';
-import { toBase64url } from '../../src/wire/base64url.js';
 import { binWire } from '../../src/wire/bin.js';
 import { jsonWire } from '../../src/wire/json.js';
 import { formTypes } from '../../src/wire/schema.js';
@@ -96,11 +95,10 @@ const PROBLEM_JSON = 'application/problem+json';
 const type = (fields: Record<string, Ty>): Ty => ({ fields: () => fields });
 
 describe('the arguments, in fud-bin', () => {
-  it('criterion 6: a GET reads ?a= as the level of its arguments, in base64url', async () => {
+  it('criterion 6: a GET reads ?a= as JSON text, even in fud-bin', async () => {
     const types: Record<string, Ty> = { q: 'str' };
     const search = get((ctx) => ctx.args.q, { args: types, returns: 'str' });
-    const a = toBase64url(binWire.encodeArgs(types, { q: 'ana' }) as Uint8Array);
-    expect(a).toMatch(/^[A-Za-z0-9_-]+$/u);
+    const a = encodeURIComponent(JSON.stringify({ q: 'ana' }));
     const res = await dispatch(new Request(`${URL_SAVE}?a=${a}`), search);
     expect(res.status).toBe(200);
     expect(await binValue(res, 'str')).toBe('ana');
@@ -113,11 +111,11 @@ describe('the arguments, in fud-bin', () => {
     expect(await binValue(await dispatch(new Request(`${URL_SAVE}?a=`), opt), 'str')).toBe('{}');
   });
 
-  it('?a= that is not base64url is a 400', async () => {
+  it('?a= that is not JSON is a 400', async () => {
     for (const a of ['%2B%2F', 'A']) {
       const res = await dispatch(new Request(`${URL_SAVE}?a=${a}`), get(() => 1, { args: { q: 'str' } }));
       expect(res.status).toBe(400);
-      expect((await binProblem(res)).detail).toBe('the arguments are not valid base64url');
+      expect((await binProblem(res)).detail).toBe('the arguments are not valid JSON');
     }
   });
 

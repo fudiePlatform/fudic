@@ -314,7 +314,7 @@ Every call travels in binary: its arguments, its value and its problem. Both end
 same contract, so names and types stay home and only the values travel — a `bool` is a bit, a
 `uuid` 16 bytes, a `date` 6 bytes that come back a `Date`. Route and `query` arguments stay in
 the URL as text; the body is `application/fud+bin`, a failure `application/problem+fud`, and
-the arguments of a `get` go in `?a=` as base64url. A value that does not fit its type is
+the arguments of a `get` go in `?a=` as JSON text, whatever the format: a URL is text. A value that does not fit its type is
 refused by the side that writes it, never sent in another format. Past the threshold of
 `compress` the body is compressed.
 

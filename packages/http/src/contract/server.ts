@@ -145,7 +145,7 @@ async function dispatch(
     const types = spec.args ?? {};
     const raw =
       request.method === 'GET'
-        ? queryArgs(url, wire, types)
+        ? queryArgs(url, types)
         : spool !== undefined
           ? await multipartArgs(request, wire, types, { limits: { ...DEFAULT_LIMITS, ...options.uploads }, ...(spec.fileLimits !== undefined ? { fileLimits: spec.fileLimits } : {}) }, spool)
           : await bodyArgs(request, wire, types);

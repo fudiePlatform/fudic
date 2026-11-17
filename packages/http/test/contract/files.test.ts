@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fn, resetRegistry, stub, type FnSpec } from '../../src/contract/index.js';
 import { contractsHandler, type ContractsOptions } from '../../src/contract/server.js';
 import { HttpError } from '../../src/errors.js';
-import { filenameOf } from '../../src/client/codec.js';
+import { download, filenameOf } from '../../src/client/download.js';
+import { upload } from '../../src/client/upload.js';
 import { DEFAULT_LIMITS, memorySpool, releasing } from '../../src/server/upload.js';
 import type { Spool } from '../../src/server/uploads.js';
 import type { Progress } from '../../src/types.js';
@@ -45,7 +46,7 @@ function pair(over: Partial<FnSpec>, handler: Handler, options: ContractsOptions
     seen.push(request.clone());
     return handle(request);
   });
-  const call = stub<never, any, any>(spec) as unknown as ((args?: unknown, options?: object) => Promise<any>) & { url: (args?: unknown, o?: object) => string };
+  const call = stub<never, any, any>({ ...spec, ...(spec.files === true ? { upload } : {}), download }) as unknown as ((args?: unknown, options?: object) => Promise<any>) & { url: (args?: unknown, o?: object) => string };
   return { spec, call, seen, handle, url: `${ORIGIN}/_fudic/fn/${spec.id}/save` };
 }
 
@@ -464,10 +465,9 @@ describe('criterion 22: url() of a get', () => {
       { method: 'GET', base: '/app/', name: 'avatar', route: [':id'], params: { id: 'i32' }, query: { size: 'str' }, args: { v: 'i32' }, returns: 'file' } as Partial<FnSpec>,
       () => undefined,
     );
-    const a = binWire.encodeArgs({ v: 'i32' }, { v: 2 }) as Uint8Array;
     const url = call.url({ id: 3, size: 'big', v: 2 });
     expect(url.startsWith(`/app/_fudic/fn/${spec.id}/avatar/3?size=big&a=`)).toBe(true);
-    expect(new URLSearchParams(url.split('?')[1]).get('a')).toBe(Buffer.from(a).toString('base64url'));
+    expect(new URLSearchParams(url.split('?')[1]).get('a')).toBe('{"v":2}');
   });
 
   it('JSON args travel as text; no args, no ?a=; the page params given', () => {
@@ -778,7 +778,7 @@ describe('the corners of the client', () => {
     // The browser half of a `form:=` call: the value sent is the form's, its file control in its part.
     const form = formOf({ cover: file() });
     form.cover.set(png('f.png'));
-    const withForm = stub<never, any, any>({ ...spec, form: form as never }) as unknown as (a: unknown) => Promise<unknown>;
+    const withForm = stub<never, any, any>({ ...spec, upload, form: form as never }) as unknown as (a: unknown) => Promise<unknown>;
     await withForm(form);
     expect(got.cover.name).toBe('f.png');
   });
@@ -826,7 +826,7 @@ describe('the corners of the client', () => {
   });
 
   it('send without a method posts', async () => {
-    const { send } = await import('../../src/client/send.js');
+    const { send } = upload;
     const { FakeXhr, made } = fakeXhr(async () => new Response('ok'));
     vi.stubGlobal('XMLHttpRequest', FakeXhr);
     const response = await send(new URL(`${ORIGIN}/x`), { body: new FormData(), signal: new AbortController().signal }, undefined);

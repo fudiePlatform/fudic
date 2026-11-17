@@ -13,7 +13,7 @@ import type { ServerContext } from '../types.js';
 import { markPrivate } from './context.js';
 import type { ServerSettings } from './settings.js';
 import type { Spool, UploadLimits } from './uploads.js';
-import { fromBase64url } from '../wire/base64url.js';
+import { jsonWire } from '../wire/json.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
 import { hasFiles, splitValue, VALUE_PART } from '../wire/files.js';
@@ -54,19 +54,18 @@ export function settingsOf(options: DispatchOptions): ServerSettings {
 const utf8 = new TextEncoder();
 
 /**
- * The arguments of a GET: `?a=` in the function's format — base64url bytes in `fud-bin`, JSON
- * text with `use json` — or none. The rest carry a body (`body.ts`).
+ * The arguments of a GET: `?a=` as JSON text, whatever the function's format, or none. A URL is
+ * text (BUG-62): the format of a function is the format of its bodies. The rest carry a body
+ * (`body.ts`).
  */
-export function queryArgs(url: URL, wire: Wire, types: Readonly<Record<string, Ty>>): Record<string, unknown> {
+export function queryArgs(url: URL, types: Readonly<Record<string, Ty>>): Record<string, unknown> {
   const text = url.searchParams.get('a');
   if (text === null || text === '') return {};
-  let bytes: Uint8Array;
   try {
-    bytes = wire.name === 'fud-bin' ? fromBase64url(text) : utf8.encode(text);
-  } catch (e) {
-    throw badRequest((e as Error).message);
+    return jsonWire.decodeArgs(types, utf8.encode(text));
+  } catch {
+    throw badRequest('the arguments are not valid JSON');
   }
-  return wire.decodeArgs(types, bytes);
 }
 
 /**

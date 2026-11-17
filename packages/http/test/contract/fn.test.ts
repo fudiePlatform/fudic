@@ -26,7 +26,6 @@ import { serve } from '../../src/contract/server.js';
 import { CODE_HEADER, HttpError, notFound, redirect, Redirect, ValidationError } from '../../src/errors.js';
 import type { DispatchOptions } from '../../src/server/dispatch.js';
 import type { ServerContext } from '../../src/types.js';
-import { fromBase64url } from '../../src/wire/base64url.js';
 import { binWire } from '../../src/wire/bin.js';
 import { jsonWire } from '../../src/wire/json.js';
 import { formTypes } from '../../src/wire/schema.js';
@@ -177,7 +176,7 @@ describe('criterion 36: route, query and body', () => {
     expect(form.$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
-  it('criterion 6: a GET sends its body arguments in ?a= as base64url, and its Person[] comes back as it left', async () => {
+  it('criterion 6: a GET sends its body arguments in ?a= as JSON text, whatever its format, and its Person[] comes back as it left', async () => {
     const PERSON: Ty = { fields: () => ({ id: 'uuid', name: 'str', born: { opt: 'date' } }) };
     const ana = { id: ID, name: 'Ana', born: new Date('1990-05-01T00:00:00.000Z') };
     const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', args: { q: 'str' }, returns: { list: PERSON }, chain: [], wire: binWire };
@@ -188,8 +187,7 @@ describe('criterion 36: route, query and body', () => {
 
     expect(await search({ q: 'ana' })).toEqual([ana, { id: ID, name: 'Eva' }]);
     const a = sent[0]!.url.searchParams.get('a')!;
-    expect(a).toMatch(/^[A-Za-z0-9_-]+$/u);
-    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(a))).toEqual({ q: 'ana' });
+    expect(a).toBe('{"q":"ana"}');
     expect(sent[0]!.init.body).toBeUndefined();
     expect(headersOf(sent[0]!.init).has('content-type')).toBe(false);
   });
@@ -203,7 +201,7 @@ describe('criterion 36: route, query and body', () => {
 
     expect(await search({ q: 'an', page: 2 })).toEqual(['Ana']);
     expect(sent[0]!.url.searchParams.get('page')).toBe('2');
-    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ q: 'an' });
+    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ q: 'an' });
     expect(seen.ctx!.args).toEqual({ q: 'an' });
     expect(seen.ctx!.query).toEqual({ page: 2 });
 
@@ -222,7 +220,7 @@ describe('criterion 36: route, query and body', () => {
     const find = stub<never, unknown, typeof f>(spec);
     f.$set({ name: 'Ana', age: 30 });
     await find(f);
-    expect(binWire.decodeArgs(args, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ name: 'Ana', age: 30 });
+    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ name: 'Ana', age: 30 });
     expect((seen.ctx!['form'] as typeof f).$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
