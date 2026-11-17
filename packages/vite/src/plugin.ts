@@ -13,7 +13,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { dirname, join, relative, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath, sep } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import { createUrlResolver, LINKER_NEEDS, wantsNonce } from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
@@ -1253,6 +1253,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
         });
       }
+      // The shared runtime belongs to the ORIGIN (SDD-45 §4.2): its URLs are `/_fudic/<version>/…`,
+      // whatever the app's `base`. A host fuses every app's `_fudic/` at its root; preview serves
+      // one app, so under a `base` it answers them from this build's own copy (SDD-87).
+      if (server.config.base !== '/') server.middlewares.use(originRuntime(outDir));
       server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.
@@ -2695,6 +2699,24 @@ export function missingShellEntries(
     missing.push(entry);
   }
   return missing;
+}
+
+/**
+ * Preview's answer to `/_fudic/<version>/<package>/<piece>.js` at the origin's root, from
+ * `<outDir>/_fudic/`: the runtime a based app asks for where a host would have fused it. Only a
+ * piece's URL, and only a file that is there; anything else goes on.
+ */
+export function originRuntime(outDir: string) {
+  const root = resolvePath(outDir, RUNTIME_DIR);
+  return (req: IncomingMessage, res: ServerResponse, next: () => void): void => {
+    const pathname = (req.url ?? '').split('?')[0]!;
+    if (!pathname.startsWith(`/${RUNTIME_DIR}/`) || !pathname.endsWith('.js')) return next();
+    const file = resolvePath(root, `.${decodeURIComponent(pathname.slice(RUNTIME_DIR.length + 1))}`);
+    // Never a file outside `_fudic/`: a `..` in the URL stays a 404, not a read of the disk.
+    if (!file.startsWith(`${root}${sep}`) || !existsSync(file)) return next();
+    res.setHeader('content-type', 'text/javascript; charset=utf-8');
+    res.end(readFileSync(file));
+  };
 }
 
 /**
