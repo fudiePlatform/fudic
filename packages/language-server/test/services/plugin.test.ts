@@ -196,18 +196,27 @@ describe('completion', () => {
       return (await completionsOf(service, document, position))?.items.map((item) => item.label);
     };
 
-    it('with nothing typed at the start of a line of a component: its props', async () => {
-      expect(await labelsAt(component('  |'))).toEqual(['props']);
+    it('with nothing typed at the start of a line of a component: its props and the seven hooks (SDD-86)', async () => {
+      expect(await labelsAt(component('  |'))).toEqual([
+        'props',
+        'beforeHydrate',
+        'afterHydrate',
+        'beforeCreate',
+        'afterCreate',
+        'onConnect',
+        'onDisconnect',
+        'onDispose',
+      ]);
     });
 
     it('with the start of a name typed: the declaration it begins', async () => {
       expect(await labelsAt(component('  pro|'))).toEqual(expect.arrayContaining(['props']));
     });
 
-    it('in a route: nothing, and a `@` opens no region (SDD-60 §4.8)', async () => {
+    it('in a route: no props, only the five hooks that are not create hooks, and a `@` opens no region (SDD-60 §4.8, SDD-86)', async () => {
       const route = (cursor: string): string =>
         `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  ${cursor}\n}\n<p>x</p>\n`;
-      expect(await labelsAt(route('|'))).toBeUndefined();
+      expect(await labelsAt(route('|'))).toEqual(['beforeHydrate', 'afterHydrate', 'onConnect', 'onDisconnect', 'onDispose']);
       expect(await labelsAt(route('@|'))).toBeUndefined();
     });
 
@@ -787,7 +796,18 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     );
     const list = await completionsOf(service, document, position);
 
-    expect(list?.items.map((entry) => entry.label)).toEqual(['props']);
+    // The snippets of `@code` — props and the lifecycle hooks (SDD-86); the client filters by
+    // what is typed.
+    expect(list?.items.map((entry) => entry.label)).toEqual([
+      'props',
+      'beforeHydrate',
+      'afterHydrate',
+      'beforeCreate',
+      'afterCreate',
+      'onConnect',
+      'onDisconnect',
+      'onDispose',
+    ]);
   });
 });
 

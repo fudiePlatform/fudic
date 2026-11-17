@@ -9,7 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browserDom } from '@fudic/dom';
-import { computed, effect, hooks, live, owned, signal, subscribe, written, writtenIf, type FudicElement } from '@fudic/core';
+import { computed, effect, hooks, live, owned, painted as paintedFn, signal, subscribe, written, writtenIf, type FudicElement } from '@fudic/core';
 import { emit } from '@fudic/dom';
 import { resolveComponents, emitRouteClientModule } from '../../../src/emit/index.js';
 import { resolveDocument } from '../../../src/emit/resolve.js';
@@ -53,7 +53,7 @@ function build(code: string, markup = '<p>x</p>', extra: Record<string, string> 
 /** Define the emitted class under its tag and paint the server's shadow, as the parser leaves it. */
 function painted(code: string, markup?: string, props: Record<string, unknown> = {}): { host: FudicElement; tag: string } {
   const { tag, graph } = build(code, markup);
-  customElements.define(tag, clientFactory(graph, tag));
+  customElements.define(tag, clientFactory(graph, tag) as unknown as CustomElementConstructor);
   const { host } = mountAsDsd(tag, serverShadowHtml(graph, tag, props));
   return { host: host as FudicElement, tag };
 }
@@ -61,7 +61,7 @@ function painted(code: string, markup?: string, props: Record<string, unknown> =
 /** Define it and create one in the browser, out of the document, as `live()` does. */
 function created(code: string, markup?: string, values: readonly unknown[] = []): FudicElement {
   const { tag, graph } = build(code, markup);
-  customElements.define(tag, clientFactory(graph, tag));
+  customElements.define(tag, clientFactory(graph, tag) as unknown as CustomElementConstructor);
   const host = document.createElement(tag) as FudicElement;
   host.c(values);
   return host;
@@ -231,8 +231,8 @@ describe('a route with its layout (criterion 26)', () => {
     const chunk = emitRouteClientModule(resolveDocument('/r.fud', memoryIo({ '/r.fud': route, '/l.fud': layout })).value)!;
     const body = chunk.replace(/^import[^\n]*\n/gmu, '').replace(/^export default /mu, 'return ');
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const factory = new Function('signal', 'computed', 'effect', '$sub', '$written', '$writtenIf', '$live', '$owned', '$hooks', 'emit', body)(
-      signal, computed, effect, subscribe, written, writtenIf, live, owned, hooks, emit,
+    const factory = new Function('signal', 'computed', 'effect', '$sub', '$written', '$writtenIf', '$live', '$owned', '$hooks', '$painted', 'emit', body)(
+      signal, computed, effect, subscribe, written, writtenIf, live, owned, hooks, paintedFn, emit,
     ) as (p: readonly unknown[]) => { h(): void; on?(): void };
     document.body.innerHTML = '<main><p>x</p></main>';
     const ctl = factory([browserDom, document.body, {}]);

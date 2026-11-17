@@ -1,4 +1,4 @@
-import { FudicElement, subscribe as $sub, written as $written, live as $live, owned as $owned } from '@fudic/core';
+import { FudicElement, subscribe as $sub, written as $written, painted as $painted, live as $live, owned as $owned } from '@fudic/core';
 import { signal } from '@fudic/core';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <div class="body"><slot></slot></div> <!---->`;
@@ -244,37 +244,39 @@ customElements.define("app-card", class extends FudicElement {
           $s();
         },
         h: () => {
-          let $c0 = $dom.firstElementChild($shadow);
-          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
-          {
-            let $c1 = $dom.firstElementChild($n0);
-            $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
+          $painted(() => {
+            let $c0 = $dom.firstElementChild($shadow);
+            $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
             {
-              let $c2 = $dom.firstElementChild($n1);
-              $n4 = $c2; $c2 = $dom.nextElementSibling($c2);
-              $n5 = $dom.lastChild($n4);
-              $n5 = $dom.textAt($n4, $n5, null);
+              let $c1 = $dom.firstElementChild($n0);
+              $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
+              {
+                let $c2 = $dom.firstElementChild($n1);
+                $n4 = $c2; $c2 = $dom.nextElementSibling($c2);
+                $n5 = $dom.lastChild($n4);
+                $n5 = $dom.textAt($n4, $n5, null);
+              }
+              {
+                const $q = $q0();
+                const $i = $f0($q, null);
+                if ($i !== null) { $c1 = $i.h($c1); $i.s(); $k0.push($i); }
+                $x0 = $q;
+              }
+              $n3 = $c1; $c1 = $dom.nextElementSibling($c1);
+              {
+                const $q = $q1();
+                const $i = $f1($q, null);
+                if ($i !== null) { $i.h(null); $i.s(); $k1.push($i); }
+                $x1 = $q;
+              }
+              $n11 = $dom.lastChild($n3);
+              $n16 = $n11;
+              for (let $j = $k1.length - 1; $j >= 0; $j -= 1) $n16 = $k1[$j].t($n16);
+              $n2 = $dom.previousSibling($n3);
+              $n17 = $n2;
+              for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n17 = $k0[$j].t($n17);
             }
-            {
-              const $q = $q0();
-              const $i = $f0($q, null);
-              if ($i !== null) { $c1 = $i.h($c1); $i.s(); $k0.push($i); }
-              $x0 = $q;
-            }
-            $n3 = $c1; $c1 = $dom.nextElementSibling($c1);
-            {
-              const $q = $q1();
-              const $i = $f1($q, null);
-              if ($i !== null) { $i.h(null); $i.s(); $k1.push($i); }
-              $x1 = $q;
-            }
-            $n11 = $dom.lastChild($n3);
-            $n16 = $n11;
-            for (let $j = $k1.length - 1; $j >= 0; $j -= 1) $n16 = $k1[$j].t($n16);
-            $n2 = $dom.previousSibling($n3);
-            $n17 = $n2;
-            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n17 = $k0[$j].t($n17);
-          }
+          });
           $s();
         },
         u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] ?? ('default'); $u(); },

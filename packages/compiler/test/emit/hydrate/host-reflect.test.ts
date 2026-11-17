@@ -89,7 +89,7 @@ describe('h and u (criterion 23)', () => {
   /** A painted card, its host carrying what the server wrote, hydrated. */
   function hydrated(): { host: FudicElement & HTMLElement; writes: string[] } {
     const { graph, card } = graphOf();
-    customElements.define(card, clientFactory(graph, card));
+    customElements.define(card, clientFactory(graph, card) as unknown as CustomElementConstructor);
     const { host } = mountAsDsd(card, serverShadowHtml(graph, card, { variant: 'highlight' }));
     host.setAttribute('role', 'group');
     host.setAttribute('variant', 'highlight');
@@ -143,8 +143,8 @@ describe('h and u (criterion 23)', () => {
 describe('created in the browser from a @foreach (criterion 24)', () => {
   it('the host carries role="group" and variant, as the server writes them', () => {
     const { graph, card, list } = graphOf();
-    customElements.define(card, clientFactory(graph, card));
-    customElements.define(list, clientFactory(graph, list));
+    customElements.define(card, clientFactory(graph, card) as unknown as CustomElementConstructor);
+    customElements.define(list, clientFactory(graph, list) as unknown as CustomElementConstructor);
     const { host } = mountAsDsd(list, serverShadowHtml(graph, list, {}));
     (host as FudicElement).h([]);
     const shadow = host.shadowRoot!;
@@ -158,7 +158,7 @@ describe('created in the browser from a @foreach (criterion 24)', () => {
 
   it('created directly with c: the same attributes as the server’s host', () => {
     const { graph, card } = graphOf();
-    customElements.define(card, clientFactory(graph, card));
+    customElements.define(card, clientFactory(graph, card) as unknown as CustomElementConstructor);
     const el = document.createElement(card) as FudicElement & HTMLElement;
     el.c(['highlight']);
     expect(el.getAttribute('role')).toBe('group');

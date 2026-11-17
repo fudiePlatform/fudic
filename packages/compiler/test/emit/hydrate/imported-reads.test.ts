@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { FudicElement, computed, effect, live, owned, signal, subscribe, subscribeIf, written, type FudicElementCtor } from '@fudic/core';
+import { FudicElement, computed, effect, live, owned, painted, signal, subscribe, subscribeIf, written, writtenIf, type FudicElementCtor } from '@fudic/core';
 import { browserDom, emit } from '@fudic/dom';
 import { emitComponentClientModule, resolveComponents } from '../../../src/emit/index.js';
 import { memoryIo } from '../_support.js';
@@ -49,9 +49,9 @@ function created(): { shadow: ShadowRoot; f: { flag: ReturnType<typeof signal<bo
   const registry = { define: (_: string, c: FudicElementCtor) => void (ctor = c) };
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function(
-    'FudicElement', 'signal', 'computed', 'effect', '$sub', '$subIf', '$written', '$live', '$owned', 'emit', 'customElements', 'f',
+    'FudicElement', 'signal', 'computed', 'effect', '$sub', '$subIf', '$written', '$writtenIf', '$live', '$owned', '$painted', 'emit', 'customElements', 'f',
     source.replace(/^import .*$/gmu, ''),
-  )(FudicElement, signal, computed, effect, subscribe, subscribeIf, written, live, owned, emit, registry, f);
+  )(FudicElement, signal, computed, effect, subscribe, subscribeIf, written, writtenIf, live, owned, painted, emit, registry, f);
   const host = document.createElement('x-reads');
   const shadow = host.attachShadow({ mode: 'open' });
   document.body.append(host);

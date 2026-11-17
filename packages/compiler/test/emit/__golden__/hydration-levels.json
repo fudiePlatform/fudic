@@ -144,6 +144,16 @@
     "tag": "campo-texto",
     "hydrates": false
   },
+  "examples/basic/src/components/ciclo-demo.fud": {
+    "kind": "component",
+    "tag": "ciclo-demo",
+    "hydrates": true
+  },
+  "examples/basic/src/components/ciclo-perezoso.fud": {
+    "kind": "component",
+    "tag": "ciclo-perezoso",
+    "hydrates": true
+  },
   "examples/basic/src/components/clases-demo.fud": {
     "kind": "component",
     "tag": "clases-demo",
@@ -362,6 +372,15 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": []
+  },
+  "examples/basic/src/routes/ciclo.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "eager",
+    "hydrates": [
+      "ciclo-demo",
+      "ciclo-perezoso"
+    ]
   },
   "examples/basic/src/routes/clases.fud": {
     "kind": "route",
@@ -761,6 +780,16 @@
     "tag": "app-card",
     "hydrates": true
   },
+  "packages/compiler/fixtures/app-lifecycle-row.fud": {
+    "kind": "component",
+    "tag": "app-lifecycle-row",
+    "hydrates": true
+  },
+  "packages/compiler/fixtures/app-lifecycle.fud": {
+    "kind": "component",
+    "tag": "app-lifecycle",
+    "hydrates": true
+  },
   "packages/compiler/fixtures/app-list.fud": {
     "kind": "component",
     "tag": "app-list",
@@ -781,6 +810,12 @@
       "app-calendar",
       "app-card"
     ]
+  },
+  "packages/compiler/test/fixtures/_ciclo-layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
   },
   "packages/compiler/test/fixtures/_layout-admin.fud": {
     "kind": "route",
@@ -811,6 +846,12 @@
       "app-button",
       "app-card"
     ]
+  },
+  "packages/compiler/test/fixtures/ruta-ciclo.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "eager",
+    "hydrates": []
   },
   "packages/formatter/fixtures/app/components/app-badge.fud": {
     "kind": "component",

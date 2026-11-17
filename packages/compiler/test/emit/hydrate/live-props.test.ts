@@ -10,7 +10,7 @@
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import { FudicElement, owned, signal, subscribe, written } from '@fudic/core';
+import { FudicElement, owned, painted, signal, subscribe, written, writtenIf } from '@fudic/core';
 import {
   emitComponentClientModule,
   resolveComponents,
@@ -81,7 +81,7 @@ const graph: ComponentGraph = resolveComponents(
 beforeAll(() => {
   for (const tag of ['x-live', 'x-rows']) {
     const body = emitComponentClientModule(graph, graph.components.get(tag)!).replace(/^import .*$/gmu, '');    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', '$sub', '$written', '$owned', body)(FudicElement, signal, subscribe, written, owned);
+    new Function('FudicElement', 'signal', '$sub', '$written', '$writtenIf', '$owned', '$painted', body)(FudicElement, signal, subscribe, written, writtenIf, owned, painted);
   }
 });
 

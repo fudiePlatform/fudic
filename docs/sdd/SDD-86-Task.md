@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 22 / 28 — `Listo`. (Implementación 27 / 28 · Tests 22 / 28)
+> **Progreso:** 27 / 28 — `Listo`. (Implementación 27 / 28 · Tests 27 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -193,7 +193,7 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 6 — Guía, ejemplo y cierre
 
-- impl [x] · tests [ ] — **23. La guía del MCP: `overview`, `components` y `testing`.**
+- impl [x] · tests [x] — **23. La guía del MCP: `overview`, `components` y `testing`.**
   - `overview`: los hooks también hacen hidratar a un componente, y una ruta con hooks lleva JavaScript.
   - `components`: la línea en «State and what `@code` may do», las secciones «Lifecycle» y «Reflecting
     a prop on the host» (con la nota de los atributos nativos), y las seis filas nuevas de «Instead
@@ -205,28 +205,28 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/overview.md`, `guide/components.md`, `guide/testing.md`, y los tres en
     `guide/es/`.
-- impl [x] · tests [ ] — **24. La guía del MCP: `pages`.**
+- impl [x] · tests [x] — **24. La guía del MCP: `pages`.**
   - La sección «Lifecycle of a route»: la tabla de §4.1, la bfcache, el límite de lo asíncrono en
     `pagehide` y el ejemplo del store en IndexedDB (SDD §4.9, §4.10). El bloque `broken` de `FUD1561`.
     En inglés y en español. `guide-examples.test.ts` en verde (criterio 31).
   - *Depende de:* 3, 8, 12.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/pages.md`, `guide/es/pages.md`.
-- impl [x] · tests [ ] — **25. El ejemplo `/ciclo`.**
+- impl [x] · tests [x] — **25. El ejemplo `/ciclo`.**
   - `ciclo-demo` y la ruta `/ciclo` con su contador en IndexedDB (SDD §4.9), con su e2e del criterio 1,
     y el test de `mount` del criterio 13.
   - *Depende de:* 11, 12, 13, 21.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/components/ciclo-demo.fud`, `src/components/ciclo-demo.test.ts`,
     `src/stores/contador.ts`, `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
-- impl [x] · tests [ ] — **26. La bfcache, de verdad.**
+- impl [x] · tests [x] — **26. La bfcache, de verdad.**
   - En el e2e: ir de `/ciclo` a otra página y volver atrás restaura desde la bfcache, con
     `onDisconnect` / `onConnect`, sin `onDispose` y con el estado intacto; navegar sin volver ejecuta
     `onDispose` (criterios 27, 28).
   - *Depende de:* 25.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/ciclo.spec.ts`.
-- impl [x] · tests [ ] — **27. Un componente que se hidrata por interacción.**
+- impl [x] · tests [x] — **27. Un componente que se hidrata por interacción.**
   - Criterio 11, en el e2e: ningún hook antes de la interacción.
   - *Depende de:* 25.
   - *Paquete:* `examples/basic`.

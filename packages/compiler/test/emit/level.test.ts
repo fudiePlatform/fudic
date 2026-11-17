@@ -10,8 +10,12 @@ import {
   isIntrinsicallyHydratable,
   isReactiveRoute,
   emitRouteClientModule,
+  eagerTags,
+  routeHydration,
 } from '../../src/emit/index.js';
 import { resolveDocument } from '../../src/emit/resolve.js';
+import { runsOnLoad } from '../../src/emit/level.js';
+import { codeOf } from '../../src/emit/oxc-code.js';
 import { fixturesDir, fixtureIo, memoryIo } from './_support.js';
 
 /** A page that links every component of `files` and instantiates `body`. */
@@ -394,5 +398,57 @@ describe('effective level — a lifecycle hook (SDD-86)', () => {
     expect(isReactiveRoute(g('@code {\n  afterHydrate(() => {});\n}'))).toBe(true);
     expect(emitRouteClientModule(g('@code {\n  afterHydrate(() => {});\n}'))).not.toBeNull();
     expect(isReactiveRoute(g('@code {\n  const a = 1;\n}'))).toBe(false);
+  });
+});
+
+/** SDD-86 decision 25 (Pedro, option a) — the hooks whose moment is the load hydrate at load. */
+describe('when a hook hydrates: at load or on a gesture (SDD-86 §4.3, criterion 11)', () => {
+  const ON_LOAD = ['beforeHydrate', 'afterHydrate', 'onConnect'];
+  const ON_GESTURE = ['onDisconnect', 'onDispose', 'beforeCreate', 'afterCreate'];
+
+  const componentGraph = (code: string) =>
+    graphOf({
+      '/app/home.fud': page(['x-when'], '<x-when></x-when>'),
+      '/app/x-when.fud': component('x-when', `@code {\n${code}\n}`, '<p>static</p>'),
+    });
+
+  it.each(ON_LOAD)('a component with %s alone is eager', (hook) => {
+    const graph = componentGraph(`  ${hook}(() => {});`);
+    expect(runsOnLoad(codeOf(graph.components.get('x-when')!))).toBe(true);
+    expect(eagerTags(graph, hydratableTags(graph))).toContain('x-when');
+  });
+
+  it.each(ON_GESTURE)('a component with %s alone hydrates but waits for a gesture', (hook) => {
+    const graph = componentGraph(`  ${hook}(() => {});`);
+    expect(runsOnLoad(codeOf(graph.components.get('x-when')!))).toBe(false);
+    expect([...hydratableTags(graph)]).toEqual(['x-when']);
+    expect(eagerTags(graph, hydratableTags(graph))).not.toContain('x-when');
+  });
+
+  it('a load hook nested in a function does not count (it is FUD1560 anyway)', () => {
+    const graph = componentGraph('  function f() { afterHydrate(() => {}); }');
+    expect(runsOnLoad(codeOf(graph.components.get('x-when')!))).toBe(false);
+  });
+
+  const LAYOUT_PLAIN = '<!DOCTYPE html><html><head>@RenderHead()</head><body><main>@RenderBody()</main></body></html>';
+  const layoutWith = (code: string) =>
+    `<!DOCTYPE html><html><head>\n@code {\n${code}\n}\n@RenderHead()</head><body><main>@RenderBody()</main></body></html>`;
+  const routeGraph = (code: string, layout = LAYOUT_PLAIN) =>
+    resolveDocument(
+      '/r.fud',
+      memoryIo({ '/r.fud': `<link rel="layout" href="./l.fud">\n@code {\n${code}\n}\n<p>x</p>\n`, '/l.fud': layout }),
+    ).value;
+
+  it.each(ON_LOAD)('a route with %s is eager', (hook) => {
+    expect(routeHydration(routeGraph(`${hook}(() => {});`))).toBe('eager');
+  });
+
+  it.each(['onDisconnect', 'onDispose'])('a route with only %s waits for a gesture', (hook) => {
+    expect(routeHydration(routeGraph(`${hook}(() => {});`))).toBe('gesture');
+  });
+
+  it('a route is eager when its LAYOUT has a load hook', () => {
+    expect(routeHydration(routeGraph('const a = 1;', layoutWith('onConnect(() => {});')))).toBe('eager');
+    expect(routeHydration(routeGraph('const a = 1;', layoutWith('onDispose(() => {});')))).toBe('gesture');
   });
 });

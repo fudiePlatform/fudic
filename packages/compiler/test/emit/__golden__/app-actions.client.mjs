@@ -1,4 +1,4 @@
-import { FudicElement, owned as $owned } from '@fudic/core';
+import { FudicElement, painted as $painted, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <li class="row"> <span></span> <button class="none">-</button> <button class="event">e</button> <button class="data">d</button> <button class="both">ed</button> <button class="reversed">de</button> <button class="bare">x</button> </li> <!---->`;
@@ -162,20 +162,22 @@ customElements.define("app-actions", class extends FudicElement {
           $s();
         },
         h: () => {
-          let $c0 = $dom.firstElementChild($shadow);
-          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
-          {
-            let $c1 = $dom.firstElementChild($n0);
-            for (const row of rows) {
-              const $i = $b0($n0, null, row);
-              $c1 = $i.h($c1);
-              $i.s();
-              $k0.push($i);
+          $painted(() => {
+            let $c0 = $dom.firstElementChild($shadow);
+            $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+            {
+              let $c1 = $dom.firstElementChild($n0);
+              for (const row of rows) {
+                const $i = $b0($n0, null, row);
+                $c1 = $i.h($c1);
+                $i.s();
+                $k0.push($i);
+              }
+              $n1 = $dom.lastChild($n0);
+              $n14 = $n1;
+              for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n14 = $k0[$j].t($n14);
             }
-            $n1 = $dom.lastChild($n0);
-            $n14 = $n1;
-            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n14 = $k0[$j].t($n14);
-          }
+          });
           $s();
         },
         u: ($p) => { if (2 in $p) rows = $p[2] ?? ([]); $a(); $u0(); },

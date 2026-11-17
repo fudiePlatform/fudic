@@ -71,8 +71,8 @@ describe('the emitted text', () => {
   });
 
   it('the client makes it one guarded value write in $a', () => {
-    expect(client).toMatch(/\$v = post\(\);\n\s*if \(\$v !== \$w\[\d+\]\) \{ \$w\[\d+\] = \$v; \$dom\.setHtml\(\$n\d+, \$v\); \}/u);
-    expect(client).toMatch(/\$v = falsa;\n\s*if \(\$v !== \$w\[\d+\]\) \{ \$w\[\d+\] = \$v; \$dom\.setHtml\(\$n\d+, \$v\); \}/u);
+    expect(client).toMatch(/\$v = post\(\);\n\s*if \(\$v !== \$w\[\d+\] \|\| !\(\d+ in \$w\)\) \{ \$w\[\d+\] = \$v; \$dom\.setHtml\(\$n\d+, \$v\); \}/u);
+    expect(client).toMatch(/\$v = falsa;\n\s*if \(\$v !== \$w\[\d+\] \|\| !\(\d+ in \$w\)\) \{ \$w\[\d+\] = \$v; \$dom\.setHtml\(\$n\d+, \$v\); \}/u);
   });
 
   it('h adopts the element and never enters it', () => {

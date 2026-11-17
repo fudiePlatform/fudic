@@ -1,4 +1,4 @@
-import { FudicElement, live as $live, owned as $owned, hooks as $hooks } from '@fudic/core';
+import { FudicElement, painted as $painted, live as $live, owned as $owned, hooks as $hooks } from '@fudic/core';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template`<app-lifecycle-row></app-lifecycle-row>`;
 const $T1 = $template`<div class="box"></div>`;
@@ -130,19 +130,21 @@ customElements.define("app-lifecycle", class extends FudicElement {
         },
         h: () => {
           $hk.run("beforeHydrate", $hh);
-          let $c0 = $dom.firstElementChild($shadow);
-          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
-          {
-            let $c1 = $dom.firstElementChild($n0);
-            for (const row of rows) {
-              const $i = $b0($n0, null, row);
-              $c1 = $i.h($c1);
-              $i.s();
-              $k0.push($i);
+          $painted(() => {
+            let $c0 = $dom.firstElementChild($shadow);
+            $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+            {
+              let $c1 = $dom.firstElementChild($n0);
+              for (const row of rows) {
+                const $i = $b0($n0, null, row);
+                $c1 = $i.h($c1);
+                $i.s();
+                $k0.push($i);
+              }
+              $n2 = null;
+              for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n2 = $k0[$j].t($n2);
             }
-            $n2 = null;
-            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n2 = $k0[$j].t($n2);
-          }
+          });
           $s();
           $hk.run("afterHydrate", $hh);
         },

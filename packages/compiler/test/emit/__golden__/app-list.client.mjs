@@ -1,4 +1,4 @@
-import { FudicElement } from '@fudic/core';
+import { FudicElement, painted as $painted } from '@fudic/core';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <span class="tag"></span> <!---->`;
 const $T1 = $template` <li class="row"> <span></span> <!----> </li> <!---->`;
@@ -283,21 +283,23 @@ customElements.define("app-list", class extends FudicElement {
         $s();
       },
       h: () => {
-        let $c0 = $dom.firstElementChild($shadow);
-        $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
-        {
-          let $c1 = $dom.firstElementChild($n0);
-          for (const row of rows) {
-            const $i = $b0($n0, null, row);
-            $c1 = $i.h($c1);
-            $i.s();
-            $k0.push($i);
+        $painted(() => {
+          let $c0 = $dom.firstElementChild($shadow);
+          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+          {
+            let $c1 = $dom.firstElementChild($n0);
+            for (const row of rows) {
+              const $i = $b0($n0, null, row);
+              $c1 = $i.h($c1);
+              $i.s();
+              $k0.push($i);
+            }
+            if ($k0.length === 0) { const $i = $b1($n0, null, empty); $c1 = $i.h($c1); $i.s(); $k0.push($i); }
+            $n1 = $dom.lastChild($n0);
+            $n20 = $n1;
+            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n20 = $k0[$j].t($n20);
           }
-          if ($k0.length === 0) { const $i = $b1($n0, null, empty); $c1 = $i.h($c1); $i.s(); $k0.push($i); }
-          $n1 = $dom.lastChild($n0);
-          $n20 = $n1;
-          for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n20 = $k0[$j].t($n20);
-        }
+        });
         $s();
       },
       u: ($p) => { if (2 in $p) rows = $p[2] ?? ([]); if (3 in $p) empty = $p[3] ?? ('Sin elementos'); $a(); $u0(); },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signal } from '../src/index.js';
+import { computed, effect, painted, signal } from '../src/index.js';
 import {
   type Dependency,
   type LeafSource,
@@ -78,5 +78,62 @@ describe('tracking (SDD-31 §4.1)', () => {
   it('report outside a consumer is a no-op', () => {
     const dep: Dependency = { version: () => 0, collectLeaves: () => {} };
     expect(() => report(dep)).not.toThrow();
+  });
+});
+
+/**
+ * SDD-86 (framework fix) — `painted`: what hydration adopts by. Inside it every signal answers
+ * the value it was created with (what the server painted), every derived value is computed
+ * from those without being cached, and nothing is tracked.
+ */
+describe('painted', () => {
+  it('a signal answers its initial value inside, the live one outside', () => {
+    const s = signal(1);
+    s.set(2);
+    expect(painted(() => s())).toBe(1);
+    expect(s()).toBe(2);
+  });
+
+  it('a computed is derived from the painted values, and its cache is left alone', () => {
+    const s = signal(1);
+    const twice = computed(() => s() * 2);
+    s.set(5);
+    expect(twice()).toBe(10);
+    expect(painted(() => twice())).toBe(2);
+    // Not cached as current: outside, it is still the live value.
+    expect(twice()).toBe(10);
+  });
+
+  it('tracks nothing: an effect that reads inside it does not rerun on a write', () => {
+    const s = signal(0);
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+      painted(() => s());
+    });
+    s.set(1);
+    expect(runs).toBe(1);
+  });
+
+  it('nests, and the outer one is still painting when the inner returns', () => {
+    const s = signal('a');
+    s.set('b');
+    expect(painted(() => [painted(() => s()), s()])).toEqual(['a', 'a']);
+    expect(s()).toBe('b');
+  });
+
+  it('restores when fn throws: reads after it are live again', () => {
+    const s = signal('first');
+    s.set('second');
+    expect(() =>
+      painted(() => {
+        throw new Error('boom');
+      }),
+    ).toThrow('boom');
+    expect(s()).toBe('second');
+  });
+
+  it('returns what fn returns', () => {
+    expect(painted(() => 42)).toBe(42);
   });
 });
