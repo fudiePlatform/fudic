@@ -1256,7 +1256,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // The shared runtime belongs to the ORIGIN (SDD-45 §4.2): its URLs are `/_fudic/<version>/…`,
       // whatever the app's `base`. A host fuses every app's `_fudic/` at its root; preview serves
       // one app, so under a `base` it answers them from this build's own copy (SDD-87).
-      if (server.config.base !== '/') server.middlewares.use(originRuntime(outDir));
+      if ((server.config?.base ?? '/') !== '/') server.middlewares.use(originRuntime(outDir));
       server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.

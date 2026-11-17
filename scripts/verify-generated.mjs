@@ -48,6 +48,8 @@ export const STEPS = [
   { in: 'acme', argv: ['g', 'pipe', 'truncate', '--project', 'web'], covers: 'pipe' },
   { in: 'acme', argv: ['g', 'style', 'theme', '--project', 'web'], covers: 'style' },
   { in: 'acme', argv: ['g', 'term', 'then', 'cart-has', '--project', 'web'], covers: 'term' },
+  // Before `g app`: the new app depends on the library whose error page it paints with (SDD-87).
+  { in: 'acme', argv: ['g', 'error-page', '--project', 'ui'], covers: 'error-page' },
   { in: 'acme', argv: ['g', 'lib', 'kit'], covers: 'lib' },
   { in: 'acme', argv: ['g', 'app', 'admin'], covers: 'app' },
   { in: 'acme', argv: ['g', 'showcase', 'ui'], covers: 'showcase' },
