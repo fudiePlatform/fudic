@@ -670,8 +670,10 @@ export class ClientMarkupEmitter {
     // A live property is written on every pass: it compares with the DOM, which the user moves.
     // Never on `h`: the server painted it right, and what the user typed before the script
     // arrived is theirs, as a form keeps it.
+    // A slot `h` never filled is a value nobody applied yet, not a value of `undefined`: the server
+    // painted something there, and an update to `undefined` has to take it off.
     if (live) this.#apply.line(write('$v'));
-    else this.#apply.line(`if ($v !== $w[${slot}]) { ${prev}$w[${slot}] = $v; ${write('$v')} }`);
+    else this.#apply.line(`if ($v !== $w[${slot}] || !(${slot} in $w)) { ${prev}$w[${slot}] = $v; ${write('$v')} }`);
     return slot;
   }
 
@@ -716,7 +718,7 @@ export class ClientMarkupEmitter {
       // right after the swap (SDD-85 §4.5, rule 5).
       diff: (expr, write, rewrites = 0) => {
         const next = this.#writes;
-        const forget = Array.from({ length: rewrites }, (_, i) => ` $w[${next + 1 + i}] = undefined;`).join('');
+        const forget = Array.from({ length: rewrites }, (_, i) => ` delete $w[${next + 1 + i}];`).join('');
         const slot = this.#applyValue([expr], ($v) => write($v, '$o') + forget, true);
         this.#adopt.line(`$w[${slot}] = ${expr};`);
       },
