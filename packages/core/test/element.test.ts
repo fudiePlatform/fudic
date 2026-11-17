@@ -562,3 +562,26 @@ describe('FudicElement — connect and disconnect (SDD-86)', () => {
     expect(log).toEqual([]);
   });
 });
+
+/**
+ * SDD-86 (found by the close) — an element whose constructor has not run yet.
+ *
+ * happy-dom, and an upgrade in progress, may call the callbacks on an object that has the
+ * prototype but not yet the private field: they must answer nothing, not throw.
+ */
+describe('FudicElement — callbacks before the constructor ran', () => {
+  it('connectedCallback and disconnectedCallback on an unconstructed instance do nothing', () => {
+    const log: string[] = [];
+    const tag = freshTag();
+    class Sub extends FudicElement {
+      static c(): Controller {
+        return { c: () => log.push('c'), h: () => log.push('h'), u: () => log.push('u'), r: () => log.push('r') };
+      }
+    }
+    customElements.define(tag, Sub);
+    const bare = Object.create(Sub.prototype) as FudicElement;
+    expect(() => Sub.prototype.connectedCallback.call(bare)).not.toThrow();
+    expect(() => Sub.prototype.disconnectedCallback.call(bare)).not.toThrow();
+    expect(log).toEqual([]);
+  });
+});
