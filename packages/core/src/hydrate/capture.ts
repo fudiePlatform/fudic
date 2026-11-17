@@ -38,21 +38,46 @@ export interface CaptureConfig {
   readonly onCold: (host: Element, id: number, replay: () => void) => void;
   /** Path 3 — nothing to do but say so. */
   readonly onShared: (host: Element, id: number) => void;
+  /**
+   * Whether a host listens AROUND its child hosts (`fud-around`, SDD-85 decision 43): an
+   * `@event` on an element that is, or holds, one of them. Absent, no host does.
+   */
+  readonly listensAround?: (host: Element) => boolean;
 }
 
-/** The nearest hydratable host of a composed path, and the real target under it. */
-function targeted(path: readonly EventTarget[]): { host: Element; target: EventTarget } | null {
+/**
+ * The host a gesture raises, and the real target under it.
+ *
+ * The nearest host of the composed path — unless a host further out listens around it and is
+ * not up yet: then the outermost such one, because its listener hears this gesture too and the
+ * cascade brings everything under it up first, the nearest host included. Without it a click on
+ * a delegated child raised the child and nobody heard it.
+ *
+ * «Not up yet» includes an owner whose path 2 is IN FLIGHT: the hover that raised it is followed
+ * by the click, and that click has to wait in the owner's queue. Sent to the nearest host
+ * instead, it was replayed when the child came up, before its owner, and was heard by nobody.
+ */
+function targeted(
+  path: readonly EventTarget[],
+  notUp: (id: number) => boolean,
+  listensAround: (host: Element) => boolean,
+): { host: Element; target: EventTarget } | null {
   const target = path[0];
   if (target === undefined) {
     return null; // an event that is not being dispatched has no path
   }
+  let nearest: Element | null = null;
+  let around: Element | null = null;
   for (const node of path) {
-    if (node instanceof Element && node.hasAttribute(ID_ATTR)) {
-      return { host: node, target };
-    }
+    if (!(node instanceof Element) || !node.hasAttribute(ID_ATTR)) continue;
+    if (nearest === null) nearest = node;
+    else if (notUp(idOf(node)) && listensAround(node)) around = node;
   }
-  return null;
+  const host = around ?? nearest;
+  return host === null ? null : { host, target };
 }
+
+const NOBODY_AROUND = (): boolean => false;
 
 /** Input types whose default action is NOT typing: cancelling them loses no character. */
 const NON_TEXT_INPUTS = new Set([
@@ -94,7 +119,7 @@ function withhold(event: Event, target: EventTarget): void {
 }
 
 export function createCapturer(config: CaptureConfig): (event: Event) => void {
-  const { state, registry, onCold, onShared } = config;
+  const { state, registry, onCold, onShared, listensAround = NOBODY_AROUND } = config;
   /**
    * The gestures that landed on an instance while its path 2 is in flight, in arrival order.
    *
@@ -103,9 +128,11 @@ export function createCapturer(config: CaptureConfig): (event: Event) => void {
    * a hundred milliseconds is lost. They wait with the first, and are replayed after it.
    */
   const pending = new Map<number, (() => void)[]>();
+  /** Not hydrated, or hydrating: what a gesture still has to wait for. */
+  const notUp = (id: number): boolean => !state.hydrated.has(id) || pending.has(id);
 
   return (event: Event): void => {
-    const hit = targeted(event.composedPath());
+    const hit = targeted(event.composedPath(), notUp, listensAround);
     if (hit === null) {
       return;
     }

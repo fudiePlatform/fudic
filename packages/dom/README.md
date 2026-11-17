@@ -40,6 +40,9 @@ shadow.append($T0()); // a fresh copy each call, owned by the page's document
   for it.
 - `templateIn` is for a piece that lives inside `<svg>` or `<math>`: the literal carries the
   wrapper so the nodes are born in the right namespace, and the copy comes without it.
+- `selectDefault(select, value)` marks `selected` on the `<option>` a created `<select>`'s value
+  picks, as the server paints it. It is its own piece (`dom/select`) so the adapter every page
+  loads carries no `<select>`: the compiler imports it only in a chunk that creates one.
 
 ## Classes
 

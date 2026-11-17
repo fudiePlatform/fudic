@@ -55,6 +55,9 @@ const PIECES: Readonly<Record<string, string>> = {
   // What a component or a block creates in the browser is a clone of the HTML the compiler
   // wrote, parsed through the `fudic` policy: it reaches `trusted`, and never carries a copy.
   template: 'src/template.ts',
+  // The default of a `<select>` the browser creates (SDD-85 decision 42): only the chunk that
+  // creates a `<select>` imports it, so a page with none does not carry it.
+  select: 'src/select.ts',
 };
 
 /**
@@ -81,6 +84,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/emit.ts': 'emit',
   'src/trusted.ts': 'trusted',
   'src/template.ts': 'template',
+  'src/select.ts': 'select',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-85-crear-clonando`, desde `main`.
-> **Progreso:** 29 / 34 (y F1–F6) — `En curso`.
+> **Progreso:** 34 / 34 (y F1–F6) — `Hecho` (2026-11-17).
 
 **El orden manda en tres puntos.**
 
@@ -298,19 +298,19 @@ nombre de atributo en un atributo llamado `(` sin ningún diagnóstico: `<span .
 a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igual con
 `@click(x)`. Ahora es `FUD0098`.
 
-- [ ] **28. e2e: crear desde cada bloque.**
+- [x] **28. e2e: crear desde cada bloque.**
   - En `/vivo`, `/spread` y `/mapas` (`vivo-item`, `vivo-otro`, `spread-card`, `bus-option`): abrir y
     cerrar, añadir, quitar y reordenar filas con clave (criterio 10), sin errores en consola. El spec
     entra en los proyectos de `playwright.config.ts` que sirven con y sin SW.
   - *Depende de:* 26.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/create.spec.ts`, `playwright.config.ts`.
-- [ ] **29. e2e: el formulario creado desde un `@if`.**
+- [x] **29. e2e: el formulario creado desde un `@if`.**
   - Valida, enseña errores y envía (criterio 11). Si el ejemplo no tiene uno, se añade a `/vivo`.
   - *Depende de:* 26.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/create.spec.ts`, `src/routes/vivo.fud`.
-- [ ] **30. e2e: SVG y Trusted Types.**
+- [x] **30. e2e: SVG y Trusted Types.**
   - Un `@if` dentro de un `<svg>` (criterio 6); con la plantilla de `page.headers`, cero violaciones
     (criterio 16); la policy no existe en una página sin bloques que se abran (criterio 17).
   - `templateIn` con `<math>`: los hijos salen con el espacio de nombres MathML. happy-dom parsea
@@ -319,7 +319,7 @@ a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igua
   - *Depende de:* 22, 26.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `tests/create.spec.ts`, `src/routes/vivo.fud`.
-- [ ] **31. e2e: las clases ajenas sobreviven.**
+- [x] **31. e2e: las clases ajenas sobreviven.**
   - Criterios 20, 21, 22 y 26 en el navegador, con un `ref` que añade `extra`.
   - *Depende de:* 9, 10, 6.
   - *Paquete:* `examples/basic`.
@@ -334,7 +334,7 @@ a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igua
   - `SDD-85-Prueba.md` con el criterio 1 paso a paso.
   - *Depende de:* 28–31.
   - *Ficheros:* `docs/sdd/SDD-85-Prueba.md`.
-- [ ] **34. Cierre.**
+- [x] **34. Cierre.**
   - `pnpm typecheck`, `pnpm build`, cobertura de todos los paquetes tocados, e2e del ejemplo y del
     banco (criterio 27). Estado, registro de progreso de `INDEX.md` e IDEA-08.
   - `pnpm build` termina con `examples/pieces-bench/check.mjs`: tiene que pasar con la pieza
@@ -343,3 +343,35 @@ a `...resto` más los atributos `(` y `)`, y el servidor pinta `(="" )=""`. Igua
   - *Depende de:* 1–33.
   - *Ficheros:* `docs/sdd/INDEX.md`, `docs/sdd/SDD-85-crear-clonando-y-clases.md`,
     `docs/sdd/ideas/IDEA-08-adelgazar-el-cliente.md`.
+
+## Cierre (2026-11-17)
+
+Pedro probó [SDD-85-Prueba.md](./SDD-85-Prueba.md) en el navegador: todo bien. Los e2e salen de
+ahí y destaparon tres cosas (SDD §8.2, decisiones 40 y 41):
+
+- **Una escritura de más.** Hidratar `/clases` y leer el informe reescribía la `class` de la caja
+  del spread sin cambiar nada: `classList.add` de un token que ya está reescribe el atributo.
+  `browserDom` escribe ahora solo los tokens que cambian (criterio 26 en verde).
+- **Dos pasos de la prueba mal escritos.** Chrome no tiene `trustedTypes.getPolicyNames()` (el e2e
+  envuelve `createPolicy`), y el formulario de `/vivo` reabre con los valores del modelo de la
+  página, no vacío. Corregidos en la prueba y en el criterio 17.
+Y dos más que Pedro pidió arreglar en el cierre, sin dejar deuda (decisiones 42 y 43):
+
+- **El presupuesto de `/formularios`.** El `selected` por defecto de un `<select>` vivía en el
+  adaptador, que carga toda página. Ahora es la pieza `dom/select` (`selectDefault`), y el
+  compilador la importa solo en el chunk que crea un `<select>`.
+- **`/mapas`: un clic en una opción delegada no llegaba a nadie.** Fallo previo del capturador:
+  levantaba el host más cercano, y el listener era de un antepasado. Nuevo mapa `fud-around` en
+  la página; el capturador levanta al dueño que escucha alrededor (y el clic espera en su cola),
+  y la precarga por visibilidad lo anticipa. Arreglado también, de paso, el `@press` de
+  `app-card` sobre su `app-button` y el `@fudic:result` de `/usuarios` sobre `user-form`.
+  Ficha 8 de PENDIENTES-observados cerrada.
+
+El banco de piezas pasa; su excepción `underweight` de `dom/trusted` estaba caducada (la pieza ya
+supera la frontera) y se quitó, y entra `dom/select`, pequeña a propósito.
+
+`pnpm coverage` completo en verde. Los e2e de `examples/basic` en los tres proyectos: 344 en verde
+y 3 de `forms.spec.ts` en `preview` que fallan a ratos. No son de esta SDD: pasa igual en `main`,
+y más a menudo. Una regla de `@fudic/forms` todavía no está registrada en el navegador cuando el
+formulario valida. Queda como ficha 9 de PENDIENTES-observados, con la causa y por dónde se
+arregla.

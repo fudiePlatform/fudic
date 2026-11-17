@@ -491,9 +491,10 @@ export interface ValueSink {
    * A write that runs on every pass, never filtered by what it wrote last: a live property of a
    * control (SDD-74 §4.4), which compares with the DOM instead. Only a sink that repeats has one.
    * `initial` is what a control the browser creates gets once, before: its default, as the server
-   * paints it (SDD-85 §4.2).
+   * paints it (SDD-85 §4.2). `select` says `initial` calls `$selectDefault`, which the module then
+   * has to import (decision 42).
    */
-  live?(expr: string, write: (value: string) => string, initial: (value: string) => string): void;
+  live?(expr: string, write: (value: string) => string, initial: (value: string) => string, select: boolean): void;
 }
 
 /**
@@ -616,8 +617,14 @@ export function writeElementAttrs(
       if (isLiveProp(el.name, written.name)) {
         const expr = crossingExpr(source, attr, written.value, host.signals);
         const write = ($v: string): string => `$dom.setLive(${v}, ${name}, ${$v});`;
-        const initial = ($v: string): string => `$dom.setDefault(${v}, ${name}, ${$v});`;
-        if (values.live !== undefined) values.live(expr, write, initial);
+        // The default of a `<select>` is its own piece, imported only where one is created: the
+        // adapter every page loads carries no walk over options (decision 42).
+        // `value` is the one live property a `<select>` has.
+        const select = el.name.toLowerCase() === 'select';
+        const initial = select
+          ? ($v: string): string => `$selectDefault(${v}, ${$v});`
+          : ($v: string): string => `$dom.setDefault(${v}, ${name}, ${$v});`;
+        if (values.live !== undefined) values.live(expr, write, initial, select);
         else values.bound(expr, write);
         continue;
       }

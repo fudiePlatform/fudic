@@ -74,6 +74,21 @@ describe('browserDom classes: only their own tokens move', () => {
     dom.swapClass(el, '', '');
     expect(el.hasAttribute('class')).toBe(false);
   });
+
+  it('a token already there, or already gone, is not written again', async () => {
+    const el = dom.element('div') as Element;
+    el.setAttribute('class', 'a b');
+    const seen: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => seen.push(...records));
+    observer.observe(el, { attributes: true });
+    dom.swapClass(el, 'a b', 'a b');
+    dom.swapClass(el, 'a', 'c');
+    dom.setAttrs(el, [{ class: 'a b' }], [{ class: 'a b' }], []);
+    await Promise.resolve();
+    observer.disconnect();
+    expect(seen).toEqual([]);
+    expect(el.getAttribute('class')).toBe('a b');
+  });
 });
 
 describe('browserDom mutation', () => {
@@ -179,18 +194,6 @@ describe('browserDom mutation', () => {
     expect(area.textContent).toBe('Ana');
     dom.setDefault(area, 'value', undefined);
     expect(area.textContent).toBe('');
-  });
-
-  it('setDefault marks the option a select value picks, and only that one, inside a group too', () => {
-    const select = document.createElement('select');
-    select.innerHTML = '<option value="a" selected>A</option><optgroup><option>b</option></optgroup>';
-    dom.setDefault(select, 'value', 'b');
-    const [a, b] = [...select.options];
-    expect(a!.hasAttribute('selected')).toBe(false);
-    expect(b!.hasAttribute('selected')).toBe(true);
-    expect(select.value).toBe('b');
-    dom.setDefault(select, 'value', null); // no option has the empty value
-    expect(select.querySelector('[selected]')).toBeNull();
   });
 
   it('setLive does not write when the DOM already holds the value', () => {

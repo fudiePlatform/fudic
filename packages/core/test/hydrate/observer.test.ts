@@ -271,3 +271,50 @@ describe('the platform ports', () => {
     }
   });
 });
+
+describe('the owners that listen around a host in view (SDD-85 decision 43)', () => {
+  const start = (eye: ReturnType<typeof viewport>, channel: WarmChannel): void => {
+    startWarmObserver({
+      maps: readPageMaps(document),
+      resolveChunk: (tag) => `/h/${tag}.js`,
+      channel,
+      root: document,
+      observe: eye.observe,
+      schedule: now,
+    });
+  };
+
+  it('a host in view warms the owner a gesture on it would raise, and only one that listens around', () => {
+    publish({ tree: { 'wa-own': ['wa-kid'], 'wa-quiet': ['wa-own'] }, around: ['wa-own'] });
+    const quiet = host('wa-quiet', 0);
+    const own = host('wa-own', 1, quiet.shadowRoot!);
+    const kid = host('wa-kid', 2, own.shadowRoot!);
+    const plain = document.createElement('div');
+    kid.shadowRoot!.appendChild(plain);
+    const { orders, channel } = recorder();
+    const eye = viewport();
+    start(eye, channel);
+    eye.show(kid);
+    expect(orders.map((o) => o.tags)).toEqual([['wa-kid', 'wa-own']]);
+  });
+
+  it('the route, by its name, when it listens around a host that came into view', () => {
+    publish({ route: 'ruta', bodyId: 0, around: ['ruta'] });
+    const kid = host('wa-kid', 1);
+    const { orders, channel } = recorder();
+    const eye = viewport();
+    start(eye, channel);
+    eye.show(kid);
+    expect(orders.map((o) => o.tags)).toEqual([['wa-kid', 'ruta']]);
+  });
+
+  it('a route that listens around nothing is not warmed for a host in view', () => {
+    publish({ route: 'ruta', bodyId: 0 });
+    const kid = host('wa-kid', 1);
+    const { orders, channel } = recorder();
+    const eye = viewport();
+    start(eye, channel);
+    eye.show(kid);
+    expect(orders.map((o) => o.tags)).toEqual([['wa-kid']]);
+  });
+});

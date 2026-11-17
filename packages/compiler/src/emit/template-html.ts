@@ -128,6 +128,15 @@ export class Templates {
   readonly #lines: { readonly text: string; readonly at: number }[] = [];
   #foreign = false;
   #plain = false;
+  #selects = false;
+
+  /**
+   * The module creates a `<select>` whose value it writes: its clone gets its default from
+   * `selectDefault`, which comes in on the same import as the templates (SDD-85 decision 42).
+   */
+  createsSelect(): void {
+    this.#selects = true;
+  }
 
   /**
    * The constant a template is cloned from, or `null` when it has nothing to clone: a piece of
@@ -157,6 +166,7 @@ export class Templates {
     const names = [
       ...(this.#plain ? ['template as $template'] : []),
       ...(this.#foreign ? ['templateIn as $templateIn'] : []),
+      ...(this.#selects ? ['selectDefault as $selectDefault'] : []),
     ];
     return names.length === 0 ? null : `import { ${names.join(', ')} } from '@fudic/dom';`;
   }

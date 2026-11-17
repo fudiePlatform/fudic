@@ -6,6 +6,7 @@
 >
 > **2026-11-16:** §1, §2 y §3 pasan a [SDD-85](../SDD-85-crear-clonando-y-clases.md), con un cambio de
 > Pedro: el `c` no va a un chunk perezoso, sino que clona una plantilla HTML y la adopta.
+> **2026-11-17:** SDD-85 `Hecho`: §1, §2 y §3 están implementados.
 >
 > **2026-11-16:** §4 (props reflejadas) pasa a [SDD-86](../SDD-86-ciclo-de-vida-y-props-reflejadas.md), sin
 > sintaxis nueva: ya funcionaba desde BUG-32 como un atributo con expresión en el tag de identidad.

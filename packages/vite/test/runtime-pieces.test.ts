@@ -716,4 +716,12 @@ describe('SDD-85 §4.8 — `dom/template`, the piece every client chunk imports'
     const reached = linkedPieces([`import{template}from"${urlOf('template')}";`], linkage).map((p) => p.url);
     expect(reached).toEqual([urlOf('template'), urlOf('trusted')].toSorted((a, b) => a.localeCompare(b)));
   });
+
+  it('`dom/select` answers `selectDefault` alone, and reaches no other piece (decision 42)', () => {
+    expect(linkage.urlOf.get('@fudic/dom')!.get('selectDefault')).toBe(urlOf('select'));
+    const reached = linkedPieces([`import{selectDefault}from"${urlOf('select')}";`], linkage).map((p) => p.url);
+    expect(reached).toEqual([urlOf('select')]);
+    // And the adapter every page loads no longer walks the options of a `<select>`.
+    expect(linkage.byUrl.get(urlOf('browser'))!.code).not.toContain('.options');
+  });
 });

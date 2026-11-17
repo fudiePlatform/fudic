@@ -310,6 +310,7 @@ describe('the warm observer does not look at the `<body>` (§6.13)', () => {
         tree: {},
         bus: {},
         eager: [],
+        around: [],
         route: 'ruta',
         data: {},
         count: 2,

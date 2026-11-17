@@ -39,7 +39,8 @@ lo que salga de ella.
   el grupo de Acceso y **Guardar** sigue desactivado. Corrige todo (alias de 3 letras o más,
   distinto del nombre; contraseña de 8 o más, sin el nombre, repetida igual): **Guardar** se
   activa; púlsalo y sale «Enviado: <nombre>.» en verde.
-- **De paso:** ocúltalo y vuelve a mostrarlo: nace otra vez vacío y vuelve a validar.
+- **De paso:** ocúltalo y vuelve a mostrarlo: nace otra vez, con los valores del modelo de la página (lo
+  declara su `.fudapi`, no el elemento), y vuelve a validar.
 - **Comparar:** `/formularios` tiene el mismo formulario pintado por el servidor; tiene que
   comportarse igual.
 
@@ -71,7 +72,8 @@ Hay dos paneles iguales: el primero lo pinta el servidor; el segundo nace al pul
 - **La policy solo si hace falta:** para el preview (Ctrl+C) y arranca
   `pnpm --filter @fudic/example-basic preview:nosw` (`http://localhost:4173`, sin Service Worker:
   con él, el registro del worker ya pide la policy). Abre `/about` y escribe en la consola
-  `trustedTypes.getPolicyNames()` → **no** incluye `fudic`. Escribe `/vivo` en la barra de
+  `trustedTypes.getPolicyNames()` → **no** incluye `fudic` (Chrome no tiene ese método: el e2e lo
+  mide envolviendo `createPolicy`, SDD §8.2 decisión 41). Escribe `/vivo` en la barra de
   direcciones, pregunta otra vez (sigue sin `fudic`), pulsa **Añadir** y pregunta → ahora sí.
 - **El build avisa:** en `page.headers` cambia `trusted-types fudic` por `trusted-types otra` y
   ejecuta `pnpm --filter @fudic/example-basic build` → falla con `FUD1545`, nombrando la policy

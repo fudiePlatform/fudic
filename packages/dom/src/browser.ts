@@ -21,8 +21,14 @@ import { classDiff, type ClassDiff } from './classes.js';
  * which is a mutation every observer sees for nothing.
  */
 function applyClass(el: Element, diff: ClassDiff): void {
-  if (diff.remove.length > 0) el.classList.remove(...diff.remove);
-  if (diff.add.length > 0) el.classList.add(...diff.add);
+  // Only the tokens that change: `classList.add` of a token already there still rewrites the
+  // attribute, and a spread re-diffs on every change of its component — a write per keystroke
+  // that a `MutationObserver` or a CSS transition on `[class]` would see.
+  const list = el.classList;
+  const remove = diff.remove.filter((token) => list.contains(token));
+  const add = diff.add.filter((token) => !list.contains(token));
+  if (remove.length > 0) list.remove(...remove);
+  if (add.length > 0) list.add(...add);
 }
 
 export const browserDom: DomClient<Node> = {
@@ -135,11 +141,9 @@ export const browserDom: DomClient<Node> = {
     const control = el as Element;
     // The server's reading: `true` empty, `false` and `null` none, the rest its text.
     const text = value === false || value == null ? null : value === true ? '' : String(value);
-    if (name === 'value' && control.localName === 'select') {
-      // The option the value picks is the one painted `selected`, as the server chooses it.
-      // The attribute itself, which is what `defaultSelected` reflects.
-      for (const option of (control as HTMLSelectElement).options) option.toggleAttribute('selected', option.value === (text ?? ''));
-    } else if (name === 'value' && control.localName === 'textarea') {
+    // A `<select>` is not here: the compiler calls `selectDefault`, its own piece, so a page with
+    // no `<select>` does not carry the walk over its options (decision 42).
+    if (name === 'value' && control.localName === 'textarea') {
       (control as HTMLTextAreaElement).defaultValue = text ?? '';
     } else if (text === null) {
       control.removeAttribute(name);

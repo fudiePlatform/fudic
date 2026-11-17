@@ -144,9 +144,10 @@ export interface DomClient<N> extends Dom<N> {
   /**
    * Write a live property of a control as the server writes it — its DEFAULT, the attribute —
    * once, on a control the browser creates (SDD-85 §4.2): `checked` and `selected` present or
-   * absent, the `value` attribute of an `<input>`, the text of a `<textarea>`, and the `selected`
-   * of the `<option>` of a `<select>` its value picks. A control that has not been touched shows
-   * its default, so its state follows; `setLive` goes on writing the state, never this.
+   * absent, the `value` attribute of an `<input>` and the text of a `<textarea>`. A control that
+   * has not been touched shows its default, so its state follows; `setLive` goes on writing the
+   * state, never this. The default of a `<select>` is `selectDefault`, its own piece, so the
+   * adapter every page loads carries no `<select>` (decision 42).
    */
   setDefault(el: N, name: LiveProperty, value: unknown): void;
   firstChild(node: N): N | null;

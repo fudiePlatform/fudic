@@ -454,6 +454,7 @@ function buildComponentClientModule(
   // The functions and forms of the `.fudapi` it links, from their modules, at module scope where
   // `c` and its handlers reach them (SDD-60 §3.14).
   for (const line of apiImports(graph)) w.line(line);
+  if (usage.selects) templates.createsSelect();
   writeTemplates(w, templates);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);

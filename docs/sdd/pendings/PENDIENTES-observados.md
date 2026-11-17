@@ -25,6 +25,8 @@
 | ~~5~~ | ~~Un `<link rel="component">` dentro del `<head>` de una ruta con layout ni registra el componente ni se borra~~ | BUG-40 | **Arreglado** el mismo día: es `FUD0438` (SDD-21), error en build y en editor |
 | ~~6~~ | ~~`examples/basic/src/routes/usuarios.test.ts` no pasa `tsc`~~ | Cierre de SDD-84 | **Arreglado** el 2026-11-16 (rama `fix-observados-6-7`) |
 | ~~7~~ | ~~`spec-run-e2e` de `@fudic/mcp` falla a veces en la suite completa y pasa solo~~ | Cierre de SDD-83 y de SDD-84 | **Arreglado** el 2026-11-16 (rama `fix-observados-6-7`) |
+| ~~8~~ | ~~En `/mapas`, elegir una opción delegada no levanta `bus-picker` y `bus-log` no se entera~~ | e2e de SDD-85 | **Arreglado** el 2026-11-17 en SDD-85 (decisión 43, `fud-around`) |
+| 9 | En `/formularios`, un envío justo tras hidratar valida sin la regla `required` y el formulario sale «válido» vacío | Cierre de SDD-85, también en `main` | Abierto |
 
 ---
 
@@ -290,3 +292,61 @@ la app compilándola en frío.
 
 Comprobado: la suite completa del MCP con cobertura, tres veces seguidas, 627 de 627 cada vez. Antes
 del arreglo, en las mismas condiciones, fallaban 2 y 1.
+
+## 8. ~~En `/mapas`, elegir una opción no llega a `bus-log`~~ — arreglado
+
+**Visto:** 2026-11-17, escribiendo los e2e de SDD-85 (`examples/basic/tests/create.spec.ts`). No es
+de SDD-85: ahí nada se crea en el navegador, las tres opciones vienen pintadas, y SDD-85 no toca el
+runtime que decide qué tags se levantan. No comprobado en `main`.
+
+**Síntoma.** En el build (`preview` y `nosw`), un clic en el botón de la primera `bus-option`
+levanta solo `bus-option` (tiene `@mouseenter`): `customElements.get` da `bus-picker` y `bus-log`
+sin definir, y `bus-log` sigue diciendo «Último elegido:» vacío. Sin errores en consola.
+
+**Por dónde empezar.** El clic lo escucha `bus-picker` en su `<section>` con `delegate:option`
+sobre las opciones; el gesto en la opción no levanta al dueño de la delegación, y sin él nadie
+emite `picked`. El texto de la página («esta página no hace nada todavía») es de antes del runtime
+de hidratación. El e2e de SDD-85 se limita a que la opción se levante sin errores.
+
+**Causa y arreglo (2026-11-17).** No era de la delegación sino del capturador (SDD-17): levanta el
+host más cercano del gesto, y el listener del panel es de `bus-picker`, un antepasado de la opción.
+Pasaba con cualquier listener escrito alrededor de un hijo —también el `@press` de `app-card` sobre
+su `app-button`—. Ahora el compilador publica `fud-around` (qué etiquetas escuchan alrededor de sus
+hijos) y el capturador levanta al dueño frío más externo de esa lista que esté en el camino del
+gesto. SDD-85 §8.2, decisión 43; e2e en `examples/basic/tests/create.spec.ts`.
+
+## 9. Una regla de navegador que todavía no está registrada cuando el formulario valida
+
+**Visto:** 2026-11-17, en la pasada completa de e2e del cierre de SDD-85. No es de SDD-85:
+**reproducido en `main`** (`cbe45edc`), y allí falla más a menudo.
+
+**Síntoma.** En `preview`, `examples/basic/tests/forms.spec.ts` falla de forma intermitente
+(unas 3 de cada 135 en esta rama; 7 de 125 en `main`) en los tests que envían o validan justo
+después de que `app-form` diga que está hidratado: tests de las líneas 102, 137, 241, 301 y 319. El
+envío vacío pinta «Enviado: .» y ningún mensaje. En la consola, en cada fallo:
+
+```
+pageerror: required of @fudic/forms/rules has no implementation in src/browser
+    at … forms/contract.js → run-rule.js → control.js (validateSubtree) → form.js ($validate)
+    at HTMLFormElement.<anonymous> (forms/bind-form.js)
+```
+
+Siempre con el Service Worker ya controlando la página (`navigator.serviceWorker.controller`).
+
+**Causa.** El módulo de navegador de cada `fudic:<id>` importa la raíz generada
+(`packages/vite/src/api-root.ts`), y esa raíz carga `src/browser` y las carpetas `browser/` de las
+librerías con `import()` dinámicos, uno tras otro; exporta `ready`, pero el chunk del componente no
+lo espera. Si el chunk de `app-form` llega antes que esas importaciones —con el worker sirviendo de
+caché, pasa—, el formulario se engancha y el primer `$validate` lee una ranura vacía y lanza:
+`bindForm` muere a mitad, y el `@submit` del autor ve un formulario sin tocar, que con
+`Validity.Interacted` es válido.
+
+**Descartado.** No es `fud-around` (SDD-85, decisión 43): con el mapa vaciado a mano en el build
+sigue fallando. La primera pasada del cierre, con 210 fallos y los tres puertos caídos, fue la
+ficha 4: el worktree `http-diet` tenía servidores vivos en los mismos puertos.
+
+**Por dónde arreglarlo.** Que nada que use un contrato corra antes de su `ready`. Un `await ready`
+de nivel superior en el propio `fudic:<id>` se bloquea: los ficheros de `src/browser` importan
+`fudic:<id>` para registrar su mitad, y la raíz espera a esos ficheros. Donde no hay ciclo es en el
+chunk del componente o de la ruta que importa un contrato: un `await` de la raíz ahí retrasa su
+definición —y con ella la hidratación, que ya espera al chunk— hasta que las reglas estén dentro.

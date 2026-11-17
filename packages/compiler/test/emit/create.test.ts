@@ -10,6 +10,8 @@ import { browserDom } from '@fudic/dom';
 import {
   emitComponentClientModule,
   emitComponentClientModuleMapped,
+  emitRouteClientModuleMapped,
+  resolveDocument,
   resolveComponents,
   type ComponentGraph,
 } from '../../src/emit/index.js';
@@ -102,10 +104,34 @@ describe('a control the browser creates carries the default the server paints (S
     });
     const code = emitComponentClientModule(g, g.components.get('x-pick')!);
     // In place: the value the default reads is the one the walk evaluated there.
-    expect(code).toMatch(/\$dom\.setDefault\(\$n\d+, "value", \$x\[\d+\]\);/u);
+    // The default of a `<select>` is its own piece, on the templates' import (decision 42).
+    expect(code).toMatch(/\$selectDefault\(\$n\d+, \$x\[\d+\]\);/u);
+    expect(code).toContain("import { template as $template, selectDefault as $selectDefault } from '@fudic/dom';");
     const { shadow } = create(g, 'x-pick', ['b', ['a', 'b']]);
     expect(shadow.querySelector('option[selected]')!.textContent).toBe('b');
     expect(treeOf(shadow)).toBe(painted(g, 'x-pick', { v: 'b', xs: ['a', 'b'] }));
+  });
+
+  it('a route that creates a `<select>` imports it too, on the templates’ line', () => {
+    const layout = '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>';
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { const on = signal(false); const v = signal("b"); }',
+      '@if (on()) {<select value=@v()><option>a</option><option>b</option></select>}',
+    ].join('\n');
+    const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': route, '/l.fud': layout })).value;
+    const code = emitRouteClientModuleMapped(graph)!.code;
+    expect(code).toContain('selectDefault as $selectDefault');
+    expect(code).toMatch(/\$selectDefault\(\$n\d+, /u);
+  });
+
+  it('a module with no `<select>` imports nothing of it, and a textarea goes on through the adapter', () => {
+    const g = graphOf({
+      'x-text': component('x-text', '  const { v = "" } = props<{ v?: string }>();', '<textarea value=@v></textarea>'),
+    });
+    const code = emitComponentClientModule(g, g.components.get('x-text')!);
+    expect(code).not.toContain('selectDefault');
+    expect(code).toMatch(/\$dom\.setDefault\(\$n\d+, "value", /u);
   });
 });
 

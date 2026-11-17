@@ -418,11 +418,18 @@ export interface CoreUsage {
    * lives in another module and has to be asked at run time.
    */
   guarded: boolean;
+  /**
+   * Whether any walk of this file creates a `<select>` whose value it writes, and so imports
+   * `selectDefault` from `@fudic/dom` — its own piece, so a page with no `<select>` does not carry
+   * it (SDD-85 decision 42). Here because it is the same question: what the walk made the module
+   * import.
+   */
+  selects: boolean;
 }
 
 /** A file starts owing `@fudic/core` nothing but `FudicElement`. */
 export function coreUsage(): CoreUsage {
-  return { subscribes: false, creates: false, guarded: false };
+  return { subscribes: false, creates: false, guarded: false, selects: false };
 }
 
 export interface MarkupOptions {
@@ -694,7 +701,8 @@ export class ClientMarkupEmitter {
       bound: (expr, write) => this.#applyValue([expr], write),
       // A control `c` creates gets its default first, as the server paints it, and after its
       // children: the `<option>`s a `<select>` value picks may come from a block inside it.
-      live: (expr, write, initial) => {
+      live: (expr, write, initial, select) => {
+        if (select) this.#usage.selects = true;
         const slot = this.#applyValue([expr], write, false, true);
         this.#defaults.push(initial(this.#inPlace ? `$x[${slot}]` : expr));
       },

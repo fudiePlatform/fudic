@@ -38,6 +38,13 @@ export interface PageMaps {
    */
   readonly eager: readonly string[];
   /**
+   * The tags — and the route, by its name — that listen AROUND a child host: an `@event` on an
+   * element that is, or holds, a hydratable host of their own markup (SDD-85 decision 43). A
+   * gesture inside that child has to raise them too, or the listener never hears it. Empty for
+   * a page with no such listener, which is the base case.
+   */
+  readonly around: readonly string[];
+  /**
    * The route's chunk name — `safeName(pattern)` — or `null` when this page has no client
    * half of its own (SDD-39 §3.3, §4.7).
    *
@@ -102,6 +109,7 @@ export interface PartBlock {
   readonly tree?: TagMap;
   readonly bus?: TagMap;
   readonly eager?: readonly string[];
+  readonly around?: readonly string[];
   readonly route?: string;
   readonly data?: unknown;
 }
@@ -117,6 +125,7 @@ export const STATE_BLOCK = 'fud-state';
 export const TREE_BLOCK = 'fud-tree';
 export const BUS_BLOCK = 'fud-bus';
 export const EAGER_BLOCK = 'fud-eager';
+export const AROUND_BLOCK = 'fud-around';
 /** The route's own two (SDD-39 §3.3). Both may be absent, and absence is the base case. */
 export const ROUTE_BLOCK = 'fud-route';
 export const DATA_BLOCK = 'fud-data';
@@ -178,6 +187,9 @@ export function growingMaps(): GrowingMaps {
     get eager() {
       return first.eager ?? [];
     },
+    get around() {
+      return first.around ?? [];
+    },
     get route() {
       return first.route ?? null;
     },
@@ -222,6 +234,7 @@ const CLASSIC: readonly (readonly [string, keyof PartBlock])[] = [
   [TREE_BLOCK, 'tree'],
   [BUS_BLOCK, 'bus'],
   [EAGER_BLOCK, 'eager'],
+  [AROUND_BLOCK, 'around'],
   [ROUTE_BLOCK, 'route'],
   [DATA_BLOCK, 'data'],
   [IOC_BLOCK, 'ioc'],

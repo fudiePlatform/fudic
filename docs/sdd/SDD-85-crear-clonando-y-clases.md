@@ -1,6 +1,6 @@
 # SDD-85 — Crear clonando una plantilla, y las clases sin pisar
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-85-Task.md).
+> **Estado:** `Hecho` (2026-11-17) — [tareas](./SDD-85-Task.md).
 > **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` · `@fudic/di` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 14 (el contrato `Dom<N>`), 15 (los tres caminos `c` / `h` / `u` y el cursor de
@@ -345,8 +345,8 @@ tiene estado. Entra en el presupuesto del manifiesto como las demás.
 16. Con `require-trusted-types-for 'script'` y `trusted-types fudic`, crear cualquier bloque no da
     ninguna violación. Sin `fudic` en `trusted-types`, el build da `FUD1545` nombrando la policy de
     fudic.
-17. Una página sin bloques que se abran no crea la policy (`trustedTypes.getPolicyNames()` no incluye
-    `fudic` si nada más la pidió).
+17. Una página sin bloques que se abran no crea la policy: nadie llama a `createPolicy('fudic')` si
+    nada más la pidió (decisión 41; Chrome no tiene `trustedTypes.getPolicyNames()`).
 18. Un navegador sin `trustedTypes` crea igual.
 
 **Las clases**
@@ -608,3 +608,41 @@ Nada.
     lexer lee un `(` pegado a cualquier nombre como el nombre-expresión de `bus:(…)` (decisión
     28.b de la gramática), y la clasificación, que solo admite ese nombre detrás de `bus:`, da
     `FUD0098`. Un `(` separado por espacio sigue siendo un nombre, como en HTML.
+40. **Un token de clase solo se escribe si cambia** (2026-11-17, e2e del criterio 26). Un spread
+    vuelve a calcular su diferencia en cada cambio de su componente, y `classList.add` de un token
+    que ya está reescribe el atributo igual: hidratar `/clases` y leer el informe escribía la
+    `class` de la caja del spread sin cambiar nada. `browserDom` quita solo lo que está y pone solo
+    lo que falta, como ya hacía `toggleClass`. Sin efecto visible; sí para un `MutationObserver` o
+    una transición sobre `[class]`.
+41. **Lo que dicen los e2e de la fase 6** (2026-11-17). `trustedTypes.getPolicyNames()` no existe en
+    Chrome: el criterio 17 se mide envolviendo `createPolicy` antes de cargar. El formulario de
+    `/vivo` vuelve a abrirse con los valores que tenía, porque su modelo lo declara el `.fudapi`
+    de la página y no el elemento; lo que se comprueba es que el elemento nuevo se engancha y valida.
+    En `/mapas` las opciones no se crean en el navegador; el e2e mide que el clic en una opción
+    llegue al registro (decisión 43).
+42. **El `selected` por defecto de un `<select>` es su propia pieza, `dom/select`** (Pedro,
+    2026-11-17, por el presupuesto de SDD-34 §6.15). `setDefault` de la decisión 32 recorría las
+    `<option>` dentro del adaptador, y el adaptador lo carga toda página: una página sin `<select>`
+    pagaba ese código. El compilador sabe qué elemento es un `<select>`, así que para su `value`
+    escribe `$selectDefault(el, valor)` en lugar de `$dom.setDefault`, y lo importa en la misma
+    línea que las plantillas (`selectDefault as $selectDefault` de `@fudic/dom`) solo si el chunk
+    crea uno. `setDefault` se queda con `checked`, `selected`, el `value` de un `<input>` y el
+    texto de un `<textarea>`. En el banco, `dom/select` está entre las excepciones `underweight`:
+    es pequeña a propósito.
+43. **Un gesto dentro de un hijo levanta al dueño que escucha alrededor** (Pedro, 2026-11-17;
+    fallo previo de SDD-17 que destapó el e2e de `/mapas`). El capturador levantaba el host más
+    cercano del gesto, y un listener escrito alrededor de un hijo —el `<section @click>` de
+    `bus-picker` que oye a sus `bus-option` con `delegate:option`, o un `@press` sobre la etiqueta
+    del hijo, como el de `app-card` sobre `app-button`— es de un antepasado: el clic levantaba al
+    hijo y no lo oía nadie. El compilador publica un mapa nuevo, `fud-around`: las etiquetas (y la
+    ruta, por su nombre) con un `@evento` en un elemento que es o contiene un host hidratable de
+    su propio markup. Viaja como `fud-eager`, en el bloque del final o en el de la parte 0. El
+    capturador levanta el dueño frío más externo de la lista que esté en el camino del gesto; la
+    cascada levanta antes a los hijos, y el gesto se reproduce sobre su destino. Si no hay ninguno,
+    todo sigue como antes: el host más cercano. Un dueño que se está levantando cuenta como frío:
+    el `pointerdown` lo levanta y el `click` de detrás espera en su cola, no en la del hijo (en la
+    del hijo se reproducía antes de que el dueño estuviera, y no lo oía nadie). Y la precarga por
+    visibilidad anticipa también a esos dueños: un componente que entra en pantalla calienta su
+    cierre y el de quien escucha a su alrededor, la ruta incluida (en `/usuarios`, la ruta escucha
+    `@fudic:result` sobre `user-form`). `up`, el paso hacia arriba que cruza shadow roots, pasa de
+    `install.ts` a `registry.ts` para que lo usen los dos.

@@ -24,4 +24,5 @@ export { type AttrsDiff, attrsOf, attrsDiff } from './attrs.js';
 export { type ClassDiff, classText, classTokens, classDiff } from './classes.js';
 export { escapeText, escapeAttr } from './escape.js';
 export { type Template, template, templateIn } from './template.js';
+export { selectDefault } from './select.js';
 export { POLICY_NAME, TRUSTED_TYPES_NEEDS, trustedHtmlOf, trustedScriptUrlOf } from './trusted.js';

@@ -303,6 +303,7 @@ function buildRouteClientModule(
   // `@code` and the template's handlers below both reach them by name (SDD-60 §3.14).
   for (const line of apiImports(graph)) w.line(line);
   if (refreshes) w.line(loadImport(graph)!);
+  if (usage.selects) templates.createsSelect();
   writeTemplates(w, templates);
   w.line('');
   // A default export and NOT a custom element: a route is not defined, not instantiated and
