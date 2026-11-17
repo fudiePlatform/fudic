@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 8 / 28 — `Listo`. (Implementación 22 / 28 · Tests 9 / 28)
+> **Progreso:** 18 / 28 — `Listo`. (Implementación 22 / 28 · Tests 18 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -90,7 +90,7 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 3 — El emit
 
-- impl [x] · tests [ ] — **9. Fixtures `app-lifecycle.fud` y `ruta-ciclo.fud`.**
+- impl [x] · tests [x] — **9. Fixtures `app-lifecycle.fud` y `ruta-ciclo.fud`.**
   - Un componente con los siete hooks, un `ref`, `role="group"` y `variant="@variant"` en su tag de
     identidad, y un `@foreach` con clave de hijos que también usan hooks.
   - Una ruta con layout, los dos con hooks (los cinco permitidos).
@@ -104,7 +104,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* —.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/lifecycle-untouched.test.ts`.
-- impl [x] · tests [ ] — **11. El componente registra y ejecuta.**
+- impl [x] · tests [x] — **11. El componente registra y ejecuta.**
   - `const $hk = $hooks();` dentro del `$owned`, antes del código del autor; cada llamada reescrita a
     `$hk.add("…", fn)` con el mapa de fuentes en la llamada; `run` de `before*` / `after*` en `h` y en
     `c`, el `after*` después de `$s()`; `$hk.dispose(host)` como primera línea de `r`; el host guardado
@@ -114,7 +114,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `src/emit/markup-client.ts`,
     `test/emit/__golden__/app-lifecycle.client.mjs`, `test/emit/lifecycle.test.ts`.
-- impl [x] · tests [ ] — **12. La ruta registra y ejecuta.**
+- impl [x] · tests [x] — **12. La ruta registra y ejecuta.**
   - Lo mismo en el chunk de la ruta, sin `c` y con `$root` como host; los hooks del layout y después
     los de la ruta, en el mismo `$hk` (SDD §4.5).
   - Golden de `ruta-ciclo`.
@@ -122,12 +122,12 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/route-client.ts`, `test/emit/__golden__/ruta-ciclo.client.mjs`,
     `test/emit/route-lifecycle.test.ts`.
-- impl [x] · tests [ ] — **13. `on` y `off`, solo si hacen falta.**
+- impl [x] · tests [x] — **13. `on` y `off`, solo si hacen falta.**
   - Emitidos solo con `onConnect` u `onDisconnect`, en componentes y en rutas (criterio 17).
   - *Depende de:* 11, 12.
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/emit/client.ts`, `test/emit/lifecycle.test.ts`.
-- impl [x] · tests [ ] — **14. El servidor y el SW no ven los hooks.**
+- impl [x] · tests [x] — **14. El servidor y el SW no ven los hooks.**
   - Las sentencias de hook se quitan, enteras, de la salida de servidor y de SW (criterio 16).
   - Goldens de servidor de `app-lifecycle` y `ruta-ciclo`, iguales que los de los mismos ficheros sin
     hooks.
@@ -153,19 +153,19 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 4 — El editor
 
-- impl [x] · tests [ ] — **17. Las firmas.**
+- impl [x] · tests [x] — **17. Las firmas.**
   - Los siete hooks declarados en `globals.ts`, junto a `props` (SDD §3.1, §4.7). Tests de tipos del
     criterio 21.
   - *Depende de:* —.
   - *Paquete:* `language-core`.
   - *Ficheros:* `src/globals.ts`, `test/lifecycle-types.test.ts`.
-- impl [x] · tests [ ] — **18. Los snippets.**
+- impl [x] · tests [x] — **18. Los snippets.**
   - Siete entradas con ámbito `code-block`: los de crear con rol `component`; los otros cinco con
     `component`, `route`, `page` y `layout` (SDD §4.7). Tests del criterio 22.
   - *Depende de:* —.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/services/snippets.ts`, `test/services/snippets.test.ts`.
-- impl [x] · tests [ ] — **19. El README de la extensión.**
+- impl [x] · tests [x] — **19. El README de la extensión.**
   - La tabla de los snippets del ciclo de vida, junto a la de los `<link>`.
   - *Depende de:* 18.
   - *Paquete:* `vscode`.
@@ -185,7 +185,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* `test/emit/hydrate/host-reflect.test.ts`, y `src/emit/markup-client.ts` si hace falta.
-- impl [x] · tests [ ] — **22. El tipo en el editor.**
+- impl [x] · tests [x] — **22. El tipo en el editor.**
   - Criterio 25: un objeto en un atributo con expresión del tag de identidad es error de tipos.
   - *Depende de:* —.
   - *Paquete:* `language-core`.

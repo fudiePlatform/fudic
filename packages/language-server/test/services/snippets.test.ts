@@ -244,23 +244,53 @@ describe('snippetsAt — inside @code', () => {
   const routeCode = '<link rel="layout" href="./_layout.fud">\n@code {\n  |\n}\n<article>hi</article>\n';
   const layoutCode = LAYOUT_HEAD.replace('    |\n', '    @code {\n      |\n    }\n');
 
-  it('a component gets props — and no markup at all', () => {
-    expect(labelsAt(componentCode)).toEqual(['props']);
+  const pageCode = PAGE_HEAD.replace('    |\n', '    @code {\n      |\n    }\n');
+  /** SDD-86 §4.7: the seven lifecycle hooks; the two create hooks only in a component. */
+  const ALL_HOOKS = ['beforeHydrate', 'afterHydrate', 'beforeCreate', 'afterCreate', 'onConnect', 'onDisconnect', 'onDispose'];
+  const HYDRATE_HOOKS = ALL_HOOKS.filter((h) => !h.endsWith('Create'));
+  const hooksAt = (marked: string): readonly string[] => labelsAt(marked).filter((l) => ALL_HOOKS.includes(l));
+
+  it('a component gets props and the seven hooks — and no markup at all', () => {
+    expect(labelsAt(componentCode).filter((l) => !ALL_HOOKS.includes(l))).toEqual(['props']);
+    expect([...hooksAt(componentCode)].sort()).toEqual([...ALL_HOOKS].sort());
   });
 
-  it('a route gets nothing: no region to open, no props (SDD-60 §4.8)', () => {
+  it('a route gets no props (SDD-60 §4.8), and the five hooks that are not create hooks', () => {
     // What the server runs — `load`, `paths`, `layout` — is the route's `.fudapi`, and nobody
-    // instantiates a route as a tag.
-    expect(labelsAt(routeCode)).toEqual([]);
+    // instantiates a route as a tag; so it is never created either (FUD1561).
+    expect(labelsAt(routeCode).filter((l) => !ALL_HOOKS.includes(l))).toEqual([]);
+    expect([...hooksAt(routeCode)].sort()).toEqual([...HYDRATE_HOOKS].sort());
   });
 
-  it('a layout’s @code offers `props`', () => {
-    expect(labelsAt(layoutCode)).toEqual(['props']);
+  it('a layout’s @code offers `props` and the same five hooks', () => {
+    expect(labelsAt(layoutCode).filter((l) => !ALL_HOOKS.includes(l))).toEqual(['props']);
+    expect([...hooksAt(layoutCode)].sort()).toEqual([...HYDRATE_HOOKS].sort());
   });
 
-  it('the body of an old region is @code like the rest: props there too', () => {
+  it('a page’s @code offers the same five hooks (criterion 22)', () => {
+    expect([...hooksAt(pageCode)].sort()).toEqual([...HYDRATE_HOOKS].sort());
+  });
+
+  it('no hook outside @code: in the template, at top level or in a page body', () => {
+    for (const where of [HOST, HOST_TOP, ROUTE_TOP, LAYOUT_HEAD, PAGE_HEAD, PAGE_BODY]) {
+      expect(hooksAt(where)).toEqual([]);
+    }
+  });
+
+  it('the body of an old region is @code like the rest: props and the hooks there too', () => {
     const inRegion = '@code {\n  @client {\n    |\n  }\n}\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n';
-    expect(labelsAt(inRegion)).toEqual(['props']);
+    expect(labelsAt(inRegion).filter((l) => !ALL_HOOKS.includes(l))).toEqual(['props']);
+    expect(hooksAt(inRegion)).toHaveLength(7);
+  });
+
+  it('each hook writes its call with the host, the cursor inside (§4.7)', () => {
+    for (const hook of ALL_HOOKS.filter((h) => h !== 'onConnect')) {
+      expect(bodyAt(componentCode, hook), hook).toBe(`${hook}((host) => {\n  $0\n});`);
+    }
+  });
+
+  it('onConnect writes its cleanup too, and ends in it', () => {
+    expect(bodyAt(componentCode, 'onConnect')).toBe('onConnect((host) => {\n  $1\n  return () => {\n    $0\n  };\n});');
   });
 });
 
