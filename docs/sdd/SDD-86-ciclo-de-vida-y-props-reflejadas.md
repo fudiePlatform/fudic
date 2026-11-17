@@ -91,10 +91,10 @@ nombre y el editor las declara como globales.
 
 ```ts
 beforeHydrate(fn: (host: HTMLElement) => void): void;
-afterHydrate(fn: (host: HTMLElement) => void | (() => void)): void;
+afterHydrate(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
 beforeCreate(fn: (host: HTMLElement) => void): void;
-afterCreate(fn: (host: HTMLElement) => void | (() => void)): void;
-onConnect(fn: (host: HTMLElement) => void | (() => void)): void;
+afterCreate(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
+onConnect(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
 onDisconnect(fn: (host: HTMLElement) => void): void;
 onDispose(fn: (host: HTMLElement) => void): void;
 ```
@@ -514,7 +514,7 @@ salen del `.md` del catálogo de `@fudic/diagnostics`.
 
 **El editor**
 
-21. `afterHydrate((host) => host.dataset.x = '1')` no da errores de tipos; `afterHydrate(42)` sí;
+21. `afterHydrate((host) => { host.dataset.x = '1'; })` no da errores de tipos; `afterHydrate(42)` sí;
     `onConnect(() => 42)` sí.
 22. Dentro del `@code` de un componente se ofrecen los siete snippets; en el de una ruta, una página o
     un layout, los cinco que no son de crear; fuera de `@code`, ninguno.
@@ -612,3 +612,11 @@ Nada.
 17. **Toda sentencia de hook va a la zona de cliente** (al implementar), sea cual sea el corte del
     servidor. Eso es lo que la quita de la salida de servidor y de Service Worker, que solo
     escriben la zona neutral.
+18. **Un hook que limpia también puede ser `async`** (al implementar). `afterHydrate`,
+    `afterCreate` y `onConnect` aceptan una `fn` que devuelve `void`, su limpieza o una
+    `Promise<void>`: el ejemplo del store de §4.9 es `async`. Nadie espera la promesa. Y el criterio
+    21 se escribe con llaves: `(host) => host.dataset.x = '1'` devuelve un `string`, que con la firma
+    de §3.1 es el mismo error que `onConnect(() => 42)`; el criterio pedía las dos cosas a la vez.
+19. **El tag de identidad acepta cualquier nombre de atributo** (al implementar). El editor lo
+    comprobaba contra los atributos globales de HTML, así que `variant="@variant"` era `TS2353`.
+    Ahora va contra `$HostOwn`: cualquier nombre, con valor `$Scalar`.

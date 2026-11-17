@@ -41,6 +41,17 @@ resolves to: the ones of your own project as relative paths, and the ones of the
 libraries you depend on by the name their `exports` give them — `@acme/ui/ui-card.fud`. In a
 monorepo, the app next door is not on it.
 
+**Lifecycle hooks.** Inside `@code`, type the name of a moment of the component's life and the
+call is written for you, with the host it receives:
+
+| Snippet | Runs | Offered |
+|---|---|---|
+| `beforeHydrate` / `afterHydrate` | around adopting what the server painted | `@code` of a component, route, page or layout |
+| `beforeCreate` / `afterCreate` | around creating it in the browser | `@code` of a component |
+| `onConnect` | each time it enters the document; writes the `return` of its cleanup | `@code` of a component, route, page or layout |
+| `onDisconnect` | each time it leaves the document | same |
+| `onDispose` | once, when it is destroyed | same |
+
 **Colour that never bleeds.** Highlighting arrives with the first frame, before the language
 server has answered, and is corrected by the server about a hundred milliseconds later.
 TypeScript inside `@code`, CSS inside `<style>` and the `@` directives are each shown as

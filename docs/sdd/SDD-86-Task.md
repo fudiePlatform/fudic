@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 8 / 28 — `Listo`. (Implementación 16 / 28 · Tests 9 / 28)
+> **Progreso:** 8 / 28 — `Listo`. (Implementación 19 / 28 · Tests 9 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -153,19 +153,19 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 4 — El editor
 
-- impl [ ] · tests [ ] — **17. Las firmas.**
+- impl [x] · tests [ ] — **17. Las firmas.**
   - Los siete hooks declarados en `globals.ts`, junto a `props` (SDD §3.1, §4.7). Tests de tipos del
     criterio 21.
   - *Depende de:* —.
   - *Paquete:* `language-core`.
   - *Ficheros:* `src/globals.ts`, `test/lifecycle-types.test.ts`.
-- impl [ ] · tests [ ] — **18. Los snippets.**
+- impl [x] · tests [ ] — **18. Los snippets.**
   - Siete entradas con ámbito `code-block`: los de crear con rol `component`; los otros cinco con
     `component`, `route`, `page` y `layout` (SDD §4.7). Tests del criterio 22.
   - *Depende de:* —.
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/services/snippets.ts`, `test/services/snippets.test.ts`.
-- impl [ ] · tests [ ] — **19. El README de la extensión.**
+- impl [x] · tests [ ] — **19. El README de la extensión.**
   - La tabla de los snippets del ciclo de vida, junto a la de los `<link>`.
   - *Depende de:* 18.
   - *Paquete:* `vscode`.
