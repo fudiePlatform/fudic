@@ -1,6 +1,6 @@
 # SDD-87 — Una página de error compartida entre apps, y el `base` en el navegador
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-87-Task.md).
+> **Estado:** `Hecho` (2026-11-18) — [tareas](./SDD-87-Task.md).
 > **Paquetes:** `@fudic/resolve` · `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/server` ·
 > `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·

@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 22 / 24 — `En curso`.
+> **Progreso:** 24 / 24 — `Hecho`.
 
 **El orden manda en tres puntos.**
 
@@ -179,14 +179,14 @@
     `apps/admin/src/routes/fallos.fud`, `apps/admin/src/routes/fallos.fudapi`,
     `apps/admin/src/routes/fallos.ts`, `apps/admin/src/routes/entrar.fud`,
     `apps/tienda/src/routes/_error.fud`, `apps/admin/package.json` (si hace falta `@fudic/http`).
-- [ ] **23. Los e2e de errores.**
+- [x] **23. Los e2e de errores.**
   - Dos `webServer` con `vite preview` (admin y tienda, cada una en su puerto) y
     `tests/errores.spec.ts` con el criterio 1. Una prueba del MCP con el criterio 2: `fudic_status`
     en `apps/admin` y en `apps/tienda`.
   - *Depende de:* 19, 22.
   - *Paquete:* `examples/workspace`, `mcp`.
   - *Ficheros:* `playwright.config.ts`, `tests/errores.spec.ts`, `packages/mcp/test/status-workspace.test.ts`.
-- [ ] **24. Cierre.**
+- [x] **24. Cierre.**
   - IDEA-08 §6 y §7 apuntan a esta SDD; `INDEX.md` con el estado y el registro.
   - `pnpm typecheck`, `pnpm build`, la cobertura de SDD §5, y los e2e de `examples/workspace` y
     `examples/basic` en verde (criterio 27).
