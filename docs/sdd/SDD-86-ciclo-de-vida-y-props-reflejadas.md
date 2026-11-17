@@ -636,3 +636,10 @@ Nada.
 23. **Un `ref` vale `null` en `beforeHydrate` si se declara como dice la guía**
     (`let box: HTMLElement | null = null;`). Declarado sin valor, vale `undefined` hasta el
     enganche: el compilador no inicializa las variables del autor.
+24. **Dos bugs del framework arreglados por el camino** (al implementar). Uno: tras hidratar, una
+    actualización a `undefined` no quitaba lo que pintó el servidor (el caché de escrituras leía
+    «nunca escrito» como `undefined`); la guarda de cada escritura aplica ahora también un hueco
+    que nadie llenó. Dos: una vista que lee un store importado no se repintaba al engancharse si
+    otro componente había escrito el store antes (`writtenIf`). Los dos cambian la salida de
+    cliente de ficheros sin hooks, a propósito: el criterio 15 se lee como «los hooks no añaden
+    nada», no como «nada cambia».

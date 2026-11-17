@@ -5,7 +5,7 @@
 
   const { variant = 'default', rows = [] } = props<{ variant?: 'default' | 'highlight'; rows?: Row[] }>();
 
-  let box;
+  let box: HTMLElement | null = null;
   const log: string[] = [];
 
   beforeHydrate(() => {
