@@ -148,6 +148,11 @@ Un backend que los pase todos en los dos sentidos habla `fud-bin`.
 | Problema | `application/problem+fud`, el nivel de §3.1 | `application/problem+json`, como hoy |
 | Firma | Cabecera `fud-sig` (§3.3) | Ninguna |
 
+> **Corregido por [BUG-62](./bugs/BUG-62-http-a-la-medida-de-la-pagina.md):** `?a=` desaparece. Los
+> argumentos de un `get` son claves normales de su query, una por argumento y en texto, como los de
+> `query`; por eso el compilador exige que sean escalares (FUD1101). Una URL es texto, y escribirla en
+> binario obligaba a una página solo JSON a descargar el códec binario.
+
 - **El formato lo dice la cadena, no se negocia.** El compilador ya sabe, para cada función, si
   `json` está en su cadena (§3.4). Los dos lados lo leen del mismo contrato; el servidor no mira
   `accept`.

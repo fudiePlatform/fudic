@@ -149,7 +149,7 @@ const json = (name: string, cookie: string | undefined, init: RequestInit = {}, 
     ...init,
     headers: { 'content-type': 'application/json', accept: 'application/json', ...(cookie !== undefined ? { cookie } : {}) },
   });
-const search = (q: string, cookie?: string) => json('search', cookie, {}, `?a=${encodeURIComponent(JSON.stringify({ q }))}`);
+const search = (q: string, cookie?: string) => json('search', cookie, {}, `?${new URLSearchParams({ q })}`);
 
 describe('a page of a criterion (criteria 10–12, 14, 16)', () => {
   it('criterion 10: its data paints the page without load; without the cookie, load runs', async () => {

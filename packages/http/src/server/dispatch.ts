@@ -1,6 +1,6 @@
 /**
  * What serving one server function is made of (SDD-56 §4.6), for the dispatcher of
- * `contract/server.ts`: its options, the arguments of a GET, the validation of a form on a
+ * `contract/server.ts`: its options, the validation of a form on a
  * fresh copy, and the response of §4.2.
  */
 
@@ -13,7 +13,6 @@ import type { ServerContext } from '../types.js';
 import { markPrivate } from './context.js';
 import type { ServerSettings } from './settings.js';
 import type { Spool, UploadLimits } from './uploads.js';
-import { jsonWire } from '../wire/json.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
 import { hasFiles, splitValue, VALUE_PART } from '../wire/files.js';
@@ -49,23 +48,6 @@ export function settingsOf(options: DispatchOptions): ServerSettings {
     secureCookies: options.secureCookies ?? true,
     ...(options.secret !== undefined ? { secret: options.secret } : {}),
   };
-}
-
-const utf8 = new TextEncoder();
-
-/**
- * The arguments of a GET: `?a=` as JSON text, whatever the function's format, or none. A URL is
- * text (BUG-62): the format of a function is the format of its bodies. The rest carry a body
- * (`body.ts`).
- */
-export function queryArgs(url: URL, types: Readonly<Record<string, Ty>>): Record<string, unknown> {
-  const text = url.searchParams.get('a');
-  if (text === null || text === '') return {};
-  try {
-    return jsonWire.decodeArgs(types, utf8.encode(text));
-  } catch {
-    throw badRequest('the arguments are not valid JSON');
-  }
 }
 
 /**

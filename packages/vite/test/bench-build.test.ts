@@ -96,7 +96,7 @@ describe('the workbench’s own build (SDD-82 §4.7)', () => {
   });
 
   it('answers its functions with the fixture, logs them, and reads its clock', async () => {
-    const q = `?a=${encodeURIComponent(JSON.stringify({ q: 'l' }))}`;
+    const q = '?q=l';
     expect(await (await fn(served.origin, 'search', q)).json()).toEqual(['luis']);
     expect(await (await fn(served.origin, 'clock')).json()).toBe('2026-11-08T10:00:00.000Z');
     expect(bench.calls('run.c1').map((c) => [c.name, c.faked])).toEqual([
@@ -121,7 +121,7 @@ describe('any other build', () => {
         // Even served by a process with the bench installed: the build is not the bench's.
         bench.begin('run.c1', { route: 'routes/usuarios', data: [{ title: 'de la fixture' }], answers: { search: ['luis'] } });
         expect(await (await page(served.origin, COOKIE)).text()).toContain('de verdad');
-        expect(await (await fn(served.origin, 'search', `?a=${encodeURIComponent(JSON.stringify({ q: 'l' }))}`)).json()).toEqual(['real']);
+        expect(await (await fn(served.origin, 'search', '?q=l')).json()).toEqual(['real']);
         expect(bench.calls('run.c1')).toEqual([]);
       } finally {
         uninstall();

@@ -16,7 +16,7 @@ import { run } from '../compose.js';
 import { HttpError, notFound, type Problem } from '../errors.js';
 import { serverContext } from '../server/context.js';
 import { bodyArgs } from '../server/body.js';
-import { queryArgs, settingsOf, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
+import { settingsOf, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
 import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import { DEFAULT_LIMITS, memorySpool, multipartArgs, refuseCrossSite, releasing } from '../server/upload.js';
@@ -145,7 +145,8 @@ async function dispatch(
     const types = spec.args ?? {};
     const raw =
       request.method === 'GET'
-        ? queryArgs(url, types)
+        ? // A `get` has no body: its arguments are keys of its query, as a `query` argument (BUG-62).
+          typed(types, (name) => url.searchParams.get(name))
         : spool !== undefined
           ? await multipartArgs(request, wire, types, { limits: { ...DEFAULT_LIMITS, ...options.uploads }, ...(spec.fileLimits !== undefined ? { fileLimits: spec.fileLimits } : {}) }, spool)
           : await bodyArgs(request, wire, types);

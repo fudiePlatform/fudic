@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { get } from 'node:http';
 import { fudic } from '../src/index.js';
-import { binInit, binProblem, binQuery, binValue, type Ty } from './helpers/fud-bin.js';
+import { binInit, binProblem, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** The package `@fudic/http`: its `fudapi/`, its compiled halves and its `dist`. */
@@ -402,8 +402,8 @@ describe('criterion 38: vite preview serves the functions from functions.mjs', (
     ]);
   });
 
-  it('criterion 21: GET search?a=… returns what handle returned, through the server half of auth', async () => {
-    const res = await call(`/routes/usuarios/search?a=${binQuery({ q: 'str' }, { q: 'an' })}`, binInit(SEARCH));
+  it('criterion 21: GET search?q=… returns what handle returned, through the server half of auth', async () => {
+    const res = await call('/routes/usuarios/search?q=an', binInit(SEARCH));
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/fud+bin');
     expect(await binValue(res, { list: 'str' })).toEqual(['ana']);
@@ -423,8 +423,7 @@ describe('criterion 38: vite preview serves the functions from functions.mjs', (
     expect((await fetch(`${origin}/_fudic/fn/components/user-form/save`, save())).status).toBe(403);
     expect((await call('/components/user-form/save', save({ 'sec-fetch-site': 'cross-site' }))).status).toBe(403);
     expect((await call('/components/user-form/save', save({ origin: 'https://evil.test' }))).status).toBe(403);
-    const a = binQuery({ q: 'str' }, { q: 'l' });
-    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`, binInit(SEARCH))).status).toBe(200);
+    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?q=l`, binInit(SEARCH))).status).toBe(200);
   });
 
   it('criterion 36: the component function, one URL by its <id>, inject from the request root', async () => {

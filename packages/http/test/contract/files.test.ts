@@ -460,19 +460,20 @@ describe('the way back (criteria 19–21)', () => {
 });
 
 describe('criterion 22: url() of a get', () => {
-  it('the URL with base, the route and query filled, the body arguments in ?a=', () => {
+  it('the URL with base, the route filled and every argument a key of its query', () => {
     const { call, spec } = pair(
       { method: 'GET', base: '/app/', name: 'avatar', route: [':id'], params: { id: 'i32' }, query: { size: 'str' }, args: { v: 'i32' }, returns: 'file' } as Partial<FnSpec>,
       () => undefined,
     );
     const url = call.url({ id: 3, size: 'big', v: 2 });
-    expect(url.startsWith(`/app/_fudic/fn/${spec.id}/avatar/3?size=big&a=`)).toBe(true);
-    expect(new URLSearchParams(url.split('?')[1]).get('a')).toBe('{"v":2}');
+    expect(url).toBe(`/app/_fudic/fn/${spec.id}/avatar/3?size=big&v=2`);
   });
 
-  it('JSON args travel as text; no args, no ?a=; the page params given', () => {
+  it('in JSON too, keys of the query; an absent optional, no key; the page params given', () => {
     const json = pair({ method: 'GET', name: 'grab', args: { q: 'str' }, wire: jsonWire, returns: 'file' }, () => undefined);
-    expect(json.call.url({ q: 'é' })).toBe(`/_fudic/fn/${json.spec.id}/grab?a=${encodeURIComponent('{"q":"é"}').replace(/%20/gu, '+')}`);
+    expect(json.call.url({ q: 'é' })).toBe(`/_fudic/fn/${json.spec.id}/grab?q=%C3%A9`);
+    const optional = pair({ method: 'GET', name: 'grab', args: { q: { opt: 'str' } }, returns: 'file' }, () => undefined);
+    expect(optional.call.url({})).toBe(`/_fudic/fn/${optional.spec.id}/grab`);
     const bare = pair({ method: 'GET', name: 'grab', id: 'routes/blog/[slug]', page: '/blog/:slug', returns: 'file' }, () => undefined);
     expect(bare.call.url(undefined, { params: { slug: 'hola' } })).toBe('/_fudic/fn/routes/blog/hola/grab');
   });

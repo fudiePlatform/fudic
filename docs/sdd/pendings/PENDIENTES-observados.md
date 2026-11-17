@@ -350,3 +350,9 @@ de nivel superior en el propio `fudic:<id>` se bloquea: los ficheros de `src/bro
 `fudic:<id>` para registrar su mitad, y la raíz espera a esos ficheros. Donde no hay ciclo es en el
 chunk del componente o de la ruta que importa un contrato: un `await` de la raíz ahí retrasa su
 definición —y con ella la hidratación, que ya espera al chunk— hasta que las reglas estén dentro.
+
+**Resuelto (2026-11-17) por [BUG-62](../bugs/BUG-62-http-a-la-medida-de-la-pagina.md)**, sin retrasar la
+hidratación: el registro sabe si está cargando, una regla con el hueco vacío espera a la carga en vez
+de lanzar, la validez se recalcula cuando llega la implementación, y un envío hecho durante la carga
+se detiene sin que lo oiga el autor y se repite con las reglas dentro. e2e en
+`examples/basic/tests/rule-race.spec.ts`, que retrasa las reglas tres segundos y falla sin el arreglo.

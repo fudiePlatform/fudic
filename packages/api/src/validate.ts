@@ -248,7 +248,8 @@ function fn(decl: FnDecl, c: Ctx): void {
     // route or query parameter of any verb. Said once, instead of `FUD1101` for the same type.
     const where = a.place === 'route' ? 'a route parameter' : a.place === 'query' ? 'a query parameter' : decl.verb === 'get' ? 'an argument of a get' : undefined;
     if (where !== undefined && noFile(a.type, c, (span, related) => c.out.push(FUD1480({ span, where, ...(related !== undefined ? { related } : {}) })))) continue;
-    if (a.place === 'body') continue;
+    // A `get` has no body: its arguments are keys of the query, one value each (BUG-62).
+    if (a.place === 'body' && decl.verb !== 'get') continue;
     if (a.place === 'route' && c.api.route?.params.includes(a.name.text) === true) {
       c.out.push(FUD1100({ span: a.name.span, name: a.name.text }));
     }

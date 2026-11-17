@@ -89,8 +89,7 @@ describe('criterion 41: a Node adapter in a dozen lines', () => {
   });
 
   it('serves a function', async () => {
-    const a = encodeURIComponent(JSON.stringify({ q: 'mar' }));
-    const response = await ask(`/_fudic/fn/routes/usuarios/searchJson?a=${a}`);
+    const response = await ask('/_fudic/fn/routes/usuarios/searchJson?q=mar');
     expect(response.status).toBe(200);
     const people = JSON.parse(response.body) as readonly { readonly name: string }[];
     expect(people.map((p) => p.name)).toEqual(['Marta']);

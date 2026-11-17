@@ -4,7 +4,7 @@
  * by what its context takes (SDD §3.2–§3.5, §3.9).
  */
 
-import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, FUD1325, FUD1360, span } from '@fudic/diagnostics';
+import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1325, FUD1360, span } from '@fudic/diagnostics';
 import type {
   ArgDecl,
   CatchesOption,
@@ -133,7 +133,6 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
           c.out.push(FUD1063({ span: head.span, keyword: head.raw }));
           break;
         }
-        if (argName.raw === 'a') c.out.push(FUD1076({ span: argName.span, name: argName.raw }));
         const arg = argDecl(child, 1, c);
         if (arg !== undefined) args.push({ ...arg, query: head.span });
         break;

@@ -95,28 +95,27 @@ const PROBLEM_JSON = 'application/problem+json';
 const type = (fields: Record<string, Ty>): Ty => ({ fields: () => fields });
 
 describe('the arguments, in fud-bin', () => {
-  it('criterion 6: a GET reads ?a= as JSON text, even in fud-bin', async () => {
+  it('criterion 6: a GET reads its arguments as keys of its query, even in fud-bin', async () => {
     const types: Record<string, Ty> = { q: 'str' };
     const search = get((ctx) => ctx.args.q, { args: types, returns: 'str' });
-    const a = encodeURIComponent(JSON.stringify({ q: 'ana' }));
-    const res = await dispatch(new Request(`${URL_SAVE}?a=${a}`), search);
+    const res = await dispatch(new Request(`${URL_SAVE}?q=ana`), search);
     expect(res.status).toBe(200);
     expect(await binValue(res, 'str')).toBe('ana');
   });
 
-  it('a GET without ?a=, or with it empty, has no arguments', async () => {
+  it('a GET without arguments, or with an optional one absent, has none', async () => {
     const save = get((ctx) => ctx.args === undefined, { returns: 'bool' });
     expect(await binValue(await dispatch(new Request(URL_SAVE), save), 'bool')).toBe(true);
     const opt = get((ctx) => JSON.stringify(ctx.args), { args: { q: { opt: 'str' } }, returns: 'str' });
-    expect(await binValue(await dispatch(new Request(`${URL_SAVE}?a=`), opt), 'str')).toBe('{}');
+    expect(await binValue(await dispatch(new Request(URL_SAVE), opt), 'str')).toBe('{}');
   });
 
-  it('?a= that is not JSON is a 400', async () => {
-    for (const a of ['%2B%2F', 'A']) {
-      const res = await dispatch(new Request(`${URL_SAVE}?a=${a}`), get(() => 1, { args: { q: 'str' } }));
-      expect(res.status).toBe(400);
-      expect((await binProblem(res)).detail).toBe('the arguments are not valid JSON');
-    }
+  it('a GET missing an argument, or with one that is not its type, is a 400', async () => {
+    const missing = await dispatch(new Request(URL_SAVE), get(() => 1, { args: { q: 'str' } }));
+    expect(missing.status).toBe(400);
+    expect((await binProblem(missing)).detail).toBe('argument q is missing');
+    const wrong = await dispatch(new Request(`${URL_SAVE}?n=abc`), get(() => 1, { args: { n: 'i32' } }));
+    expect(wrong.status).toBe(400);
   });
 
   it('the rest read the body as the level of their arguments; an empty body is none', async () => {
@@ -160,10 +159,9 @@ describe('the arguments, in fud-bin', () => {
 });
 
 describe('the arguments, with use json', () => {
-  it('a GET reads ?a= as JSON', async () => {
+  it('a GET reads its arguments as keys of its query, as in fud-bin', async () => {
     const search = get((ctx) => ctx.args, { args: { q: 'str' }, returns: type({ q: 'str' }), wire: jsonWire });
-    const a = encodeURIComponent(JSON.stringify({ q: 'ana' }));
-    const res = await dispatch(new Request(`${URL_SAVE}?a=${a}`), search);
+    const res = await dispatch(new Request(`${URL_SAVE}?q=ana`), search);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/json');
     expect(await res.json()).toEqual({ q: 'ana' });

@@ -213,7 +213,7 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       }
       if (c.args !== undefined && Object.keys(types).length > 0) {
         if (c.method === 'GET') {
-          target.searchParams.set('a', queryText(types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>));
+          writeQuery(target, types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>);
         } else {
           const out = await runPipeline(STAGES, { value: c.args, headers: {} }, { method: c.method, compress: compression, wire, types });
           for (const [name, v] of Object.entries(out.headers)) headers.set(name, v);
@@ -244,12 +244,15 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
 }
 
 /**
- * The body arguments of a `get`, as `?a=` carries them: JSON text, whatever the function's
- * format. A URL is text people read, log and share; bytes in base64url were none of that, and
- * made a page that speaks only JSON download the binary codec to write one.
+ * The arguments of a `get`, written in its query: one key each, as text, as a `query` argument
+ * is (BUG-62). A `get` has no body, and the compiler only lets it take what fits in one key
+ * (FUD1101). An absent optional writes no key.
  */
-function queryText(types: Readonly<Record<string, Ty>>, args: Readonly<Record<string, unknown>>): string {
-  return JSON.stringify(Object.fromEntries(Object.keys(types).map((name) => [name, args[name]])));
+function writeQuery(url: URL, types: Readonly<Record<string, Ty>>, args: Readonly<Record<string, unknown>>): void {
+  for (const name of Object.keys(types)) {
+    const value = args[name];
+    if (value !== undefined && value !== null) url.searchParams.set(name, toText(value));
+  }
 }
 
 /** `/_fudic/fn/<id with the page's values>/<name>/<route with its values>`. */
@@ -267,8 +270,8 @@ export function pathOf(
 }
 
 /**
- * The URL that calls a `get` with `input` (SDD-81 §3.4): its route and query filled, its body
- * arguments in `?a=` as JSON text, the page's params and the app's `base`, as the call writes
+ * The URL that calls a `get` with `input` (SDD-81 §3.4): its route filled, its arguments in its
+ * query, the page's params and the app's `base`, as the call writes
  * it. For a `href`, a `src`: the browser asks it without any script. Path and query only: it is
  * of this origin wherever it is painted, the server's render included.
  */
@@ -282,7 +285,7 @@ export function linkOf(spec: FnSpec, input: unknown, options: Pick<CallOptions, 
   const page = options.params ?? pageParams(spec.page, base, (globalThis as { readonly location?: Location }).location?.pathname ?? '/');
   const url = new URL(join(base, pathOf(spec, page, route)), 'http://link');
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, toText(value));
-  if (Object.keys(types).length > 0) url.searchParams.set('a', queryText(types, conformAll(types, record, 'argument')));
+  writeQuery(url, types, conformAll(types, record, 'argument'));
   if (spec.sig !== undefined) url.searchParams.set(SIG_PARAM, spec.sig);
   return `${url.pathname}${url.search}`;
 }
