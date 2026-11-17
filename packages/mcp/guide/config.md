@@ -79,7 +79,7 @@ template, which is what `fudic new` writes.
 
 | File | Goes on |
 |---|---|
-| `page.headers` | Every page and every `_error`, painted by the server or by the Service Worker. Its `103` carries only the CSP and the `Referrer-Policy`. |
+| `page.headers` | Every page and every `_error` (a library's included), painted by the server or by the Service Worker. Its `103` carries only the CSP and the `Referrer-Policy`. |
 | `sw.headers` | `/fudic-sw.js`. Only with a `sw.json`. |
 | `assets.headers` | The app's static files, by path. |
 

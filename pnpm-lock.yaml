@@ -759,6 +759,9 @@ importers:
       '@fudic/language-server':
         specifier: workspace:*
         version: link:../language-server
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
       '@fudic/spec':
         specifier: workspace:*
         version: link:../spec

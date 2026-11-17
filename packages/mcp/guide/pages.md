@@ -187,8 +187,9 @@ load.handle(() => ({
 
 `_error.fud` has no URL and no `load`. It paints when a `load` throws, when no route matches,
 and when a call fails and the `error-pages` middleware (topic fudapi) sends the browser there.
-Its `data` is `ErrorPage` of `@fudic/http`: `status`, `title`, `path`, and `detail` and `back`
-when known.
+Its `data` is `ErrorPage` of `@fudic/http`: `status`, `title`, `path`, `home`, and `detail` and
+`back` when known. `home` (the app's home) and `back` (where the user came from, when it is of
+this app) already carry the app's `base`: write them as they are in an `href`, never `"/"`.
 
 ```fud path=src/routes/_error.fud
 <link rel="layout" href="../layouts/_layout.fud">
@@ -201,6 +202,35 @@ when known.
 @if (data.detail !== undefined) {
   <p>@data.detail</p>
 }
+@if (data.back !== undefined) {
+  <p><a href=@data.back>Back</a></p>
+} @else {
+  <p><a href=@data.home>Home</a></p>
+}
+```
+
+A library can have one error page, `src/_error.fud`, shared by its apps: every app that depends
+on it (directly or through another library) and has no `_error.fud` of its own paints its errors
+with it, writing nothing. The app's own always wins. Two libraries of the chain with one and none
+in the app is `FUD1570`: write the app's. Create it with `fudic_generate { kind: "error-page" }`
+(in an app or a library), and `fudic_status` says which one each app uses (`project.errorPage`).
+
+```fud path=src/_error.fud
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>@data.status · @data.title</title>
+  </head>
+  <body>
+    <h1>@data.status · @data.title</h1>
+    @if (data.back !== undefined) {
+      <p><a href=@data.back>Back</a></p>
+    } @else {
+      <p><a href=@data.home>Home</a></p>
+    }
+  </body>
+</html>
 ```
 
 ## Calling the server: `task`

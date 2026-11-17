@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 17 / 24 — `En curso`.
+> **Progreso:** 20 / 24 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -143,18 +143,18 @@
 
 ## Fase 4 — El MCP
 
-- [ ] **18. `fudic_generate` con `error-page`.**
+- [x] **18. `fudic_generate` con `error-page`.**
   - `GENERATE_KINDS` y la descripción de la herramienta (criterio 24).
   - *Depende de:* 15.
   - *Paquete:* `mcp`.
   - *Ficheros:* `src/project-tools.ts`, su test.
-- [ ] **19. `fudic_status` con `errorPage`.**
+- [x] **19. `fudic_status` con `errorPage`.**
   - La dependencia `@fudic/resolve`; `projectOf` añade `errorPage` desde `errorPageOf`, con los
     ficheros relativos a la raíz (SDD §3.7). Los cuatro casos, en app y en librería (criterio 25).
   - *Depende de:* 9.
   - *Paquete:* `mcp`.
   - *Ficheros:* `package.json`, `src/status.ts`, `test/status.test.ts`.
-- [ ] **20. La guía.**
+- [x] **20. La guía.**
   - `pages.md`, `config.md` y `workflow.md`, en inglés y en español (SDD §3.7). El ejemplo de librería
     con `path=src/_error.fud`. `guide-examples.test.ts` en verde (criterio 26).
   - *Depende de:* 8, 15, 19.
