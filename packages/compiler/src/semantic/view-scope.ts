@@ -453,8 +453,9 @@ function statementNames(statement: OxcNode): { readonly names: readonly string[]
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
     case 'TSEnumDeclaration': {
-      // At the top of a module each of them has its name: an anonymous one is an `export default`.
-      return { names: [String((statement['id'] as OxcNode)['name'])], let: false };
+      // Anonymous only as an `export default`, which declares no name of the file.
+      const id = statement['id'] as OxcNode | null;
+      return { names: id === null ? [] : [String(id['name'])], let: false };
     }
     case 'ImportDeclaration': {
       const specifiers = statement['specifiers'] as readonly OxcNode[];
