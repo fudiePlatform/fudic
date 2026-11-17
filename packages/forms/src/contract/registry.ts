@@ -12,6 +12,8 @@
  * re-exports it: there is one registry per process.
  */
 
+import { signal } from '@fudic/core';
+
 /** Which folder an implementation belongs in: `src/server` or `src/browser`. */
 export type Side = 'server' | 'browser';
 
@@ -63,6 +65,9 @@ export function takeRefusal(): Error | undefined {
 /** The load of the root before, so the next one waits for it. */
 let turn: Promise<unknown> = Promise.resolve();
 
+/** The loads asked for and not finished yet. */
+let loads = 0;
+
 /**
  * Runs `load` once every root asked before has finished loading. Two roots in one process —
  * one per locale of an app with languages (SDD-60 §4.4) — would otherwise interleave their
@@ -70,9 +75,21 @@ let turn: Promise<unknown> = Promise.resolve();
  */
 export function inTurn(load: () => Promise<void>): Promise<void> {
   const mine = turn.then(load);
-  turn = mine.catch(() => undefined);
+  loads += 1;
+  const done = (): void => {
+    loads -= 1;
+  };
+  // Counted down before anyone waiting on `settled()` resumes: they look at `loading()` again.
+  turn = mine.then(done, done);
   return mine;
 }
+
+/**
+ * Whether a root is still loading its folders (BUG-62). An empty slot means «not yet» while it
+ * is, and «nobody wrote one» once it is not: a rule checked before the browser root registered
+ * its implementation waits for it instead of failing.
+ */
+export const loading = (): boolean => loads > 0;
 
 /**
  * Every root asked so far, loaded or failed. A call waits for it before it reads a slot: the
@@ -88,7 +105,11 @@ export function resetRegistry(): void {
 
 /** One implementable piece: `save of components/user-form`, and the folder it belongs in. */
 export class Slot<F> {
-  #fn: F | undefined;
+  /**
+   * A signal (BUG-62): whatever read the slot empty and computed something from it — the validity
+   * of a form whose rule had not arrived — computes again when the implementation does.
+   */
+  readonly #fn = signal<F | undefined>(undefined);
   #at = '';
 
   /**
@@ -112,14 +133,14 @@ export class Slot<F> {
       throw refuse(`${this.label} must be implemented in ${folders[this.side]}${where}`);
     }
     const at = here?.file ?? 'outside the folders';
-    if (this.#fn !== undefined) throw refuse(`${this.label} is implemented twice: ${this.#at}, ${at}`);
-    this.#fn = fn;
+    if (this.#fn() !== undefined) throw refuse(`${this.label} is implemented twice: ${this.#at}, ${at}`);
+    this.#fn.set(fn);
     this.#at = at;
   }
 
-  /** The implementation, or `undefined` when nobody wrote one. */
+  /** The implementation, or `undefined` when nobody wrote one. Tracked. */
   get(): F | undefined {
-    return this.#fn;
+    return this.#fn();
   }
 
   /** What a request without an implementation is told: `… has no implementation in src/server`. */
@@ -128,7 +149,7 @@ export class Slot<F> {
   }
 
   clear(): void {
-    this.#fn = undefined;
+    this.#fn.set(undefined);
     this.#at = '';
   }
 }
