@@ -419,6 +419,7 @@ function buildComponentClientModule(
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(renews && imported.length > 0 ? ['writtenIf as $writtenIf'] : []),
+    ...(bodies.registries.length > 0 ? ['painted as $painted'] : []),
     // Only a file that creates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.creates ? ['live as $live'] : []),
@@ -578,7 +579,7 @@ function buildComponentClientModule(
   w.indent();
   // The server's DOM, nothing adopted yet; then adopted and hooked up.
   runHooks(w, used, 'beforeHydrate');
-  w.appendWriter(bodies.adopt);
+  writeAdopt(w, bodies);
   w.line('$s();');
   runHooks(w, used, 'afterHydrate');
   w.dedent();
@@ -708,6 +709,24 @@ export function closeOwned(w: CodeWriter, owns: boolean): void {
  */
 export function ownedTeardown(owns: boolean): string {
   return owns ? ' $owns.forEach((d) => d());' : '';
+}
+
+/**
+ * The adoption of `h`. With blocks, inside `$painted`: a block walks the rows or the branch of
+ * the values it reads, and the DOM it adopts is the server's, painted with every signal's
+ * initial value — a write that came first (an `effect`, a hook, a store) would have it adopt
+ * nodes that are not there. The hookup's repaint brings the view up to date afterwards.
+ */
+export function writeAdopt(w: CodeWriter, bodies: { readonly adopt: CodeWriter; readonly registries: readonly string[] }): void {
+  if (bodies.registries.length === 0) {
+    w.appendWriter(bodies.adopt);
+    return;
+  }
+  w.line('$painted(() => {');
+  w.indent();
+  w.appendWriter(bodies.adopt);
+  w.dedent();
+  w.line('});');
 }
 
 /**

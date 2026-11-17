@@ -47,6 +47,7 @@ import {
   repaintIfWritten,
   runHooks,
   watchTasks,
+  writeAdopt,
   withCells,
   writeClosure,
 } from './client.js';
@@ -299,6 +300,7 @@ function buildRouteClientModule(
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(renews && imported.length > 0 ? ['writtenIf as $writtenIf'] : []),
+    ...(bodies.registries.length > 0 ? ['painted as $painted'] : []),
     ...(usage.creates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
     ...(used.size > 0 ? ['hooks as $hooks'] : []),
@@ -352,7 +354,7 @@ function buildRouteClientModule(
   w.line('h: () => {');
   w.indent();
   runHooks(w, used, 'beforeHydrate');
-  w.appendWriter(bodies.adopt);
+  writeAdopt(w, bodies);
   w.line('$s();');
   runHooks(w, used, 'afterHydrate');
   w.dedent();

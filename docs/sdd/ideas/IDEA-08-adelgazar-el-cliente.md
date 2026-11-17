@@ -116,6 +116,10 @@ hidratación es idempotente.
 
 ## 4. Reflejar props en atributos del host
 
+> **Resuelto en [SDD-86](../SDD-86-ciclo-de-vida-y-props-reflejadas.md)** (`Hecho`): sin sintaxis
+> nueva, un atributo con expresión en el tag de identidad (`<app-card variant="@variant">`), que el
+> editor acepta con cualquier nombre y valor escalar. Lo de abajo queda como historia.
+
 ### 4.1. El problema
 
 Una card con cuatro variantes obliga a un `class:` por variante. Si la prop `variant` se refleja

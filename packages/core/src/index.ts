@@ -48,7 +48,7 @@ export {
   type CallSignals,
   type TaskProgress,
 } from './task.js';
-export { untrack } from './tracking.js';
+export { untrack, painted } from './tracking.js';
 export { now } from './now.js';
 export { subscribe, subscribeIf, written, writtenIf } from './subscribe.js';
 // Pipes (SDD-71): the six presets, one module each, and the two names the compiler replaces.

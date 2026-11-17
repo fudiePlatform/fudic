@@ -18,7 +18,7 @@
  */
 
 import { notify } from './batch.js';
-import { type LeafSource, report, tagLeaf } from './tracking.js';
+import { isPainting, type LeafSource, report, tagLeaf } from './tracking.js';
 
 export interface Signal<T> {
   /** Tracked read: inside an `effect` or a `computed`, registers the dependency. */
@@ -48,6 +48,8 @@ export function signal<T>(initial: T): Signal<T> {
   };
 
   const sig = (() => {
+    // Adopting the server's markup: the value it painted, which is the one it was created with.
+    if (isPainting()) return initial;
     report(source);
     return value;
   }) as Signal<T>;
