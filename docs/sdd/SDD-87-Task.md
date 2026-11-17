@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 20 / 24 — `En curso`.
+> **Progreso:** 22 / 24 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -164,12 +164,12 @@
 
 ## Fase 5 — Los ejemplos y el cierre
 
-- [ ] **21. `examples/basic`.**
+- [x] **21. `examples/basic`.**
   - `_error.fud` con `href=@data.home`; sus tests y e2e siguen en verde.
   - *Depende de:* 8.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/routes/_error.fud`.
-- [ ] **22. `examples/workspace`: la librería y las dos apps.**
+- [x] **22. `examples/workspace`: la librería y las dos apps.**
   - `libs/ui/src/_error.fud`; en `admin`, `src/http.fudapi`, la ruta `/fallos` con su `.fudapi` (la
     función que responde, la del 500, la del 403 y el formulario con la regla remota) y `/entrar`; en
     `tienda`, su `src/routes/_error.fud` (SDD §4.5).

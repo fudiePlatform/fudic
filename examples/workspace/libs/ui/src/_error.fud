@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Error @data.status — tienda</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 36rem;
+        margin: 4rem auto;
+        padding: 0 1rem;
+      }
+      .codigo {
+        font-size: 3rem;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body data-error-page="ui">
+    @* La página de error de la librería `ui`: toda app que dependa de ella y no tenga su
+       `_error.fud` pinta sus errores con esta. `back` y `home` ya llevan el `base` de la app que
+       la sirve: en `admin` son `/admin/…`. *@
+    <p class="codigo">@data.status</p>
+    <h1>@data.title</h1>
+    @if (data.detail !== undefined) {
+      <p>@data.detail</p>
+    }
+    @if (data.back !== undefined) {
+      <p><a href=@data.back>Volver</a></p>
+    }
+    <p><a href=@data.home>Ir al inicio</a></p>
+  </body>
+</html>

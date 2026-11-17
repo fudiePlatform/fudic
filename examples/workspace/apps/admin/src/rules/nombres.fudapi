@@ -1,0 +1,6 @@
+# The server says whether the name is taken; the browser asks it while the user types, under
+# /admin/_fudic/rule/….
+rule nombre-ocupado
+  on field str
+  runs remote
+  fails nombre-ocupado

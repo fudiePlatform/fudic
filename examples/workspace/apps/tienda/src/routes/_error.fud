@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Algo ha fallado — tienda</title>
+  </head>
+  <body data-error-page="tienda">
+    @* La tienda depende de `ui`, que trae su página de error, pero tiene la suya: la propia gana. *@
+    <h1>La tienda no encuentra eso (@data.status)</h1>
+    <p><a href=@data.home>Volver a la tienda</a></p>
+  </body>
+</html>

@@ -15,10 +15,13 @@
     "@fudic/example-ui": "workspace:*",
     "@fudic/core": "workspace:*",
     "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*"
   },
   "devDependencies": {
+    "@fudic/server": "workspace:*",
     "@fudic/terms": "workspace:*",
     "@fudic/testing": "workspace:*",
     "@fudic/vite": "workspace:*",

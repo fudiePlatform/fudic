@@ -160,6 +160,12 @@ importers:
       '@fudic/example-ui':
         specifier: workspace:*
         version: link:../../libs/ui
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../../../../packages/forms
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../../../../packages/http
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../../packages/ssr
@@ -167,6 +173,9 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/transport
     devDependencies:
+      '@fudic/server':
+        specifier: workspace:*
+        version: link:../../../../packages/server
       '@fudic/terms':
         specifier: workspace:*
         version: link:../../../../packages/terms

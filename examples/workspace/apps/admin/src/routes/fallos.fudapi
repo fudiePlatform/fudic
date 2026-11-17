@@ -1,0 +1,19 @@
+# Three buttons and a form, to see that an app under a base stays in it in the browser.
+
+# Answers: its call goes to /admin/_fudic/fn/….
+get saludo
+  -> str
+
+# Throws an Error: a 500, and error-pages takes the browser to /admin/_fudic/error/500.
+post rompe
+
+# Throws forbidden(): a 403, and error-pages takes the browser to /admin/entrar.
+post prohibido
+
+form altaForm
+  nombre  str = ""
+    required        "Escribe un nombre."
+    nombre-ocupado  "Ese nombre ya está ocupado."
+
+post alta
+  form altaForm

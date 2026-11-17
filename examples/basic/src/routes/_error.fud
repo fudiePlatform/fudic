@@ -14,7 +14,8 @@
    algo — `notFound("no existe")` en un `load` —, `detail`. Llega de tres sitios: un `load` que
    lanza, una ruta que no existe, o una llamada que falla y `error-pages` de `src/http.fudapi`
    trae al navegador a /_fudic/error/:status. `back` es la página de la que venía el usuario, si
-   es de esta app: el servidor la lee del `Referer`, nunca de la URL. *@
+   es de esta app: el servidor la lee del `Referer`, nunca de la URL. `back` y `home` (el inicio
+   de la app) ya llevan el `base`: van tal cual en un `href`. *@
 <h1>@data.status · @data.title</h1>
 @if (data.detail !== undefined) {
   <p>@data.detail</p>
@@ -22,5 +23,5 @@
 @if (data.back !== undefined) {
   <p><a href=@data.back>Volver</a></p>
 } @else {
-  <p><a href="/">Ir al inicio</a></p>
+  <p><a href=@data.home>Ir al inicio</a></p>
 }
