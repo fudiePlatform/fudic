@@ -575,6 +575,10 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
     return;
   }
   if (doc.type === 'page-document') {
+    // A page without a layout owns its `<body>` as a layout does, and its emit writes the
+    // body's attributes: an `@expr` there is a read of the `@code` like any in the markup, or
+    // the binding it reads is cut from the server as unused.
+    collectAttributeJs(doc.body, register);
     collectTemplateJs(doc.body.children, register);
     return;
   }
