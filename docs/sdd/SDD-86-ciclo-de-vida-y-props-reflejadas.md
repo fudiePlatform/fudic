@@ -620,3 +620,9 @@ Nada.
 19. **El tag de identidad acepta cualquier nombre de atributo** (al implementar). El editor lo
     comprobaba contra los atributos globales de HTML, así que `variant="@variant"` era `TS2353`.
     Ahora va contra `$HostOwn`: cualquier nombre, con valor `$Scalar`.
+20. **«Se pinta igual que sin ellos» se lee sin contar la hidratación** (al implementar). Un hijo
+    que solo tiene hooks pasa a hidratar (criterio 14), así que el padre lo reclama en su módulo de
+    servidor (`$dom.claim(…)`), como a cualquier hijo hidratable. Es la única diferencia de salida
+    de servidor que traen los hooks; el HTML pintado es el mismo.
+21. **El `@code` de un layout va en su `<head>`**, como siempre (`FUD0153` fuera de él). Los hooks
+    de un `@code` mal colocado no viajan, igual que sus props.

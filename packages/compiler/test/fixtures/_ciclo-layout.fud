@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
-  <head>@RenderHead()</head>
-  <body>
+  <head>
     @code {
       const { site = 'fudic' } = props<{ site?: string }>();
 
@@ -13,6 +12,9 @@
         sessionStorage.setItem('layout', 'left');
       });
     }
+    @RenderHead()
+  </head>
+  <body>
     <header>@site</header>
     <main>@RenderBody()</main>
   </body>
