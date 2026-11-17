@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 0 / 28 — `Listo`. (Implementación 3 / 28 · Tests 2 / 28)
+> **Progreso:** 0 / 28 — `Listo`. (Implementación 8 / 28 · Tests 2 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -48,7 +48,7 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 2 — El runtime
 
-- impl [ ] · tests [ ] — **4. `hooks()`.**
+- impl [x] · tests [ ] — **4. `hooks()`.**
   - `add`, `run`, `on`, `off` y `dispose` (SDD §3.5). Orden de registro; `on` / `off` idempotentes;
     la limpieza de `onConnect` antes de `onDisconnect`; en `dispose`, primero `onDispose` y después
     las limpiezas de `afterHydrate` / `afterCreate`; cada función en su `try` con `reportError`
@@ -57,12 +57,12 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* —.
   - *Paquete:* `core`.
   - *Ficheros:* `src/lifecycle.ts`, `src/index.ts`, `test/lifecycle.test.ts`.
-- impl [ ] · tests [ ] — **5. `on` y `off` en el controlador.**
+- impl [x] · tests [ ] — **5. `on` y `off` en el controlador.**
   - Dos métodos opcionales en `Controller` (SDD §3.4).
   - *Depende de:* —.
   - *Paquete:* `core`.
   - *Ficheros:* `src/controller.ts`.
-- impl [ ] · tests [ ] — **6. `FudicElement` conecta.**
+- impl [x] · tests [ ] — **6. `FudicElement` conecta.**
   - `connectedCallback` reenvía a `on`; `h()` y `c()` llaman a `on` al final si el host está
     conectado; `disconnectedCallback` llama a `off` antes de la microtarea (SDD §4.6). El comentario de
     cabecera se reescribe.
@@ -71,14 +71,14 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* 5.
   - *Paquete:* `core`.
   - *Ficheros:* `src/element.ts`, `test/element.test.ts`.
-- impl [ ] · tests [ ] — **7. `FudicControlElement` llama a `super`.**
+- impl [x] · tests [ ] — **7. `FudicControlElement` llama a `super`.**
   - `override connectedCallback()`: primero `super.connectedCallback()`, después el relay (SDD §4.6).
   - Test: un control con `on` / `off` los recibe, y el relay sigue copiando los atributos (criterio
     12).
   - *Depende de:* 6.
   - *Paquete:* `forms`.
   - *Ficheros:* `src/element.ts`, `test/dom/element.test.ts`.
-- impl [ ] · tests [ ] — **8. La ruta escucha `pagehide` y `pageshow`.**
+- impl [x] · tests [ ] — **8. La ruta escucha `pagehide` y `pageshow`.**
   - Tras `h()` del controlador de la ruta, `on()`. Si el controlador tiene `on` / `off` o usa
     `onDispose`: `pagehide` → `off()`, y `r()` con `persisted === false`; `pageshow` con
     `persisted === true` → `on()`. Nunca `unload` ni `beforeunload` (SDD §4.1, criterio 29).

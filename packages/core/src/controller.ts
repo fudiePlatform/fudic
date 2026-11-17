@@ -40,6 +40,13 @@ export interface Controller {
   u(props: readonly unknown[]): void;
   /** remove — symmetric teardown. */
   r(): void;
+  /**
+   * connect — the host is in a document and the component is alive. Only a component whose
+   * `@code` uses `onConnect` or `onDisconnect` has it.
+   */
+  on?(): void;
+  /** disconnect — the host left the document; `r` may or may not follow. */
+  off?(): void;
 }
 
 /**

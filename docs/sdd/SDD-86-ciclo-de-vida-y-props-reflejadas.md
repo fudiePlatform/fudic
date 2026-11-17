@@ -594,3 +594,11 @@ Nada.
     lo que conoce de otros frameworks.
 13. **Lo asíncrono al irse no se promete.** El navegador no espera a nadie en `pagehide`. El framework
     no intenta alargar la vida de la página: la guía enseña a guardar cuando el dato cambia.
+14. **Una ruta lleva `on` / `off` también si solo usa `onDispose`** (al implementar). El arranque no
+    tiene otra forma de saber que la ruta quiere enterarse de `pagehide`: escucha la página si y solo
+    si el controlador de la ruta trae `off`. En un componente no hace falta (su `r` lo llama el
+    elemento), así que allí sigue la regla de §4.5. Los listeners van en `window`.
+15. **Los hooks se buscan en todo el `@code`** (al implementar). `FUD1562` cuenta cualquier nombre que
+    declare el `@code`, a cualquier profundidad: `const`, `let`, `function`, sus parámetros, `class`,
+    el parámetro de un `catch` y los imports. `FUD1561` solo se da a una llamada de nivel superior:
+    una que no lo es ya es `FUD1560`.

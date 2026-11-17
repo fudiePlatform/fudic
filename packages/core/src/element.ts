@@ -8,12 +8,14 @@
  * measurements assume, and turns the contract into something verified by inheritance
  * instead of a convention each emitted chunk has to reproduce correctly.
  *
- * There is no `connectedCallback`, and that is the whole difference with the retired
- * SDD-14 class that did all its work there. A component does NOT know its own `data-fud-id`
- * — that is page identity, not component identity — so it cannot read its own slice of the
- * payload. The runtime hands each instance its slice, per tag, at the moment it defines the
- * tag. `h` and `c` are entry points invoked from OUTSIDE, not lifecycle callbacks. The only
- * real callback is `disconnectedCallback`, because teardown IS the browser's decision.
+ * The connection callbacks do no work of their own, and that is the whole difference with the
+ * retired SDD-14 class that did all its work there. A component does NOT know its own
+ * `data-fud-id` — that is page identity, not component identity — so it cannot read its own
+ * slice of the payload. The runtime hands each instance its slice, per tag, at the moment it
+ * defines the tag. `h` and `c` are entry points invoked from OUTSIDE, not lifecycle callbacks.
+ * `connectedCallback` and `disconnectedCallback` only forward to the controller (its
+ * `onConnect` / `onDisconnect` hooks), and the second also releases it, because teardown IS
+ * the browser's decision.
  */
 
 import { browserDom } from '@fudic/dom';
@@ -69,6 +71,8 @@ export abstract class FudicElement extends Base {
     if (shadow?.delegatesFocus === false && this.shadowInit().delegatesFocus === true) {
       delegateFocus(this, shadow);
     }
+    // Upgraded while already in the page: its `connectedCallback` came before the controller.
+    if (this.isConnected) controller.on?.();
   }
 
   /**
@@ -86,6 +90,16 @@ export abstract class FudicElement extends Base {
     // In the same task as the content: no frame paints it without its sheets. A sheet that is
     // a file goes in FRONT of it, as the server writes it (SDD-73 §3.5).
     adoptSheets(this, shadow);
+    if (this.isConnected) controller.on?.();
+  }
+
+  /**
+   * In a document: the controller's `onConnect` hooks. Before it has a controller there is
+   * nothing to tell; `h` and `c` do it themselves when the host is already connected, and the
+   * controller ignores a second `on` without an `off` between them.
+   */
+  connectedCallback(): void {
+    this.#controller?.on?.();
   }
 
   /**
@@ -162,6 +176,8 @@ export abstract class FudicElement extends Base {
   disconnectedCallback(): void {
     const controller = this.#controller;
     if (controller === null) return;
+    // At once, move or removal alike: what depends on being in the document stops now.
+    controller.off?.();
     queueMicrotask(() => {
       // Back in a tree: that was a move, and this instance never stopped being itself.
       if (this.isConnected) return;

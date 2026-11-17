@@ -57,6 +57,7 @@ import {
 } from './registry.js';
 import { type WarmChannel } from './warm/channel.js';
 import { startWarmObserver } from './warm/observer.js';
+import { followPage } from './page-life.js';
 
 /** Runtime installed, and not one line of component JavaScript evaluated yet. */
 export const READY_EVENT = 'fud:ready';
@@ -298,7 +299,10 @@ export function installHydration(options: HydrationOptions): Hydration {
     // replayed anyway, because cancelling it was this runtime's doing.
     if (factory !== null) {
       // And the `later` fields, settled: what each `@await` of the route paints with.
-      factory([landed.dom, host, maps.data, ...cells.resolve(id)], maps.fields).h();
+      const route = factory([landed.dom, host, maps.data, ...cells.resolve(id)], maps.fields);
+      route.h();
+      // Its hooks of connecting and leaving follow the page's own transitions.
+      followPage(route, window);
       report(id, name, elapsed(), 'downloaded');
     }
     replay();

@@ -93,7 +93,8 @@ export abstract class FudicControlElement extends FudicElement {
   }
 
   /** Created at runtime, the host may only now be in the tree its labels and markers live in. */
-  connectedCallback(): void {
+  override connectedCallback(): void {
+    super.connectedCallback();
     this.#relay();
   }
 
