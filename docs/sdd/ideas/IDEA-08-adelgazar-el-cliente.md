@@ -164,6 +164,9 @@ SSR y SW escriben el atributo en el tag del host; el cliente lo actualiza en `u`
 
 ## 6. BUG: `errorPages` navega sin el `base` de la app
 
+> **Resuelto en [SDD-87](../SDD-87-pagina-de-error-compartida.md)**, más ancho de lo que se veía aquí: las
+> llamadas, el CSRF y las reglas remotas tampoco llevaban el `base` en el navegador.
+
 ### 6.1. Lo que se ve leyendo el código
 
 - `errorUrl` (`packages/http/src/error-pages.ts:44`) devuelve `` `${ERROR_PREFIX}/${status}` ``,
@@ -190,6 +193,9 @@ una app de `base: '/admin/'` y una llamada que recibe 500 debe navegar a
 recibe `fn`) y use `join(base, …)`.
 
 ## 7. Una página de error compartida entre apps
+
+> **Resuelto en [SDD-87](../SDD-87-pagina-de-error-compartida.md)** de otra forma: la página llega por la
+> cadena de dependencias (`src/_error.fud` de una librería), sin componente ni clave en `fudic.json`.
 
 ### 7.1. Lo que hay hoy
 

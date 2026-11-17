@@ -30,7 +30,7 @@ export function planErrorPage(opts: TargetedOptions, io: ReadIo = nodeReadIo()):
   const before = errorPageOf(target.path, ROUTES_DIR, packageFs(io));
 
   // The project's first language (SDD-71 §3.6), as `g page` writes it.
-  const contents = renderTemplate('error-page.fud', { lang: target.config.locales[0]! });
+  const contents = renderTemplate('_error.fud', { lang: target.config.locales[0]! });
   const written = targetChange(opts.cwd, joinPosix(target.dir, file), contents, opts.force, io);
   if (written.error !== undefined) return Promise.resolve({ ...EMPTY_PLAN, errors: [written.error] });
 

@@ -272,7 +272,7 @@ tienen `src/_error.fud`. `fudic g lib` no cambia: una librería no pinta errores
   | Caso | `errorPage` |
   |---|---|
   | La propia | `{ "from": "own", "file": "src/routes/_error.fud" }` |
-  | De una librería | `{ "from": "@acme/ui", "file": "libs/ui/src/_error.fud" }` |
+  | De una librería | `{ "from": "@acme/ui", "file": "../../libs/ui/src/_error.fud" }` |
   | Dos librerías | `{ "from": "ambiguous", "libraries": ["@acme/ui", "@acme/marketing"] }` |
   | Ninguna | `{ "from": "none" }` |
 

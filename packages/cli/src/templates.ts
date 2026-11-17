@@ -87,7 +87,7 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     sample: { lang: 'en', title: 'Home', code: indent(serverLink('./index.fudapi'), '    ') },
   },
   {
-    file: 'error-page.fud',
+    file: '_error.fud',
     role: 'page-document',
     sample: { lang: 'es' },
   },

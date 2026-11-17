@@ -123,12 +123,12 @@
 
 - [x] **15. `fudic g error-page`.**
   - `args.ts` (`error-page`, con `--project` y `--force`), `run.ts`, `plans/error-page.ts`, la
-    plantilla `error-page.fud` y la ayuda (SDD §3.6). En una librería no pasa por `routeRefusal`. El
+    plantilla `_error.fud` y la ayuda (SDD §3.6). En una librería no pasa por `routeRefusal`. El
     informe, con `errorPageOf` (criterios 19, 21, 22).
   - *Depende de:* 9.
   - *Paquete:* `cli`.
   - *Ficheros:* `src/args.ts`, `src/run.ts`, `src/types.ts`, `src/plans/error-page.ts`,
-    `templates/error-page.fud`, `src/help/commands.ts`, `test/error-page.test.ts`.
+    `templates/_error.fud`, `src/help/commands.ts`, `test/error-page.test.ts`.
 - [x] **16. La plantilla, renderizada.**
   - La plantilla generada compila sin diagnósticos y pinta `home` o `back` según el criterio 20.
   - *Depende de:* 8, 15.
