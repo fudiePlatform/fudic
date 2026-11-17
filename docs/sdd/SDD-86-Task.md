@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 18 / 28 — `Listo`. (Implementación 22 / 28 · Tests 18 / 28)
+> **Progreso:** 18 / 28 — `Listo`. (Implementación 24 / 28 · Tests 18 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -193,7 +193,7 @@ tarea cuenta en el progreso cuando tiene las dos.
 
 ## Fase 6 — Guía, ejemplo y cierre
 
-- impl [ ] · tests [ ] — **23. La guía del MCP: `overview`, `components` y `testing`.**
+- impl [x] · tests [ ] — **23. La guía del MCP: `overview`, `components` y `testing`.**
   - `overview`: los hooks también hacen hidratar a un componente, y una ruta con hooks lleva JavaScript.
   - `components`: la línea en «State and what `@code` may do», las secciones «Lifecycle» y «Reflecting
     a prop on the host» (con la nota de los atributos nativos), y las seis filas nuevas de «Instead
@@ -205,7 +205,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Paquete:* `mcp`.
   - *Ficheros:* `guide/overview.md`, `guide/components.md`, `guide/testing.md`, y los tres en
     `guide/es/`.
-- impl [ ] · tests [ ] — **24. La guía del MCP: `pages`.**
+- impl [x] · tests [ ] — **24. La guía del MCP: `pages`.**
   - La sección «Lifecycle of a route»: la tabla de §4.1, la bfcache, el límite de lo asíncrono en
     `pagehide` y el ejemplo del store en IndexedDB (SDD §4.9, §4.10). El bloque `broken` de `FUD1561`.
     En inglés y en español. `guide-examples.test.ts` en verde (criterio 31).

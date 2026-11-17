@@ -91,6 +91,7 @@ Estilos: `:host` es el propio tag del componente, `:host(:empty)` y similares fu
 - Lo que lee la vista debe ser algo que el servidor pueda evaluar: props, `signal(v)`, `computed(() => e)` cuyo `e` siga las reglas de la vista, un `const` de datos planos. Cualquier otra cosa que lea es `FUD1150`. La vista no llama a nada salvo lecturas reactivas (`FUD1140`).
 - `now()` solo como inicializador completo de un signal: `signal(now())` (`FUD0912`).
 - Los handlers y los cuerpos de los effects son TypeScript normal: APIs del DOM, `await`, lo que sea. Los nombres que empiezan por `$` están reservados (`FUD0290`).
+- El código que se ejecuta en un momento de la vida del componente —al hidratarse, cada vez que entra en la página, al destruirse— va en un hook del ciclo de vida: `afterHydrate(fn)`, `onConnect(fn)`… Ver Ciclo de vida.
 
 ## Usar otro componente
 
@@ -320,6 +321,92 @@ Los formularios se declaran en un `.fudapi` (`fudic_generate { kind: "form" }`);
 
 La página escribe su propia label y su marcador de error como para un input nativo: `<label for="email">Email</label>`, `<app-input id="email" .type="email" control=@signup.email></app-input>`, `<small error=@signup.email></small>`. Una `<label>` dentro de un shadow root no puede apuntar fuera de él.
 
+## Ciclo de vida
+
+Siete funciones de `@code`, que no se importan, como `props`. Cada una recibe una función que recibe `host`, el elemento del propio componente, y se ejecuta en su momento. Se llaman como sentencias en el nivel superior de `@code`: dentro de una función, un handler, un `if`, un bucle o la vista es `FUD1560`; una declaración o un import con uno de estos nombres es `FUD1562`. Llamar a una varias veces añade funciones, que se ejecutan en el orden en que se escribieron.
+
+| Hook | Se ejecuta | Su función puede devolver |
+|---|---|---|
+| `beforeHydrate(fn)` | pintado por el servidor: antes de adoptarlo (los `ref` aún valen `null`) | — |
+| `afterHydrate(fn)` | después de adoptar y enganchar | su limpieza, que se ejecuta al destruirse el componente |
+| `beforeCreate(fn)` | creado en el navegador por un bloque del padre: el shadow root está abierto y vacío | — |
+| `afterCreate(fn)` | después de crear y enganchar | su limpieza, que se ejecuta al destruirse el componente |
+| `onConnect(fn)` | cada vez que entra en el documento | su limpieza, que se ejecuta en la siguiente desconexión |
+| `onDisconnect(fn)` | cada vez que sale del documento | — |
+| `onDispose(fn)` | una vez, al destruirse (los `ref` siguen valiendo) | — |
+
+El orden: hidratado, `@code` → `beforeHydrate` → `afterHydrate` → `onConnect`; creado, `@code` → `beforeCreate` → `afterCreate` → `onConnect` cuando el padre lo inserta. Quitado: `onDisconnect` en el acto, y en la microtarea siguiente `onDispose` y las limpiezas de `afterHydrate` / `afterCreate`. Un `@foreach` con clave que reordena sus filas ejecuta `onDisconnect` y `onConnect`, nunca `onDispose`: lo que depende de estar en la página va en `onConnect`, lo que dura toda la vida en `afterHydrate` / `onDispose`. Un hijo se hidrata antes que su padre, así que su `afterHydrate` va primero. Un componente que se hidrata por interacción ejecuta sus hooks entonces. Un hook que lanza se reporta y los demás se ejecutan igual. Un hook basta para que un componente se hidrate. El servidor nunca los ejecuta.
+
+```fud path=src/components/app-size/app-size.fud
+@code {
+  /** Its own width, kept up to date while it is in the page. */
+  import { signal } from "@fudic/core";
+
+  const width = signal(0);
+
+  onConnect((host) => {
+    const ro = new ResizeObserver(() => width.set(host.clientWidth));
+    ro.observe(host);
+    return () => ro.disconnect();
+  });
+
+  onDispose(() => {
+    sessionStorage.removeItem("app-size");
+  });
+}
+
+<app-size>
+  <template shadowrootmode="open">
+    <output>@width() px</output>
+  </template>
+</app-size>
+```
+
+```fud broken=FUD1560 path=src/components/app-late/app-late.fud
+@code {
+  function start() {
+    onConnect(() => {
+      console.log("connected");
+    });
+  }
+}
+
+<app-late>
+  <template shadowrootmode="open">
+    <button type="button" @click=@start>Start</button>
+  </template>
+</app-late>
+```
+
+## Reflejar una prop en el host
+
+Escribe un atributo con una expresión en el propio tag del componente, y dale estilo al host por él:
+
+```fud path=src/components/app-tile/app-tile.fud
+@code {
+  /** A tile; "highlight" draws a gold border. */
+  const { variant = "default" } = props<{
+    /** How the tile is drawn. */
+    variant?: "default" | "highlight";
+  }>();
+}
+
+<head>
+  <style>
+    :host { display: block; border: 1px solid #ddd; }
+    :host([variant="highlight"]) { border-color: gold; }
+  </style>
+</head>
+
+<app-tile variant=@variant>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</app-tile>
+```
+
+Un `string`, `number` o `bigint` se escribe como `String(v)`; `true` escribe el atributo vacío; `false`, `null` y `undefined` lo quitan. Cualquier otra cosa es un error de tipos. Lo escribe el servidor, se conserva al hidratar, se reescribe cuando cambia la prop y se escribe cuando el componente se crea en el navegador. El nombre lo eliges tú, y un atributo nativo conserva su efecto: `title` pone un tooltip en todo el componente, y `hidden`, `id`, `lang`, `dir` o `role` cambian cómo se comporta el host. Para una variante de estilo, usa un nombre propio (`variant`) o un `data-*`.
+
 ## En lugar de… (hábitos de React)
 
 | En lugar de… | Escribe | Código |
@@ -344,6 +431,12 @@ La página escribe su propia label y su marcador de error como para un input nat
 | `fetch` en un effect | una función de servidor en el `.fudapi`, llamada a través de `task` | — |
 | `@if (name)` por truthiness | `@if (name !== "")` | `FUD1151` |
 | `.innerHTML=@html` | renderiza el contenido con el template | `FUD0916` |
+| `useEffect(fn, [])` para ejecutar una vez tras el primer pintado | `afterHydrate(fn)` (y `afterCreate(fn)` para uno creado en el navegador) | — |
+| la limpieza de `useEffect` al desmontar | `onDispose(fn)`, o devolver la limpieza desde `afterHydrate` | — |
+| `connectedCallback()` / `disconnectedCallback()` en una clase | `onConnect(fn)` / `onDisconnect(fn)` en `@code` | — |
+| `useEffect` / `useLayoutEffect` dentro de una función o un handler | el hook en el nivel superior de `@code` | `FUD1560` |
+| `window.addEventListener('beforeunload', …)` / `'unload'` | `onDisconnect(fn)` en el `@code` de la ruta | — |
+| `reflect: true` en una propiedad | un atributo con una expresión en el tag de identidad: `<app-card variant="@variant">` | — |
 
 ```fud broken=FUD1162 path=src/components/app-tags/app-tags.fud
 @code {
@@ -355,4 +448,16 @@ La página escribe su propia label y su marcador de error como para un input nat
     <ul>{tags.map(t => <li>{t}</li>)}</ul>
   </template>
 </app-tags>
+```
+
+```fud broken=FUD1562 path=src/components/app-ping/app-ping.fud
+@code {
+  const onConnect = () => console.log("in");
+}
+
+<app-ping>
+  <template shadowrootmode="open">
+    <p>ping</p>
+  </template>
+</app-ping>
 ```

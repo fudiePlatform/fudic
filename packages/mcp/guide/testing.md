@@ -44,6 +44,7 @@ const t = await mount(AppCounter, { props: { start: 2 } });
 - Other options: `url` (the page it lives in, `/` by default), `providers: [{ provide, use }]` (replace a service, on both sides), `fetch` (answer the server functions yourself), `sw: true` (a simulated Service Worker; `t.invalidated` lists what it was told to invalidate).
 - The result: `t.host` (the element), `t.root` (its shadow root), the queries and gestures, `t.props({ … })` (change props as a parent would, then wait for the repaint), `t.settled()`, `t.unmount()`.
 - An app with `"locales"` mounts in its first locale: pipes format and `t()` translates.
+- Lifecycle hooks run as in the browser: `via: 'ssr'` runs `beforeHydrate`, `afterHydrate` and `onConnect`; `via: 'client'` runs `beforeCreate`, `afterCreate` and `onConnect`. `t.unmount()` runs `onDisconnect` at once, and `onDispose` and the cleanups in the next microtask: `await t.settled()` before asserting on them.
 
 **Queries** reach into every shadow root below: `getByRole(role, { name })`, `getByLabelText(text)`, `getByText(text)` (throw unless exactly one), `queryByRole(role, { name })` (`null` when none), `query(selector)` (CSS, first match or `null`), `errorOf(label)` (the text of a form control's error slot, or `null`).
 

@@ -91,6 +91,7 @@ Styles: `:host` is the component's own tag, `:host(:empty)` and the like work, `
 - What the view reads must be something the server can evaluate: props, `signal(v)`, `computed(() => e)` whose `e` follows the view rules, a `const` of plain data. Anything else it reads is `FUD1150`. The view calls nothing but reactive reads (`FUD1140`).
 - `now()` only as the whole initializer of a signal: `signal(now())` (`FUD0912`).
 - Handlers and effect bodies are plain TypeScript: DOM APIs, `await`, anything. Names starting with `$` are reserved (`FUD0290`).
+- Code that runs at a moment of the component's life — after it hydrates, each time it enters the page, when it is destroyed — goes in a lifecycle hook: `afterHydrate(fn)`, `onConnect(fn)`… See Lifecycle.
 
 ## Using another component
 
@@ -320,6 +321,92 @@ Forms are declared in a `.fudapi` (`fudic_generate { kind: "form" }`); a compone
 
 The page writes its own label and error marker as for a native input: `<label for="email">Email</label>`, `<app-input id="email" .type="email" control=@signup.email></app-input>`, `<small error=@signup.email></small>`. A `<label>` inside a shadow root cannot point outside it.
 
+## Lifecycle
+
+Seven functions of `@code`, not imported, like `props`. Each takes a function that receives `host`, the component's own element, and runs at its moment. Call them as statements at the top level of `@code`: inside a function, a handler, an `if`, a loop or the view is `FUD1560`; a declaration or an import with one of these names is `FUD1562`. Calling one several times adds functions, run in the order written.
+
+| Hook | Runs | Its function may return |
+|---|---|---|
+| `beforeHydrate(fn)` | painted by the server: before adopting it (`ref`s are still `null`) | — |
+| `afterHydrate(fn)` | after adopting and hooking up | its cleanup, run when the component is destroyed |
+| `beforeCreate(fn)` | created in the browser by a block of its parent: the shadow root is open and empty | — |
+| `afterCreate(fn)` | after creating and hooking up | its cleanup, run when the component is destroyed |
+| `onConnect(fn)` | each time it enters the document | its cleanup, run at the next disconnect |
+| `onDisconnect(fn)` | each time it leaves the document | — |
+| `onDispose(fn)` | once, when it is destroyed (`ref`s still valid) | — |
+
+The order: hydrated, `@code` → `beforeHydrate` → `afterHydrate` → `onConnect`; created, `@code` → `beforeCreate` → `afterCreate` → `onConnect` when the parent inserts it. Removed: `onDisconnect` at once, then in the next microtask `onDispose` and the cleanups of `afterHydrate` / `afterCreate`. A keyed `@foreach` that reorders its rows runs `onDisconnect` and `onConnect`, never `onDispose`: what depends on being in the page goes in `onConnect`, what lasts the whole life in `afterHydrate` / `onDispose`. A child hydrates before its parent, so its `afterHydrate` runs first. A component that hydrates on interaction runs its hooks then. A hook that throws is reported and the others still run. A hook alone makes a component hydrate. The server never runs them.
+
+```fud path=src/components/app-size/app-size.fud
+@code {
+  /** Its own width, kept up to date while it is in the page. */
+  import { signal } from "@fudic/core";
+
+  const width = signal(0);
+
+  onConnect((host) => {
+    const ro = new ResizeObserver(() => width.set(host.clientWidth));
+    ro.observe(host);
+    return () => ro.disconnect();
+  });
+
+  onDispose(() => {
+    sessionStorage.removeItem("app-size");
+  });
+}
+
+<app-size>
+  <template shadowrootmode="open">
+    <output>@width() px</output>
+  </template>
+</app-size>
+```
+
+```fud broken=FUD1560 path=src/components/app-late/app-late.fud
+@code {
+  function start() {
+    onConnect(() => {
+      console.log("connected");
+    });
+  }
+}
+
+<app-late>
+  <template shadowrootmode="open">
+    <button type="button" @click=@start>Start</button>
+  </template>
+</app-late>
+```
+
+## Reflecting a prop on the host
+
+Write an attribute with an expression on the component's own tag, and style the host by it:
+
+```fud path=src/components/app-tile/app-tile.fud
+@code {
+  /** A tile; "highlight" draws a gold border. */
+  const { variant = "default" } = props<{
+    /** How the tile is drawn. */
+    variant?: "default" | "highlight";
+  }>();
+}
+
+<head>
+  <style>
+    :host { display: block; border: 1px solid #ddd; }
+    :host([variant="highlight"]) { border-color: gold; }
+  </style>
+</head>
+
+<app-tile variant=@variant>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</app-tile>
+```
+
+A `string`, `number` or `bigint` is written as `String(v)`; `true` writes the attribute empty; `false`, `null` and `undefined` remove it. Anything else is a type error. It is written by the server, kept when hydrating, rewritten when the prop changes, and written when the component is created in the browser. You choose the name, and a native attribute keeps its effect: `title` puts a tooltip on the whole component, and `hidden`, `id`, `lang`, `dir` or `role` change how the host behaves. For a style variant, use a name of your own (`variant`) or a `data-*`.
+
 ## Instead of… (React habits)
 
 | Instead of… | Write | Code |
@@ -344,6 +431,12 @@ The page writes its own label and error marker as for a native input: `<label fo
 | `fetch` in an effect | a server function in the `.fudapi`, called through `task` | — |
 | `@if (name)` truthiness | `@if (name !== "")` | `FUD1151` |
 | `.innerHTML=@html` | render the content with the template | `FUD0916` |
+| `useEffect(fn, [])` to run once after the first paint | `afterHydrate(fn)` (and `afterCreate(fn)` for one created in the browser) | — |
+| `useEffect` cleanup on unmount | `onDispose(fn)`, or return the cleanup from `afterHydrate` | — |
+| `connectedCallback()` / `disconnectedCallback()` in a class | `onConnect(fn)` / `onDisconnect(fn)` in `@code` | — |
+| `useEffect` / `useLayoutEffect` inside a function or a handler | the hook at the top level of `@code` | `FUD1560` |
+| `window.addEventListener('beforeunload', …)` / `'unload'` | `onDisconnect(fn)` in the route's `@code` | — |
+| `reflect: true` on a property | an attribute with an expression on the identity tag: `<app-card variant="@variant">` | — |
 
 ```fud broken=FUD1162 path=src/components/app-tags/app-tags.fud
 @code {
@@ -355,4 +448,16 @@ The page writes its own label and error marker as for a native input: `<label fo
     <ul>{tags.map(t => <li>{t}</li>)}</ul>
   </template>
 </app-tags>
+```
+
+```fud broken=FUD1562 path=src/components/app-ping/app-ping.fud
+@code {
+  const onConnect = () => console.log("in");
+}
+
+<app-ping>
+  <template shadowrootmode="open">
+    <p>ping</p>
+  </template>
+</app-ping>
 ```
