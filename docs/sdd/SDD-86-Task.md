@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 27 / 28 — `Listo`. (Implementación 27 / 28 · Tests 27 / 28)
+> **Progreso:** 28 / 28 — `Hecho` (2026-11-17). (Implementación 28 / 28 · Tests 28 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -231,7 +231,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Depende de:* 25.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/routes/ciclo.fud`, `tests/ciclo.spec.ts`.
-- impl [ ] · tests [ ] — **28. Cierre.**
+- impl [x] · tests [x] — **28. Cierre.**
   - IDEA-08 §4 apunta a esta SDD; `INDEX.md` con el estado y el registro.
   - `pnpm typecheck`, `pnpm build`, cobertura al 100 % en lo nuevo, e2e de `examples/basic` en verde
     (criterio 32).

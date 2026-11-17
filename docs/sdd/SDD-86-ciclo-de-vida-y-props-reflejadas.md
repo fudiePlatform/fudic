@@ -1,6 +1,7 @@
 # SDD-86 — El ciclo de vida de un componente, y las props reflejadas en el host
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-86-Task.md).
+> **Estado:** `Hecho` (2026-11-17) — [tareas](./SDD-86-Task.md). Las decisiones tomadas al
+> implementar están en §8.1, 14–25.
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 15 (`c` / `h` / `u` / `r` y `FudicElement`), 17 (la cascada de hidratación en
