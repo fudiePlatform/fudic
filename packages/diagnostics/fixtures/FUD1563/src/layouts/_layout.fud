@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @code {
+      const { section = "Home" } = props<{ section?: string }>();
+
+      afterHydrate(() => {
+        sessionStorage.setItem("section", section);
+      });
+    }
+
+    <meta charset="utf-8">
+    <meta property="article:section" content="@section">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <main>@RenderBody()</main>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+@code {
+  let started = false;
+
+  onConnect(() => {
+    if (started) console.log("connected");
+  });
+
+  function start() {
+    started = true;
+  }
+}
+
+<fix-late>
+  <template shadowrootmode="open">
+    <button type="button" @click=@start>Start</button>
+  </template>
+</fix-late>

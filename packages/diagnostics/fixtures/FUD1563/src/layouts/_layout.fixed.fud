@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @code {
+      const { section = "Home" } = props<{ section?: string }>();
+
+      afterHydrate(() => {
+        const meta = document.querySelector('meta[property="article:section"]');
+        sessionStorage.setItem("section", meta?.getAttribute("content") ?? "");
+      });
+    }
+
+    <meta charset="utf-8">
+    <meta property="article:section" content="@section">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <main>@RenderBody()</main>
+  </body>
+</html>

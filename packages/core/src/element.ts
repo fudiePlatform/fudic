@@ -99,6 +99,9 @@ export abstract class FudicElement extends Base {
    * controller ignores a second `on` without an `off` between them.
    */
   connectedCallback(): void {
+    // An element can be connected before its upgrade runs the constructor (happy-dom does it when
+    // a tag is defined while its instances are being inserted): nothing of ours is there yet.
+    if (!(#controller in this)) return;
     this.#controller?.on?.();
   }
 
@@ -174,6 +177,7 @@ export abstract class FudicElement extends Base {
    * sorted.
    */
   disconnectedCallback(): void {
+    if (!(#controller in this)) return; // not constructed yet: see `connectedCallback`
     const controller = this.#controller;
     if (controller === null) return;
     // At once, move or removal alike: what depends on being in the document stops now.
