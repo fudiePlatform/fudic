@@ -4,7 +4,14 @@
  */
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
-import { resolveComponents, hydratableTags, isIntrinsicallyHydratable } from '../../src/emit/index.js';
+import {
+  resolveComponents,
+  hydratableTags,
+  isIntrinsicallyHydratable,
+  isReactiveRoute,
+  emitRouteClientModule,
+} from '../../src/emit/index.js';
+import { resolveDocument } from '../../src/emit/resolve.js';
 import { fixturesDir, fixtureIo, memoryIo } from './_support.js';
 
 /** A page that links every component of `files` and instantiates `body`. */
@@ -348,5 +355,44 @@ describe('effective level — induced', () => {
       ),
     });
     expect([...hydratableTags(graph)]).toEqual([]);
+  });
+});
+
+/** SDD-86 task 15, criteria 14 and 30 — a lifecycle hook is code that runs in the browser. */
+describe('effective level — a lifecycle hook (SDD-86)', () => {
+  const HOOKS = ['beforeHydrate', 'afterHydrate', 'beforeCreate', 'afterCreate', 'onConnect', 'onDisconnect', 'onDispose'];
+
+  it('a component whose @code is only afterHydrate(() => {}) hydrates and has a chunk', () => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-hook'], '<x-hook></x-hook>'),
+      '/app/x-hook.fud': component('x-hook', '@code {\n  afterHydrate(() => {});\n}', '<p>static</p>'),
+    });
+    expect(isIntrinsicallyHydratable(graph.components.get('x-hook')!)).toBe(true);
+    expect([...hydratableTags(graph)]).toEqual(['x-hook']);
+  });
+
+  it.each(HOOKS)('%s alone is enough', (hook) => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-one'], '<x-one></x-one>'),
+      '/app/x-one.fud': component('x-one', `@code {\n  ${hook}(() => {});\n}`, '<p>static</p>'),
+    });
+    expect(isIntrinsicallyHydratable(graph.components.get('x-one')!)).toBe(true);
+  });
+
+  it('the same component without the hook stays static (the hook is what changed it)', () => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-none'], '<x-none></x-none>'),
+      '/app/x-none.fud': component('x-none', '@code {\n  const a = 1;\n}', '<p>static</p>'),
+    });
+    expect(isIntrinsicallyHydratable(graph.components.get('x-none')!)).toBe(false);
+  });
+
+  it('a route whose @code is only afterHydrate(() => {}) is reactive and has a chunk (criterion 30)', () => {
+    const layout = '<!DOCTYPE html><html><head>@RenderHead()</head><body><main>@RenderBody()</main></body></html>';
+    const g = (code: string) =>
+      resolveDocument('/r.fud', memoryIo({ '/r.fud': `<link rel="layout" href="./l.fud">\n${code}\n<p>x</p>\n`, '/l.fud': layout })).value;
+    expect(isReactiveRoute(g('@code {\n  afterHydrate(() => {});\n}'))).toBe(true);
+    expect(emitRouteClientModule(g('@code {\n  afterHydrate(() => {});\n}'))).not.toBeNull();
+    expect(isReactiveRoute(g('@code {\n  const a = 1;\n}'))).toBe(false);
   });
 });

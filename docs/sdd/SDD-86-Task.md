@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-86-ciclo-de-vida`, desde `main`, con SDD-85 ya en `main`.
-> **Progreso:** 18 / 28 — `Listo`. (Implementación 24 / 28 · Tests 18 / 28)
+> **Progreso:** 19 / 28 — `Listo`. (Implementación 24 / 28 · Tests 19 / 28)
 
 **Dos casillas por tarea.** `impl` la marca la sesión que implementa; `tests` la marca la sesión de
 tests cuando los tests de la tarea están escritos y en verde. Cada sesión solo toca su casilla. Una
@@ -136,7 +136,7 @@ tarea cuenta en el progreso cuando tiene las dos.
   - *Ficheros:* `src/emit/module.ts`, `src/emit/markup.ts`, `src/emit/layout.ts`,
     `test/emit/__golden__/app-lifecycle.server.mjs`, `test/emit/__golden__/ruta-ciclo.server.mjs`,
     `test/emit/lifecycle.test.ts`.
-- impl [x] · tests [ ] — **15. Un hook hidrata.**
+- impl [x] · tests [x] — **15. Un hook hidrata.**
   - Test de nivel: un `@code` con solo `afterHydrate(() => {})` hace hidratable el componente y da
     chunk de cliente a la ruta (criterios 14 y 30). Sin cambios en `level.ts`.
   - *Depende de:* 2.
