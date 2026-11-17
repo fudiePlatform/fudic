@@ -14,8 +14,8 @@
   const filas = signal(["fila A", "fila B"]);
   const contador = signal(0);
 
-  // El contador se guarda en IndexedDB cada vez que cambia, una vez leído. Este `effect` es
-  // también lo que hace que la ruta se hidrate al cargar, sin esperar a un gesto.
+  // El contador se guarda en IndexedDB cada vez que cambia, una vez leído. La ruta se hidrata
+  // al cargar, sin esperar a un gesto: tiene `afterHydrate` y `onConnect`.
   let leido = false;
   effect(() => {
     const ahora = contador();

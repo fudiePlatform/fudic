@@ -26,6 +26,7 @@ import {
   formAssociatedTags,
   isReactiveRoute,
   routeHydration,
+  runsOnLoad,
   templateOf,
   walkElements,
 } from './level.js';
@@ -235,7 +236,7 @@ export function eagerTags(
     ...new Set([
       ...[...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag)),
       ...allComponents(graph).flatMap((comp) =>
-        hydratable.has(comp.tag) && codeOf(comp).clientEffects ? [comp.tag] : [],
+        hydratable.has(comp.tag) && runsOnLoad(codeOf(comp)) ? [comp.tag] : [],
       ),
       // The route is in the list under its own NAME, which is how the runtime names it
       // everywhere else: it has no tag to be listed by.

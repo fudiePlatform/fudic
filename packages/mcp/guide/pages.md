@@ -328,7 +328,7 @@ A route, a page and a layout use the hooks of a component (topic `components`, L
 | `onDisconnect` | on each `pagehide` |
 | `onDispose` | on a `pagehide` after which the page will not come back, after `onDisconnect` |
 
-The back-forward cache is to a page what a keyed move is to a component: it leaves and comes back without being destroyed, signals intact. fudic listens to `pagehide` and `pageshow` only, never `unload` (which takes the page out of that cache), and only in a route that uses `onConnect`, `onDisconnect` or `onDispose`. A route hydrates on its first gesture, and its hooks run then; a top-level `effect` makes it hydrate at load.
+The back-forward cache is to a page what a keyed move is to a component: it leaves and comes back without being destroyed, signals intact. fudic listens to `pagehide` and `pageshow` only, never `unload` (which takes the page out of that cache), and only in a route that uses `onConnect`, `onDisconnect` or `onDispose`. A route (or its layout) with `beforeHydrate`, `afterHydrate` or `onConnect` hydrates at load, as one with a top-level `effect` does; otherwise it hydrates on its first gesture.
 
 The browser waits for no promise on `pagehide`: an IndexedDB transaction or a `fetch` started in `onDisconnect` may never finish, on a phone above all. Save what must not be lost when it changes (an `effect`), and keep `onDisconnect` as the last try:
 
@@ -372,7 +372,7 @@ export async function saveList(key: string, list: readonly string[]): Promise<vo
 
   let loaded = false;
 
-  // Saved on every change once read back; a top-level effect also hydrates the page at load.
+  // Saved on every change, once read back.
   effect(() => {
     const now = items();
     if (loaded) void saveList("cart", now);

@@ -328,7 +328,7 @@ Una ruta, una página y un layout usan los hooks de un componente (tema `compone
 | `onDisconnect` | en cada `pagehide` |
 | `onDispose` | en un `pagehide` tras el que la página no va a volver, después de `onDisconnect` |
 
-La bfcache es a una página lo que un movimiento con clave a un componente: se va y vuelve sin destruirse, con sus signals intactos. fudic escucha solo `pagehide` y `pageshow`, nunca `unload` (que saca la página de esa caché), y solo en una ruta que usa `onConnect`, `onDisconnect` u `onDispose`. Una ruta se hidrata con su primer gesto, y sus hooks se ejecutan entonces; un `effect` de nivel superior hace que se hidrate al cargar.
+La bfcache es a una página lo que un movimiento con clave a un componente: se va y vuelve sin destruirse, con sus signals intactos. fudic escucha solo `pagehide` y `pageshow`, nunca `unload` (que saca la página de esa caché), y solo en una ruta que usa `onConnect`, `onDisconnect` u `onDispose`. Una ruta (o su layout) con `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al cargar, como una con un `effect` de nivel superior; si no, con su primer gesto.
 
 El navegador no espera a ninguna promesa en `pagehide`: una transacción de IndexedDB o un `fetch` empezados en `onDisconnect` pueden no terminar nunca, sobre todo en móvil. Guarda lo que no se puede perder cuando cambia (un `effect`), y deja `onDisconnect` como último intento:
 
@@ -372,7 +372,7 @@ export async function saveList(key: string, list: readonly string[]): Promise<vo
 
   let loaded = false;
 
-  // Saved on every change once read back; a top-level effect also hydrates the page at load.
+  // Saved on every change, once read back.
   effect(() => {
     const now = items();
     if (loaded) void saveList("cart", now);

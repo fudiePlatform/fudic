@@ -263,8 +263,10 @@ que hidrata el documento compuesto. Sus momentos son los del documento:
 | `onDispose` | En `pagehide` con `persisted === false`, después de `onDisconnect`: la página no va a volver |
 
 La bfcache es a una página lo que un movimiento de `@foreach` a un componente: se va y vuelve sin
-destruirse. Una ruta que se hidrata con el primer gesto (SDD-39) ejecuta sus hooks en ese momento; si
-el usuario se va antes del gesto, ninguno se ha registrado y no se ejecuta ninguno.
+destruirse. Una ruta (o su layout) con `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al
+cargar, como una con un `effect` (§4.3). Una que solo usa `onDisconnect` u `onDispose` se hidrata con
+el primer gesto (SDD-39); si el usuario se va antes del gesto, ninguno se ha registrado y no se
+ejecuta ninguno.
 
 El arranque de la ruta en `@fudic/core` ([install.ts](../../packages/core/src/hydrate/install.ts))
 llama a `on()` del controlador justo después de `h()` y registra en `window` un listener de `pagehide`
@@ -291,8 +293,13 @@ dos órdenes posibles sin disparar dos veces:
 ### 4.3. Padres e hijos
 
 Al hidratar, la cascada va en postorden (SDD-17): el `afterHydrate` de un hijo se ejecuta antes que el
-del padre. Un componente que se hidrata por interacción o al entrar en el viewport ejecuta sus hooks
-cuando se hidrata, no al cargar la página.
+del padre.
+
+**Cuándo se hidrata.** Un componente con `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al
+cargar la página, como uno con un `effect` de nivel superior: esos momentos son los de la página
+cargando, y un `ResizeObserver` que espera a un clic no observa nada. Uno que solo usa `onDisconnect`
+u `onDispose` (o los de crear) se hidrata cuando le tocaba, por interacción, y no ejecuta ningún hook
+hasta entonces.
 
 Al crear, cada hijo se levanta con `live()`, que espera a la definición de su tag. El `afterCreate` del
 padre no espera a sus hijos: si un hijo ya estaba definido se crea en el paso 4 del padre, y si no,
@@ -495,7 +502,9 @@ salen del `.md` del catálogo de `@fudic/diagnostics`.
    ejecuta, y el componente responde a sus eventos.
 9. `fn` recibe el host del componente en los siete hooks.
 10. Un hijo hidratado ejecuta su `afterHydrate` antes que su padre.
-11. Un componente que se hidrata por interacción no ejecuta ningún hook hasta la interacción.
+11. Un componente con `afterHydrate` u `onConnect` y sin eventos ni estado se hidrata al cargar y
+    los ejecuta sin ninguna interacción. Uno que solo usa `onDisconnect` / `onDispose` y se hidrata
+    por interacción no ejecuta ningún hook hasta la interacción (Pedro, §8.1 25).
 12. Un componente `formassociated` ejecuta los siete hooks en el mismo orden, y su relay de
     atributos sigue funcionando.
 13. `mount` de `@fudic/testing` ejecuta los hooks de hidratar (`via: 'ssr'`) y los de crear
@@ -642,4 +651,13 @@ Nada.
     que nadie llenó. Dos: una vista que lee un store importado no se repintaba al engancharse si
     otro componente había escrito el store antes (`writtenIf`). Los dos cambian la salida de
     cliente de ficheros sin hooks, a propósito: el criterio 15 se lee como «los hooks no añaden
-    nada», no como «nada cambia».
+    nada», no como «nada cambia». Y un tercero: un bloque adoptaba recorriendo el valor actual de lo
+    que lee, no el que pintó el servidor, y un `effect`, un hook o un store escritos antes de `h`
+    hacían que un `@foreach` adoptara filas que no existían (`TypeError`) o un `@if` la rama
+    equivocada. Ahora la adopción de una vista con bloques va dentro de `painted` (`@fudic/core`):
+    cada signal se lee con su valor inicial, que es el que pintó el servidor, y el repintado del
+    enganche la pone al día.
+25. **Los hooks de cargar hidratan al cargar** (Pedro). Un componente o una ruta (o su layout) con
+    `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al instalar, como uno con un `effect`
+    (`runsOnLoad` en `level.ts`). `onDisconnect` y `onDispose` no: nada se va antes de estar. El
+    criterio 11 se reescribe con eso.
