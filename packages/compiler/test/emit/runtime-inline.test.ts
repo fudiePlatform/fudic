@@ -197,7 +197,7 @@ describe('`?inline` on a stylesheet (§3.6)', () => {
     const module = emitRouteModule(graph, { linkAssets: true, assetExists: () => true });
     expect(module).not.toContain("'<style'");
     expect(module).not.toContain('@sheetUrl');
-    expect(module).toContain("let $open = '<link';");
+    expect(module).toContain('const $el = $dom.element("link");');
   });
 
   it('a `<link rel="stylesheet">` with no `href` is not one either', () => {

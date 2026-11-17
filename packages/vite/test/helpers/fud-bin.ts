@@ -1,6 +1,7 @@
 /**
- * Calling a server function by hand, as its page would (SDD-67 §3.2): its body in `fud-bin`,
- * its `?a=` in base64url and its signature in `fud-sig`; and reading what it answers, a value
+ * Calling a server function by hand, as its page would (SDD-67 §3.2): its body in `fud-bin`
+ * and its signature in `fud-sig` (a GET's arguments are plain query keys, BUG-62); and reading
+ * what it answers, a value
  * or a problem, in the same format.
  *
  * The signature is written here from the canonical text of SDD-67 §4.3, not read off the emitter:
@@ -32,14 +33,6 @@ export function binInit(
     },
     ...(body !== undefined ? { body: body as NonNullable<RequestInit['body']> } : {}),
   };
-}
-
-/** `?a=` of a GET: its arguments as a level, in base64url. */
-export function binQuery(types: Readonly<Record<string, Ty>>, args: Readonly<Record<string, unknown>>): string {
-  const bytes = binWire.encodeArgs(types, args) as Uint8Array;
-  let text = '';
-  for (const b of bytes) text += String.fromCharCode(b);
-  return btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
 }
 
 const bytesOf = async (res: Response): Promise<Uint8Array> => new Uint8Array(await res.arrayBuffer());

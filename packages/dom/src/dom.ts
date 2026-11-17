@@ -55,6 +55,19 @@ export interface Dom<N> {
    * taken off. `except` are the attributes the element writes itself, which the spread leaves.
    */
   setAttrs(el: N, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void;
+  /**
+   * Put `token` in the element's class list when `on`, take it out otherwise: `class:x=@cond`.
+   * Only that token moves, so a class some other code added stays. On the server the list is
+   * written as the `class` attribute, and with no token left there is no attribute.
+   */
+  toggleClass(el: N, token: string, on: boolean): void;
+  /**
+   * Take out the tokens of `prev` that are not in `next` and put in the ones of `next`:
+   * `class=@expr` and the `class` of a spread. `prev` is `''` (or `undefined`) the first time. Each
+   * side is read by `classText` — a string, a number or a bigint is its text, anything else writes
+   * no token — and split on ASCII white space, as the browser splits a class list.
+   */
+  swapClass(el: N, next: unknown, prev: unknown): void;
   removeAttr(el: N, name: string): void;
   /**
    * Write a live property of a control — `checked`, `value`, `selected` — from `name=@expr`
@@ -128,6 +141,15 @@ export interface DomClient<N> extends Dom<N> {
   setText(node: N, data: string): void;
   /** JS property (not an attribute): parent→child props, `.value`, signals. */
   setProp(el: N, name: string, value: unknown): void;
+  /**
+   * Write a live property of a control as the server writes it — its DEFAULT, the attribute —
+   * once, on a control the browser creates (SDD-85 §4.2): `checked` and `selected` present or
+   * absent, the `value` attribute of an `<input>` and the text of a `<textarea>`. A control that
+   * has not been touched shows its default, so its state follows; `setLive` goes on writing the
+   * state, never this. The default of a `<select>` is `selectDefault`, its own piece, so the
+   * adapter every page loads carries no `<select>` (decision 42).
+   */
+  setDefault(el: N, name: LiveProperty, value: unknown): void;
   firstChild(node: N): N | null;
   nextSibling(node: N): N | null;
   previousSibling(node: N): N | null;

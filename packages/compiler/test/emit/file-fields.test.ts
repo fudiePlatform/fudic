@@ -119,10 +119,10 @@ function component(body: string): { server: string; client: string; diagnostics:
 describe('criterion 30: accept written from the rule', () => {
   const ACCEPT = `'accept', "image/png, image/jpeg"`;
 
-  it('on both branches of a component, when the author wrote none: the server paints it, the client fabricates it', () => {
+  it('on both branches of a component, when the author wrote none: the server paints it, the client clones it', () => {
     const { server, client, diagnostics } = component('<input type="file" control=@alta.avatar>');
     expect(server).toContain(ACCEPT);
-    expect(client).toContain(ACCEPT);
+    expect(client).toContain('accept="image/png, image/jpeg"');
     expect(client).toContain('bindFile(');
     expect(diagnostics).toEqual([]);
   });

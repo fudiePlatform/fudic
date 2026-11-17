@@ -396,7 +396,7 @@ describe('SDD-81 §4.5: the photo and the CSV are links', () => {
     await usuarios();
     expect(await avatar({ id: 1 })).toBeUndefined();
     expect(document.querySelectorAll('tbody img')).toHaveLength(0);
-    expect(avatar.url({ id: 1 })).toMatch(/^\/_fudic\/fn\/routes\/usuarios\/avatar\?a=/u);
+    expect(avatar.url({ id: 1 })).toMatch(/^\/_fudic\/fn\/routes\/usuarios\/avatar\?id=1(&|$)/u);
   });
 
   test('«Exportar CSV» links to `exportar`, which gives the table as a file', async () => {

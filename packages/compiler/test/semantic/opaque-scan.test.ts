@@ -36,10 +36,6 @@ function diags(source: string): readonly Diagnostic[] {
 
 const codes = (source: string): readonly string[] => diags(source).map((d) => d.code);
 
-/** Prefix a `@code` block to a minimal component (SDD-10's link→code→head→host order). */
-const withCode = (code: string): string =>
-  `${code}<app-test><template shadowrootmode="open"></template></app-test>`;
-
 /** The same block inside a layout, where FUD0430 applies. */
 const layout = (code: string): string =>
   `<!DOCTYPE html><html><head>${code}@RenderHead()</head><body>@RenderBody()</body></html>`;

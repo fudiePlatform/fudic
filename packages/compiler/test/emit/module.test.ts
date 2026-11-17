@@ -50,17 +50,25 @@ describe('emitComponentModule — a leaf component (app-badge)', () => {
     expect(ops).toContain('element');
     expect(ops).toContain('append');
 
+    // The static class is a literal, and each `class:` toggles its own token (SDD-85 §4.5).
     const classCall = calls.find((c) => c.op === 'setAttr' && c.args[1] === 'class');
-    expect(classCall).toBeDefined();
-    expect(classCall!.args[2]).toBe('badge success'); // base + conditional resolved at runtime
+    expect(classCall!.args[2]).toBe('badge');
+    const toggles = calls.filter((c) => c.op === 'toggleClass').map((c) => c.args.slice(1));
+    expect(toggles).toEqual([
+      ['success', true],
+      ['warning', false],
+    ]);
   });
 
   it("defaults props<T>() when omitted (tone → 'neutral')", () => {
     const { render } = evalLeafModule(src);
     const { dom, calls } = recordingDom();
     render(dom, { $node: 'shadow' }, {}); // no props
-    const classCall = calls.find((c) => c.op === 'setAttr' && c.args[1] === 'class');
-    expect(classCall!.args[2]).toBe('badge'); // neither success nor warning
+    const toggles = calls.filter((c) => c.op === 'toggleClass').map((c) => c.args.slice(1));
+    expect(toggles).toEqual([
+      ['success', false],
+      ['warning', false],
+    ]); // neither success nor warning
   });
 });
 
@@ -78,10 +86,11 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
 
   it('renders a nested component host with data-fud-adopt + attachShadow + its render call', () => {
     // The ids moved with BUG-21: the whitespace nodes the emit can prove render nothing are
-    // not emitted, and the counter is sequential.
-    expect(src).toContain('$dom.setAttr($n10, \'data-fud-adopt\', "app-button");');
-    expect(src).toContain('$dom.attachShadow($n10)');
-    expect(src).toContain('renderAppButton($dom, $n11, { "variant": "ghost" }, $ioc);');
+    // not emitted, and the counter is sequential. And again with SDD-85: the comments that keep
+    // two texts apart take ids too.
+    expect(src).toContain('$dom.setAttr($n12, \'data-fud-adopt\', "app-button");');
+    expect(src).toContain('$dom.attachShadow($n12)');
+    expect(src).toContain('renderAppButton($dom, $n13, { "variant": "ghost" }, $ioc);');
   });
 
   it('lowers @if/@else to real JS control flow', () => {
@@ -208,7 +217,7 @@ describe('emitPageModule — home.mjs', () => {
 
   it('lowers @foreach to a real for-loop and marks component hosts with data-fud-adopt', () => {
     expect(src).toContain('for (const item of data.items) {');
-    expect(src).toContain('$dom.setAttr($n8, \'data-fud-adopt\', "app-card");');
+    expect(src).toContain('$dom.setAttr($n9, \'data-fud-adopt\', "app-card");');
   });
 });
 

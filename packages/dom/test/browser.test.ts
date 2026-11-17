@@ -21,6 +21,76 @@ describe('browserDom construction', () => {
   });
 });
 
+describe('browserDom classes: only their own tokens move', () => {
+  it('toggleClass puts a token in and takes it out, and a class added some other way stays', () => {
+    const el = dom.element('div') as Element;
+    dom.setAttr(el, 'class', 'card');
+    dom.toggleClass(el, 'activo', true);
+    el.classList.add('extra');
+    dom.toggleClass(el, 'activo', false);
+    dom.toggleClass(el, 'activo', true);
+    expect(el.getAttribute('class')).toBe('card extra activo');
+    dom.toggleClass(el, 'activo', false);
+    expect(el.getAttribute('class')).toBe('card extra');
+  });
+
+  it('a toggle that changes nothing does not touch the attribute, as a browser does', () => {
+    const el = dom.element('div') as Element;
+    dom.toggleClass(el, 'activo', false);
+    expect(el.hasAttribute('class')).toBe(false);
+    dom.toggleClass(el, 'activo', true);
+    const seen: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => seen.push(...records));
+    observer.observe(el, { attributes: true });
+    dom.toggleClass(el, 'activo', true);
+    expect(observer.takeRecords().concat(seen)).toEqual([]);
+    observer.disconnect();
+  });
+
+  it('swapClass takes out what the new text no longer has and puts in the new, splitting on ASCII white space', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a\tb', '');
+    el.classList.add('extra');
+    dom.swapClass(el, ' b\n c ', 'a\tb');
+    expect([...el.classList]).toEqual(['b', 'extra', 'c']);
+  });
+
+  it('the last token gone leaves an empty attribute, as the browser does', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a', '');
+    dom.swapClass(el, '', 'a');
+    expect(el.getAttribute('class')).toBe('');
+  });
+
+  it('takes the value as it comes: what is not text writes no token', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, 'a', undefined);
+    dom.swapClass(el, null, 'a');
+    expect(el.getAttribute('class')).toBe('');
+  });
+
+  it('a swap that changes nothing does not touch the attribute', () => {
+    const el = dom.element('div') as Element;
+    dom.swapClass(el, '', '');
+    expect(el.hasAttribute('class')).toBe(false);
+  });
+
+  it('a token already there, or already gone, is not written again', async () => {
+    const el = dom.element('div') as Element;
+    el.setAttribute('class', 'a b');
+    const seen: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => seen.push(...records));
+    observer.observe(el, { attributes: true });
+    dom.swapClass(el, 'a b', 'a b');
+    dom.swapClass(el, 'a', 'c');
+    dom.setAttrs(el, [{ class: 'a b' }], [{ class: 'a b' }], []);
+    await Promise.resolve();
+    observer.disconnect();
+    expect(seen).toEqual([]);
+    expect(el.getAttribute('class')).toBe('a b');
+  });
+});
+
 describe('browserDom mutation', () => {
   it('sets and removes attributes', () => {
     const el = dom.element('button') as Element;
@@ -99,6 +169,31 @@ describe('browserDom mutation', () => {
     dom.setLive(b, 'selected', true);
     expect(select.value).toBe('b');
     expect(b.hasAttribute('selected')).toBe(false);
+  });
+
+  it('setDefault writes checked and selected as the server does: present, or absent (SDD-85 §4.2)', () => {
+    const box = dom.element('input') as HTMLInputElement;
+    box.type = 'checkbox';
+    dom.setDefault(box, 'checked', true);
+    expect(box.getAttribute('checked')).toBe('');
+    expect(box.checked).toBe(true); // untouched, the state follows the default
+    dom.setDefault(box, 'checked', null);
+    expect(box.hasAttribute('checked')).toBe(false);
+    const option = dom.element('option') as HTMLOptionElement;
+    dom.setDefault(option, 'selected', 'yes');
+    expect(option.getAttribute('selected')).toBe('yes');
+  });
+
+  it('setDefault writes the value attribute of an input, and the text of a textarea', () => {
+    const input = dom.element('input') as HTMLInputElement;
+    dom.setDefault(input, 'value', 42);
+    expect(input.getAttribute('value')).toBe('42');
+    expect(input.value).toBe('42');
+    const area = dom.element('textarea') as HTMLTextAreaElement;
+    dom.setDefault(area, 'value', 'Ana');
+    expect(area.textContent).toBe('Ana');
+    dom.setDefault(area, 'value', undefined);
+    expect(area.textContent).toBe('');
   });
 
   it('setLive does not write when the DOM already holds the value', () => {

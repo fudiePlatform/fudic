@@ -144,7 +144,8 @@ describe('`css: "link"` in a build (criteria 7, 8, 9, 16)', () => {
     expect(links.match(/<link /gu)).toHaveLength(3);
     const chunk = output.find((f) => f.type === 'chunk' && /x-counter/u.test(f.fileName))!;
     const code = (chunk as { code?: string }).code!;
-    const first = /= ((?:\$dom\.nextElementSibling\()*)\$dom\.firstElementChild\(\$shadow\)/u.exec(code)!;
+    // The adoption's: `c` starts at the first element of its clone, which has no `<link>` in front.
+    const first = /= ((?:\$dom\.nextElementSibling\()+)\$dom\.firstElementChild\(\$shadow\)/u.exec(code)!;
     expect(first[1]!.match(/nextElementSibling/gu)).toHaveLength(3);
   });
 

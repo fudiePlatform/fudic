@@ -72,7 +72,7 @@ export {
   type HydrationOptions,
   type HydratedDetail,
 } from './hydrate/install.js';
-export { live } from './hydrate/live.js';
+export { live, ownScope, scopeOf, SCOPE_ATTR } from './hydrate/live.js';
 export { isCellMark, type CellMark, type CellRef, type Cells } from './hydrate/cells.js';
 export type {
   ResolveChunk,

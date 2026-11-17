@@ -625,8 +625,9 @@ class HtmlParser {
     let end = nameToken.span.end;
 
     // `bus:(EVENTOS.carrito)` (decision 28.b): the tokenizer split the reserved
-    // prefix from the expression that names the event.
-    if (nameToken.name.endsWith(':')) {
+    // prefix from the expression that names the event. It splits a `(` glued to any other
+    // name the same way, so the binding layer can say that only `bus:` takes one.
+    if (nameToken.name.endsWith(':') || this.#lexer.peek().span.start === nameToken.span.end) {
       const ahead = this.#lexer.peek();
       if (ahead.type === 'explicit-expr') {
         this.#next();

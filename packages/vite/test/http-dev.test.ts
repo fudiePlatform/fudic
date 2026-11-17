@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
-import { binInit, binProblem, binQuery, binValue, type Ty } from './helpers/fud-bin.js';
+import { binInit, binProblem, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** The package `@fudic/http`: its `fudapi/`, its compiled halves and its `dist`. */
@@ -218,9 +218,8 @@ const CRASH = 'route()|query()|body()|->str';
 const SAVED: Ty = { fields: () => ({ from: 'str', count: 'i32' }) };
 
 describe('server functions in dev, in fud-bin', () => {
-  it('criterion 21: GET …/search?a=… returns what handle returned', async () => {
-    const a = binQuery({ q: 'str' }, { q: 'an' });
-    const res = await call(`/routes/usuarios/search?a=${a}`, binInit(SEARCH));
+  it('criterion 21: GET …/search?q=… returns what handle returned', async () => {
+    const res = await call('/routes/usuarios/search?q=an', binInit(SEARCH));
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/fud+bin');
     expect(await binValue(res, { list: 'str' })).toEqual(['ana']);
@@ -253,8 +252,7 @@ describe('server functions in dev, in fud-bin', () => {
     const foreign = await call('/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT', headers: { origin: 'https://evil.test' } }));
     expect(foreign.status).toBe(403);
     // A GET without the header passes.
-    const a = binQuery({ q: 'str' }, { q: 'l' });
-    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`, binInit(SEARCH))).status).toBe(200);
+    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?q=l`, binInit(SEARCH))).status).toBe(200);
   });
 
   it('a function that throws an Error: 500 with its message in dev', async () => {

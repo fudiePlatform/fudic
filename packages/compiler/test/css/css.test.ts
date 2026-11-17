@@ -32,7 +32,7 @@ function codes(source: string): readonly string[] {
 }
 
 /** §5: parts tile the body with no gaps and no overlaps. */
-function assertTiles(source: string, node: StyleNode): void {
+function assertTiles(node: StyleNode): void {
   let cursor = node.span.start;
   for (const part of node.parts) {
     expect(part.span.start).toBe(cursor);
@@ -91,7 +91,7 @@ describe('§6.2 static CSS (fixture app-card)', () => {
     const [only] = node.parts;
     expect(only?.type).toBe('css-text');
     expect(only?.type === 'css-text' ? only.value : '').toBe(source);
-    assertTiles(source, node);
+    assertTiles(node);
   });
 
   it('accepts native CSS nesting', () => {
@@ -184,7 +184,7 @@ describe('robustness (§5: never throws)', () => {
     const body = span(10, 25);
     const { value, diagnostics } = parseStyle(source, body);
     expect(value.span).toEqual(body);
-    assertTiles(source, value);
+    assertTiles(value);
     expect(value.parts.map((p) => p.type)).toEqual(['css-text']);
     expect(diagnostics.map((d) => [d.code, d.span])).toEqual([['FUD0132', span(20, 22)]]);
   });
@@ -204,7 +204,7 @@ describe('SDD-49 criterion 43 — a <style> body is plain CSS (decision 136)', (
     expect(razor(source)).toEqual(covered.map((c) => ['error', c]));
     expect(codes(source).filter((c) => c !== 'FUD0132')).toEqual([]);
     expect(shape(source)).toEqual([['css-text', source]]);
-    assertTiles(source, parse(source).node);
+    assertTiles(parse(source).node);
   }
 
   it('an explicit expression `@(x)`, up to its `)`', () => {

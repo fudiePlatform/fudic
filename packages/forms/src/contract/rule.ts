@@ -11,7 +11,7 @@ import { markAsync } from '../async-flag.js';
 import { markServer } from '../server-flag.js';
 import type { AnyValidator, Errors } from '../types.js';
 import type { Asking, Question } from './remote.js';
-import { Slot } from './registry.js';
+import { loading, settled, Slot } from './registry.js';
 
 /**
  * What the developer writes: the verdict on a value, given the arguments of the use. A rule the
@@ -143,7 +143,12 @@ export function rule<V, P = {}, C extends string = never, X = never>(spec: RuleS
    */
   const checked = (value: unknown, params: unknown, ctx: unknown, levels: readonly unknown[]): Verdict<string> | Promise<Verdict<string>> => {
     const fn = slot.get();
-    if (fn === undefined) throw new Error(slot.missing());
+    if (fn === undefined) {
+      // The browser root loads the implementations with dynamic imports, and a field can be left
+      // before it is done (BUG-62): the check waits for it, and only an empty slot after it fails.
+      if (loading()) return settled().then(() => checked(value, params, ctx, levels));
+      throw new Error(slot.missing());
+    }
     if (levels.length === 0) return fn(value, params, ctx);
     if (around === undefined) throw new Error(`${label} has middlewares and nothing runs them: it runs on the server, through @fudic/http`);
     return around(levels, ctx, async (inner) => fn(value, params, inner)) as Promise<Verdict<string>>;

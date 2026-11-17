@@ -23,6 +23,7 @@ import { TRUSTED_TYPES_NEEDS } from '@fudic/dom';
 import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, NOTHING_AHEAD, renderPass, type Tail } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
+import { Templates, writeTemplates } from './template-html.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
 import { codeScope, hookupContext, templateDelegationJs } from './events.js';
@@ -230,7 +231,9 @@ function buildRouteClientModule(
   const usage = coreUsage();
   const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
   const watched = [...new Set([...imported, ...scope.through])];
-  const ctx = blockContext(source, scope, linker, ids, usage, hookup, watched);
+  // A route has no `c` of its own, and no root template: only its blocks have one (SDD-85 §4.1).
+  const templates = new Templates();
+  const ctx = blockContext(source, scope, linker, ids, usage, hookup, watched, templates);
   // The same defaults the SERVER branch of a route starts from (`buildRouteModule` builds its
   // `MarkupEmitter` with no space, no container and no boxes): the two walks have to drop the
   // same whitespace nodes, or `h` adopts a tree that is one node out of step.
@@ -285,7 +288,7 @@ function buildRouteClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
-    ...(usage.fabricates ? ['live as $live'] : []),
+    ...(usage.creates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
     ...(refreshes ? ['onStaleData as $stale'] : []),
     ...(shape !== undefined ? ['unpackData as $unpackData'] : []),
@@ -300,6 +303,8 @@ function buildRouteClientModule(
   // `@code` and the template's handlers below both reach them by name (SDD-60 §3.14).
   for (const line of apiImports(graph)) w.line(line);
   if (refreshes) w.line(loadImport(graph)!);
+  if (usage.selects) templates.createsSelect();
+  writeTemplates(w, templates);
   w.line('');
   // A default export and NOT a custom element: a route is not defined, not instantiated and
   // never fabricated hot. What the runtime holds is this function and the three entry points
@@ -357,7 +362,7 @@ function buildRouteClientModule(
     linker,
     diagnostics: [...code.diagnostics, ...emitDiagnostics],
     // What the walk painted through the `fudic` Trusted Types policy needs from the CSP (SDD-84 §4.6).
-    needs: hookup.paintsHtml ? TRUSTED_TYPES_NEEDS : [],
+    needs: hookup.paintsHtml || !templates.empty ? TRUSTED_TYPES_NEEDS : [],
   };
 }
 

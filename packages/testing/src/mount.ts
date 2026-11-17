@@ -17,11 +17,11 @@ import { FILE_EXPORT } from './constants.js';
 import { hostAttribute, pageShell, showPage } from './document.js';
 import { graphOf } from './graph.js';
 import { hostPage } from './host.js';
-import { chunkMap, hydrate, resolverOf } from './hydrate.js';
+import { chunkMap, hydrate, type ChunkMap } from './hydrate.js';
 import { renderPage } from './page.js';
 import { localized } from './project.js';
 import { settled, track } from './pending.js';
-import { standTree, type ProviderOverride } from './providers.js';
+import type { ProviderOverride } from './providers.js';
 import { serverRoot } from './api.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
@@ -128,13 +128,13 @@ async function viaSsr(
   component: MountTarget,
   props: object,
   url: string,
+  chunks: ChunkMap,
   providers: readonly ProviderOverride[],
 ): Promise<ComponentElement> {
   const { tag } = component;
   for (const [name, value] of Object.entries(props)) assertJson(tag, name, value);
   const body = showPage(await paintHost(component, props, url));
-  const page = graphOf(component[FILE_EXPORT]).components.values();
-  hydrate(body, chunkMap([{ tag, path: component[FILE_EXPORT] }, ...page]), providers);
+  hydrate(body, chunks, providers);
   return body.querySelector<ComponentElement>(tag)!;
 }
 
@@ -143,6 +143,7 @@ async function viaClient(
   props: object,
   url: string,
   order: readonly string[],
+  chunks: ChunkMap,
   providers: readonly ProviderOverride[],
 ): Promise<ComponentElement> {
   const { tag } = component;
@@ -150,10 +151,13 @@ async function viaClient(
   // adopts by specifier, and the host the server painted says which ones (`data-fud-adopt`).
   const html = await paintHost(component, {}, url);
   const body = pageShell(html);
+  // The runtime every page has, over a page that painted nothing: what a child this component
+  // creates is raised with — its definition, asked for by its tag — and the container tree, which
+  // with no tree printed stands from a lone root, with the overrides in it.
+  hydrate(body, chunks, providers);
+  await settled();
   // Every component has a `?client` chunk, and importing it defines the tag.
-  await track(import(/* @vite-ignore */ localized(`${component[FILE_EXPORT]}?client`)));
-  // No page printed a tree: the component resolves from a lone root, with the overrides in it.
-  await standTree(resolverOf(new Map()), providers);
+  await track(import(/* @vite-ignore */ chunks.get(tag)!));
   const payload: unknown[] = Array.from({ length: order.length });
   for (const [at, value] of positions(tag, order, props)) payload[at] = value;
   // As a parent creates a child (SDD-17, entry point 2): the element, the sheets it adopts, and
@@ -179,10 +183,12 @@ export async function mount<P extends object = Record<string, unknown>>(
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.
   positions(component.tag, order, props);
+  const page = graphOf(component[FILE_EXPORT]).components.values();
+  const chunks = chunkMap([{ tag: component.tag, path: component[FILE_EXPORT] }, ...page]);
   const host =
     options.via === 'client'
-      ? await viaClient(component, props, url, order, providers)
-      : await viaSsr(component, props, url, providers);
+      ? await viaClient(component, props, url, order, chunks, providers)
+      : await viaSsr(component, props, url, chunks, providers);
   await settled();
   const root = host.shadowRoot!;
   // Onto the harness, not spread from it: `invalidated` is a getter, and a spread would freeze it.

@@ -70,7 +70,9 @@ describe('@empty on the client (§4.4.3)', () => {
   it('it is built, or adopted, when the loop did not turn, in the same registry', () => {
     const src = client(PROPS, NESTED);
     const fab = between(src, 'c: () => {', 'h: () => {');
-    expect(fab).toMatch(/if \(\$k0\.length === 0\) \{ const \$i = \$b1\(\$n\d+, null, label\); \$i\.c\(\); \$i\.m\(\); \$i\.s\(\); \$k0\.push\(\$i\); \}/u);
+    expect(fab).toMatch(/if \(\$k0\.length === 0\) \{ const \$i = \$b1\(\$n\d+, null, label\); \$i\.c\(\); \$i\.s\(\); \$k0\.push\(\$i\); \}/u);
+    // Mounted with the rows, once the level around them is adopted (SDD-85 §4.2).
+    expect(fab).toMatch(/for \(const \$i of \$k0\) \$i\.m\(/u);
     const adopt = between(src, 'h: () => {', 'u: (');
     expect(adopt).toMatch(/if \(\$k0\.length === 0\) \{ const \$i = \$b1\(\$n\d+, null, label\); \$c\d+ = \$i\.h\(\$c\d+\); \$i\.s\(\); \$k0\.push\(\$i\); \}/u);
   });
@@ -138,10 +140,12 @@ describe('the spreads of a native element, where the first one sits (§3.8)', ()
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
-  it('on the client, written first among the static attributes too, so a created instance has the same order', () => {
-    const fab = between(client(CODE, '<a id="i" ...e rel="r">x</a>'), 'c: () => {', 'h: () => {');
-    const order = ['"id"', 'setAttrs($n0, [(e)], undefined, ["id","rel"])', '"rel"'].map((s) => fab.indexOf(s));
-    expect(order.every((at) => at >= 0)).toBe(true);
-    expect(order).toEqual([...order].sort((a, b) => a - b));
+  it('on the client, behind the static attributes the template brings (SDD-85 §4.6)', () => {
+    const src = client(CODE, '<a id="i" ...e rel="r">x</a>');
+    // The order of attributes is not something the DOM or CSS sees: `$a` writes the spread once
+    // the clone has the explicit ones, and leaves those to the element.
+    expect(src).toContain('$template`<a id="i" rel="r">x</a>`');
+    expect(src).toContain('$dom.setAttrs($n0, $v, $o, ["id","rel"]);');
+    expect(between(src, 'c: () => {', 'h: () => {')).not.toContain('setAttrs');
   });
 });

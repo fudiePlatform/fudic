@@ -18,6 +18,7 @@
 
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
+import type { HtmlContent } from '../html/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
 import {
@@ -244,6 +245,49 @@ export function eagerTags(
 }
 
 /**
+ * `fud-around` — the tags (and the route, by its name) that LISTEN AROUND a child host: an
+ * `@event` on an element that is, or holds, a hydratable component host of their own markup.
+ *
+ * The capturer raises the nearest host of a gesture, and for every other listener that is right:
+ * whoever wrote it lives in that host's shadow. A listener around a child is the exception — the
+ * `<section @click>` of `bus-picker` that hears its `bus-option`s through `delegate:option`, or an
+ * `@click` written on the child's own tag. Its owner is an ANCESTOR of the nearest host, and a
+ * gesture that raised only the child left it cold: the click reached nobody (SDD-85 decision 43).
+ * With this list the capturer raises the outermost cold owner that listens around, and the
+ * cascade brings the child up under it.
+ *
+ * A flat list, like `fud-eager`: it says which tags, not around whom — the composed path of the
+ * gesture already says that.
+ */
+export function aroundTags(
+  graph: ComponentGraph,
+  hydratable: ReadonlySet<string>,
+  routeName?: string,
+): readonly string[] {
+  const listensAround = (source: string, roots: readonly HtmlContent[]): boolean => {
+    let found = false;
+    walkElements(roots, (el) => {
+      if (found || !el.attributes.some((attr) => classifyAttribute(attr, source).value.type === 'event')) return;
+      walkElements([el], (inner) => {
+        if (componentOf(graph, inner.name) !== undefined && hydratable.has(inner.name)) found = true;
+      });
+    });
+    return found;
+  };
+  const entry = routeName === undefined ? undefined : entryHalf(graph);
+  return [
+    ...allComponents(graph).flatMap((comp) =>
+      // The identity tag, when there is one, so an `@event` written on it counts too: its
+      // children are the template's.
+      hydratable.has(comp.tag) && listensAround(comp.source, comp.doc.host === undefined ? templateOf(comp) : [comp.doc.host])
+        ? [comp.tag]
+        : [],
+    ),
+    ...(entry !== undefined && listensAround(graph.entrySource, entry.roots) ? [routeName!] : []),
+  ];
+}
+
+/**
  * The compile-time map constants of a page module — the ones a page and a route both need,
  * written by the one function so the two shapes cannot drift.
  *
@@ -266,7 +310,10 @@ export function writeMapConstants(
   const eager = eagerTags(graph, hydratable, routeName);
   const hasEager = eager.length > 0;
   if (hasEager) w.line(`const FUD_EAGER = ${JSON.stringify(eager)};`);
-  return { hasTree, hasBus, hasEager };
+  const around = aroundTags(graph, hydratable, routeName);
+  const hasAround = around.length > 0;
+  if (hasAround) w.line(`const FUD_AROUND = ${JSON.stringify(around)};`);
+  return { hasTree, hasBus, hasEager, hasAround };
 }
 
 /** Which map constants a module actually declared — what the block emitter may reference. */
@@ -274,6 +321,7 @@ export interface PageMaps {
   readonly hasTree: boolean;
   readonly hasBus: boolean;
   readonly hasEager: boolean;
+  readonly hasAround: boolean;
 }
 
 /**
@@ -449,6 +497,7 @@ export function writeHydrationBlocks(
   if (maps.hasTree) w.line(`jsonBlock(${dom}, ${parent}, 'fud-tree', FUD_TREE);`);
   if (maps.hasBus) w.line(`jsonBlock(${dom}, ${parent}, 'fud-bus', FUD_BUS);`);
   if (maps.hasEager) w.line(`jsonBlock(${dom}, ${parent}, 'fud-eager', FUD_EAGER);`);
+  if (maps.hasAround) w.line(`jsonBlock(${dom}, ${parent}, 'fud-around', FUD_AROUND);`);
   if (route !== undefined) writeRouteBlocks(w, route, dom, parent);
   if (ioc !== undefined) writeIocBlocks(w, dom, parent, ioc);
   w.dedent();
@@ -480,6 +529,7 @@ export function writePartsOpen(
     ...(maps.hasTree ? ['tree: FUD_TREE'] : []),
     ...(maps.hasBus ? ['bus: FUD_BUS'] : []),
     ...(maps.hasEager ? ['eager: FUD_EAGER'] : []),
+    ...(maps.hasAround ? ['around: FUD_AROUND'] : []),
     ...(route === undefined ? [] : [`route: ${JSON.stringify(route.name)}`]),
     // Nothing empty is written (§3.5): a `data` with only `later` fields is all in `fields`.
     ...(data === null || data === EMPTY_DATA ? [] : [`data: ${data}`]),

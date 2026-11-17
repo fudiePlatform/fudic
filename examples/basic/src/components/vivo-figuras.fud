@@ -1,0 +1,74 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  // A block inside `<svg>` and one inside `<math>`: what the browser creates there comes out of
+  // a template parsed inside its wrapper, so its nodes are born SVG and MathML and not HTML
+  // elements that happen to be called `circle` or `mi` (SDD-85 §3.1).
+  const circulo = signal(true);
+  const raiz = signal(false);
+  const informe = signal("Pulsa «Comprobar» para leer el espacio de nombres de lo creado.");
+
+  let figura: Element | null = null;
+  let formula: Element | null = null;
+
+  function cambiarFigura() {
+    circulo.set(!circulo());
+  }
+
+  function cambiarFormula() {
+    raiz.set(!raiz());
+  }
+
+  function comprobar() {
+    const ns = (el: Element | null) => (el === null ? "nada" : `<${el.localName}> ${el.namespaceURI ?? "sin espacio"}`);
+    informe.set(`figura: ${ns(figura)} · fórmula: ${ns(formula)}`);
+  }
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+    }
+    .fila {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .informe {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+<vivo-figuras>
+  <template shadowrootmode="open">
+    <div class="panel">
+      <div class="fila">
+        <button @click=@cambiarFigura data-id="figura">Cambiar figura</button>
+        <svg width="60" height="60" viewBox="0 0 60 60" data-id="svg">
+          @if (circulo()) {
+            <circle ref="@figura" cx="30" cy="30" r="24" fill="#1a73e8"></circle>
+          } else {
+            <rect ref="@figura" x="8" y="8" width="44" height="44" fill="#b3261e"></rect>
+          }
+        </svg>
+      </div>
+      <div class="fila">
+        <button @click=@cambiarFormula data-id="formula">Cambiar fórmula</button>
+        <math data-id="math">
+          @if (raiz()) {
+            <msqrt ref="@formula"><mi>x</mi></msqrt>
+          } else {
+            <msup ref="@formula"><mi>x</mi><mn>2</mn></msup>
+          }
+        </math>
+      </div>
+      <button @click=@comprobar data-id="comprobar">Comprobar</button>
+      <p class="informe" data-id="informe">@informe()</p>
+    </div>
+  </template>
+</vivo-figuras>

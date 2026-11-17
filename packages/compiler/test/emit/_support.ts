@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock, packData } from '@fudic/ssr';
+import { classDiff, classTokens, type ClassDiff } from '@fudic/dom';
 import {
   emitComponentModule,
   emitPageModule,
@@ -110,6 +111,8 @@ export function recordingDom(): { dom: Record<string, (...a: unknown[]) => unkno
     text: rec('text'),
     comment: rec('comment'),
     setAttr: rec('setAttr'),
+    toggleClass: rec('toggleClass'),
+    swapClass: rec('swapClass'),
     removeAttr: rec('removeAttr'),
     append: rec('append'),
     before: rec('before'),
@@ -142,17 +145,28 @@ interface TreeNode {
 const escapeHtml = (s: string): string =>
   s.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
 
+/** A class change on a fake node, as `SsrDom` makes it: no token left, no attribute. */
+function applyClass(node: TreeNode, diff: ClassDiff): void {
+  const tokens = classTokens(node.attrs!.get('class') ?? '').filter((token) => !diff.remove.includes(token));
+  for (const token of diff.add) if (!tokens.includes(token)) tokens.push(token);
+  if (tokens.length === 0) node.attrs!.delete('class');
+  else node.attrs!.set('class', tokens.join(' '));
+}
+
+/** An element's start tag, as the real serializer yields it: its first piece. */
+function startTag(node: TreeNode): string {
+  const attrs = node.attrs ? [...node.attrs].map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('') : '';
+  return `<${node.tag}${attrs}>`;
+}
+
 function serializeNode(node: TreeNode): string {
   if (node.text !== undefined) return escapeHtml(node.text);
   if (node.comment !== undefined) return `<!--${node.comment}-->`;
-  const attrs = node.attrs
-    ? [...node.attrs].map(([k, v]) => ` ${k}="${v.replace(/"/gu, '&quot;')}"`).join('')
-    : '';
   const shadow = node.shadow
     ? `<template shadowrootmode="open">${node.shadow.children.map(serializeNode).join('')}</template>`
     : '';
   const light = node.children.map(serializeNode).join('');
-  return `<${node.tag}${attrs}>${shadow}${light}</${node.tag}>`;
+  return `${startTag(node)}${shadow}${light}</${node.tag}>`;
 }
 
 export function minimalSsr(): {
@@ -174,6 +188,14 @@ export function minimalSsr(): {
       comment: (s: unknown): TreeNode => ({ comment: String(s), children: [] }),
       setAttr: (n: unknown, k: unknown, v: unknown): void => {
         (n as TreeNode).attrs!.set(String(k), String(v));
+      },
+      // The class list as `SsrDom` keeps it: the attribute itself, token by token (SDD-85 §4.5).
+      toggleClass: (n: unknown, token: unknown, on: unknown): void => {
+        const t = String(token);
+        applyClass(n as TreeNode, on === true ? { remove: [], add: [t] } : { remove: [t], add: [] });
+      },
+      swapClass: (n: unknown, next: unknown, prev: unknown): void => {
+        applyClass(n as TreeNode, classDiff(next, prev));
       },
       append: (p: unknown, c: unknown): void => {
         (p as TreeNode).children.push(c as TreeNode);
@@ -214,11 +236,14 @@ export function minimalSsr(): {
   };
   return {
     createDom: createDom as unknown as () => Record<string, (...a: unknown[]) => unknown>,
-    // A generator-shaped serialize (one chunk) — `page` yields* it, streaming a trozos.
-    serialize: (root: unknown) => [serializeNode(root as TreeNode)],
+    // A generator-shaped serialize — `page` yields* it, streaming a trozos — whose first piece
+    // is the start tag, as the real one: the shell's opening tag is read from it (SDD-40 §4.4).
+    serialize: (root: unknown) => {
+      const html = serializeNode(root as TreeNode);
+      const start = startTag(root as TreeNode);
+      return [start, html.slice(start.length)];
+    },
     escapeText: escapeHtml,
-    // The REAL one: the shell's opening tag is a string the layout composes itself, and the
-    // rule it has to agree with is the serializer's (SDD-40 §4.4), not this fake's.
     escapeAttr,
     jsonBlock,
     packData,

@@ -260,11 +260,12 @@ describe('the level: inject promotes, provide does not', () => {
     expect(hydratableTags(graph).has('x-user')).toBe(true);
   });
 
-  it('the provider-only component gets no data-fud-id and no DI in its chunk', () => {
+  it('the provider-only component registers nothing in its chunk: the IoC module beside it does', () => {
     const graph = graphOf(files);
     const owner = graph.components.get('x-owner')!;
     expect(emitComponentClientModule(graph, owner)).not.toContain('provideIn');
-    expect(emitComponentClientModule(graph, owner)).not.toContain('@fudic/di');
+    // An instance the browser creates opens its container with that module's `register` (SDD-85).
+    expect(emitComponentClientModule(graph, owner)).toContain("import { register as $register } from './x-owner.fud?ioc';");
     expect(emitComponentModule(graph, graph.components.get('x-user')!)).toContain('injectFrom');
   });
 });
@@ -283,6 +284,12 @@ describe('the server module', () => {
     // From here down this component resolves from the container it owns, so a `provide` and
     // an `inject` of the same token in one `@code` meet.
     expect(mjs).toContain('$ioc = $own;');
+    // And its node on its host, for what the browser creates inside its view later (SDD-85).
+    expect(mjs).toContain("$dom.setAttr($dom.host($shadow), 'data-fud-ioc', String($own.index));");
+    // An instance the browser creates opens a container of its own, with its providers in it.
+    expect(emitComponentClientModule(graph, graph.components.get('x-owner')!)).toContain(
+      '$ownScope($dom.host($shadow), ($o) => { const $c = $createChild($container($o), "x-owner"); $register($c); return $c; });',
+    );
     expect(mjs).toContain('provideIn($own, Cart, () => new Cart());');
     expect(mjs).toMatch(/renderXUser\(\$dom, \$n\d+, \{ {2}\}, \$own\);/u);
   });
@@ -486,7 +493,8 @@ describe('the client chunk', () => {
   it('destructures the node in the LAST hole, behind every prop', () => {
     const chunk = emitComponentClientModule(graph(), graph().components.get('x-user')!);
     expect(chunk).toContain("let [$dom, $shadow, label, variant, $p4] = $props; variant ??= ('default');");
-    expect(chunk).toContain('const $ioc = $container($p4);');
+    // No node — an instance the browser created — resolves from the view that created it (SDD-85).
+    expect(chunk).toContain('const $ioc = $container($p4 ?? $scopeOf($dom.host($shadow)));');
     expect(chunk).toContain('const cart = injectFrom($ioc, Cart);');
   });
 
@@ -607,5 +615,27 @@ describe('the IoC module of a component', () => {
     });
     expect(hasDependencyInjection(graph)).toBe(false);
     expect(usesDependencyInjection(graph.components.get('x-plain')!)).toBe(false);
+  });
+});
+
+describe('an owner that injects what it provides, created in the browser (SDD-85)', () => {
+  it('resolves from the container it opens, as the server does from `$own`', () => {
+    const BOTH = `@code {
+  import { inject, provide } from '@fudic/di';
+  import { Cart } from './services/cart.js';
+
+  provide(Cart, () => new Cart());
+  const cart = inject(Cart);
+}`;
+    const graph = graphOf({
+      '/app/home.fud': page(['x-both'], '<x-both></x-both>'),
+      '/app/x-both.fud': component('x-both', BOTH, '<p>@(cart.total)</p>'),
+    });
+    const chunk = emitComponentClientModule(graph, graph.components.get('x-both')!);
+    expect(chunk).toContain(
+      'const $ioc = $container($ownScope($dom.host($shadow), ($o) => { const $c = $createChild($container($o), "x-both"); $register($c); return $c; }));',
+    );
+    expect(chunk).toContain("import { injectFrom, createChild as $createChild } from '@fudic/di';");
+    expect(chunk).toContain('const cart = injectFrom($ioc, Cart);');
   });
 });

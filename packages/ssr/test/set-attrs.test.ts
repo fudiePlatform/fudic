@@ -31,4 +31,28 @@ describe('SsrDom.setAttrs', () => {
     d.setAttrs(el, [{ title: 'u' }], prev, []);
     expect(renderToString(el)).toBe('<input title="u">');
   });
+
+  it('writes the class of the spread token by token, at its place by name', () => {
+    const d = new SsrDom();
+    const el = d.element('div');
+    d.setAttrs(el, [{ id: 'x', class: 'a  b', 'aria-label': 'l' }], undefined, []);
+    expect(renderToString(el)).toBe('<div aria-label="l" class="a b" id="x"></div>');
+  });
+
+  it('a class last or alone in the spread goes in all the same', () => {
+    const d = new SsrDom();
+    const last = d.element('div');
+    d.setAttrs(last, [{ 'aria-label': 'l', class: 'a' }], undefined, []);
+    const alone = d.element('div');
+    d.setAttrs(alone, [{ class: 'a' }], undefined, []);
+    expect(renderToString(last) + renderToString(alone)).toBe('<div aria-label="l" class="a"></div><div class="a"></div>');
+  });
+
+  it('a spread with no class leaves alone the `class=""` the element wrote', () => {
+    const d = new SsrDom();
+    const el = d.element('div');
+    d.setAttr(el, 'class', '');
+    d.setAttrs(el, [{ id: 'x' }], undefined, ['class']);
+    expect(renderToString(el)).toBe('<div class="" id="x"></div>');
+  });
 });

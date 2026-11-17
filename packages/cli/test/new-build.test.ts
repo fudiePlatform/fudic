@@ -28,6 +28,9 @@ const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', imp
 // The client chunk of a component imports the runtime: `@fudic/core` is only needed once
 // there is a component in the tree, which is why the alias arrived with this test's component.
 const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.url));
+// And since SDD-85 every client chunk imports its template from `@fudic/dom` (`template`), which the
+// generated `package.json` declares and this alias stands in for.
+const domDist = fileURLToPath(new URL('../../dom/dist/index.js', import.meta.url));
 
 describe('fudic new → vite build (§6.1)', () => {
   let output: { fileName: string; code?: string; source?: string }[];
@@ -83,7 +86,7 @@ describe('fudic new → vite build (§6.1)', () => {
       // `@fudic/vite` imports would need the install this test deliberately replaces with
       // workspace aliases. Its content is asserted separately in new.test.ts.
       configFile: false,
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist } },
+      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist, '@fudic/dom': domDist } },
       plugins: [fudic()],
       build: { write: false, minify: false },
     })) as unknown as { output: { fileName: string; code?: string; source?: string }[] };

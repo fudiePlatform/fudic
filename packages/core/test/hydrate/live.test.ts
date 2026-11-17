@@ -68,6 +68,25 @@ describe('live — a parent raising the child it fabricated', () => {
     expect(el.raised).toEqual([['b']]);
   });
 
+  it('keeps what the parent hands it while its definition downloads, and is raised with it', async () => {
+    const registry = registryOf([]);
+    publishTagSource(async () => {}, registry);
+    const el = host('x-later');
+
+    live(el, ['first', 1]);
+    // The parent's hookup and an update, both before the class exists: sparse, with the two
+    // leading holes of the payload, and a present `undefined` that asks for the default.
+    const early = el as unknown as { u: (props: readonly unknown[]) => void };
+    early.u([, , 'second']);
+    early.u([, , , undefined]);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(el.raised).toEqual([['second', undefined]]);
+    // The class's own `u` is what answers from then on: the stand-in is gone.
+    expect(Object.hasOwn(el, 'u')).toBe(false);
+  });
+
   it('raises one element once, however many times it is asked', async () => {
     publishTagSource(async () => {}, registryOf(['x-twice']));
     const el = host('x-twice');

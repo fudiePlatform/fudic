@@ -351,6 +351,11 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(d.returns !== undefined ? [`returns: ${descriptor(d.returns.type, c)}`] : []),
     // A call that may carry a file travels as multipart, carrying one this time or not (SDD-81 §3.3).
     ...(carriesFiles(d, c) ? ['files: true'] : []),
+    // The browser's capabilities for files, only for the function that uses them (piece `http/files`).
+    ...(c.side === 'browser' && carriesFiles(d, c) ? [capability(c, 'upload')] : []),
+    ...(c.side === 'browser' && d.returns !== undefined && fileIn(d.returns.type, c.index, c.source.path) !== undefined
+      ? [capability(c, 'download')]
+      : []),
     ...(fileLimits(d, c) ?? []),
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
@@ -366,6 +371,12 @@ function fn(d: FnDecl, c: ModuleCtx): string {
       : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
+}
+
+/** `name: $name`, imported from `@fudic/http/contract` under a name no declaration can take. */
+function capability(c: ModuleCtx, name: 'upload' | 'download'): string {
+  c.http.add(`${name} as $${name}`);
+  return `${name}: $${name}`;
 }
 
 /**

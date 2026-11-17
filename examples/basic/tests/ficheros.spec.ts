@@ -162,7 +162,7 @@ test.describe('the photo of user-form', () => {
     await expect(img).toHaveAttribute('alt', 'Foto de Foto');
     await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBe(1);
     // The link is the function's: a `get` the browser asked for, with no script.
-    expect(await img.getAttribute('src')).toMatch(/\/_fudic\/fn\/routes\/usuarios\/avatar\?a=/u);
+    expect(await img.getAttribute('src')).toMatch(/\/_fudic\/fn\/routes\/usuarios\/avatar\?id=\d+(&|$)/u);
     await row(page, 'Foto').getByRole('button', { name: 'Borrar' }).click();
     await expect(row(page, 'Foto')).toHaveCount(0);
   });

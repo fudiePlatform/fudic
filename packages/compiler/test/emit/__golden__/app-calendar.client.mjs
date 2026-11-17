@@ -1,11 +1,13 @@
 import { FudicElement, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template` <div class="cell"> <span></span> <button>e</button> </div> <!---->`;
+const $T1 = $template`<div class="grid"> <!----> </div>`;
 
 customElements.define("app-calendar", class extends FudicElement {
   static c($props) {
     const [$ctl, $owns] = $owned(() => {
-      let $n0, $n1;
-      const $r = [];
+      let $n0, $n1, $n9;
       const $d = []; // teardowns
       let [$dom, $shadow, days] = $props; days ??= ([]);
       let $host = $dom.host($shadow);
@@ -17,64 +19,73 @@ customElements.define("app-calendar", class extends FudicElement {
       const $t0 = new WeakMap();
       let $k0 = [];
       const $b0 = ($parent, $anchor, day) => {
-        let $n2, $n3, $n4, $n5, $n6, $n7;
+        let $n2, $n3, $n4, $n5, $n6, $n7, $n8;
         const $r = [];
         const $d = []; // teardowns
         const $w = []; // last applied, per value write
         const $a = () => {
           let $v;
           $v = String((day.n) ?? '');
-          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n7, $v); }
+          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n8, $v); }
         };
         const $s = () => {};
         const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: day.id,
           c: () => {
-            $n2 = $dom.text(" ");
-            $r.push($n2);
-            $n3 = $dom.element("div");
-            $dom.setAttr($n3, 'class', ["cell"].filter(Boolean).join(' '));
-            $t0.set($n3, () => day);
-            $dom.append($n3, $dom.text(" "));
-            $n5 = $dom.element("span");
-            $n7 = $dom.text('');
-            $dom.append($n5, $n7);
-            $dom.append($n3, $n5);
-            $dom.append($n3, $dom.text(" "));
-            $n6 = $dom.element("button");
-            $t0.set($n6, () => day);
-            $dom.append($n6, $dom.text("e"));
-            $dom.append($n3, $n6);
-            $dom.append($n3, $dom.text(" "));
-            $r.push($n3);
-            $n4 = $dom.text(" ");
-            $r.push($n4);
-            $a();
-          },
-          h: ($c) => {
-            $n2 = $dom.previousSibling($c);
+            const $f = $T0();
+            let $c = $dom.firstElementChild($f);
             $n3 = $c; $c = $dom.nextElementSibling($c);
             $r.push($n3);
             $t0.set($n3, () => day);
             {
               let $c1 = $dom.firstElementChild($n3);
-              $n5 = $c1; $c1 = $dom.nextElementSibling($c1);
-              $n7 = $dom.lastChild($n5);
-              $n7 = $dom.textAt($n5, $n7, null);
               $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
-              $t0.set($n6, () => day);
+              $n8 = $dom.lastChild($n6);
+              $n8 = $dom.textAt($n6, $n8, null);
+              $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $t0.set($n7, () => day);
             }
-            $n4 = $dom.lastChild($parent);
+            $n5 = $dom.lastChild($f);
+            $r.push($n5);
+            $n4 = $dom.previousSibling($n5);
+            $r.push($n4);
+            $n2 = $dom.previousSibling($n3);
+            $r.push($n2);
+            $a();
+          },
+          h: ($c) => {
+            $n3 = $c; $c = $dom.nextElementSibling($c);
+            $r.push($n3);
+            $t0.set($n3, () => day);
+            {
+              let $c1 = $dom.firstElementChild($n3);
+              $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n8 = $dom.lastChild($n6);
+              $n8 = $dom.textAt($n6, $n8, null);
+              $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $t0.set($n7, () => day);
+            }
             return $c;
+          },
+          t: ($e) => {
+            $n5 = $e === null ? $dom.lastChild($parent) : $dom.previousSibling($e);
+            $r.push($n5);
+            $n4 = $dom.previousSibling($n5);
+            $r.push($n4);
+            $n2 = $dom.previousSibling($n3);
+            $r.push($n2);
+            $e = $n2;
+            return $e;
           },
           m: ($ref = $anchor) => {
             $anchor = $ref;
-            for (const $n of $r) $mv($anchor, $n);
+            for (const $n of [$n2, $n3, $n4, $n5]) $mv($anchor, $n);
           },
           s: $s,
           u: (...$p) => { [day] = $p; $a(); },
           move: ($ref) => {
+            $ref = $mv($ref, $n5);
             $ref = $mv($ref, $n4);
             $ref = $mv($ref, $n3);
             $ref = $mv($ref, $n2);
@@ -99,7 +110,6 @@ customElements.define("app-calendar", class extends FudicElement {
         for (let $j = $next.length - 1, $ref = $n1; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
         $k0 = $next;
       };
-      const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
       const $s = () => {
         $n0 && $d.push($dom.event($n0, "click", ($event) => { let $z0; for (const $y of $event.composedPath()) { $z0 ??= $t0.get($y); } if ($z0 === undefined) return; return pick($event, $z0()); }));
       };
@@ -107,21 +117,21 @@ customElements.define("app-calendar", class extends FudicElement {
 
       return {
         c: () => {
-          $n0 = $dom.element("div");
-          $dom.setAttr($n0, 'class', ["grid"].filter(Boolean).join(' '));
-          $dom.append($n0, $dom.text(" "));
-          for (const day of days) {
-            const $i = $b0($n0, null, day);
-            $i.c();
-            $i.m();
-            $i.s();
-            $k0.push($i);
+          $dom.append($shadow, $T1());
+          let $c0 = $dom.firstElementChild($shadow);
+          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+          {
+            let $c1 = $dom.firstElementChild($n0);
+            for (const day of days) {
+              const $i = $b0($n0, null, day);
+              $i.c();
+              $i.s();
+              $k0.push($i);
+            }
+            $n1 = $dom.lastChild($n0);
+            for (const $i of $k0) $i.m($n1);
           }
-          $n1 = $dom.text(" ");
-          $dom.append($n0, $n1);
-          $r.push($n0);
           $a();
-          $m();
           $s();
         },
         h: () => {
@@ -136,11 +146,13 @@ customElements.define("app-calendar", class extends FudicElement {
               $k0.push($i);
             }
             $n1 = $dom.lastChild($n0);
+            $n9 = $n1;
+            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n9 = $k0[$j].t($n9);
           }
           $s();
         },
         u: ($p) => { if (2 in $p) days = $p[2] ?? ([]); $a(); $u0(); },
-        r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },
+        r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $n9 = $shadow = $host = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },
       };
     });
     return $ctl;

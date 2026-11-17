@@ -34,6 +34,8 @@ const IMPORT = /^import \{([^}]*)\} from (['"])([^'"]+)\2;$/gmu;
 /** A module's named imports as bindings of `$m[specifier]`; an unknown specifier is a test bug. */
 function bindImports(source: string, modules: Modules): string {
   return source.replace(IMPORT, (_all, names: string, _q: string, spec: string) => {
+    // The templates of a chunk with blocks (SDD-85 §4.1): globals of the test runtime.
+    if (spec === '@fudic/dom') return '';
     if (!(spec in modules)) throw new Error(`no module for ${spec}`);
     return `const {${names.replace(/\bas\b/gu, ':')}} = $m[${JSON.stringify(spec)}];`;
   });
@@ -131,7 +133,7 @@ describe('criterion 12 — a component takes its task and its effect with it', (
 
   it('a teardown that writes what the view reads runs after the view stopped listening', () => {
     // The view's subscriptions go first, what the `@code` created goes last: otherwise this
-    // write would repaint a node `r` has already released, and `setText(null, �)` throws.
+    // write would repaint a node `r` has already released, and `setText(null, …)` throws.
     const controller = mountComponent(
       'x-late',
       '@code {\n' +

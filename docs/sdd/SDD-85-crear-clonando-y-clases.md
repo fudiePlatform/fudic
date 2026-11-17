@@ -1,7 +1,7 @@
 # SDD-85 — Crear clonando una plantilla, y las clases sin pisar
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-85-Task.md).
-> **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` ·
+> **Estado:** `Hecho` (2026-11-17) — [tareas](./SDD-85-Task.md).
+> **Paquetes:** `@fudic/dom` · `@fudic/ssr` · `@fudic/compiler` · `@fudic/vite` · `@fudic/core` · `@fudic/di` ·
 > `@fudic/testing` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 14 (el contrato `Dom<N>`), 15 (los tres caminos `c` / `h` / `u` y el cursor de
 > elementos), 30 (los bloques como funciones), 45 (las piezas del runtime), 61 (los spreads), 70
@@ -98,8 +98,8 @@ export function templateIn(strings: TemplateStringsArray): Template;
   ajeno.
 - **Perezoso.** Nada se parsea al cargar el módulo. La primera llamada a la función devuelta crea un
   `<template>`, le asigna el HTML a través de `trustedHtmlOf` y guarda el elemento; esa llamada y
-  todas las siguientes devuelven `content.cloneNode(true)`. Una página en la que no se abre ningún
-  bloque no crea la policy.
+  todas las siguientes devuelven `document.importNode(content, true)` (§8.2, decisión 23). Una
+  página en la que no se abre ningún bloque no crea la policy.
 - **`templateIn`** es para un trozo que vive dentro de `<svg>` o de `<math>`. El compilador escribe el
   envoltorio en el literal (`<svg>…</svg>`) para que el navegador cree los nodos con el espacio de
   nombres correcto, y `templateIn` devuelve los hijos del envoltorio, sin él.
@@ -114,8 +114,12 @@ Dos métodos nuevos en el contrato, implementados por `browserDom` y por `SsrDom
 /** Puts `token` in the element's class list when `on`, takes it out otherwise. */
 toggleClass(el: N, token: string, on: boolean): void;
 /** Takes out the tokens of `prev` that are not in `next`, and puts in the ones of `next`. */
-swapClass(el: N, next: string, prev: string): void;
+swapClass(el: N, next: unknown, prev: unknown): void;
 ```
+
+`swapClass` recibe el valor tal cual y lo lee con `classText` (exportada por `@fudic/dom`): un
+string, un número o un bigint es su texto; cualquier otra cosa (`true`, `false`, `null`,
+`undefined`, un objeto) no pone ningún token. Es la regla de la `class` de un spread (§8.2, 8).
 
 | | Navegador | Servidor y SW |
 |---|---|---|
@@ -159,7 +163,7 @@ plantilla.
 | `class="a b"` | `class="a b"`, menos los tokens que tienen su propio `class:` (§4.5) |
 | Texto estático | El texto, escapado |
 | Un tramo de texto con partes dinámicas | El tramo con cada parte dinámica vacía; si queda vacío, nada |
-| El comentario que separa dos tramos interpolados | El comentario |
+| Un comentario que separa dos textos (§8.2, decisión 34) | El comentario |
 | Un bloque | Nada: todos cerrados, todas las listas vacías |
 | Un componente hijo | Su host vacío, con sus atributos estáticos, sin `<template shadowrootmode>` |
 | `@raw(…)` | El elemento que lo contiene, vacío |
@@ -169,8 +173,8 @@ plantilla.
   ([markup-client.ts](../../packages/compiler/src/emit/markup-client.ts)). La plantilla sustituye al
   cuerpo de fabricar. Generarla en otro recorrido sería abrir la puerta a que se separen.
 - **El escape es el del servidor** (§3.3). Dentro de `<textarea>` y `<title>` (RCDATA) se escapa como
-  texto; dentro de un `<script>` de datos (`application/json`, `ld+json`), tal cual, como lo escribe
-  el servidor. Un `<template>` del autor va con su contenido.
+  texto; dentro de un `<script>` de datos (`ld+json`, `importmap`: decisión 129), tal cual, como lo
+  escribe el servidor. Un `<template>` del autor va con su contenido.
 - **El literal** se escribe como `` template`…` `` a nivel de módulo, una constante por plantilla. Se
   escapan `\`, `` ` `` y `${`. Una plantilla cuya raíz está dentro de `<svg>` o `<math>` va con
   `templateIn` y su envoltorio (§3.1).
@@ -213,7 +217,8 @@ En el emisor esto es un parámetro del recorrido de adopción: «el servidor pin
 
 - Un tramo con partes dinámicas va en la plantilla con esas partes vacías. Si queda vacío no hay nodo,
   y `textAt` lo crea en su sitio al adoptar, como hace hoy con un valor `''` del servidor.
-- Dos tramos interpolados seguidos llevan su comentario separador, también en la plantilla.
+- Dos textos que el HTML juntaría van separados por un comentario, también en la plantilla (§8.2,
+  decisión 34).
 - El paso 3 de §4.2 escribe el texto entero del tramo con `setText`.
 
 ### 4.5. Las clases
@@ -283,7 +288,7 @@ tiene estado. Entra en el presupuesto del manifiesto como las demás.
   como hoy.
 - **Lo que crea el navegador es lo que pinta el servidor.** Para los mismos datos, el árbol de un `c`
   y el del HTML del servidor, parseado, son iguales nodo a nodo, salvo el orden de las clases y de los
-  atributos de un spread (§4.5, §4.6) y el `class=""` residual.
+  atributos (§4.5, §4.6, §8.2 decisión 22) y el `class=""` residual.
 - **La plantilla no lleva datos.** Ningún valor dinámico se escribe en un literal.
 - **`template` solo acepta literales.** Un string que no viene de un literal es `TypeError`.
 - **Una sola policy**: la `fudic` de SDD-84.
@@ -340,8 +345,8 @@ tiene estado. Entra en el presupuesto del manifiesto como las demás.
 16. Con `require-trusted-types-for 'script'` y `trusted-types fudic`, crear cualquier bloque no da
     ninguna violación. Sin `fudic` en `trusted-types`, el build da `FUD1545` nombrando la policy de
     fudic.
-17. Una página sin bloques que se abran no crea la policy (`trustedTypes.getPolicyNames()` no incluye
-    `fudic` si nada más la pidió).
+17. Una página sin bloques que se abran no crea la policy: nadie llama a `createPolicy('fudic')` si
+    nada más la pidió (decisión 41; Chrome no tiene `trustedTypes.getPolicyNames()`).
 18. Un navegador sin `trustedTypes` crea igual.
 
 **Las clases**
@@ -419,4 +424,225 @@ Nada.
 
 ### 8.2. Tomadas al implementar
 
-—
+1. **Una función pura para las clases, como `attrsDiff`.** `classDiff(next, prev)` y `classTokens`
+   viven en `@fudic/dom` y los aplican los dos adaptadores. `attrsDiff` devuelve la `class` del
+   spread aparte (`class: { remove, add }`) y ya no la mete en `set` / `remove`.
+2. **En `SsrDom` la lista es el propio atributo `class`**, no un conjunto aparte en el nodo: se
+   parte, se cambia y se reescribe, y sin tokens se borra. Así `setAttr(el, 'class', …)` estático y
+   los `class:` comparten un solo sitio y el orden sale solo (§4.5, regla 2).
+3. **La `class` de un spread en el servidor va en su sitio por nombre**, como el resto de atributos
+   del spread (SDD-61 §3.8): un backend que pinta el spread desde el tipo escribe el mismo HTML.
+4. **El navegador no llama a `classList.add()` / `remove()` sin tokens.** En un elemento con clase,
+   `add()` vacío reescribe el atributo y es una mutación que todo observador ve para nada. De paso,
+   happy-dom (que crea `class=""` con cualquier llamada) da el mismo árbol que un navegador.
+5. **`template` comprueba también `Array.isArray(strings.raw)` y que el texto se pueda cocinar.**
+   `Object.freeze(['…'])` es un array congelado de longitud 1 sin ser un literal, y un string de un
+   carácter también pasa `length === 1` y `isFrozen`.
+6. **El espacio de nombres MathML se prueba en el navegador.** happy-dom parsea `<math>` como HTML;
+   en los tests unitarios se prueba que `templateIn` quita el envoltorio, y el espacio de nombres SVG.
+7. **Deuda saldada de paso:** `@fudic/ssr` tenía umbrales 95/95/90 y sin `coverage.include`; ahora
+   100 en las cuatro métricas con el denominador anclado al paquete. `@fudic/testing` tenía su copia
+   del escape y ahora usa la de `@fudic/dom`.
+8. **`swapClass` toma el valor sin convertir** (fase 2). `class=@expr` pasa su valor como lo hace
+   un `attr=@valor` solo, y `classText` decide en `@fudic/dom` qué texto escribe: la misma regla
+   que la `class` de un spread, en un solo sitio. Si no, el compilador tendría que emitir la
+   conversión en cada elemento, y `false` acabaría como la clase `"false"`.
+9. **`toggleClass` del navegador solo escribe si cambia algo** (fase 2). Por lo mismo que la
+   decisión 4: el primer pase de un elemento creado apaga todos los `class:` que están en falso, y
+   happy-dom creaba `class=""` donde un navegador no toca la lista.
+10. **Cada forma de `class` se escribe en su sitio** (fase 2). La clase estática va donde la
+    escribió el autor, como en la plantilla; `class=@expr` también, con sus `class:` justo detrás;
+    sin `class=@expr`, los `class:` van al final. Antes la composición ponía `class` siempre la
+    última: la fila `c-corte` de la suite de conformidad cambia (`<a class="catalogo" href>`).
+11. **La regla 5 se cumple también en los cambios** (fase 2). Cuando el swap se ejecuta, olvida lo
+    que escribieron los `class:` de su elemento, que van justo detrás y se vuelven a aplicar en el
+    mismo pase: si `class=@expr` quita un token que un `class:` activo pide, vuelve a ponerse.
+12. **La etiqueta de apertura de `<html>` y de un elemento del `<head>` interpolado se escribe con
+    el `SsrDom` de verdad** (fase 2): `io.createDom()`, los atributos con el mismo código y el
+    primer trozo de `io.serialize`. Antes era un `$dom` falso de un método, que no tenía
+    `toggleClass` / `swapClass` ni `setAttrs`, y repetía a mano las reglas de clases.
+13. **Deuda saldada de paso** (fase 2): `hasValueAttrs` no lo usaba nadie y se borra; el script de
+    goldens del compilador no regeneraba `app-calendar`.
+14. **La plantilla es un cuarto cuerpo del mismo emisor** (fase 3). Cada recorrido del cliente (la
+    raíz de un componente, cada rama o cuerpo de bloque) lleva su `TemplateHtml`, que recibe un
+    hecho por llamada —abrir, atributo literal, texto, comentario, cerrar— y serializa con las
+    reglas del servidor (escape de `@fudic/dom`, elementos vacíos, texto crudo de `<script>` y
+    `<style>`). Los atributos literales llegan desde `writeElementAttrs` por un `LiteralSink`: en
+    fase 3 escribe además el `setAttr` del cuerpo de fabricar; en fase 4 solo la plantilla.
+15. **Una URL de asset estática no va en la plantilla** (fase 3). Con el enlazador activo,
+    `src="./logo.png"` es una referencia al import que resuelve Vite, un valor del módulo y no un
+    texto: se escribe en el paso 3 como cualquier valor.
+16. **El host de un hijo lleva su DOM ligero** (fase 3). «Vacío» en §4.1 es sin
+    `<template shadowrootmode>`: lo que el autor escribe dentro del host son nodos de este
+    componente, el servidor los pinta y la adopción entra en ellos.
+17. **«Script de datos» es el de la decisión 129: `application/ld+json` e `importmap`** (fase 3).
+    `application/json` no lo es para fudic: el servidor lo deja vacío y la plantilla también, así
+    que el criterio 4 se cumple igual. §4.1 decía `application/json` por error.
+18. **Plantillas iguales, una constante; plantilla vacía, ninguna** (fase 3). Dos trozos con el
+    mismo HTML en el mismo espacio de nombres comparten `$TN`, y un cuerpo sin nodos propios (solo
+    bloques, o solo un texto dinámico que crea `textAt`) no declara ninguna.
+19. **Importadas como `$template` y `$templateIn`** (fase 3). Las constantes viven en el ámbito del
+    módulo, donde también están los imports del autor: un `template` suyo chocaría. La reserva `$`
+    del emisor lo evita.
+20. **El espacio de nombres sigue los puntos de integración del parser** (fase 3): los hijos de
+    `foreignObject`, `desc` y `title` de SVG, y de `mi`, `mo`, `mn`, `ms` y `mtext` de MathML, son
+    HTML, y un bloque ahí va con `template` sin envoltorio.
+21. **Deuda saldada de paso** (fase 3). Los goldens del compilador se fijan con
+    `toMatchFileSnapshot` y se regeneran con `vitest run test/emit/golden.test.ts -u`: el script
+    `scripts/goldens.ts` pedía `tsx`, que no es dependencia de nadie, y repetía la lista de
+    componentes. Dos claves de `di-diagnostics.ts` y `expand.ts` llevaban un NUL literal (ahora
+    `\u0000`); la regla de `CLAUDE.md` sobre LS/PS llevaba los dos caracteres literales en vez de su
+    escape; y `owned.test.ts` tenía un `…` en Windows-1252, que no es UTF-8.
+22. **El orden de los atributos no se compara** (Pedro, 2026-11-16, al cerrar la fase 3). La
+    plantilla trae los atributos estáticos y el paso 3 escribe los dinámicos después, así que en un
+    elemento creado en el navegador todo atributo dinámico queda detrás de los estáticos, no solo
+    los de un spread (§4.6). Es lo mismo que las clases: ni el DOM ni el CSS lo ven. La prueba de
+    equivalencia (criterio 8) compara los atributos como conjunto de nombre y valor.
+23. **El clon se importa, no se clona** (fase 4). `template` devuelve
+    `document.importNode(content, true)` y no `content.cloneNode(true)` (§3.1): un clon de
+    `content` pertenece al documento inerte del `<template>`, donde ningún elemento personalizado
+    se mejora, y un hijo creado ahí no se podría levantar con `live` hasta que algo lo moviera a la
+    página. Importado, nace en el documento de la página.
+24. **La adopción se escribe dos veces en el mismo recorrido** (fase 4). El cuerpo de fabricar se
+    sustituye por `create`, que recibe línea a línea la misma adopción que `h` salvo en tres
+    sitios: los bloques se crean (`c` + `s`) en su sitio del recorrido —así un `@{ }` sigue
+    evaluándose donde está (SDD-51 §3.8)— y se montan con su ancla cuando el nivel ya está
+    adoptado (al final del nivel, o en el `m` del bloque si están en su raíz); el `$w` que `h`
+    siembra para un spread, `class=@expr` y `@raw` no se siembra; y el texto que se funde se crea
+    (decisión 25). Es el «parámetro del recorrido» de §4.3, hecho cuerpo. El componente ya no
+    tiene `$r` ni `$m`: el clon entra entero en el shadow root.
+25. **El texto que comparte trozo con otro texto lo crea el `c`, no la plantilla** (fase 4;
+    **sustituida por la decisión 34**: ningún texto comparte ya trozo con otro). En un
+    trozo de un nivel (lo que hay entre dos elementos, o entre un elemento y el marcador) con dos
+    o más tramos, lo único que los separa es un bloque o un `@{ }`, y ninguno es nodo de la
+    plantilla: cerrados, los dos textos serían un solo nodo y el bloque, al abrirse, caería al
+    lado y no entre ellos. Esos tramos no van en la plantilla y el `c` los crea en su sitio. Un
+    tramo solo en su trozo va en la plantilla y se encuentra como siempre. Matiza la fila «tramo
+    de texto» de la tabla de §4.1.
+26. **Un comentario del autor no corta un tramo de texto** (fase 4, deuda saldada). `<!-- -->` y
+    `@* *@` no pintan nada en ninguna rama, así que el texto de sus dos lados es un solo trozo del
+    HTML; tratarlos como frontera hacía dos tramos que escribían el mismo nodo, y el segundo
+    perdía su texto (`vista-tareas`: `" Una  "` acababa `" Una "`). Arreglado en `runs.ts`, que
+    usan las dos ramas.
+27. **El cuerpo de un bloque sin nada que clonar no tiene fragmento** (fase 4). Sin plantilla
+    (decisión 18), sus textos se crean sueltos en `$r` y `m` los coloca; se decide antes del
+    recorrido, con los mismos items que escriben la plantilla.
+28. **Un control creado lleva su valor por defecto como lo pinta el servidor** (fase 4).
+    `DomClient` gana `setDefault(el, name, value)`: `checked`/`selected` presentes o ausentes, el
+    atributo `value` de un `<input>`, el texto de un `<textarea>` y el `selected` de la `<option>`
+    que elige el valor de un `<select>`. El `c` lo llama una vez, tras los hijos del control (las
+    opciones pueden venir de un bloque); `setLive` sigue escribiendo solo el estado (SDD-74). Es
+    el caso del `<option selected>` que anunciaba el relevo de la fase 3.
+29. **`live` guarda lo que el padre entrega mientras se descarga la definición** (fase 4, fallo
+    previo). Un hijo creado cuya etiqueta aún no está definida no tiene `u`, y el `$s` del padre
+    lo llamaba: `TypeError`. Ahora `live` le pone un `u` provisional que acumula los valores y lo
+    levanta con ellos.
+30. **`@fudic/testing` crea como un navegador** (fase 4). En `mount(…, { via: 'client' })` se
+    instala el runtime de la página (si no, ningún hijo creado se levantaba), y
+    `customElements.upgrade` —que en happy-dom no hace nada— mejora en sitio, como ya hacía
+    `define`.
+31. **La equivalencia de `examples/basic` vive en el ejemplo** (fase 4). El criterio 8 sobre los
+    fixtures está en `compiler/test/emit/create-equivalence.test.ts`, con formas sintéticas de
+    texto, marcador, SVG, `<select>`, clases, spreads, hijos, `@raw` y scripts de datos; sobre los
+    componentes del ejemplo, en `examples/basic/src/create-equivalence.test.ts`, donde sus módulos
+    resuelven, montando cada uno por los dos caminos y comparando también los shadow roots de sus
+    hijos. Los componentes que solo viven dentro de otro (un control de su formulario, una señal
+    suya) se comparan dentro de él. `di-owner` y lo que inyecta quedan fuera: un dueño de servicio
+    creado en el navegador no tiene contenedor (SDD-38 §4.5), con el `c` viejo igual.
+32. **Source maps** (fase 4). La constante de cada plantilla apunta a su trozo de vista y cada
+    línea del `c` al elemento, texto o bloque que la genera (`here(at)` de `writer.ts`).
+33. **Deuda saldada de paso** (fase 4): el `setAttrs` «en su sitio» del cliente sobraba (el orden
+    no se compara) y se va; el compilador queda sin imports ni parámetros muertos
+    (`--noUnusedLocals --noUnusedParameters` limpio, `src` y `test`).
+34. **Ningún texto del HTML toca a otro** (Pedro, 2026-11-16, antes de la fase 5; arregla un fallo
+    previo de la hidratación). El HTML no guarda dónde acaba un texto y empieza otro: con un bloque
+    cerrado entre `Hola ` y ` adiós`, el navegador recibe un solo nodo, y al abrirse el bloque la
+    página quedaba `<b>…</b>Hola adiós` o perdía texto. El servidor, la plantilla y el cliente
+    escriben un comentario vacío, con una regla única en `marker.ts`: tras un tramo al que siguen
+    bloques o `@{ }` si detrás viene otro tramo o uno de esos bloques puede empezar con texto; y al
+    final del cuerpo de un bloque que acaba en texto si detrás de él puede venir texto (su fila
+    siguiente, otro bloque, un tramo, o lo que sigue al nivel: un hueco de layout cuenta como que
+    sí). Con eso el cliente busca los textos **hacia atrás**, cuando el nivel ya está adoptado:
+    cada uno es el nodo de delante del siguiente, desde el final del padre; cada bloque tiene un
+    `t($e)` que encuentra los suyos y dice dónde empieza. `m` coloca las raíces en el orden del
+    fuente. Sustituye a la decisión 25 y a la regla de «un solo marcador, entre dos tramos
+    interpolados» de SDD-30 §3.4. Prueba: `hydrate/text-between-blocks.test.ts`, 18 formas,
+    hidratando y creando, contra el HTML del servidor en cada cambio de estado.
+35. **Lo que declara un `@{ }` lo ve todo lo que viene detrás, también en el cliente** (Pedro,
+    2026-11-16, antes de la fase 5; fallo previo). El servidor escribe la vista en una función; el
+    cliente, en `c`, `h` y `u`, y un bloque es una función de al lado: `@{ let x = … }` seguido de
+    `@if (on) { @x }` lanzaba `x is not defined` al crear. Ahora la declaración sube al cierre
+    (`let x;`, junto a los bloques) y cada cuerpo la deja en su sitio como asignación
+    (`hoist.ts`); un patrón va entre paréntesis y sin su tipo. Solo las declaraciones de primer
+    nivel del `@{ }`: un bloque `{ }` del autor dentro sigue siendo suyo. Prueba:
+    `hydrate/inline-scope.test.ts`.
+36. **Un dueño de servicio creado en el navegador da su contenedor a su vista** (Pedro, 2026-11-16,
+    antes de la fase 5; fallo previo, y matiza SDD-38 §4.5, que daba la raíz a todo lo creado en
+    el navegador). El navegador sigue la cadena del servidor: la VISTA que pinta un host, no el
+    DOM donde está, hasta el primer dueño (`core/hydrate/scope.ts`). `live(host, props, $shadow)`
+    apunta quién creó cada host (el clon de un bloque es un fragmento, fuera de todo árbol); un
+    host pintado está en la vista del host de su shadow root; el servidor escribe en el host de
+    cada dueño su nodo del árbol de la página (`data-fud-ioc`). Un componente que inyecta y no
+    trae nodo en su payload resuelve con `scopeOf`; un dueño cuyos proveedores corren en el
+    navegador, creado aquí, abre con `ownScope` un contenedor hijo del de su vista y lo llena con
+    el `register` de su módulo IoC (importado de `./<fichero>.fud?ioc`). `containerOf` acepta ya
+    un contenedor. `di-owner`, `di-panel` y `di-badge` entran en la prueba de equivalencia del
+    ejemplo, más una que comprueba que el panel y la insignia ven el mismo `Cart`.
+37. **La app que genera `fudic new` ya declaraba `@fudic/dom`** (antes de la fase 5, F4–F5). La
+    plantilla de `package.json` de una app lo lleva en `dependencies` y la de una librería en
+    `peerDependencies` y `devDependencies`, igual que `@fudic/core`. Lo que fallaba eran las dos
+    pruebas de `@fudic/cli` que construyen el proyecto generado: sustituyen `pnpm install` por
+    alias a los `dist` del workspace, y no tenían el de `@fudic/dom`. Se añade el alias y
+    `projects.test.ts` comprueba que la librería lo declara como peer, que es la guarda que un
+    alias no puede dar. La tarea 26 sigue igual: va de publicar la pieza, no de resolver el import.
+38. **`dom/template` entra en el manifiesto sin tocar el plugin** (fase 5). Las piezas se
+    descubren del directorio `runtime` que declara cada paquete (SDD-45 §3.3), así que la pieza
+    aparece, su import de `dom/trusted` se reescribe al segmento con huella y el manifiesto la
+    nombra sin una línea nueva en `runtime-pieces.ts`. La prueba va contra la pieza publicada de
+    verdad (`runtime-pieces.test.ts`), y el build de `examples/basic` la copia y la nombra. El
+    contrato `Controller.c` y los comentarios de `FudicElement.c()` y `live()` dicen ya «clonar y
+    adoptar», no «fabricar».
+39. **Un `(` pegado a un nombre de atributo es `FUD0098`** (Pedro, 2026-11-16, al preparar la
+    fase 6; fallo previo del lexer). `<span ...resto()>` compilaba a `...resto` más dos atributos
+    llamados `(` y `)`, sin aviso, y el servidor pintaba `(="" )=""`; igual `@click(x)`. Ahora el
+    lexer lee un `(` pegado a cualquier nombre como el nombre-expresión de `bus:(…)` (decisión
+    28.b de la gramática), y la clasificación, que solo admite ese nombre detrás de `bus:`, da
+    `FUD0098`. Un `(` separado por espacio sigue siendo un nombre, como en HTML.
+40. **Un token de clase solo se escribe si cambia** (2026-11-17, e2e del criterio 26). Un spread
+    vuelve a calcular su diferencia en cada cambio de su componente, y `classList.add` de un token
+    que ya está reescribe el atributo igual: hidratar `/clases` y leer el informe escribía la
+    `class` de la caja del spread sin cambiar nada. `browserDom` quita solo lo que está y pone solo
+    lo que falta, como ya hacía `toggleClass`. Sin efecto visible; sí para un `MutationObserver` o
+    una transición sobre `[class]`.
+41. **Lo que dicen los e2e de la fase 6** (2026-11-17). `trustedTypes.getPolicyNames()` no existe en
+    Chrome: el criterio 17 se mide envolviendo `createPolicy` antes de cargar. El formulario de
+    `/vivo` vuelve a abrirse con los valores que tenía, porque su modelo lo declara el `.fudapi`
+    de la página y no el elemento; lo que se comprueba es que el elemento nuevo se engancha y valida.
+    En `/mapas` las opciones no se crean en el navegador; el e2e mide que el clic en una opción
+    llegue al registro (decisión 43).
+42. **El `selected` por defecto de un `<select>` es su propia pieza, `dom/select`** (Pedro,
+    2026-11-17, por el presupuesto de SDD-34 §6.15). `setDefault` de la decisión 32 recorría las
+    `<option>` dentro del adaptador, y el adaptador lo carga toda página: una página sin `<select>`
+    pagaba ese código. El compilador sabe qué elemento es un `<select>`, así que para su `value`
+    escribe `$selectDefault(el, valor)` en lugar de `$dom.setDefault`, y lo importa en la misma
+    línea que las plantillas (`selectDefault as $selectDefault` de `@fudic/dom`) solo si el chunk
+    crea uno. `setDefault` se queda con `checked`, `selected`, el `value` de un `<input>` y el
+    texto de un `<textarea>`. En el banco, `dom/select` está entre las excepciones `underweight`:
+    es pequeña a propósito.
+43. **Un gesto dentro de un hijo levanta al dueño que escucha alrededor** (Pedro, 2026-11-17;
+    fallo previo de SDD-17 que destapó el e2e de `/mapas`). El capturador levantaba el host más
+    cercano del gesto, y un listener escrito alrededor de un hijo —el `<section @click>` de
+    `bus-picker` que oye a sus `bus-option` con `delegate:option`, o un `@press` sobre la etiqueta
+    del hijo, como el de `app-card` sobre `app-button`— es de un antepasado: el clic levantaba al
+    hijo y no lo oía nadie. El compilador publica un mapa nuevo, `fud-around`: las etiquetas (y la
+    ruta, por su nombre) con un `@evento` en un elemento que es o contiene un host hidratable de
+    su propio markup. Viaja como `fud-eager`, en el bloque del final o en el de la parte 0. El
+    capturador levanta el dueño frío más externo de la lista que esté en el camino del gesto; la
+    cascada levanta antes a los hijos, y el gesto se reproduce sobre su destino. Si no hay ninguno,
+    todo sigue como antes: el host más cercano. Un dueño que se está levantando cuenta como frío:
+    el `pointerdown` lo levanta y el `click` de detrás espera en su cola, no en la del hijo (en la
+    del hijo se reproducía antes de que el dueño estuviera, y no lo oía nadie). Y la precarga por
+    visibilidad anticipa también a esos dueños: un componente que entra en pantalla calienta su
+    cierre y el de quien escucha a su alrededor, la ruta incluida (en `/usuarios`, la ruta escucha
+    `@fudic:result` sobre `user-form`). `up`, el paso hacia arriba que cruza shadow roots, pasa de
+    `install.ts` a `registry.ts` para que lo usen los dos.

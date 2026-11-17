@@ -53,11 +53,16 @@ describe('criterion 13 (D6): the attributes of a spread, sorted, where the first
     expect(other).toContain('<a href="/leer" rel="next" title="del enlace" class="boton">Leer</a>');
   });
 
-  test('an instance the client creates writes the same order', async () => {
+  test('an instance the client creates writes the same attributes', async () => {
     const props = { enlace, extra: { title: 'del extra', hidden: true } };
     const server = await mount(PSpread, { props });
     const client = await mount(PSpread, { via: 'client', props });
-    expect(client.root.innerHTML).toBe(server.root.innerHTML);
+    // As a set: the client's clone brings the explicit ones and the spread's come behind them, an
+    // order neither the DOM nor CSS sees (SDD-85 §4.6, §8.2 decision 22).
+    const attrs = (root: ShadowRoot): string[][] =>
+      [...root.querySelectorAll('a')].map((a) => [...a.attributes].map((x) => `${x.name}=${x.value}`).sort());
+    expect(attrs(client.root)).toEqual(attrs(server.root));
+    expect(client.root.textContent).toBe(server.root.textContent);
   });
 });
 

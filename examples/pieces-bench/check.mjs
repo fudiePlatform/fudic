@@ -84,10 +84,11 @@ const EXCEPTIONS = {
    */
   otherRealm: {
     piece: 'ssr/index',
-    // DI, and the three stateless helpers the renderer shares with `dom/browser`: the URL
-    // guard, the HTML escape and the attribute spread. Their marks come from `Symbol.for`
-    // precisely so that two copies agree (`url.ts`, `html.ts`).
-    modules: /^packages\/(di\/src\/|dom\/src\/(url|html|attrs)\.ts$)/,
+    // DI, and the stateless helpers the renderer shares with `dom/browser`: the URL guard, the
+    // HTML escape, the attribute spread and the class tokens. Their marks come from `Symbol.for`
+    // precisely so that two copies agree (`url.ts`, `html.ts`). The serializer's escaping
+    // (`escape.ts`) is the renderer's alone, and lives in `@fudic/dom` so the compiler shares it.
+    modules: /^packages\/(di\/src\/|dom\/src\/(url|html|attrs|classes|escape)\.ts$)/,
     why: '§4.10: the worker cannot import, so the renderer it links is CommonJS with `@fudic/di` and the adapter helpers inside it. Documents import them as pieces; the worker cannot. Two realms, two module systems, and the bytes twice on the origin is the price.',
   },
   /**
@@ -119,19 +120,19 @@ const EXCEPTIONS = {
     },
     {
       match: /^@fudic\/http:src\/(server\/|contract\/(server|bench)\.ts|csrf-server\.ts|wire\/signature\.ts)/,
-      why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF, the signature a backend computes, and the workbench hooks the server reads (SDD-82). None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
+      why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF, the signature a backend computes, and the workbench hooks the server reads (SDD-82). None of it reaches a browser; the browser half is `http/contract`, `http/bin`, `http/files`, `http/json` and `http/registry` (BUG-62).',
     },
     {
       match: /^@fudic\/forms:src\/contract\/rule\.ts:(remoteRule|runRulesWith)$/,
       why: 'SDD-80: the server half of a `runs remote` rule — the registry its route looks rules up in, and the runner `@fudic/http` installs for the middlewares around a check. Only `@fudic/http` on the server calls them; the browser half is `forms/remote`.',
     },
     {
-      match: /^@fudic\/dom:src\/(url\.ts:(isTrustedUrl|safeUrl|guardUrl|INERT_URL)|html\.ts:(isTrustedHtml|htmlOf)|attrs\.ts:)/,
-      why: 'The adapter\'s own helpers: `dom/browser` and the renderer call them inside themselves, and the emit reaches the guard as `io.guardUrl`, never by name. What an author imports — `trustedUrl`, `trustedHtml` — is published from `dom/browser`.',
+      match: /^@fudic\/dom:src\/(url\.ts:(isTrustedUrl|safeUrl|guardUrl|INERT_URL)|html\.ts:(isTrustedHtml|htmlOf)|attrs\.ts:|classes\.ts:|escape\.ts:)/,
+      why: 'The adapter\'s own helpers: `dom/browser` and the renderer call them inside themselves, and the emit reaches the guard as `io.guardUrl`, never by name. The escape is the serializer\'s and the compiler\'s, which writes templates with it at build time. What an author imports — `trustedUrl`, `trustedHtml` — is published from `dom/browser`.',
     },
     {
-      match: /^@fudic\/http:src\/(cookies\.ts|errors\.ts:CODE_HEADER$|contract\/fn\.ts:contractIds$|wire\/frames\.ts:)/,
-      why: 'Server and tooling halves of `@fudic/http`: cookies are written on a request context, `CODE_HEADER` is inlined in the client codec that reads it, `contractIds` is for `@fudic/testing`, and the frames are written by the server and read inside the Service Worker, where `@fudic/transport` bundles them (§4.10).',
+      match: /^@fudic\/http:src\/(cookies\.ts|errors\.ts:CODE_HEADER$|contract\/fn\.ts:(contractIds|fn|contractsOf)$|wire\/frames\.ts:)/,
+      why: 'Server and tooling halves of `@fudic/http`: cookies are written on a request context, `CODE_HEADER` is inlined in the client codec that reads it, `contractIds` is for `@fudic/testing`, `fn` and `contractsOf` are the server variant of a function and the lookup of the dispatcher (BUG-62: the browser has `stub`), and the frames are written by the server and read inside the Service Worker, where `@fudic/transport` bundles them (§4.10).',
     },
     {
       match: /^@fudic\/i18n:src\/(catalog|icu|compiled-away)\.ts:/,
@@ -146,8 +147,9 @@ const EXCEPTIONS = {
     { piece: 'dom/emit', why: 'No siblings: `@fudic/dom` publishes an adapter, a hydration walk and this, and none of the three is an alternative to another — whoever paints is not thereby whoever dispatches.' },
     { piece: 'di/token', why: 'No siblings, and identity IS the object: a second copy would be a second set of tokens that compare unequal to the first.' },
     { piece: 'di/ambient', why: 'State that must not exist twice: the one variable `resolve` and `seed` read the installed container through.' },
+    { piece: 'dom/select', why: 'SDD-85 decision 42: the default of a `<select>` the browser creates. Small on purpose: merged into `dom/browser`, which every page loads, a page with no `<select>` would pay for one (SDD-34 §6.15); only the chunk that creates a `<select>` imports it.' },
+    { piece: 'http/registry', why: 'BUG-62: the four names of the forms registry the browser root takes, re-exported by the URL of `forms/contract`. Small on purpose: merged into `http/contract`, every page with a browser root downloaded the whole client of the server functions (25 kB) to reach them.' },
     { piece: 'core/owner', why: 'State that must not exist twice: `owned` collects what `own` registers, from `effect`, `task` and every route chunk.' },
-    { piece: 'dom/trusted', why: 'State that must not exist twice: the `fudic` Trusted Types policy, which `dom/browser` and `forms/summary` both paint through; a second `createPolicy("fudic")` throws under the directive (SDD-84 §4.6).' },
     { piece: 'core/pipe', why: 'SDD-71 §4.3: what the presets share. Merged into one preset, every other preset would download that one.' },
     { piece: 'core/date', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },
     { piece: 'core/list', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },

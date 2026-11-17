@@ -583,33 +583,33 @@ describe('a hole its layout slots, on the client (SDD-48 §4.5, criterion 5)', (
 
   it('stamps every root an `@if` of the body builds, and nothing below it', () => {
     const code = withLayout([...head, '@if (on()) { <p><b>sí</b></p> } else { <em>no</em> }'].join('\n'));
-    const made = (tag: string): string => code.match(new RegExp(`(\\$n\\d+) = \\$dom\\.element\\("${tag}"\\)`, 'u'))![1]!;
-    const stamped = [...code.matchAll(/setAttr\((\$n\d+), 'slot', "contenido"\)/gu)].map((m) => m[1]);
-    expect(stamped).toEqual([made('p'), made('em')]);
+    // In the templates the bodies are cloned from (SDD-85 §4.1): the roots, and not the <b> below.
+    expect(code).toContain('<p slot="contenido"><b>sí</b></p>');
+    expect(code).toContain('<em slot="contenido">no</em>');
   });
 
   it('stamps the rows of a loop, and a construct nested at the root of one', () => {
     const code = withLayout(
       [...head, '@foreach (const x of xs()) key (x) { <li>@x</li> @if (on()) { <hr> } }'].join('\n'),
     );
-    expect(code.match(/'slot', "contenido"/gu)).toHaveLength(2);
+    expect(code.match(/slot="contenido"/gu)).toHaveLength(2);
   });
 
   it('stamps a section with the slot of ITS hole', () => {
     const code = withLayout(
       [...head, '<p>cuerpo</p>', '@section lateral { @if (on()) { <aside>a</aside> } }'].join('\n'),
     );
-    expect(code).toContain(`'slot', "lateral"`);
-    expect(code).not.toContain(`'slot', "contenido"`);
+    expect(code).toContain('slot="lateral"');
+    expect(code).not.toContain('slot="contenido"');
   });
 
   it('writes nothing on the adopt path: the server already stamped what `h` adopts', () => {
     const code = withLayout([...head, '<p>fijo</p>', '@if (on()) { <p>x</p> }'].join('\n'));
-    expect(code.match(/'slot'/gu)).toHaveLength(1);
+    expect(code.match(/slot=/gu)).toHaveLength(1);
   });
 
   it('and nothing at all when the layout names no slot', () => {
-    expect(chunkOf([...head, '@if (on()) { <p>x</p> }'].join('\n'))).not.toContain(`'slot'`);
+    expect(chunkOf([...head, '@if (on()) { <p>x</p> }'].join('\n'))).not.toContain('slot=');
   });
 });
 

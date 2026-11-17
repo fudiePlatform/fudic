@@ -52,6 +52,9 @@ export interface Anchor {
   readonly name?: string;
 }
 
+/** A place of the `.fud`, as the start of a line: where a debugger lands for it, and nothing written. */
+export const here = (at: number): MappedPart => ({ text: '', src: at });
+
 /** A piece of a line: a literal string, or a source-anchored fragment. */
 export type LinePart = string | MappedPart;
 

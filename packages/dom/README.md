@@ -19,6 +19,40 @@ The isomorphic node contract of the fudic runtime (SDD-14).
 - **`browserDom`** — the client adapter over the native DOM.
 - **`Cursor` / `cursorOf`** — the hydration walk over an existing subtree.
 - **`NS` / `Ns`** — HTML / SVG / MathML namespaces, resolved once at element creation.
+- **`escapeText` / `escapeAttr`** — the HTML escape of the server, here so the compiler writes
+  templates with the same function (`@fudic/ssr` re-exports them).
+
+## Templates
+
+`template` and `templateIn` (SDD-85) are how a component or a block is created in the browser:
+the compiler writes the HTML of the empty view as a tagged literal, and the controller clones it
+and adopts the clone with the same walk that adopts what the server painted.
+
+```ts
+const $T0 = template`<ul class="list"></ul>`;
+shadow.append($T0()); // a fresh copy each call, owned by the page's document
+```
+
+- Only a literal with no holes: anything else is a `TypeError`. A `TemplateStringsArray` comes
+  from source code, never from data, so `template` is not a way in for foreign HTML.
+- Lazy: nothing is parsed until the first call. The HTML goes through the one `fudic` Trusted
+  Types policy (`trusted-types fudic` in the CSP), and a page that creates nothing never asks
+  for it.
+- `templateIn` is for a piece that lives inside `<svg>` or `<math>`: the literal carries the
+  wrapper so the nodes are born in the right namespace, and the copy comes without it.
+- `selectDefault(select, value)` marks `selected` on the `<option>` a created `<select>`'s value
+  picks, as the server paints it. It is its own piece (`dom/select`) so the adapter every page
+  loads carries no `<select>`: the compiler imports it only in a chunk that creates one.
+
+## Classes
+
+`toggleClass(el, token, on)` and `swapClass(el, next, prev)` are on `Dom<N>`, in both adapters.
+`class:x=@cond` writes with the first, `class=@expr` and the `class` of a spread with the second.
+Both touch only their own tokens, so a class some other code added (a `ref`, a library, an
+animation) survives every change. `swapClass` reads its values with `classText`: a string, a
+number or a bigint is its text, anything else puts no token. On the server the class list is the
+`class` attribute itself: static tokens first, then `class=@expr`, then the active `class:` in
+source order, and no attribute at all when there are no tokens.
 
 ## The bus
 

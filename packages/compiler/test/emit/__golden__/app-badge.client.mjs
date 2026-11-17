@@ -1,31 +1,33 @@
 import { FudicElement } from '@fudic/core';
+import { template as $template } from '@fudic/dom';
+const $T0 = $template`<span class="badge"> <slot></slot> </span>`;
 
 customElements.define("app-badge", class extends FudicElement {
   static c($props) {
     let $n0, $n1;
-    const $r = [];
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
     let [$dom, $shadow, tone] = $props; tone ??= ('neutral');
 
-    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {};
     const $a = () => {
       let $v;
-      $v = ["badge", ((tone === 'success')) && "success", ((tone === 'warning')) && "warning"].filter(Boolean).join(' ');
-      if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
+      $v = !!((tone === 'success'));
+      if ($v !== $w[0]) { $w[0] = $v; $dom.toggleClass($n0, "success", $v); }
+      $v = !!((tone === 'warning'));
+      if ($v !== $w[1]) { $w[1] = $v; $dom.toggleClass($n0, "warning", $v); }
     };
 
     return {
       c: () => {
-        $n0 = $dom.element("span");
-        $dom.append($n0, $dom.text(" "));
-        $n1 = $dom.element("slot");
-        $dom.append($n0, $n1);
-        $dom.append($n0, $dom.text(" "));
-        $r.push($n0);
+        $dom.append($shadow, $T0());
+        let $c0 = $dom.firstElementChild($shadow);
+        $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+        {
+          let $c1 = $dom.firstElementChild($n0);
+          $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
+        }
         $a();
-        $m();
         $s();
       },
       h: () => {

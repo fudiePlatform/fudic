@@ -20,7 +20,7 @@ const TYPES = ['click', 'keydown'] as const;
 /** Every capturer installed by a test, so the next one starts on a clean document. */
 const installed: ((event: Event) => void)[] = [];
 
-function install(): Harness {
+function install(listensAround?: (host: Element) => boolean): Harness {
   const h: Harness = {
     state: instanceState(),
     registry: new TestRegistry(),
@@ -39,6 +39,7 @@ function install(): Harness {
     onShared: (element, id) => {
       h.shared.push(`${element.localName}#${id}`);
     },
+    ...(listensAround === undefined ? {} : { listensAround }),
   });
   for (const type of TYPES) document.addEventListener(type, capture, true);
   installed.push(capture);
@@ -274,5 +275,94 @@ describe('SDD-47 §4.4 — gestures that land while an instance is being raised'
     click(b);
 
     expect(h.cold).toEqual(['cap-queue#33', 'cap-queue#34']);
+  });
+});
+
+describe('a host that listens around its children (`fud-around`, SDD-85 decision 43)', () => {
+  beforeEach(() => {
+    publish();
+  });
+
+  afterEach(() => {
+    for (const capture of installed.splice(0)) {
+      for (const type of TYPES) document.removeEventListener(type, capture, true);
+    }
+  });
+
+  /** `cap-owner#1 > cap-mid#2 > cap-kid#3 > button`, each one inside the shadow of the last. */
+  function nest(): { owner: Element; mid: Element; button: HTMLButtonElement } {
+    const owner = host('cap-owner', 1);
+    const mid = host('cap-mid', 2, owner.shadowRoot!);
+    const kid = host('cap-kid', 3, mid.shadowRoot!);
+    const button = document.createElement('button');
+    kid.shadowRoot!.appendChild(button);
+    return { owner, mid, button };
+  }
+
+  it('a gesture inside the child raises the owner that listens around it, not the child', () => {
+    const h = install((el) => el.localName === 'cap-mid');
+    const { button } = nest();
+    click(button);
+    expect(h.cold).toEqual(['cap-mid#2']);
+    expect(h.state.hydrated.has(2)).toBe(true);
+  });
+
+  it('the OUTERMOST cold owner that listens around: its cascade brings the inner ones up', () => {
+    const h = install((el) => el.localName === 'cap-owner' || el.localName === 'cap-mid');
+    const { button } = nest();
+    click(button);
+    expect(h.cold).toEqual(['cap-owner#1']);
+  });
+
+  it('an owner already up is not raised again, and the gesture goes to the nearest host', () => {
+    const h = install((el) => el.localName === 'cap-mid');
+    const { button } = nest();
+    h.state.hydrated.add(2);
+    click(button);
+    expect(h.cold).toEqual(['cap-kid#3']);
+  });
+
+  it('the child up and the owner cold: the owner comes up, or nobody hears the click', () => {
+    const h = install((el) => el.localName === 'cap-mid');
+    const { button } = nest();
+    h.state.hydrated.add(3);
+    click(button);
+    expect(h.cold).toEqual(['cap-mid#2']);
+  });
+
+  it('a gesture while the owner is still coming up waits in the queue of the owner, not of the child', () => {
+    const h = install((el) => el.localName === 'cap-mid');
+    const { button } = nest();
+    click(button); // the hover, say: the owner starts coming up
+    const second = click(button); // and the click behind it
+    expect(h.cold).toEqual(['cap-mid#2']);
+    expect(second.defaultPrevented).toBe(true);
+    expect(h.state.hydrated.has(3)).toBe(false);
+  });
+
+  it('a host further out that does NOT listen around is left alone', () => {
+    const h = install(() => false);
+    const { button } = nest();
+    click(button);
+    expect(h.cold).toEqual(['cap-kid#3']);
+  });
+});
+
+describe('with no `fud-around` at all', () => {
+  afterEach(() => {
+    for (const capture of installed.splice(0)) {
+      for (const type of TYPES) document.removeEventListener(type, capture, true);
+    }
+  });
+
+  it('a host further out is asked and listens around nothing: the nearest host comes up', () => {
+    publish();
+    const h = install();
+    const owner = host('cap-out', 7);
+    const kid = host('cap-in', 8, owner.shadowRoot!);
+    const button = document.createElement('button');
+    kid.shadowRoot!.appendChild(button);
+    click(button);
+    expect(h.cold).toEqual(['cap-in#8']);
   });
 });

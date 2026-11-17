@@ -5,18 +5,11 @@
  * the page's machinery, not what it shows.
  */
 
+import { escapeAttr, escapeText } from '@fudic/dom';
 import { sourceOf } from './dsd.js';
 
 /** Elements that have no end tag. */
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
-
-function escapeText(text: string): string {
-  return text.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
-}
-
-function escapeAttribute(value: string): string {
-  return value.replace(/&/gu, '&amp;').replace(/"/gu, '&quot;');
-}
 
 /** The text of a sheet: the one it was made from, or else rule by rule. */
 function cssOf(sheet: CSSStyleSheet): string {
@@ -45,7 +38,7 @@ function nodeOf(node: Node): string {
 export function elementOf(element: Element): string {
   const tag = element.localName;
   if (tag === 'script') return '';
-  const attributes = [...element.attributes].map((a) => ` ${a.name}="${escapeAttribute(a.value)}"`).join('');
+  const attributes = [...element.attributes].map((a) => ` ${a.name}="${escapeAttr(a.value)}"`).join('');
   if (VOID.has(tag)) return `<${tag}${attributes}>`;
   const shadow = element.shadowRoot === null ? '' : shadowOf(element.shadowRoot);
   const inner = tag === 'template' ? childrenOf((element as HTMLTemplateElement).content) : childrenOf(element);

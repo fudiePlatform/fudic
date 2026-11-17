@@ -15,6 +15,7 @@
  * focus goes to it, and each of its entries links to its field.
  */
 
+import { loading, settled } from '../contract/registry.js';
 import { internalsOf } from '../internals.js';
 import { SERVER_RULE } from '../messages.js';
 import type { AnyForm, AnyNode, ErrorMap, Errors, Progress } from '../types.js';
@@ -125,6 +126,16 @@ export function bindForm(
     // single listener it holds now — and an author's `@submit` that calls `stopPropagation()`
     // would stop the event before the root ever saw it, which is this validation, gone quietly.
     onSelf(el, 'submit', (event) => {
+      // **Not before the rules are in** (BUG-62). The browser root registers their
+      // implementations with dynamic imports, and a submit that lands first would decide on
+      // rules that have not answered: an empty form would go through. This one is stopped before
+      // anybody else hears it — the author's `@submit` included — and made again once they are.
+      if (loading()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void settled().then(() => el.requestSubmit());
+        return;
+      }
       // **Validate first, then decide on what is known NOW** (BUG-41 §4.2). `$validate`
       // publishes every rule that answers synchronously before it returns, so a `required` on
       // an empty field stops the very first submit, and an error the user has since corrected

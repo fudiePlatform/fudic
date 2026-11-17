@@ -96,7 +96,7 @@ describe('the four shapes, dispatched for real (§6.15, §6.16, §6.18, §6.19)'
   it('gives the handler the arguments written, and nothing else (§6.16)', () => {
     const nothing = click(shadow, '.r-a .none');
     const evented = click(shadow, '.r-a .event');
-    const data = click(shadow, '.r-a .data');
+    click(shadow, '.r-a .data');
     const both = click(shadow, '.r-a .both');
     // Four shapes, one flat handler: nobody curries, and nobody receives an argument the
     // template did not write.

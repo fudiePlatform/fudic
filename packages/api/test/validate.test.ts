@@ -313,6 +313,10 @@ describe('each validator code (criterion 8)', () => {
   });
 
   it('FUD1101: a route argument that is optional or not scalar, a query argument not scalar', () => {
+    // A `get` has no body: its arguments are query keys, one value each (BUG-62).
+    expect(codesOf('get find\n  p  Person', { others: [PEOPLE] })).toEqual(['FUD1101']);
+    expect(codesOf('get find\n  tags  str[]')).toEqual(['FUD1101']);
+    expect(codesOf('get find\n  q  str?\n  n  i32')).toEqual([]);
     const optional = only('put save /:id\n  id  i32?');
     expect([optional.d.code, optional.covered]).toEqual(['FUD1101', 'i32?']);
     expect(codesOf('put save /:id\n  id  str[]')).toEqual(['FUD1101']);
@@ -339,7 +343,7 @@ describe('each validator code (criterion 8)', () => {
 
   it('the types of returns, arguments and load fields are checked', () => {
     expect(codesOf('get f\n  -> Ghost')).toEqual(['FUD1080']);
-    expect(codesOf('get f\n  x  Ghost')).toEqual(['FUD1080']);
+    expect(codesOf('put f\n  x  Ghost')).toEqual(['FUD1080']);
     expect(codesOf('load\n  x  Ghost', { ctx: route() })).toEqual(['FUD1080']);
     expect(codesOf('middleware m\n  client\n  adds\n    u  Ghost')).toEqual(['FUD1080']);
     expect(codesOf('middleware m\n  client\n  x  Ghost')).toEqual(['FUD1080']);

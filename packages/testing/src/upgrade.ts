@@ -11,6 +11,11 @@
  * While the environment lives, `define` is wrapped: happy-dom's replacements for the tag are
  * withdrawn before it runs, and each connected instance is then upgraded where it stands —
  * its class's constructor run on that very element, as the upgrade algorithm does.
+ *
+ * And `upgrade`, which happy-dom leaves empty, does what a browser's does: an element of a tag
+ * defined by then becomes an instance of it. It is how a child a component creates comes alive
+ * (SDD-85 §4.2): cloned from a template parsed before its tag was defined, it is a plain element
+ * in happy-dom, and `live` raises it with `upgrade`.
  */
 
 type Callbacks = Map<string, ((...args: never[]) => unknown)[]>;
@@ -66,7 +71,13 @@ function callbacksOf(registry: CustomElementRegistry): Callbacks {
   return callbacks as Callbacks;
 }
 
-/** Wrap `registry.define` so it upgrades in place. Once per environment. */
+/** Whether `el` is an element of a tag `registry` defines that is not an instance of it yet. */
+function pending(el: Element, registry: CustomElementRegistry): CustomElementConstructor | undefined {
+  const ctor = registry.get(el.localName);
+  return ctor !== undefined && Object.getPrototypeOf(el) === HTMLElement.prototype ? ctor : undefined;
+}
+
+/** Wrap `registry.define` and `registry.upgrade` so they upgrade in place. Once per environment. */
 export function upgradeInPlaceOnDefine(registry: CustomElementRegistry = customElements): void {
   const callbacks = callbacksOf(registry);
   const define = registry.define.bind(registry);
@@ -77,6 +88,13 @@ export function upgradeInPlaceOnDefine(registry: CustomElementRegistry = customE
     define(name, ctor, options);
     for (const el of deep(document)) {
       if (el.localName === name && Object.getPrototypeOf(el) === HTMLElement.prototype) upgradeInPlace(el, ctor);
+    }
+  };
+  registry.upgrade = (root) => {
+    if (!('querySelectorAll' in root)) return; // a text or a comment holds no element
+    for (const el of root instanceof Element ? [root, ...deep(root)] : deep(root as ParentNode)) {
+      const ctor = pending(el, registry);
+      if (ctor !== undefined) upgradeInPlace(el, ctor);
     }
   };
 }

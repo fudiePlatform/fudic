@@ -8,7 +8,7 @@
  * files, turns that into `<file>:<line>:<column>`.
  *
  * Both branches stamp with the same function and at the same point — right after the element is
- * made — so the tree the server sends and the tree the client fabricates stay identical.
+ * made — so the tree the server sends and the tree the client clones stay identical.
  */
 
 import type { OffsetMap } from '../expand/offsets.js';

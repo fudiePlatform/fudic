@@ -217,7 +217,7 @@ function linkedSheets(
     if (!deliveredSheet(child, linker, linkCss, resolve)) continue;
     if (child.name === 'style') {
       // A parsed `<style>` always holds exactly one `StyleNode` (see `headStyleExpr`).
-      const css = compactStyleCss(source, child.children[0] as StyleNode);
+      const css = compactStyleCss(child.children[0] as StyleNode);
       const name = fudName(path);
       out.push({ key: key(out.length), el: child, source, path, href: '', spec: name, flat: plainSheet(name, css) });
       continue;

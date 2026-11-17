@@ -26,7 +26,6 @@ import { serve } from '../../src/contract/server.js';
 import { CODE_HEADER, HttpError, notFound, redirect, Redirect, ValidationError } from '../../src/errors.js';
 import type { DispatchOptions } from '../../src/server/dispatch.js';
 import type { ServerContext } from '../../src/types.js';
-import { fromBase64url } from '../../src/wire/base64url.js';
 import { binWire } from '../../src/wire/bin.js';
 import { jsonWire } from '../../src/wire/json.js';
 import { formTypes } from '../../src/wire/schema.js';
@@ -177,7 +176,7 @@ describe('criterion 36: route, query and body', () => {
     expect(form.$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
-  it('criterion 6: a GET sends its body arguments in ?a= as base64url, and its Person[] comes back as it left', async () => {
+  it('criterion 6: a GET sends its arguments as keys of its query, whatever its format, and its Person[] comes back as it left', async () => {
     const PERSON: Ty = { fields: () => ({ id: 'uuid', name: 'str', born: { opt: 'date' } }) };
     const ana = { id: ID, name: 'Ana', born: new Date('1990-05-01T00:00:00.000Z') };
     const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', args: { q: 'str' }, returns: { list: PERSON }, chain: [], wire: binWire };
@@ -187,14 +186,12 @@ describe('criterion 36: route, query and body', () => {
     const search = stub<never, unknown, { q: string }>(spec);
 
     expect(await search({ q: 'ana' })).toEqual([ana, { id: ID, name: 'Eva' }]);
-    const a = sent[0]!.url.searchParams.get('a')!;
-    expect(a).toMatch(/^[A-Za-z0-9_-]+$/u);
-    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(a))).toEqual({ q: 'ana' });
+    expect(sent[0]!.url.search).toBe('?q=ana');
     expect(sent[0]!.init.body).toBeUndefined();
     expect(headersOf(sent[0]!.init).has('content-type')).toBe(false);
   });
 
-  it('a GET sends its body arguments in ?a=, beside its query keys', async () => {
+  it('a GET sends its arguments as query keys, beside its query arguments', async () => {
     const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', query: { page: { opt: 'u16' } }, args: { q: 'str' }, returns: { list: 'str' }, chain: [], wire: binWire };
     const server = fn(spec);
     server.handle(record(['Ana']));
@@ -203,7 +200,7 @@ describe('criterion 36: route, query and body', () => {
 
     expect(await search({ q: 'an', page: 2 })).toEqual(['Ana']);
     expect(sent[0]!.url.searchParams.get('page')).toBe('2');
-    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ q: 'an' });
+    expect(sent[0]!.url.searchParams.get('q')).toBe('an');
     expect(seen.ctx!.args).toEqual({ q: 'an' });
     expect(seen.ctx!.query).toEqual({ page: 2 });
 
@@ -212,7 +209,7 @@ describe('criterion 36: route, query and body', () => {
     expect(seen.ctx!.query).toEqual({});
   });
 
-  it('a GET with a form sends its value in ?a=', async () => {
+  it('a GET with a form sends each control as a query key', async () => {
     const f = person();
     const args = formTypes(f.$schema);
     const spec: FnSpec = { id: 'routes/usuarios', name: 'find', method: 'GET', form: f, args, chain: [], wire: binWire };
@@ -222,7 +219,7 @@ describe('criterion 36: route, query and body', () => {
     const find = stub<never, unknown, typeof f>(spec);
     f.$set({ name: 'Ana', age: 30 });
     await find(f);
-    expect(binWire.decodeArgs(args, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ name: 'Ana', age: 30 });
+    expect(sent[0]!.url.search).toBe('?name=Ana&age=30');
     expect((seen.ctx!['form'] as typeof f).$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
@@ -551,13 +548,13 @@ describe('criterion 4: dates', () => {
 });
 
 describe('criterion 11: a GET with use json', () => {
-  it('sends its arguments in ?a= as JSON, and reads its value as JSON', async () => {
+  it('sends its arguments as query keys, as in fud-bin, and reads its value as JSON', async () => {
     const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', args: { q: 'str' }, returns: { list: 'str' }, chain: [], wire: jsonWire };
     const server = fn(spec);
     server.handle(record(['Ana']));
     const sent = served(server);
     expect(await stub<never, string[], { q: string }>(spec)({ q: 'an' })).toEqual(['Ana']);
-    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ q: 'an' });
+    expect(sent[0]!.url.search).toBe('?q=an');
     expect(headersOf(sent[0]!.init).has('fud-sig')).toBe(false);
   });
 });

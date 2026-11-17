@@ -147,6 +147,46 @@ describe('the runtime installed', () => {
     ]);
   });
 
+  it('a click inside a child host raises the owner that listens around it (SDD-85 decision 43)', async () => {
+    publish({ tree: { 'ins-picker': ['ins-option'] }, around: ['ins-picker'], state: [[0, 1, 2], ['P', 'O']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const picker = host('ins-picker', 0, app);
+    const option = host('ins-option', 1, picker.shadowRoot!);
+    const button = document.createElement('button');
+    option.shadowRoot!.appendChild(button);
+
+    const r = run();
+    click(button);
+    await settle();
+
+    // The option comes up under the picker, and the picker hears the replayed click.
+    expect(r.trace).toEqual([
+      'define:ins-option',
+      'h:ins-option#1:["O"]',
+      'define:ins-picker',
+      'h:ins-picker#0:["P"]',
+      'handler:ins-option#1',
+      'handler:ins-picker#0',
+    ]);
+  });
+
+  it('the route listens around by its name, the `<body>` being its host', async () => {
+    publish({ route: 'ruta', bodyId: 0, around: ['ruta'], state: [[0, 0, 1], ['K']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const kid = host('ins-kid', 1, app);
+    const button = document.createElement('button');
+    kid.shadowRoot!.appendChild(button);
+
+    const r = run();
+    click(button);
+    await settle();
+
+    // Asked for under the route's name, which is what the chunk resolver is handed.
+    expect(r.trace[0]).toBe('define:ruta');
+  });
+
   it('the eager list comes up with no gesture, and nothing else does (SDD-34 §6.16)', async () => {
     // The one hydration in the framework the user does not conduct. A form-associated element
     // that is not defined is not labelable, adds nothing to a `FormData` and has no validity,

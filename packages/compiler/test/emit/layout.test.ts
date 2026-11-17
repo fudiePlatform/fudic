@@ -102,7 +102,10 @@ async function firstChunk(pieces: ReturnType<PageFn>): Promise<string> {
 }
 
 const headOf = (html: string): string => html.slice(html.indexOf('<head>'), html.indexOf('</head>') + 7);
-const normalize = (html: string): string => html.replace(/>\s+</gu, '><').replace(/\s+/gu, ' ').trim();
+// The empty comments go with the whitespace: they keep two texts apart (`marker.ts`), and which
+// texts a level keeps is the whitespace a route root and a `<main>` decide differently.
+const normalize = (html: string): string =>
+  html.replace(/<!---->/gu, '').replace(/>\s+</gu, '><').replace(/\s+/gu, ' ').trim();
 
 // --- the graph --------------------------------------------------------------------
 

@@ -129,17 +129,17 @@ describe('BUG-32 T4 — `class:` reads the signal instead of testing the object'
     // and `open.set(false)` never took it off. Decision 151 applies here as much as to an
     // attribute.
     const { client } = inner('<p class:red="@open"></p>');
-    expect(client).toContain('(open()) && "red"');
-    expect(client).not.toContain('(open) && "red"');
+    expect(client).toContain('$v = !!(open());');
+    expect(client).not.toContain('!!(open)');
   });
 
   it('and reads its inert value on the server, where a signal is a function of one line', () => {
     const { server } = inner('<p class:red="@open"></p>');
-    expect(server).toContain('(open()) && "red"');
+    expect(server).toContain('$dom.toggleClass($n0, "red", !!(open()));');
   });
 
   it('leaves a plain boolean alone: there is nothing to call', () => {
     const { client } = inner('<p class:red="@(1 > 0)"></p>');
-    expect(client).toContain('(1 > 0)) && "red"');
+    expect(client).toContain('$v = !!((1 > 0));');
   });
 });

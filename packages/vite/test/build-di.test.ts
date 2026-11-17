@@ -218,7 +218,9 @@ describe('the same app with no DI at all', () => {
     // `htmlOf`, the one function `@raw` writes through on both sides, is the same case, and so
     // is `attrsDiff`, the one a native spread writes through (SDD-55).
     const withDi = new Set(unhashed(output));
-    const shared = new Set(['assets/url.js', 'assets/html.js', 'assets/attrs.js']);
+    // And `element`, since an instance the browser creates resolves through `live` (SDD-85): the
+    // chunks that inject reach that module too, and Rollup puts `FudicElement` with it.
+    const shared = new Set(['assets/url.js', 'assets/html.js', 'assets/attrs.js', 'assets/element.js']);
     for (const file of unhashed(plain)) if (!shared.has(file)) expect(withDi.has(file)).toBe(true);
     expect(unhashed(plain).some((name) => name.includes('.ioc'))).toBe(false);
     expect(plain.length).toBeLessThan(output.length);

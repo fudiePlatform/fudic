@@ -39,28 +39,29 @@ const published = (pkg: string, piece: string): string =>
 /**
  * The pieces of this package, piece name → entry module.
  *
- * **Two, and the frontier is the format.** Every page that calls its server needs the stubs,
- * the errors and the binary format, which is what a function speaks unless its chain says
- * `use json`; that is `contract`. JSON is the exception a few functions opt into, so it is a
- * piece of its own and a page none of whose functions speak it never downloads it.
- *
- * Both are LIBRARY pieces (§3.4): nobody starts them, the module generated from a `.fudapi`
- * imports them and they keep the names they export today.
+ * `contract` is what every page that calls its server needs. Four things travel apart, each
+ * because a page that does not use it must not download it: `bin` (only a function that speaks
+ * it, or a `load`), `files` (only a function that carries files), `json` (only with `use json`)
+ * and `registry` (what the browser root takes, without the client of the functions). Splitting
+ * further was measured (BUG-62) and does not pay. All are LIBRARY pieces (§3.4): nobody starts them, the generated modules import them.
  */
 const PIECES: Readonly<Record<string, string>> = {
   contract: 'bundle/contract.ts',
+  bin: 'bundle/bin.ts',
+  files: 'bundle/files.ts',
   json: 'src/wire/json.ts',
+  registry: 'bundle/registry.ts',
 };
 
 /**
  * Source module → the piece that owns it. Reaching one from ANOTHER piece is an import that must
- * leave the bundle (§4.3, second rule): `json` takes `conform` and `badRequest` from `contract`,
- * and a copy inside `json` would be a second `HttpError` class that `instanceof` does not
- * recognise.
+ * leave the bundle (§4.3, second rule): a copy inside `json` or `files` would be a second
+ * `HttpError` class that `instanceof` does not recognise, and a second `conform` for nothing.
  */
 const FRONTIERS: Readonly<Record<string, string>> = {
   'src/contract/wire.ts': 'contract',
   'src/errors.ts': 'contract',
+  'src/client/send.ts': 'contract',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

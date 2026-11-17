@@ -13,6 +13,23 @@ import { guardUrl } from './url.js';
 import { htmlOf } from './html.js';
 import { trustedHtmlOf } from './trusted.js';
 import { attrsDiff } from './attrs.js';
+import { classDiff, type ClassDiff } from './classes.js';
+
+/**
+ * A class change on the element's own list: no other token is touched. An empty side is not
+ * called at all: on an element with a class, `add()` with no tokens still rewrites the attribute,
+ * which is a mutation every observer sees for nothing.
+ */
+function applyClass(el: Element, diff: ClassDiff): void {
+  // Only the tokens that change: `classList.add` of a token already there still rewrites the
+  // attribute, and a spread re-diffs on every change of its component — a write per keystroke
+  // that a `MutationObserver` or a CSS transition on `[class]` would see.
+  const list = el.classList;
+  const remove = diff.remove.filter((token) => list.contains(token));
+  const add = diff.add.filter((token) => !list.contains(token));
+  if (remove.length > 0) list.remove(...remove);
+  if (add.length > 0) list.add(...add);
+}
 
 export const browserDom: DomClient<Node> = {
   element(tag: string, ns: Ns = 'html'): Node {
@@ -42,6 +59,17 @@ export const browserDom: DomClient<Node> = {
     const diff = attrsDiff(element.localName, next, prev, except);
     for (const name of diff.remove) element.removeAttribute(name);
     for (const [name, value] of diff.set) element.setAttribute(name, value);
+    applyClass(element, diff.class);
+  },
+  toggleClass(el: Node, token: string, on: boolean): void {
+    // Only a change is written, for the reason `applyClass` gives: the first pass of a created
+    // element toggles every `class:` that is off, and a browser leaves the list alone for those
+    // while happy-dom writes `class=""` — the tests would see a tree no browser builds.
+    const list = (el as Element).classList;
+    if (list.contains(token) !== on) list.toggle(token, on);
+  },
+  swapClass(el: Node, next: unknown, prev: unknown): void {
+    applyClass(el as Element, classDiff(next, prev));
   },
   removeAttr(el: Node, name: string): void {
     (el as Element).removeAttribute(name);
@@ -108,6 +136,20 @@ export const browserDom: DomClient<Node> = {
   },
   setProp(el: Node, name: string, value: unknown): void {
     (el as unknown as Record<string, unknown>)[name] = value;
+  },
+  setDefault(el: Node, name: LiveProperty, value: unknown): void {
+    const control = el as Element;
+    // The server's reading: `true` empty, `false` and `null` none, the rest its text.
+    const text = value === false || value == null ? null : value === true ? '' : String(value);
+    // A `<select>` is not here: the compiler calls `selectDefault`, its own piece, so a page with
+    // no `<select>` does not carry the walk over its options (decision 42).
+    if (name === 'value' && control.localName === 'textarea') {
+      (control as HTMLTextAreaElement).defaultValue = text ?? '';
+    } else if (text === null) {
+      control.removeAttribute(name);
+    } else {
+      control.setAttribute(name, text);
+    }
   },
   firstChild(node: Node): Node | null {
     return node.firstChild;

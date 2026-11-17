@@ -182,11 +182,17 @@ describe('the policy of Trusted Types, where the client paints HTML (§4.6)', ()
     expect(client('<div>@raw(html())</div>', '  const html = signal("<b>x</b>");')).toEqual(TRUSTED_TYPES_NEEDS);
   });
 
-  it('a form’s summary does too; an error marker and a plain component do not', () => {
+  it('a form’s summary does too', () => {
     const form = "  import { f } from './user.form.js';";
     expect(client('<form control="@f"><div summary="@f"></div></form>', form)).toEqual(TRUSTED_TYPES_NEEDS);
-    expect(client('<input control="@f.title"><p error="@f.title"></p>', form)).toEqual([]);
-    expect(client('<p @click=@(() => n.set(1))>@n()</p>', '  const n = signal(0);')).toEqual([]);
+  });
+
+  it('and so does any chunk that carries a template: it is parsed through the policy (SDD-85 §4.7)', () => {
+    const form = "  import { f } from './user.form.js';";
+    expect(client('<input control="@f.title"><p error="@f.title"></p>', form)).toEqual(TRUSTED_TYPES_NEEDS);
+    expect(client('<p @click=@(() => n.set(1))>@n()</p>', '  const n = signal(0);')).toEqual(TRUSTED_TYPES_NEEDS);
+    // A view of nothing but a text it writes clones nothing, and paints no HTML at all.
+    expect(client('@n()', '  const n = signal(0);')).toEqual([]);
   });
 
   it('a route’s client half that paints HTML needs it as well', () => {

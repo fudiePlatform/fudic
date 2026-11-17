@@ -108,32 +108,44 @@ describe('§6.16 — the marker, over the list the rule leaves behind', () => {
   const BODY = '@a @if (on) {<b>B</b>} @if (on) {<i>I</i>} @b';
   const CODE2 = '@code {\n  const { a, b, on } = props<{ a: string; b: string; on: boolean }>();\n}\n';
 
-  /** Whether each branch writes the one comment the DOM ever gets. */
-  function comments(g: ComponentGraph, tag: string): { server: boolean; client: boolean } {
+  /** How many comments each branch writes between the texts of the level. */
+  function comments(g: ComponentGraph, tag: string): { server: number; client: number } {
     const comp = g.components.get(tag)!;
     return {
-      server: emitComponentModule(g, comp).includes("$dom.comment('')"),
-      client: emitComponentClientModule(g, comp).includes("$dom.comment('')"),
+      server: emitComponentModule(g, comp).split("$dom.comment('')").length - 1,
+      // On the client the comment is in the template the `c` path clones (SDD-85 §4.1).
+      client: emitComponentClientModule(g, comp).split('<!---->').length - 1,
     };
   }
 
-  it('is not written while a whitespace run separates the two constructs', () => {
-    // In a block container that run is not provable — its neighbours are constructs, and
-    // what a branch renders is not this BUG's to know — so the shape stays broken.
+  it('is written after each run a block separates from the next, whitespace runs included', () => {
+    // In a block container the run between the two constructs is not provable — its neighbours
+    // are constructs — so it stays, and it is a text too: one comment after `@a`, one after it
+    // (SDD-85: every text the HTML could merge with the next one is closed by a comment).
     const g = graph('x-blk', 'block', CODE2, BODY);
-    expect(comments(g, 'x-blk')).toEqual({ server: false, client: false });
+    expect(comments(g, 'x-blk')).toEqual({ server: 2, client: 2 });
+  });
+
+  it('and h() finds every run: the tree it adopts is the one the server painted', () => {
+    const g = graph('x-blk2', 'block', CODE2, BODY);
+    for (const on of [true, false]) {
+      const props = { a: 'A', b: 'Z', on };
+      const { painted, created, hydrated } = trees(g, 'x-blk2', props, ['A', 'Z', on]);
+      expect(created).toBe(painted);
+      expect(hydrated).toBe(painted);
+    }
   });
 
   it('is written once the run between them goes, and by BOTH branches', () => {
     // The rule lives in the module both branches walk with, so this is not two decisions
     // that happen to agree: it is one. A marker on one side only is worse than none.
     const g = graph('x-flex', 'flex', CODE2, BODY);
-    expect(comments(g, 'x-flex')).toEqual({ server: true, client: true });
+    expect(comments(g, 'x-flex')).toEqual({ server: 1, client: 1 });
   });
 
   it('is written for the same level with no whitespace in the source at all', () => {
     const g = graph('x-tight', 'block', CODE2, '@a @if (on) {<b>B</b>}@if (on) {<i>I</i>} @b');
-    expect(comments(g, 'x-tight')).toEqual({ server: true, client: true });
+    expect(comments(g, 'x-tight')).toEqual({ server: 1, client: 1 });
   });
 
   it('and h() finds it: the tree it adopts is the one the server painted', () => {

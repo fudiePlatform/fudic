@@ -150,15 +150,6 @@ const STEP: ReadonlySet<string> = new Set(['=', '+=', '-=']);
 /** Members that reach the machinery of a value: `Function`, the prototypes (`FUD0910`). */
 const REFLECTIVE: ReadonlySet<string> = new Set(['constructor', '__proto__', 'prototype']);
 
-/** The TypeScript wrappers of a value: each one is `FUD1144` (§3.13). */
-const TYPESCRIPT: ReadonlySet<string> = new Set([
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-]);
-
 /** The catalogue names the walk knows by their import (§3.3, §3.12). */
 const NOW = '@fudic/core#now';
 const TRANSLATE = '@fudic/i18n#t';

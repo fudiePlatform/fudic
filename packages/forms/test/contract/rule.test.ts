@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { isAsync } from '../../src/async-flag.js';
 import { isServerOnly } from '../../src/server-flag.js';
-import { camel, loadingFile, resetRegistry, rule, str, formOf, text } from '../../src/contract/index.js';
+import { Validity, camel, inTurn, loadingFile, resetRegistry, rule, settled, str, formOf, text } from '../../src/contract/index.js';
 import type { AnyForm, Errors } from '../../src/types.js';
 
 afterEach(() => {
@@ -126,6 +126,47 @@ describe('without an implementation', () => {
   it('the validator fails saying what is missing', () => {
     const r = rule({ id: 'rules/nif', name: 'nif-letter', fails: [['nif-letter', []]] });
     expect(() => run(r.use(), 'x')).toThrow('nif-letter of rules/nif has no implementation in src/browser');
+  });
+});
+
+/** A root load that finishes when `open` is called, as the browser's does when its imports land. */
+function slowLoad(): { readonly open: () => void; readonly done: Promise<void> } {
+  let open!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { open, done: inTurn(() => gate) };
+}
+
+describe('BUG-62: checked while the browser root is still loading', () => {
+  it('the check waits for the implementation instead of failing', async () => {
+    const r = rule({ id: '@fudic/forms/rules', name: 'required', fails: [['required', []]] });
+    const load = slowLoad();
+    const verdict = run(r.use(), '');
+    expect(verdict).toBeInstanceOf(Promise);
+    r.check((v) => v !== '');
+    load.open();
+    await expect(verdict).resolves.toEqual({ required: true });
+  });
+
+  it('an implementation still missing once the load is done fails as before', async () => {
+    const r = rule({ id: 'rules/nif', name: 'nif-letter', fails: [['nif-letter', []]] });
+    const load = slowLoad();
+    const verdict = run(r.use(), 'x');
+    load.open();
+    await load.done;
+    await expect(verdict).rejects.toThrow('nif-letter of rules/nif has no implementation in src/browser');
+  });
+
+  it('a form is not valid while its rule is on its way, and is valid once it lands, the value untouched', async () => {
+    const required = rule<string>({ id: '@fudic/forms/rules', name: 'required', fails: [['required', []]] });
+    const load = slowLoad();
+    const f = formOf({ name: str('Ana', [required.use()]) }, [], { validity: Validity.Rules });
+    expect(f.$valid()).toBe(false);
+    required.check((v) => v !== '');
+    load.open();
+    await settled();
+    expect(f.$valid()).toBe(true);
   });
 });
 

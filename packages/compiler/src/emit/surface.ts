@@ -297,17 +297,17 @@ export function shadowSurface(graph: DocumentGraph, tag: string): ScopeSurface {
 }
 
 /** The CSS text of a `<style>` element, compacted — or `null` when it holds none. */
-function styleText(el: ElementNode, source: string): string | null {
+function styleText(el: ElementNode): string | null {
   const body = el.children[0];
-  return body !== undefined && body.type === 'style-content' ? compactStyleCss(source, body) : null;
+  return body !== undefined && body.type === 'style-content' ? compactStyleCss(body) : null;
 }
 
 /** Every `<style>` among the children of a `<head>`. */
-function headStyles(head: ElementNode | undefined, source: string): string[] {
+function headStyles(head: ElementNode | undefined): string[] {
   if (head === undefined) return [];
   return head.children.flatMap((c) => {
     if (c.type !== 'element' || c.name !== 'style') return [];
-    const css = styleText(c, source);
+    const css = styleText(c);
     return css === null ? [] : [css];
   });
 }
@@ -320,9 +320,9 @@ function headStyles(head: ElementNode | undefined, source: string): string[] {
  */
 export function pageTokenConsumers(graph: DocumentGraph): readonly string[] {
   const out: string[] = [];
-  for (const c of allComponents(graph)) out.push(...headStyles(c.doc.head, c.source));
-  for (const layout of graph.layouts) out.push(...headStyles(layout.doc.head, layout.source));
-  if ('head' in graph.entry) out.push(...headStyles(graph.entry.head, graph.entrySource));
+  for (const c of allComponents(graph)) out.push(...headStyles(c.doc.head));
+  for (const layout of graph.layouts) out.push(...headStyles(layout.doc.head));
+  if ('head' in graph.entry) out.push(...headStyles(graph.entry.head));
   for (const run of allRuns(graph)) {
     walkElements(run, (el) => {
       for (const attr of el.attributes) {

@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fn, resetRegistry, stub, type FnSpec } from '../../src/contract/index.js';
 import { contractsHandler, type ContractsOptions } from '../../src/contract/server.js';
 import { HttpError } from '../../src/errors.js';
-import { filenameOf } from '../../src/client/codec.js';
+import { download, filenameOf } from '../../src/client/download.js';
+import { upload } from '../../src/client/upload.js';
 import { DEFAULT_LIMITS, memorySpool, releasing } from '../../src/server/upload.js';
 import type { Spool } from '../../src/server/uploads.js';
 import type { Progress } from '../../src/types.js';
@@ -45,7 +46,7 @@ function pair(over: Partial<FnSpec>, handler: Handler, options: ContractsOptions
     seen.push(request.clone());
     return handle(request);
   });
-  const call = stub<never, any, any>(spec) as unknown as ((args?: unknown, options?: object) => Promise<any>) & { url: (args?: unknown, o?: object) => string };
+  const call = stub<never, any, any>({ ...spec, ...(spec.files === true ? { upload } : {}), download }) as unknown as ((args?: unknown, options?: object) => Promise<any>) & { url: (args?: unknown, o?: object) => string };
   return { spec, call, seen, handle, url: `${ORIGIN}/_fudic/fn/${spec.id}/save` };
 }
 
@@ -459,20 +460,20 @@ describe('the way back (criteria 19–21)', () => {
 });
 
 describe('criterion 22: url() of a get', () => {
-  it('the URL with base, the route and query filled, the body arguments in ?a=', () => {
+  it('the URL with base, the route filled and every argument a key of its query', () => {
     const { call, spec } = pair(
       { method: 'GET', base: '/app/', name: 'avatar', route: [':id'], params: { id: 'i32' }, query: { size: 'str' }, args: { v: 'i32' }, returns: 'file' } as Partial<FnSpec>,
       () => undefined,
     );
-    const a = binWire.encodeArgs({ v: 'i32' }, { v: 2 }) as Uint8Array;
     const url = call.url({ id: 3, size: 'big', v: 2 });
-    expect(url.startsWith(`/app/_fudic/fn/${spec.id}/avatar/3?size=big&a=`)).toBe(true);
-    expect(new URLSearchParams(url.split('?')[1]).get('a')).toBe(Buffer.from(a).toString('base64url'));
+    expect(url).toBe(`/app/_fudic/fn/${spec.id}/avatar/3?size=big&v=2`);
   });
 
-  it('JSON args travel as text; no args, no ?a=; the page params given', () => {
+  it('in JSON too, keys of the query; an absent optional, no key; the page params given', () => {
     const json = pair({ method: 'GET', name: 'grab', args: { q: 'str' }, wire: jsonWire, returns: 'file' }, () => undefined);
-    expect(json.call.url({ q: 'é' })).toBe(`/_fudic/fn/${json.spec.id}/grab?a=${encodeURIComponent('{"q":"é"}').replace(/%20/gu, '+')}`);
+    expect(json.call.url({ q: 'é' })).toBe(`/_fudic/fn/${json.spec.id}/grab?q=%C3%A9`);
+    const optional = pair({ method: 'GET', name: 'grab', args: { q: { opt: 'str' } }, returns: 'file' }, () => undefined);
+    expect(optional.call.url({})).toBe(`/_fudic/fn/${optional.spec.id}/grab`);
     const bare = pair({ method: 'GET', name: 'grab', id: 'routes/blog/[slug]', page: '/blog/:slug', returns: 'file' }, () => undefined);
     expect(bare.call.url(undefined, { params: { slug: 'hola' } })).toBe('/_fudic/fn/routes/blog/hola/grab');
   });
@@ -778,7 +779,7 @@ describe('the corners of the client', () => {
     // The browser half of a `form:=` call: the value sent is the form's, its file control in its part.
     const form = formOf({ cover: file() });
     form.cover.set(png('f.png'));
-    const withForm = stub<never, any, any>({ ...spec, form: form as never }) as unknown as (a: unknown) => Promise<unknown>;
+    const withForm = stub<never, any, any>({ ...spec, upload, form: form as never }) as unknown as (a: unknown) => Promise<unknown>;
     await withForm(form);
     expect(got.cover.name).toBe('f.png');
   });
@@ -826,7 +827,7 @@ describe('the corners of the client', () => {
   });
 
   it('send without a method posts', async () => {
-    const { send } = await import('../../src/client/send.js');
+    const { send } = upload;
     const { FakeXhr, made } = fakeXhr(async () => new Response('ok'));
     vi.stubGlobal('XMLHttpRequest', FakeXhr);
     const response = await send(new URL(`${ORIGIN}/x`), { body: new FormData(), signal: new AbortController().signal }, undefined);

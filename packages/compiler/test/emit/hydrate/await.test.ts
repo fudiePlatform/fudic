@@ -126,12 +126,17 @@ interface Hydrated {
 }
 
 /** Render the composed page in parts, read its blocks out, and hand the route its `h`. */
-async function hydrate(route: string, data: Record<string, unknown>): Promise<Hydrated> {
+/** The route with its layout and its `.fudapi`. */
+function routeGraph(route: string): ReturnType<typeof resolveDocument>['value'] {
   const io: ResolveIo = {
     ...memoryIo({ '/r.fud': `<link rel="layout" href="./l.fud">\n<link rel="server" href="./r.fudapi">\n${route}`, '/l.fud': LAYOUT }),
     api: (path) => (path === '/r.fudapi' ? API : undefined),
   };
-  const graph = resolveDocument('/r.fud', io).value;
+  return resolveDocument('/r.fud', io).value;
+}
+
+async function hydrate(route: string, data: Record<string, unknown>): Promise<Hydrated> {
+  const graph = routeGraph(route);
   const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), {}, 'layout');
   const page = evalModule(emitRouteModule(graph, { routeName: 'r' }), { layout }, 'page') as PageFn;
   const errors: unknown[] = [];
@@ -269,5 +274,58 @@ describe('a new `data` whose field is a promise (§4.4, last bullet)', () => {
     expect(document.querySelector('ul.users')).toBeNull();
     expect(document.querySelector('p.error')).toBeNull();
     expect(text('p.after')).toBe('1');
+  });
+});
+
+describe('SDD-85 criterion 12 — an `@await` the browser creates goes through its blocks as one painted', () => {
+  const NESTED = [
+    '@code { const on = signal(false); function abrir() { on.set(!on()); } }',
+    '<button class="abrir" @click=@abrir>abrir</button>',
+    '@if (on()) {',
+    '  @await data.users { <ul class="users">@foreach (const u of data.users) key (u) {<li>@u</li>}</ul> }',
+    '  @catch (e) { <p class="error">@e.title</p> }',
+    '}',
+    '<p class="after">fin</p>',
+  ].join('\n');
+  /** The names of what lies between the button and the paragraph after, in order. */
+  const between = (): string[] =>
+    [...document.querySelector('main')!.children].map((el) => el.className).filter((c) => c !== 'abrir' && c !== 'after');
+
+  it('created with its field settled, then failed, then settled again, always in its place', async () => {
+    const { refresh } = await hydrate(NESTED, { users: ok(['ana']) });
+    expect(between()).toEqual([]);
+    // The `@if` opens: its body and the `@await` in it are created from their templates. The field
+    // never travelled — the server did not paint the `@await` — so it waits for a `data`.
+    click('button.abrir');
+    expect(between()).toEqual([]);
+    const first = ok(['ana']);
+    refresh.next!({ users: first });
+    await first;
+    await Promise.resolve();
+    expect([...document.querySelectorAll('ul.users li')].map((li) => li.textContent)).toEqual(['ana']);
+    expect(between()).toEqual(['users']);
+
+    const broken = failed(500, 'Roto');
+    refresh.next!({ users: broken });
+    await broken;
+    await Promise.resolve();
+    expect(text('p.error')).toBe('Roto');
+    expect(between()).toEqual(['error']);
+
+    const back = ok(['bea', 'carla']);
+    refresh.next!({ users: back });
+    await back;
+    await Promise.resolve();
+    expect([...document.querySelectorAll('ul.users li')].map((li) => li.textContent)).toEqual(['bea', 'carla']);
+    expect(between()).toEqual(['users']);
+    expect(document.querySelector('main > :last-child')!.className).toBe('after');
+  });
+});
+
+describe('an `@await` of something that is not a field of `data` (FUD1320)', () => {
+  it('picks no block on the client, as the server paints none', () => {
+    const route = ['@code { const n = signal(1); }', '<p>@n()</p>', '@await n { <p>x</p> }'].join('\n');
+    const code = emitRouteClientModule(routeGraph(route))!;
+    expect(code).toContain('const $q0 = () => -1;');
   });
 });

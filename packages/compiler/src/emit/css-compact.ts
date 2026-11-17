@@ -114,9 +114,9 @@ export function compactCss(text: string): string {
 
 /**
  * The compacted body of a parsed `<style>`: plain CSS since decision 136, so every part is a
- * literal run, compacted. `source` stays in the signature for its callers.
+ * literal run, compacted.
  */
-export function compactStyleCss(source: string, style: StyleNode): string {
+export function compactStyleCss(style: StyleNode): string {
   let out = '';
   for (const part of style.parts) out += compactCss(part.value);
   return out.trim();

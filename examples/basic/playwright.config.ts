@@ -49,6 +49,11 @@ const DEV_ONLY = /sesion\.spec\.ts/u;
 // The headers of the app (SDD-84) run in the two builds: dev sends no page CSP on purpose.
 const HEADERS = /headers\.spec\.ts/u;
 
+// What the browser creates by cloning a template (SDD-85) runs in the two builds: with a worker
+// and without one, because the worker is what asks for the Trusted Types policy first, and only
+// the build without it can show that a page that creates nothing does not create the policy.
+const CREATE = /(create|classes)\.spec\.ts/u;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -67,7 +72,7 @@ export default defineConfig({
       testMatch: [THREE_WAY, DEV_ONLY],
       use: { baseURL: 'http://localhost:5273' },
     },
-    { name: 'nosw', testMatch: [THREE_WAY, HEADERS], use: { baseURL: 'http://localhost:4273' } },
+    { name: 'nosw', testMatch: [THREE_WAY, HEADERS, CREATE], use: { baseURL: 'http://localhost:4273' } },
   ],
   webServer: [
     {

@@ -205,7 +205,7 @@ function headStyleExpr(source: string, el: ElementNode, linker: AssetLinker): st
   const attrs = source.slice(el.openSpan.start + '<style'.length, el.openSpan.end - 1);
   return (
     `'<style' + $nonce + ${JSON.stringify(attrs)} + '>' + ` +
-    `${linker.cssTemplate(compactStyleCss(source, body))} + '</style>'`
+    `${linker.cssTemplate(compactStyleCss(body))} + '</style>'`
   );
 }
 
@@ -423,11 +423,15 @@ const OPEN = '$open';
 
 /**
  * An opening tag through the SAME attribute machinery every element of the body uses
- * (SDD-40 §4.4): decision 21's omitted nullish attribute, the `class:` composition, the asset
- * linker, and the serializer's escaping — `io.escapeAttr`, which every role has in scope.
+ * (SDD-40 §4.4): decision 21's omitted nullish attribute, the class list token by token
+ * (SDD-85 §4.5), a spread, the URL guard, the asset linker, and the serializer's escaping.
  *
- * `writeElementAttrs` writes `$dom.setAttr(…)`, so the sink is a `$dom` of one method in a
- * block of its own; what it leaves is `$open`, the tag up to and including its `>`.
+ * Through the very adapter, too: `writeElementAttrs` writes `$dom.…` calls, and here `$dom` is
+ * a server dom of its own (`io.createDom()`), in a block of its own, with the element alone in
+ * it. The serializer yields an element's start tag as its first piece, so what the block leaves
+ * in `$open` is that tag without its `>` — where the nonce goes in. A `$dom` of one method
+ * reimplemented here was a second copy of the class rules, and a spread on the tag had no
+ * `setAttrs` to call.
  */
 export function writeOpenTag(
   w: CodeWriter,
@@ -436,17 +440,13 @@ export function writeOpenTag(
   linker: AssetLinker,
   nonce = false,
 ): void {
-  w.line(`let ${OPEN} = '<${el.name}';`);
+  w.line(`let ${OPEN};`);
   w.line('{');
   w.indent();
-  // `setUrl` is the guard of SDD-51 §3.7, applied to the tag as written: the same function the
-  // body's adapters call, read from `io` like the escaping.
-  w.line(
-    `const $dom = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + io.escapeAttr(String($v)) + '"'; }, ` +
-      `setUrl: ($t, $k, $v) => $dom.setAttr($t, $k, io.guardUrl(${JSON.stringify(el.name)}, $k, $v)) };`,
-  );
-  w.line('const $el = null;');
+  w.line('const $dom = io.createDom();');
+  w.line(`const $el = $dom.element(${JSON.stringify(el.name)});`);
   writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);
+  w.line(`${OPEN} = [...io.serialize($el)][0].slice(0, -1);`);
   w.dedent();
   w.line('}');
   // The response's nonce, on a head script the page runs or its import map (SDD-84 §4.7).

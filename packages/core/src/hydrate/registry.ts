@@ -30,6 +30,14 @@ export const ID_ATTR = 'data-fud-id';
  */
 export const ROUTE_HOST = 'body';
 
+/** One step up, through a shadow boundary as readily as through an element. */
+export function up(node: Node): Node | null {
+  // A shadow root's `parentNode` is null by design — the tree is the point — so the climb
+  // continues at its host. Duck-typed rather than `instanceof ShadowRoot`: this runtime is
+  // exercised against document doubles, and the question is what the object OFFERS.
+  return node.parentNode ?? (node as Partial<ShadowRoot>).host ?? null;
+}
+
 /**
  * The slice of `CustomElementRegistry` the runtime uses — and the single platform fact the
  * whole cascade is built on: `define` upgrades EVERY instance of a tag already in the tree,

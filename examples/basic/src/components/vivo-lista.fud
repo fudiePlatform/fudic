@@ -6,9 +6,22 @@
   // One item is painted by the server; the rest are born in the browser, inside a
   // `@foreach` that re-runs when the list moves. Those are the instances nothing painted.
   const items = signal(["pintado por el servidor"]);
+  // A counter and not the length: after a removal the length repeats, and a repeated key is
+  // two rows claiming one place.
+  let next = 1;
 
   function add() {
-    items.set([...items(), `creado al vuelo ${items().length}`]);
+    items.set([...items(), `creado al vuelo ${next++}`]);
+  }
+
+  // Keyed rows MOVE: each `<vivo-item>` keeps its own count across a reverse, which is what
+  // tells a moved row from one rebuilt in place.
+  function reverse() {
+    items.set([...items()].reverse());
+  }
+
+  function removeFirst() {
+    items.set(items().slice(1));
   }
 }
 
@@ -24,6 +37,10 @@
       list-style: none;
       display: grid;
       gap: 0.4rem;
+    }
+    .acciones {
+      display: flex;
+      gap: 0.5rem;
     }
     .add {
       font: inherit;
@@ -41,7 +58,11 @@
 <vivo-lista>
   <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
-      <button class="add" @click=@add data-id="add">Añadir</button>
+      <div class="acciones">
+        <button class="add" @click=@add data-id="add">Añadir</button>
+        <button class="add" @click=@reverse data-id="reverse">Invertir</button>
+        <button class="add" @click=@removeFirst data-id="remove-first">Quitar el primero</button>
+      </div>
       <ul>
         @foreach (const item of items()) key (item) {
           <li><vivo-item .label=@item></vivo-item></li>

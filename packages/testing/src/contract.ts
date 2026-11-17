@@ -8,12 +8,16 @@
  * `.handle`. Every generated module imports this file in place of the real entry.
  */
 
-import { fn as serverFn, stub, type FnSpec, type ServerContract } from '@fudic/http/contract';
+import { download, fn as serverFn, stub, upload, type FnSpec, type ServerContract } from '@fudic/http/contract';
 
 export * from '@fudic/http/contract';
 
-/** A function of a `.fudapi`: the browser's call, with the server's `.handle` and slot. */
+/**
+ * A function of a `.fudapi`: the browser's call, with the server's `.handle` and slot. The server
+ * variant carries no browser capabilities, so the call gets them here as the browser module hands
+ * them (BUG-62): `upload` with `files`, and `download`, which reads only a value that carries files.
+ */
 export function fn(spec: FnSpec): ServerContract {
   const server = serverFn(spec);
-  return Object.assign(stub(spec), { spec: server.spec, slot: server.slot, handle: server.handle });
+  return Object.assign(stub({ ...spec, ...(spec.files === true ? { upload } : {}), download }), { spec: server.spec, slot: server.slot, handle: server.handle });
 }

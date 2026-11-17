@@ -43,6 +43,7 @@ import type { Plan } from '../../src/types.js';
 const ssrDist = fileURLToPath(new URL('../../../ssr/dist/index.js', import.meta.url));
 const transportDist = fileURLToPath(new URL('../../../transport/dist/index.js', import.meta.url));
 const coreDist = fileURLToPath(new URL('../../../core/dist/index.js', import.meta.url));
+const domDist = fileURLToPath(new URL('../../../dom/dist/index.js', import.meta.url));
 
 describe('a generated workspace builds (criterion 13)', () => {
   let output: { fileName: string; code?: string; source?: string }[];
@@ -147,7 +148,7 @@ describe('a generated workspace builds (criterion 13)', () => {
       // is asserted separately.
       configFile: false,
       resolve: {
-        alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist },
+        alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist, '@fudic/dom': domDist },
       },
       plugins: [fudic()],
       build: { write: false, minify: false },

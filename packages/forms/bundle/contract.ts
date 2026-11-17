@@ -32,6 +32,7 @@ export {
   folderOf,
   inTurn,
   settled,
+  loading,
   loadingFile,
   resetRegistry,
   setFolders,

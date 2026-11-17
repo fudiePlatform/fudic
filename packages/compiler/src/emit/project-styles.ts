@@ -50,7 +50,7 @@ export function projectCss(style: ProjectStyle): string {
  */
 export function compactProjectCss(css: string): string {
   const parsed = parseStyle(css, { start: 0, end: css.length });
-  return compactStyleCss(css, parsed.value);
+  return compactStyleCss(parsed.value);
 }
 
 /**

@@ -59,3 +59,7 @@ export type { ServerContext } from '../types.js';
 export { csrfClient } from '../csrf-client.js';
 export { csrfServer } from '../csrf-server.js';
 export { errorPagesStep } from '../error-pages.js';
+// What a generated module hands to a function whose arguments or `->` reach a `file`, and only to
+// it: a page none of whose functions carry files never downloads them (piece `http/files`).
+export { upload, type Upload } from '../client/upload.js';
+export { download, type Download } from '../client/download.js';

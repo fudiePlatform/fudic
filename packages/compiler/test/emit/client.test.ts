@@ -60,8 +60,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src).not.toContain('#controller');
   });
 
-  it('returns exactly {c, h, u, r}: $m, $s and $a are closures (§6.11, BUG-12 §3.3)', () => {
-    expect(src).toContain('const $m = () =>');
+  it('returns exactly {c, h, u, r}: $s and $a are closures (§6.11, BUG-12 §3.3)', () => {
+    // No `$m`: the clone goes into the shadow root whole, and each block mounts itself.
+    expect(src).not.toContain('const $m =');
     expect(src).toContain('const $s = () => {};');
     expect(src).toContain('const $a = () => {');
     expect(src).toMatch(/return \{\n\s+c: \(\) => \{/u);
@@ -90,13 +91,13 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src.indexOf("import { signal }")).toBeLessThan(src.indexOf('customElements.define'));
   });
 
-  it('mounts the roots through $m() on create, and never on hydrate', () => {
+  it('clones its template into the shadow root on create, and never on hydrate (SDD-85 §4.2)', () => {
     const own = controller(src);
     const create = own.slice(own.indexOf('c: () => {'), own.indexOf('h: () => {'));
     const hydrate = own.slice(own.indexOf('h: () => {'), own.indexOf('u: ($p) => {'));
-    expect(create).toContain('$m();');
+    expect(create).toContain('$dom.append($shadow, $T3());');
     expect(create).toContain('$s();');
-    expect(hydrate).not.toContain('$m();'); // the structure came mounted from SSR
+    expect(hydrate).not.toMatch(/\$T\d/u); // the structure came from SSR
     expect(hydrate).toContain('$s();'); // but the hookup is the same one
   });
 
@@ -115,24 +116,28 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   it('gives a reference only to the text that needs one', () => {
     // `@title` is adopted, from the <h2> that holds it. A whitespace run OUTSIDE a block
     // gets none — nobody rewrites a space — unless a construct sits in front of it, and
-    // then the run is the anchor an update inserts before (SDD-30 §3.4).
+    // then the run is the anchor an update inserts before (SDD-30 §3.4). The run in front of the
+    // `@if` stays in the template, kept apart by a comment from the text the block opens with.
     expect(controller(src)).toContain('$n5 = $dom.lastChild($n4);');
-    expect(src).toContain('$dom.append($n0, $dom.text(" "));'); // no construct behind it
-    expect(src).toContain('$n2 = $dom.text(" ");'); // the run right after the first @if
+    expect(src).toContain('<header><h2></h2></header> <!----> <app-button');
+    expect(controller(src)).toContain('$n2 = $dom.previousSibling($n3);'); // the run right after the first @if
   });
 
   it('names every root of a BLOCK, whitespace included', () => {
     // A block moves and removes what it rendered, so a root it cannot name is a node its
     // `r()` would leave behind — which is exactly the second defect of SDD-30 §1.
     const block = src.slice(src.indexOf('const $b0 ='), src.indexOf('const $q0 ='));
-    expect(block).toContain('$n6 = $dom.text(" ");');
-    expect(block).toContain('$r.push($n6);');
+    // On `c` the run in front of the body's element is the block's own, found in its clone.
+    const create = block.slice(block.indexOf('c: () => {'), block.indexOf('h: ($c) => {'));
+    expect(create).toContain('$n6 = $dom.previousSibling($n7);\n            $r.push($n6);');
+    // `m` places them in source order, the comment that closes the body included.
+    expect(block).toContain('for (const $n of [$n6, $n7, $n8, $n9]) $mv($anchor, $n);');
     expect(block).toContain('for (const $n of $r) $dom.remove($n);');
   });
 
-  it('fabricates a child host without opening its shadow or driving it', () => {
-    expect(src).toContain('$n3 = $dom.element("app-button");');
-    expect(src).toContain(`$dom.setAttr($n3, 'data-fud-adopt', "app-button");`);
+  it('creates a child host without opening its shadow, and raises it with its props', () => {
+    expect(src).toContain('<app-button data-fud-adopt="app-button"> <!----> </app-button>');
+    expect(src).toContain('$live($n3, ["ghost"], $shadow);');
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
   });
@@ -182,7 +187,7 @@ describe('emitComponentClientModule — a component with no @code', () => {
       '<x-plain>\n  <template shadowrootmode="open"><span>hi</span></template>\n</x-plain>\n',
     );
     expect(src2).toContain('let [$dom, $shadow] = $props;');
-    expect(src2).toContain('$n0 = $dom.element("span");');
+    expect(src2).toContain('$template`<span>hi</span>`');
   });
 
   it('emits an empty template without a cursor it would never use', () => {
@@ -249,11 +254,12 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       '@code {\n  const { on } = props<{ on: boolean }>();\n}\n' +
         '<x-cls>\n  <template shadowrootmode="open"><b class:hot="@on"></b></template>\n</x-cls>\n',
     );
-    // The composition is a value now — a `class:` binding can move — so it rides `$a()`.
-    // The condition goes through `crossingExpr` (BUG-32 T4), which is what puts the inner
-    // pair of parentheses there and what reads a signal as `on()` when `on` is one.
-    expect(src).toContain(`$v = [((on)) && "hot"].filter(Boolean).join(' ');`);
-    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
+    // A `class:` binding can move, so it rides `$a()`, and it toggles its own token and nothing
+    // else (SDD-85 §4.5). The condition goes through `crossingExpr` (BUG-32 T4), which is what
+    // puts the inner pair of parentheses there and what reads a signal as `on()` when `on` is one.
+    expect(src).toContain(`$v = !!((on));`);
+    expect(src).toContain(`$dom.toggleClass($n0, "hot", $v);`);
+    expect(src).not.toContain('filter(Boolean)');
   });
 
   it('keeps whitespace verbatim where the browser would, and drops nothing', () => {
@@ -261,7 +267,7 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       'x-pre',
       '<x-pre>\n  <template shadowrootmode="open"><pre>a   b</pre></template>\n</x-pre>\n',
     );
-    expect(src).toContain('$dom.append($n0, $dom.text("a   b"));'); // collapsed would be "a b"
+    expect(src).toContain('$template`<pre>a   b</pre>`'); // collapsed would be "a b"
   });
 
   it('keeps it verbatim inside a run that is part text, part interpolation', () => {
@@ -272,7 +278,7 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
     );
     // One node for the whole run, and the literal half of it untouched: a `<pre>` does not
     // stop being a `<pre>` because there is an expression in the middle of it.
-    expect(src).toContain("$n1 = $dom.text('');");
+    expect(src).toContain('$template`<pre>a   </pre>`');
     expect(src).toContain("$v = `a   ${(name) ?? ''}`;");
   });
 
@@ -325,11 +331,12 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
 });
 
 /**
- * How the adopt path FINDS a text node it may have to rewrite. It never counts: a run is
- * reached from the element beside it, and which element that is decides the form. The four
- * cases below are every form the emit can write, and the fixtures only ever produce one.
+ * How the adopt path FINDS a text node it may have to rewrite. It never counts: once the level is
+ * adopted, its texts are found backwards — each one is the node in front of the node after it,
+ * from the end of the parent. No text of the HTML touches another (`marker.ts`), so in front of a
+ * run there is never a text that is not it.
  */
-describe('emitComponentClientModule — anchoring an interpolated run', () => {
+describe('emitComponentClientModule — finding an interpolated run', () => {
   const runChunk = (tag: string, markup: string): string =>
     inlineChunk(
       tag,
@@ -338,33 +345,30 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     );
 
   it('coalesces a run of text and interpolation into ONE node', () => {
-    // The reason the anchors work at all: HTML has no boundary between two text nodes, so
+    // The reason the walk works at all: HTML has no boundary between two text nodes, so
     // what the parser gives back is one. The emit builds one to match — on both paths.
     const src = runChunk('x-run', '<b>hello @name<i></i></b>');
     expect(src).toContain("$v = `hello ${(name) ?? ''}`;");
     expect(src).toContain('$dom.setText($n1, $v);');
-    expect(src.match(/\$dom\.text\(/gu)).toHaveLength(1);
+    expect(src).toContain('$template`<b>hello <i></i></b>`');
+    expect(src.match(/\$n1 = \$dom\.previousSibling\(\$n2\);/gu)).toHaveLength(2); // `c` and `h`
   });
 
-  it('takes the previous sibling of the cursor when an element follows', () => {
+  it('takes the previous sibling of the element behind it', () => {
     const src = runChunk('x-prev', '<b>@name<i></i></b>');
-    expect(src).toContain('$n1 = $dom.previousSibling($c1);');
+    expect(src).toContain('$n1 = $dom.previousSibling($n2);');
   });
 
-  it('asks at runtime when only a construct follows, because it may render nothing', () => {
+  it('asks at runtime when a construct is behind it, because it may render nothing', () => {
     const src = runChunk('x-tern', '<b>@name @if (on) { <i></i> }</b>');
-    expect(src).toContain('$n1 = $c1 ? $dom.previousSibling($c1) : $dom.lastChild($n0);');
+    const hydrate = src.slice(src.lastIndexOf('h: () => {'));
+    expect(hydrate).toMatch(/(\$n\d+) = \1 === null \? \$dom\.lastChild\(\$n0\) : \$dom\.previousSibling\(\1\);/u);
   });
 
-  it('takes the last node when nothing that follows can be an element', () => {
-    const src = runChunk('x-notxt', '<b>@name @if (on) { x }</b>');
-    expect(src).toContain('$n1 = $dom.lastChild($n0);');
-    expect(src).not.toContain('let $c1'); // no element at that level: no cursor either
-  });
-
-  it('takes the last node for a trailing run, past the elements before it', () => {
+  it('takes the last node of the parent for the last run', () => {
     const src = runChunk('x-last', '<b><i></i>@name</b>');
     expect(src).toContain('$n2 = $dom.lastChild($n0);');
+    expect(src).toContain('$n2 = $dom.textAt($n0, $n2, null);');
   });
 
   it('adopts through a branch whose element is only in the else', () => {
@@ -373,7 +377,7 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     // gives back the advanced one, and the arm with only text gives it back untouched.
     expect(src).toContain('$c1 = $i.h($c1);');
     // The `<i>` is the ELSE arm's, so the step over it belongs to that arm's block.
-    expect(src).toContain('$n3 = $c; $c = $dom.nextElementSibling($c);');
+    expect(src).toMatch(/\$n\d+ = \$c; \$c = \$dom\.nextElementSibling\(\$c\);/u);
   });
 });
 
@@ -392,9 +396,9 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
   it('routes every value write through $a(), the single place a value reaches a node (§6.3)', () => {
     expect(src).toContain('const $a = () => {');
     expect(src).toContain('$dom.setText($n5, $v);');
-    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
-    // The fabricate body creates the node and nothing else: the value is `$a`'s.
-    expect(src).toContain('$n5 = $dom.text(\'\');');
+    expect(src).toContain(`$dom.toggleClass($n0, "highlight", $v);`);
+    // The create body adopts the node and nothing else: the value is `$a`'s.
+    expect(between('c: () => {', 'h: () => {')).toContain('$n5 = $dom.textAt($n4, $n5, null);');
     expect(between('c: () => {', 'h: () => {')).not.toContain('setText');
   });
 
@@ -409,10 +413,11 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     expect(between('h: () => {', 'u: ($p) => {')).not.toContain('$u();');
   });
 
-  it('orders create as fabricate → $a() → $m() → $s()', () => {
+  it('orders create as clone → adopt → $a() → $s() (SDD-85 §4.2)', () => {
     const create = between('c: () => {', 'h: () => {');
-    expect(create.indexOf('$a();')).toBeLessThan(create.indexOf('$m();'));
-    expect(create.indexOf('$m();')).toBeLessThan(create.indexOf('$s();'));
+    expect(create.indexOf('$T3()')).toBeLessThan(create.indexOf('$n0 = $c0;'));
+    expect(create.indexOf('$n0 = $c0;')).toBeLessThan(create.indexOf('$a();'));
+    expect(create.indexOf('$a();')).toBeLessThan(create.indexOf('$s();'));
   });
 
   it('reassigns, re-applies, and then reconciles its blocks (§6.4, SDD-30 §4.2)', () => {
@@ -488,7 +493,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
         '</template>\n</x-clsif>\n',
     );
     const block = src2.slice(src2.indexOf('const $b0 ='), src2.indexOf('const $q0 ='));
-    expect(block).toContain(`$dom.setAttr($n1, 'class', $v);`);
+    expect(block).toContain(`$dom.toggleClass($n1, "hot", $v);`);
     // `on` decides the branch AND is read inside it, so it travels both ways.
     expect(src2).toContain('const $b0 = ($parent, $anchor, on) => {');
   });
@@ -504,7 +509,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     // The nodes of a row belong to its instance and live as long as it does, so the value
     // stops being fused with the creation and becomes reapplicable — which is the hole
     // BUG-12 left open for the inside of a loop.
-    expect(src2).toContain("$n2 = $dom.text('');");
+    expect(src2).toContain('$n2 = $dom.textAt($n1, $n2, null);');
     expect(src2).toContain('$dom.setText($n2, $v);');
     expect(src2).toContain('u: (...$p) => { [item] = $p; $a(); },');
   });
@@ -599,9 +604,9 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     }
   });
 
-  it('keeps the host itself untouched: still fabricated, still not driven', () => {
+  it('keeps the host itself untouched: still created, still not driven', () => {
     const src = hostChunk('.value="@count"');
-    expect(src).toContain('$n0 = $dom.element("x-child");');
+    expect(src).toContain('<x-child></x-child>');
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     // `data-fud-adopt` is NOT here, and that is BUG-31 T4 rather than an omission: this
     // `x-child` carries no `<style>`, so there is no sheet for the runtime to adopt and
@@ -891,8 +896,8 @@ describe('emitComponentClientModule — a value that cannot be subscribed (FUD02
     const bad = out.diagnostics.find((d) => d.code === 'FUD0291')!;
     expect(bad).toBeDefined();
     expect(source.slice(bad.span.start, bad.span.end)).toBe('1 + 2');
-    // The emit does not stop for it (§5): the button is still fabricated, unhooked.
-    expect(out.code).toContain('$dom.element("button")');
+    // The emit does not stop for it (§5): the button is still created, unhooked.
+    expect(out.code).toContain('<button>x</button>');
     expect(out.code).not.toContain('$dom.event');
   });
 });

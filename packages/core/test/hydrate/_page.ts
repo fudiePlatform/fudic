@@ -16,6 +16,8 @@ export interface PagePayload {
   readonly bus?: TagMap;
   /** The control-components, which come up without a gesture (SDD-34 §4.5). */
   readonly eager?: readonly string[];
+  /** The tags that listen around their child hosts (SDD-85 decision 43). */
+  readonly around?: readonly string[];
   /** The route's chunk name (SDD-39 §4.7). Absent ⇒ this page has no client half of its own. */
   readonly route?: string;
   /** What `load()` returned, trimmed to what the client half reads (SDD-39 §4.8). */
@@ -40,6 +42,7 @@ export function publish(payload: PagePayload = {}): void {
   if (payload.tree !== undefined) block('fud-tree', payload.tree);
   if (payload.bus !== undefined) block('fud-bus', payload.bus);
   if (payload.eager !== undefined) block('fud-eager', payload.eager);
+  if (payload.around !== undefined) block('fud-around', payload.around);
   if (payload.route !== undefined) block('fud-route', payload.route);
   if (payload.data !== undefined) block('fud-data', payload.data);
   // The route's id goes on the `<body>` itself: it has no element of its own (SDD-39 §4.2).

@@ -9,10 +9,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      // The denominator is the whole package, anchored to it: vitest matches the glob anywhere in
+      // the absolute path, and the aliased siblings are not this package's to count.
+      include: ['src/**/*.ts'].map((glob) => fileURLToPath(new URL(glob, import.meta.url)).replace(/\\/gu, '/')),
       thresholds: {
-        lines: 95,
-        functions: 95,
-        branches: 90,
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
       },
     },
   },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { injectFrom, provideIn, token } from '../src/index.js';
+import { createChild, injectFrom, provideIn, token } from '../src/index.js';
 import { buildTree, containerOf } from '../src/page.js';
 import type { Container } from '../src/types.js';
 
@@ -49,6 +49,12 @@ describe('buildTree', () => {
     // And so does a node the map does not have: what such an instance can see is exactly
     // what the route registered globally.
     expect(containerOf(99)).toBe(tree[0]);
+  });
+
+  it('hands back a container it is given: one an owner the browser created opened (SDD-85)', () => {
+    const tree = buildTree([-1], () => {});
+    const opened = createChild(tree[0] as Container, 'made');
+    expect(containerOf(opened)).toBe(opened);
   });
 
   it('produces just the root for an empty map, and everything resolves globally', () => {

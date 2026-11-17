@@ -211,17 +211,8 @@ test.describe('SDD-69: /cuenta renders in the Service Worker and keeps nobody’
 /** The URL of `search` and its family. */
 const FN = '/_fudic/fn/routes/usuarios';
 
-/** `?a=` of a `{ q: str }` in fud-bin: the length of `q` as a varint, its bytes, in base64url. */
-function binQ(q: string): string {
-  const text = Buffer.from(q, 'utf8');
-  const length: number[] = [];
-  let n = text.length;
-  do {
-    length.push(n > 127 ? (n & 127) | 128 : n);
-    n >>= 7;
-  } while (n > 0);
-  return Buffer.concat([Buffer.from(length), text]).toString('base64url');
-}
+/** The query of a `get` with `q: str`: one key per argument, whatever the format of the function (BUG-62). */
+const queryQ = (q: string): string => new URLSearchParams({ q }).toString();
 
 test.describe('SDD-67: every call in binary, and the rules of its arguments', () => {
   test('criterion 5: the search leaves in fud-bin, signed, and its answer comes back in fud-bin', async ({ page }) => {
@@ -231,7 +222,7 @@ test.describe('SDD-67: every call in binary, and the rules of its arguments', ()
     await page.getByLabel('Buscar por nombre').fill('mar');
     const sent = await request;
     expect(sent.headers()['fud-sig']).toMatch(/^[0-9a-f]{8}$/u);
-    expect(new URL(sent.url()).searchParams.get('a')).toBe(binQ('mar'));
+    expect(new URL(sent.url()).search).toBe('?q=mar');
     expect((await response).headers()['content-type']).toBe('application/fud+bin');
     await expect(page.locator('ul li')).toHaveText(['Marta — marta@fudic.dev']);
   });
@@ -254,29 +245,27 @@ test.describe('SDD-67: every call in binary, and the rules of its arguments', ()
     // The list is the one before: the call was refused, nothing came back.
     await expect(page.locator('ul li')).toHaveText(['Marta — marta@fudic.dev']);
 
-    const byHand = await page.request.get(`${FN}/search?a=${binQ('x'.repeat(81))}`, { headers: { 'fud-sig': sig } });
+    const byHand = await page.request.get(`${FN}/search?${queryQ('x'.repeat(81))}`, { headers: { 'fud-sig': sig } });
     expect(byHand.status()).toBe(400);
     expect(byHand.headers()['content-type']).toBe('application/problem+fud');
     expect((await byHand.body()).toString('utf8')).toContain('argument q: max-length 80');
-    const fits = await page.request.get(`${FN}/search?a=${binQ('x'.repeat(80))}`, { headers: { 'fud-sig': sig } });
+    const fits = await page.request.get(`${FN}/search?${queryQ('x'.repeat(80))}`, { headers: { 'fud-sig': sig } });
     expect(fits.status()).toBe(200);
   });
 
   test('criterion 8: a page older than the server is a 412', async ({ page }) => {
-    const stale = await page.request.get(`${FN}/search?a=${binQ('mar')}`, { headers: { 'fud-sig': '00000000' } });
+    const stale = await page.request.get(`${FN}/search?${queryQ('mar')}`, { headers: { 'fud-sig': '00000000' } });
     expect(stale.status()).toBe(412);
     expect((await stale.body()).toString('utf8')).toContain('the page is older than the server');
   });
 
   test('criterion 11: searchJson answers JSON with its keys, without a signature', async ({ page }) => {
-    const a = encodeURIComponent(JSON.stringify({ q: 'mar' }));
-    const res = await page.request.get(`${FN}/searchJson?a=${a}`);
+    const res = await page.request.get(`${FN}/searchJson?${queryQ('mar')}`);
     expect(res.status()).toBe(200);
     expect(res.headers()['content-type']).toBe('application/json');
     expect(await res.json()).toEqual([expect.objectContaining({ name: 'Marta', email: 'marta@fudic.dev' })]);
 
-    const long = encodeURIComponent(JSON.stringify({ q: 'x'.repeat(81) }));
-    const refused = await page.request.get(`${FN}/searchJson?a=${long}`);
+    const refused = await page.request.get(`${FN}/searchJson?${queryQ('x'.repeat(81))}`);
     expect(refused.status()).toBe(400);
     expect(refused.headers()['content-type']).toBe('application/problem+json');
     expect(await refused.json()).toMatchObject({ status: 400, detail: 'argument q: max-length 80' });

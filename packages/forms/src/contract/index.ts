@@ -82,6 +82,7 @@ export {
   Slot,
   folderOf,
   inTurn,
+  loading,
   settled,
   loadingFile,
   resetRegistry,

@@ -58,7 +58,6 @@ import {
   containsNode,
   type DirectiveSet,
   type RenderDirectiveNode,
-  type SectionNode,
 } from '../layout/index.js';
 import { checkSnippetBodies, type SnippetDeclNode } from '../snippet/index.js';
 import type {

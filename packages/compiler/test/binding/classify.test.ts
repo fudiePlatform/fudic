@@ -322,6 +322,19 @@ describe('classifyAttribute — bus bindings (decision 28)', () => {
   });
 });
 
+describe('classifyAttribute — a ( glued to a name that is not `bus:`', () => {
+  it.each([
+    ['<x ...resto()></x>', '...resto'],
+    ['<x @click(go)></x>', '@click'],
+    ['<x title(a)="t"></x>', 'title'],
+  ])('%s is FUD0098, not two silent attributes', (source, prefix) => {
+    const { binding, diagnostics } = classifyOne(source);
+    expect(codes(diagnostics)).toEqual(['FUD0098']);
+    expect(diagnostics[0]!.message).toContain("`" + prefix + "`");
+    expect(binding.type).toBe('attr');
+  });
+});
+
 describe('classifyAttribute — ref (decision 30)', () => {
   it('accepts a single simple identifier', () => {
     const { binding, diagnostics, source } = classifyOne('<x ref="@input"></x>');

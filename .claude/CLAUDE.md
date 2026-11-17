@@ -113,7 +113,7 @@ una spec aterrice.
 - **Sin separadores Unicode LS/PS.** Nunca escribas los caracteres U+2028 (separador de
   línea) ni U+2029 (separador de párrafo) literales en ningún fichero: VS Code los marca
   como terminadores de línea inusuales. Si hay que nombrarlos (p. ej. en una tabla de
-  regex), usa su escape ` ` / ` `.
+  regex), usa su escape `\u2028` / `\u2029`.
 - **Diseño.** **SOLID** estricto, con patrones de diseño donde de verdad apliquen.
 - **Versiones exactas.** Ancla las dependencias exactas (sin `^`/`~`). Solo
   `engines.node` usa un rango `>=`.

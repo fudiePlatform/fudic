@@ -26,7 +26,7 @@
 
 import { type ResolveChunk } from '../chunks.js';
 import { type PageMaps } from '../maps.js';
-import { allInstances, ROUTE_HOST } from '../registry.js';
+import { allInstances, ID_ATTR, ROUTE_HOST, up } from '../registry.js';
 import { type WarmChannel } from './channel.js';
 
 /** Port: watch these hosts and call back the first time each one becomes visible. */
@@ -111,9 +111,27 @@ export function startWarmObserver(config: WarmObserverConfig): void {
   // gesture. An EAGER route does not need it either: it comes up at install, so its chunk is
   // asked for outright rather than anticipated.
   const watched = allInstances(root).filter((el) => el.localName !== ROUTE_HOST);
+  /**
+   * The owners further out that listen around `target` (`fud-around`, SDD-85 decision 43): a
+   * gesture on it raises them too, so their closure is what the gesture needs as well. The
+   * route among them, by its name — and only here, behind a component that came into view,
+   * never for the `<body>` being visible.
+   */
+  const owners = (target: Element): string[] => {
+    const out: string[] = [];
+    for (let node = up(target); node !== null; node = up(node)) {
+      const el = node as Element;
+      if (typeof el.hasAttribute !== 'function' || !el.hasAttribute(ID_ATTR)) continue;
+      const name = el.localName === ROUTE_HOST ? maps.route : el.localName;
+      if (name !== null && maps.around.includes(name)) out.push(name);
+    }
+    return out;
+  };
+
   observe(watched, (target) => {
     const tags: string[] = [];
     closure(target.localName, tags);
+    for (const owner of owners(target)) closure(owner, tags);
     if (tags.length === 0) {
       return; // a sibling instance of a tag already ordered: nothing left to warm
     }

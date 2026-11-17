@@ -251,7 +251,8 @@ describe.each(SHAPES)('criterion 10 — in order (%s)', (shape) => {
 
     users.resolve({ ok: ['Ana', 'Luis'] });
     const second = (await reader.next())!;
-    expect(second).toMatch(/<li>Ana<\/li>\s*<li>Luis<\/li>/u);
+    // A row that ends with text closes with a comment, the next one opening with text (`marker.ts`).
+    expect(second).toMatch(/<li>Ana<\/li>\s*(<!---->)?\s*<li>Luis<\/li>/u);
     expect(second).not.toContain('class="stats"');
 
     const tail = await rest(reader);

@@ -49,6 +49,7 @@ import {
   openTurn,
   publishTagSource,
   ROUTE_HOST,
+  up,
   stopwatch,
   type ElementRegistry,
   type HydratedFrom,
@@ -99,14 +100,6 @@ const CAPTURED_TYPES: readonly string[] = [
 
 /** The eager path has no gesture behind it, so there is nothing to replay (SDD-34 §4.5). */
 const NOTHING = (): void => {};
-
-/** One step up, through a shadow boundary as readily as through an element. */
-function up(node: Node): Node | null {
-  // A shadow root's `parentNode` is null by design — the tree is the point — so the climb
-  // continues at its host. Duck-typed rather than `instanceof ShadowRoot`: this module is
-  // exercised against document doubles, and the question is what the object OFFERS.
-  return node.parentNode ?? (node as Partial<ShadowRoot>).host ?? null;
-}
 
 /**
  * The outermost hydratable ancestor of an instance, or the instance itself when it has none.
@@ -375,6 +368,11 @@ export function installHydration(options: HydrationOptions): Hydration {
       // Nothing was downloaded and nothing waited: the instance was ready before the click.
       report(id, host.localName, '0.0', 'shared-chunk');
     },
+    // Read at the gesture and not here: a page in parts grows its maps as they arrive. The
+    // `<body>` is listed by the route's name, as everywhere else (SDD-39 §4.2); it carries an id
+    // only when the route has one, and a `null` name is in no list anyway.
+    listensAround: (host) =>
+      (maps.around as readonly (string | null)[]).includes(host.localName === ROUTE_HOST ? maps.route : host.localName),
   });
 
   for (const type of CAPTURED_TYPES) {

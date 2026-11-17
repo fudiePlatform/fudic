@@ -14,9 +14,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
-import { emitLayoutModule, emitPageModule, emitRouteModule } from '../../src/emit/index.js';
+import { emitPageModule, emitRouteModule } from '../../src/emit/index.js';
 import { needsRuntime } from '../../src/emit/maps.js';
-import { memoryIo, minimalSsr } from './_support.js';
+import { memoryIo } from './_support.js';
 
 const LAYOUT = [
   '<!DOCTYPE html><html><head>@RenderHead()</head>',

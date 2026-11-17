@@ -328,6 +328,13 @@ describe('bus: subscriber (§6.8.b, decision 28.a/b)', () => {
     expect(text(source, name.expr)).toBe('EVENTOS.carrito');
   });
 
+  it('joins a ( glued to any name into one attribute with an expression name', () => {
+    const attrs = firstElement('<a ...resto() title="t"></a>').attributes;
+    expect(attrs).toHaveLength(2);
+    expect(typeof attrs[0]!.name).not.toBe('string');
+    expect(attrs[1]!.name).toBe('title');
+  });
+
   it('keeps a host event name verbatim (decision 29)', () => {
     const attr = firstElement('<a @click="@onClick"></a>').attributes[0]!;
     expect(attr.name).toBe('@click');

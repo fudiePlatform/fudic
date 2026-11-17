@@ -14,8 +14,8 @@
 
 <h1>3 · Lo que la página le cuenta al runtime</h1>
 <p class="lede">
-  Esta página no hace nada todavía. Está aquí por lo que hay al final de su
-  <code>&lt;body&gt;</code>: los tres bloques
+  Esta página está aquí por lo que hay al final de su
+  <code>&lt;body&gt;</code>: los bloques
   <code>&lt;script type="application/json"&gt;</code> que el servidor escribe para que el
   runtime de hidratación sepa <strong>quién</strong> se hidrata, <strong>con qué</strong>
   y <strong>en qué orden</strong>. Ábrela y mira el fuente.
@@ -46,12 +46,18 @@
   hay que levantar A.
 </p>
 
-<h2>Qué pasa hoy</h2>
+<h2>Qué pasa al cargar, y al elegir</h2>
 <p>
-  Nada, y es lo esperable: los bloques son los <em>datos</em>, y quien los lee es el
-  runtime de hidratación, que todavía no existe. Ningún custom element está definido en
-  esta página — todos responden a <code>:not(:defined)</code> — y sin embargo se ve
-  pintada y con estilos, porque el HTML es completo y los shadow roots son declarativos.
-  Ese es el invariante que el runtime no debe romper: cero JavaScript de componente hasta
-  que hay una interacción.
+  Al cargar, nada: ningún custom element está definido en esta página — todos responden a
+  <code>:not(:defined)</code> — y sin embargo se ve pintada y con estilos, porque el HTML es
+  completo y los shadow roots son declarativos. Cero JavaScript de componente hasta que hay
+  una interacción.
+</p>
+<p>
+  Elige una opción. El clic cae dentro de un <code>bus-option</code>, pero quien lo escucha es
+  <code>bus-picker</code>, con un solo <code>@@click</code> en su panel y
+  <code>delegate:option</code> en cada opción. Por eso hay un cuarto bloque,
+  <code>fud-around</code>: dice qué componentes escuchan alrededor de sus hijos, y el runtime
+  levanta a ese dueño (y, antes, a los hijos y a <code>bus-log</code>, que escucha
+  <code>picked</code>). «Último elegido» tiene que cambiar desde el primer clic.
 </p>

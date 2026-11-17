@@ -192,6 +192,12 @@ describe('bus: subscriber (§6.5.b, decision 28.a/b)', () => {
     ]);
   });
 
+  it('reads a ( glued to any name as an expression, and a spaced one as a name', () => {
+    // `...resto()` used to lex as `...resto` plus two attributes called `(` and `)`.
+    expect(toks('<a ...resto()>').map((t) => t.type)).toEqual(['tag-open-start', 'whitespace', 'attr-name', 'explicit-expr', 'tag-open-end']);
+    expect(toks('<a x (y)>').map((t) => t.type)).toEqual(['tag-open-start', 'whitespace', 'attr-name', 'whitespace', 'attr-name', 'attr-name', 'tag-open-end']);
+  });
+
   it('surfaces balancer diagnostics from a bus: expression name', () => {
     const result = tokenize('<a bus:(a + b>');
     expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0002']);

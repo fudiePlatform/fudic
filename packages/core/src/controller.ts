@@ -24,7 +24,7 @@
  * surface a component has: one positional array, the same order as the payload.
  */
 export interface Controller {
-  /** create — fabricate the nodes, mount the structure and hook up. */
+  /** create — clone the template, adopt the clone, write each value once, open the blocks and hook up (SDD-85 §4.2). */
   c(): void;
   /** hydrate — adopt the SSR nodes by positional traversal and hook up. */
   h(): void;

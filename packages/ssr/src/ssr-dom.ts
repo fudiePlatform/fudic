@@ -17,7 +17,17 @@
  * order never to call it.
  */
 
-import { attrsDiff, guardUrl, htmlOf, type Dom, type LiveProperty, type Ns } from '@fudic/dom';
+import {
+  attrsDiff,
+  classDiff,
+  classTokens,
+  guardUrl,
+  htmlOf,
+  type ClassDiff,
+  type Dom,
+  type LiveProperty,
+  type Ns,
+} from '@fudic/dom';
 import { type SsrNode, SsrNodeImpl, asImpl } from './tree.js';
 
 /** The identity attribute of a hydratable instance (SDD-15 §3.1). */
@@ -287,7 +297,19 @@ export class SsrDom implements Dom<SsrNode> {
     const node = asImpl(el);
     const diff = attrsDiff(node.tag!, next, prev, except);
     for (const name of diff.remove) node.attrs.delete(name);
-    for (const [name, value] of diff.set) node.attrs.set(name, value);
+    // The class goes in at its place by name, as every other attribute of a spread: a backend
+    // that writes the spread from the type writes the same HTML.
+    const after = diff.set.findIndex(([name]) => name > 'class');
+    const [before, rest] = after === -1 ? [diff.set, []] : [diff.set.slice(0, after), diff.set.slice(after)];
+    for (const [name, value] of before) node.attrs.set(name, value);
+    applyClass(node, diff.class);
+    for (const [name, value] of rest) node.attrs.set(name, value);
+  }
+  toggleClass(el: SsrNode, token: string, on: boolean): void {
+    applyClass(asImpl(el), on ? { remove: [], add: [token] } : { remove: [token], add: [] });
+  }
+  swapClass(el: SsrNode, next: unknown, prev: unknown): void {
+    applyClass(asImpl(el), classDiff(next, prev));
   }
   removeAttr(el: SsrNode, name: string): void {
     asImpl(el).attrs.delete(name);
@@ -395,6 +417,19 @@ export class SsrDom implements Dom<SsrNode> {
  * `$d` may hold one per binding of every instance the page renders.
  */
 const NOOP = (): void => {};
+
+/**
+ * A class change, as the browser's `classList` makes it: the tokens of the `class` attribute in
+ * order, a new one at the end, and with none left no attribute at all.
+ */
+function applyClass(node: SsrNodeImpl, diff: ClassDiff): void {
+  // A spread with no class leaves alone a `class=""` the element wrote, as the browser does.
+  if (diff.remove.length === 0 && diff.add.length === 0) return;
+  const tokens = classTokens(node.attrs.get('class') ?? '').filter((token) => !diff.remove.includes(token));
+  for (const token of diff.add) if (!tokens.includes(token)) tokens.push(token);
+  if (tokens.length === 0) node.attrs.delete('class');
+  else node.attrs.set('class', tokens.join(' '));
+}
 
 /** Unlink a node from its current parent, if any. */
 function detach(n: SsrNodeImpl): void {
