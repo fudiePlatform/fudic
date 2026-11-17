@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 8 / 24 — `En curso`.
+> **Progreso:** 14 / 24 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -79,37 +79,37 @@
 
 ## Fase 2 — Qué página usa una app
 
-- [ ] **9. `errorPageOf`.**
+- [x] **9. `errorPageOf`.**
   - `ErrorPageSource`, `errorPageOf` y `LIBRARY_ERROR_FILE` (SDD §3.3, §4.1). Los seis casos del
     criterio 12, con un `PackageFs` en memoria. Exportado desde `index.ts`. Al 100 %.
   - *Depende de:* —.
   - *Paquete:* `resolve`.
   - *Ficheros:* `src/error-page.ts`, `src/index.ts`, `test/error-page.test.ts`.
-- [ ] **10. `FUD1570`.**
+- [x] **10. `FUD1570`.**
   - Un fichero, su `.md` en inglés y su línea en `index.ts` (SDD §3.8).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/codes/FUD1570.ts` · `.md`, `src/index.ts`.
-- [ ] **11. `discoverRoutes` con la cadena.**
+- [x] **11. `discoverRoutes` con la cadena.**
   - Parámetro `packages?: PackageFs`; la página sale de `errorPageOf`; `errorPageFrom`; `FUD1570` con
     `ambiguous` (SDD §3.10, criterio 13). Con idiomas, una por idioma (criterio 14).
   - *Depende de:* 9, 10.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/discover.ts`, `test/discover-error-page.test.ts`.
-- [ ] **12. El plugin dice de dónde sale.**
+- [x] **12. El plugin dice de dónde sale.**
   - La línea `fudic: error page from <paquete> (<fichero>)` en build y al arrancar dev; `FUD1570` en
     el build y en el overlay (SDD §3.8, §3.9, criterio 16). Dev: crear el fichero de la librería se
     nota en la siguiente petición (criterio 15); si Vite no vigila esa carpeta, se añade al watcher.
   - *Depende de:* 11.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/plugin.ts`, `test/error-page-library.test.ts`.
-- [ ] **13. `@fudic/testing` con la página de una librería.**
+- [x] **13. `@fudic/testing` con la página de una librería.**
   - `project.ts` pasa por `discoverRoutes`, así que ya la ve: un test con una app sin `_error.fud` y
     una librería con uno, cuyo `visit` de un `load` que lanza pinta la de la librería.
   - *Depende de:* 11, 8.
   - *Paquete:* `testing`.
   - *Ficheros:* `test/error-page-library.test.ts`, su fixture.
-- [ ] **14. El editor y el typecheck.**
+- [x] **14. El editor y el typecheck.**
   - `apiContextOf` (`typecheck`) y `#context` (`language-server`) reconocen `src/_error.fud` de una
     librería como página de error (SDD §4.3). Tests: `FUD1010` con un `load` en `src/_error.fudapi` de
     una librería, en los dos (criterio 18); el tipo de `data` en `src/_error.fud` de una librería

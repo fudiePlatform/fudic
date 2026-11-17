@@ -544,4 +544,9 @@ solo fichero (§8.1, decisión 4).
 
 ### 8.2. Tomadas al implementar
 
-—
+1. **La línea del build nombra el fichero relativo a la app** (`../../libs/ui/src/_error.fud`), no al
+   workspace: el plugin no sabe dónde está la raíz del workspace, y relativo a la app es un camino
+   que se puede abrir desde donde corre el build.
+2. **Dev no añade nada al watcher.** El descubrimiento ya se repite en cada petición, así que el
+   `_error.fud` de una librería, creado o borrado, se nota en la siguiente sin vigilar su carpeta.
+   `FUD1570` va al overlay en cada petición mientras dure.

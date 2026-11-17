@@ -17,7 +17,7 @@ import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import { createUrlResolver, LINKER_NEEDS, wantsNonce } from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
-import { discoverRoutes, type RouteBuild } from './discover.js';
+import { discoverRoutes, type DiscoverResult, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
@@ -174,9 +174,13 @@ import {
   FUD0801,
   FUD0803,
   FUD0852,
+  FUD1570,
   type FileDiagnostic,
   type FudDiagnostic,
 } from '@fudic/diagnostics';
+
+/** The code of two error pages in the chain, read off its function: no code is written by hand. */
+const AMBIGUOUS_ERROR_PAGE = FUD1570({ file: '', libraries: [] }).code;
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   documentFiles,
@@ -1088,7 +1092,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Route discovery is cheap and dev adds/removes files: re-read on each request so a new
         // `.fud` is routable without restarting the server.
         routes: () => {
-          ({ routes: builds, errorPages } = discover());
+          const discovered = discover();
+          ({ routes: builds, errorPages } = discovered);
+          // Two libraries offering an error page and none of the app's (SDD-87 §3.8): in the
+          // overlay, for as long as it lasts — the next request after it is fixed shows nothing.
+          const ambiguous = discovered.diagnostics.find((d) => d.code === AMBIGUOUS_ERROR_PAGE);
+          if (ambiguous !== undefined) toOverlay(server, new Error(reportText(ambiguous, root)));
           devBuilds.clear();
           return builds
             .filter((rb) => rb.decision.mode !== 'excluded')
@@ -1341,6 +1350,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const discovered = discover();
       builds = discovered.routes;
       errorPages = discovered.errorPages;
+      // A page nobody named in the app is said somewhere (SDD-87 §3.9): the build, and dev's start.
+      const fromLibrary = errorPageLine(discovered, root);
+      if (fromLibrary !== undefined) logger?.info(fromLibrary);
       // With the severity each one has in a build: an error said as a warning is a build that
       // lies (SDD-35 §1.2). And what parsing the routes said, which used to be dropped (§1.1):
       // the typecheck already said it, so the reporter stays quiet about it.
@@ -2683,6 +2695,16 @@ export function missingShellEntries(
     missing.push(entry);
   }
   return missing;
+}
+
+/**
+ * The line that says the error page comes from a library (SDD-87 §3.9):
+ * `fudic: error page from @acme/ui (../../libs/ui/src/_error.fud)`, the file relative to the
+ * app. `undefined` with the app's own page or with none.
+ */
+export function errorPageLine(discovered: Pick<DiscoverResult, 'errorPage' | 'errorPageFrom'>, root: string): string | undefined {
+  if (discovered.errorPageFrom === undefined || discovered.errorPage === undefined) return undefined;
+  return `fudic: error page from ${discovered.errorPageFrom} (${slash(relative(root, discovered.errorPage.absPath))})`;
 }
 
 /**

@@ -473,6 +473,7 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1554: ['warning', "A headers file that applies to nothing"],
   FUD1555: ['warning', "Trusted Types will block this assignment"],
   FUD1556: ['hint', "The policy allows what fudic no longer needs"],
+  FUD1570: ['error', "Two error pages in the chain"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */
