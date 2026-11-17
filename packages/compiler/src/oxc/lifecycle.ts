@@ -55,6 +55,9 @@ export interface HookScan {
 
 type MapSpan = (bufferStart: number, bufferEnd: number) => Span;
 
+/** A statement list, or the single node of an expression fragment. */
+type FragmentRoot = OxcNode | readonly OxcNode[];
+
 function isNode(value: unknown): value is OxcNode {
   return typeof value === 'object' && value !== null && typeof (value as OxcNode).type === 'string';
 }
@@ -72,12 +75,15 @@ const IMPORTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Every call to a hook and every name that hides one, in source order, for the top-level
- * statements of a `@code`.
+ * Every call to a hook and every name that hides one, in source order. `code` says whether
+ * `roots` are the top-level statements of a `@code`, the one place a call registers; any other
+ * JS — the view's — has no top level a hook may be called at.
  */
-export function scanHooks(statements: readonly OxcNode[], mapSpan: MapSpan): HookScan {
+export function scanHooks(roots: FragmentRoot, mapSpan: MapSpan, code = true): HookScan {
   const uses: HookUse[] = [];
   const shadows: HookShadow[] = [];
+  // A `@code` is always a statement list.
+  const statements = code ? (roots as readonly OxcNode[]) : [];
   const topLevel = new Set<unknown>(
     statements.flatMap((s) => (s.type === 'ExpressionStatement' ? [s['expression']] : [])),
   );
@@ -127,7 +133,7 @@ export function scanHooks(statements: readonly OxcNode[], mapSpan: MapSpan): Hoo
     for (const value of Object.values(node)) visit(value);
   }
 
-  visit(statements);
+  visit(roots);
   return {
     uses: uses.sort((a, b) => a.span.start - b.span.start),
     shadows: shadows.sort((a, b) => a.span.start - b.span.start),
