@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 0 / 24 — `Listo`.
+> **Progreso:** 8 / 24 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -21,7 +21,7 @@
 
 ## Fase 1 — El `base` en el navegador
 
-- [ ] **1. `ClientContext.base` y `stub`.**
+- [x] **1. `ClientContext.base` y `stub`.**
   - `base` en `ClientContext` (SDD §3.5). `stub` lo rellena con `spec.base ?? '/'`. Test: una llamada
     con `spec.base = '/admin/'` va a `/admin/_fudic/fn/…`, pide el token a `/admin/_fudic/csrf` y sus
     pasos ven `ctx.base === '/admin/'` (criterio 4).
@@ -30,24 +30,24 @@
   - *Paquete:* `http`.
   - *Ficheros:* `src/types.ts`, `src/contract/fn.ts`, `test/helpers.ts`, `test/built-ins.ts`,
     `test/body/upload.test.ts`, `test/contract/fn-base.test.ts`.
-- [ ] **2. `ruleSend` con `base`.**
+- [x] **2. `ruleSend` con `base`.**
   - Tercer parámetro opcional `base`, por defecto `/`, que va al `ClientContext` (SDD §3.5).
   - *Depende de:* 1.
   - *Paquete:* `http`.
   - *Ficheros:* `src/contract/rule-send.ts`, su test.
-- [ ] **3. `errorPagesStep` con el `base`.**
+- [x] **3. `errorPagesStep` con el `base`.**
   - Sin ruta, `join(ctx.base, '/_fudic/error/<status>')`; ruta con `/`, `join(ctx.base, ruta)`; ruta
     sin `/`, tal cual; `Redirect`, 422, `catches` y cancelada, como hoy (criterios 6, 7, 8).
   - *Depende de:* 1.
   - *Paquete:* `http`.
   - *Ficheros:* `src/error-pages.ts`, `test/error-pages.test.ts`.
-- [ ] **4. El golden sin `base`.**
+- [x] **4. El golden sin `base`.**
   - Un snapshot del módulo de navegador de un `.fudapi` con funciones y una regla remota, emitido
     **antes** de tocar `emitModule`. No cambia en la tarea 5.
   - *Depende de:* —.
   - *Paquete:* `api`.
   - *Ficheros:* `test/emit/base.test.ts`.
-- [ ] **5. `emitModule` con `base`.**
+- [x] **5. `emitModule` con `base`.**
   - `EmitModuleOptions { i18n?, base? }` en lugar del quinto parámetro (SDD §3.5). En `browser` y con
     `base` distinto de `/`: `base: "/admin/"` en cada `stub`, en cada regla remota y en cada
     `ruleSend`. Los llamadores, al día (criterio 3).
@@ -55,19 +55,19 @@
   - *Paquete:* `api`, `vite`.
   - *Ficheros:* `packages/api/src/emit/module.ts`, `packages/api/test/emit/base.test.ts`,
     `packages/vite/src/api-modules.ts`.
-- [ ] **6. Las reglas remotas con `base`.**
+- [x] **6. Las reglas remotas con `base`.**
   - `Question.base`, desde la regla emitida como `sig`; `askRemote` compone
     `join(base ?? '/', '/_fudic/rule/<id>/<name>')` (criterio 5).
   - *Depende de:* 5.
   - *Paquete:* `forms`.
   - *Ficheros:* `src/contract/remote.ts`, `test/contract/remote.test.ts`.
-- [ ] **7. El plugin pasa el `base`.**
+- [x] **7. El plugin pasa el `base`.**
   - `api-modules.ts` recibe el `base` que resolvió Vite y lo pasa a `emitModule`, en build y en dev.
     Test: un build con `base: '/admin/'` tiene `base:"/admin/"` en el chunk de navegador del `.fudapi`.
   - *Depende de:* 5.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/api-modules.ts`, `src/plugin.ts`, `test/api-base.test.ts`.
-- [ ] **8. `home` y `back` con el `base`.**
+- [x] **8. `home` y `back` con el `base`.**
   - `ErrorPage.home` y el comentario nuevo de `back` (`http`); `PageOrigin.home`, `pageOriginOf` y
     `backOf` (`server`); `visit` pasa `home` (`testing`); `ERROR_DATA` del editor (`language-core`)
     (SDD §3.4, §4.4, criterios 9, 10, 11).

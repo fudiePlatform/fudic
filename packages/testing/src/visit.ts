@@ -76,8 +76,8 @@ async function answer(url: string, options: VisitOptions): Promise<Answer> {
     if (failure.kind === 'redirect') {
       throw new Error(`visit('${url}'): redirected with ${failure.status} to ${failure.location} — visit that URL instead`);
     }
-    // A visit has no browser behind it, so no `Referer` and no way back.
-    const origin = { path: pathname };
+    // A visit has no browser behind it, so no `Referer` and no way back; home is the app's `base`.
+    const origin = { path: pathname, home: base };
     if (errorPage === undefined) {
       return { html: await renderErrorPage(null, failure.problem, '', origin), status: failure.problem.status, page: rb };
     }

@@ -38,10 +38,13 @@ export interface ErrorPage {
   /** The path that was asked for and failed, without the origin or the `base`: `/usuarios/99`. */
   readonly path: string;
   /**
-   * Where the user came from, when it is of this app: `/usuarios`. Read from the `Referer` the
-   * browser sent, never from the URL; absent when there is none, or it is another origin's.
+   * Where the user came from, when it is of this app, ready for an `href`: `/admin/usuarios`.
+   * Read from the `Referer`, never from the URL; absent when there is none, or it is another
+   * app's or another origin's.
    */
   readonly back?: string;
+  /** The home of the app that paints the page, ready for an `href`: its `base`, `/admin/`. */
+  readonly home: string;
 }
 
 /** The header a failure's `fails` code travels in (SDD-74 decision 175). */

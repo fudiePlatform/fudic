@@ -31,8 +31,10 @@ const ERROR_DATA =
   '  readonly detail?: string;\n' +
   '  /** The path that was asked for and failed, without the origin or the `base`: `/usuarios/99`. */\n' +
   '  readonly path: string;\n' +
-  '  /** Where the user came from, when it is of this app: `/usuarios`. Absent when unknown. */\n' +
+  '  /** Where the user came from, when it is of this app, ready for an `href`: `/admin/usuarios`. Absent when unknown. */\n' +
   '  readonly back?: string;\n' +
+  '  /** The home of the app that paints the page, ready for an `href`: its `base`, `/admin/`. */\n' +
+  '  readonly home: string;\n' +
   '}\n' +
   '/**\n' +
   ' * The error this page paints. Nobody declares it: `_error.fud` has no `load`, the server\n' +

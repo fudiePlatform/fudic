@@ -4,8 +4,8 @@
  *
  * It keeps a timer, an `AbortController` and a cache of `value → errors`. A value it has heard
  * about answers at once, with no network; any other waits `debounce` ms after the last call and
- * then asks, `POST /_fudic/rule/<id>/<name>`, in the rule's format. A new call restarts the wait
- * and aborts the question in flight, and the epoch of the control drops what arrives late.
+ * then asks, `POST <base>/_fudic/rule/<id>/<name>`, in the rule's format. A new call restarts
+ * the wait and aborts the question in flight, and the epoch of the control drops what arrives late.
  *
  * **The question is a courtesy, not the authority.** Anything but a 200 — the network down, a
  * 401, a 429, a 500 — passes as valid, is not kept and paints nothing: the submit runs the rule
@@ -38,6 +38,8 @@ export interface Question {
   readonly params: unknown;
   readonly wire: unknown;
   readonly sig?: string;
+  /** The `base` of the app that asks: `/admin/`. `/` when absent (SDD-87 §3.5). */
+  readonly base?: string;
   /** The arguments of this use. */
   readonly args: unknown;
   /** The errors of a verdict: `null` passes, a code fails with it. */
@@ -74,7 +76,8 @@ interface Waiting {
 export function askRemote(q: Question): Asking {
   const wire = q.wire as QuestionWire;
   const types = { value: q.value, params: { fields: () => q.params } };
-  const path = `${RULE_PREFIX}/${q.id}/${q.name}`;
+  // Under the app's `base`: an app at `/admin/` asks `/admin/_fudic/rule/…`, not another app.
+  const path = `${q.base ?? '/'}${RULE_PREFIX}/${q.id}/${q.name}`.replace(/\/{2,}/gu, '/');
   const cache = new Map<string, Errors | null>();
   const send = q.send ?? ((url: URL, init: RequestInit) => fetch(url, init));
   let waiting: Waiting | undefined;

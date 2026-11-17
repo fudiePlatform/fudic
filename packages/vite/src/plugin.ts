@@ -466,7 +466,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * `@(x | p)`.
    */
   const apiModule = (id: string, side: 'server' | 'browser', locale?: string): string | undefined => {
-    const text = api.module(id, side, compileFor(locale));
+    const i18n = compileFor(locale);
+    const text = api.module(id, side, { base, ...(i18n !== undefined ? { i18n } : {}) });
     if (text === undefined || side === 'server' || nothingToImplement(api.source(id)!)) return text;
     return `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };

@@ -152,7 +152,7 @@ describe('criterion 18: the module of a locale', () => {
 
   it('each text of a form written in the locale, on both sides', () => {
     for (const side of ['server', 'browser'] as const) {
-      const text = emitModule(source, index, {}, side, locale(EN));
+      const text = emitModule(source, index, {}, side, { i18n: locale(EN) });
       for (const translated of ['Write the name.', 'At least {n} years old.', 'Between 0 and 255.', 'The name is missing.']) {
         expect(text, side).toContain(translated);
       }
@@ -161,7 +161,7 @@ describe('criterion 18: the module of a locale', () => {
   });
 
   it('the detail of a `fails` stays as written on the server, whatever the locale (decision 175)', () => {
-    const server = emitModule(source, index, {}, 'server', locale(EN));
+    const server = emitModule(source, index, {}, 'server', { i18n: locale(EN) });
     expect(server).toContain('GuardFails = fails({ denied: [403, "No puedes."] })');
     expect(server).not.toContain("You can't.");
   });
@@ -170,13 +170,13 @@ describe('criterion 18: the module of a locale', () => {
     const plain = emitModule(source, index, {}, 'server');
     expect(plain).toContain('Escribe el nombre.');
     expect(plain).toContain('Al menos {n} años.');
-    expect(emitModule(source, index, {}, 'server', locale({}))).toBe(plain);
-    expect(emitModule(source, index, {}, 'browser', locale({}))).toBe(emitModule(source, index, {}, 'browser'));
+    expect(emitModule(source, index, {}, 'server', { i18n: locale({}) })).toBe(plain);
+    expect(emitModule(source, index, {}, 'browser', { i18n: locale({}) })).toBe(emitModule(source, index, {}, 'browser'));
   });
 
   it('a text without translation stays as written; the others are translated', () => {
     const { ['Escribe el nombre.']: _, ...rest } = EN;
-    const text = emitModule(source, index, {}, 'server', locale(rest));
+    const text = emitModule(source, index, {}, 'server', { i18n: locale(rest) });
     expect(text).toContain('Escribe el nombre.');
     expect(text).toContain('At least {n} years old.');
   });
@@ -188,14 +188,14 @@ describe('criterion 18: the module of a locale', () => {
     ['a hole the text does not have', ['At least ', { hole: 'm' }]],
     ['a #', [{ pound: 'n' }]],
   ] as const)('a translation with %s is more than a template: the text stays as written', (_what, compiled) => {
-    const text = emitModule(source, index, {}, 'server', locale({ ...EN, 'Al menos {n} años.': compiled as CompiledMessage }));
+    const text = emitModule(source, index, {}, 'server', { i18n: locale({ ...EN, 'Al menos {n} años.': compiled as CompiledMessage }) });
     expect(text).toContain('Al menos {n} años.');
     expect(text).toContain('Write the name.');
   });
 
   it('the locale is asked with the message the extraction gives', () => {
     const asked: ApiMessage[] = [];
-    emitModule(source, index, {}, 'server', { translate: (m) => (asked.push(m), undefined) });
+    emitModule(source, index, {}, 'server', { i18n: { translate: (m) => (asked.push(m), undefined) } });
     expect(asked).toEqual(extractApiMessages(FILE, 'forms/f.fudapi').value);
   });
 });

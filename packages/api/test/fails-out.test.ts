@@ -55,8 +55,8 @@ describe('criterion 4: what is generated', () => {
     const index = createApiIndex([source]);
     return {
       dts: emitDeclarations(source, index, {}),
-      server: emitModule(source, index, {}, 'server', ...(i18n === undefined ? [] : [i18n])),
-      browser: emitModule(source, index, {}, 'browser', ...(i18n === undefined ? [] : [i18n])),
+      server: emitModule(source, index, {}, 'server', i18n === undefined ? {} : { i18n }),
+      browser: emitModule(source, index, {}, 'browser', i18n === undefined ? {} : { i18n }),
     };
   };
 

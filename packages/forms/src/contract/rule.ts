@@ -51,6 +51,8 @@ export interface RuleSpec {
   readonly wire?: unknown;
   /** Of a remote rule in `fud-bin`: the signature of its question. */
   readonly sig?: string;
+  /** Of a remote rule, in the browser: the app's `base`, written only when it is not `/` (SDD-87 §3.5). */
+  readonly base?: string;
   /** On the server, of a rule the server runs: the levels of middlewares around its check. */
   readonly chain?: readonly unknown[];
   /**
@@ -183,6 +185,7 @@ export function rule<V, P = {}, C extends string = never, X = never>(spec: RuleS
             params: spec.params,
             wire: spec.wire,
             ...(spec.sig !== undefined ? { sig: spec.sig } : {}),
+            ...(spec.base !== undefined ? { base: spec.base } : {}),
             ...(spec.send !== undefined ? { send: spec.send } : {}),
             args: params,
             // A code the declaration does not have fails as the first one, as a check's does.
