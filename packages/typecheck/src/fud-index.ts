@@ -291,7 +291,9 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
       const home = config?.kind === 'lib' ? SRC_DIR : ROUTES_DIR;
       return file === `${dir}/${home}/${ERROR_FILE}`;
     }
-    return false;
+    // No `fudic.json` above it: an app all the same, as the build reads it — the error page of a
+    // swept project is its `src/routes/_error.fud`.
+    return [...this.#roots].some((root) => file === `${root}/${ROUTES_DIR}/${ERROR_FILE}`);
   }
 
   /** The folder of pipes of a project (SDD-71 §3.1): its `fudic.json`'s `pipes`, read each time. */

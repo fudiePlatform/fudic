@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 24 / 26 — `En curso`.
+> **Progreso:** 25 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -71,7 +71,7 @@
     `packages/compiler/test/fixtures/blog-monolithic.fud`, `packages/compiler/test/emit/__golden__/home.mjs`,
     `packages/formatter/fixtures/canonical/home.fud`, `packages/formatter/test/acceptance/_emit.ts`,
     `packages/diagnostics/fixtures/{FUD0150,FUD0151,FUD0161,FUD0152,FUD0153,FUD0427,FUD0850,FUD0853,FUD0857,FUD0919}/**`.
-- [ ] **7. Los tests con fuentes de página sin layout.**
+- [x] **7. Los tests con fuentes de página sin layout.**
   - Cada fuente de página sin layout de los tests de `compiler`, `vite`, `language-server`,
     `language-core`, `typecheck`, `ssr`, `transport`, `terms` y `mcp` se reescribe como ruta más
     layout, y sigue comprobando lo mismo (SDD §4.4). Los tests de la CLI y del editor que comprueban
