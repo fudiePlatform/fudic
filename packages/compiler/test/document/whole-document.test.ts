@@ -87,6 +87,14 @@ describe('criterion 3: a route that links a document without holes', () => {
     expect(graph.diagnostics.map((d) => d.code)).not.toContain('FUD0423');
   });
 
+  it('a link to a layout that does not exist does not throw: no layout in the graph', () => {
+    // Every page is a route now: a layout renamed or deleted must not crash the build. The link
+    // check names the missing href (FUD0460); the graph only has no layout to follow.
+    const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': ROUTE }));
+    expect(graph.value.layouts).toEqual([]);
+    expect(graph.value.entry.type).toBe('route-document');
+  });
+
   it('a link to a real layout follows it, with no diagnostic', () => {
     const layout = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
     const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': ROUTE, '/_layout.fud': layout }));

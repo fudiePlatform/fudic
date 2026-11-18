@@ -63,6 +63,16 @@ async function buildOf(root: string): Promise<string | undefined> {
   }
 }
 
+describe('a route whose layout does not exist', () => {
+  // Every page is a route since SDD-88: a renamed or deleted layout is a likely mistake, and the
+  // build names the href (FUD0460) instead of crashing on the missing file.
+  it('fails the build with FUD0460, not with an exception from the filesystem', async () => {
+    const said = await buildOf(project({ 'src/routes/index.fud': route('') }));
+    expect(said).toContain('FUD0460');
+    expect(said).not.toContain('ENOENT');
+  }, 300000);
+});
+
 describe('the runtime marker in a route', () => {
   it('in the route’s <head>: the build fails with FUD1583', async () => {
     const said = await buildOf(project({ 'src/layouts/_layout.fud': layout(''), 'src/routes/index.fud': route(MARKER) }));
