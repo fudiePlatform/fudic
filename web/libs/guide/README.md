@@ -1,7 +1,8 @@
 # @web/guide
 
-The style guide of the workspace: design tokens with a dark mode, a self-hosted font (Inter, under
-the SIL Open Font License in `fonts/OFL.txt`), a favicon, and one stylesheet per element the
+The style guide of the workspace: design tokens with a dark mode, three self-hosted fonts
+(Newsreader for headings, Inter Tight for text, JetBrains Mono for code, each under the SIL Open
+Font License in `fonts/OFL-*.txt`), a favicon, and one stylesheet per element the
 browser styles.
 
 **The page gets all of it.** Every page of a project that depends on this library links

@@ -19,7 +19,7 @@
 
 :where(th, td) {
   padding: var(--guide-space-2) var(--guide-space-3);
-  border-bottom: 1px solid var(--guide-line);
+  border-bottom: 1px solid var(--guide-rule);
   text-align: start;
   vertical-align: top;
 }

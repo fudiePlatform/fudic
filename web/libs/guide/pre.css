@@ -1,11 +1,15 @@
+/* Code sits on slate in both modes: the page may be light or dark, the code never changes. */
 :where(pre) {
   margin: 0 0 var(--guide-space-4);
-  padding: var(--guide-space-3) var(--guide-space-4);
+  padding: var(--guide-space-4) var(--guide-space-5);
   overflow: auto;
   font-family: var(--guide-font-mono);
   font-size: var(--guide-text-sm);
-  line-height: var(--guide-leading-normal);
-  background: var(--guide-raised);
+  line-height: 1.7;
+  color: var(--guide-code-ink);
+  background: var(--guide-code-surface);
+  border: 1px solid var(--guide-code-rule);
   border-radius: var(--guide-radius-md);
   tab-size: 2;
+  color-scheme: dark;
 }

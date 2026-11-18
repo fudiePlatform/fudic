@@ -3,7 +3,7 @@
   padding: var(--guide-space-3);
   color: var(--guide-ink);
   background: var(--guide-raised);
-  border: 1px solid var(--guide-line);
+  border: 1px solid var(--guide-rule);
   border-radius: var(--guide-radius-md);
   box-shadow: var(--guide-shadow-md);
 }

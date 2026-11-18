@@ -1,7 +1,7 @@
 :where(details) {
   margin: 0 0 var(--guide-space-4);
   padding: var(--guide-space-2) var(--guide-space-3);
-  border: 1px solid var(--guide-line);
+  border: 1px solid var(--guide-rule);
   border-radius: var(--guide-radius-md);
 }
 

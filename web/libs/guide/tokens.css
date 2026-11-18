@@ -1,36 +1,71 @@
 /* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
 @font-face {
-  font-family: "Inter";
+  font-family: "Newsreader";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 200 800;
   font-display: swap;
-  src: url(./fonts/InterVariable.woff2) format("woff2");
+  src: url(./fonts/newsreader-latin-standard-normal.woff2) format("woff2");
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: "Newsreader";
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url(./fonts/newsreader-latin-standard-italic.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(./fonts/inter-tight-latin-wght-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Tight";
   font-style: italic;
   font-weight: 100 900;
   font-display: swap;
-  src: url(./fonts/InterVariable-Italic.woff2) format("woff2");
+  src: url(./fonts/inter-tight-latin-wght-italic.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(./fonts/jetbrains-mono-latin-wght-normal.woff2) format("woff2");
 }
 
 :root {
   color-scheme: light dark;
 
-  /* Colour */
-  --guide-ink: light-dark(#1c1d21, #ececf1);
-  --guide-muted: light-dark(#5b606b, #a4a9b4);
-  --guide-surface: light-dark(#ffffff, #16171b);
-  --guide-raised: light-dark(#f6f7f9, #202228);
-  --guide-line: light-dark(#858a94, #6b707c);
-  --guide-accent: light-dark(#2457d6, #7aa2ff);
-  --guide-on-accent: light-dark(#ffffff, #0b1020);
-  --guide-danger: light-dark(#c0262d, #ff7b7b);
-  --guide-on-danger: light-dark(#ffffff, #1a0505);
-  --guide-success: light-dark(#1f7a3d, #5fd38a);
-  --guide-warning: light-dark(#8a5a00, #f0b44c);
-  --guide-focus: light-dark(#2457d6, #7aa2ff);
+  /* Colour: ivory, slate and clay. Text pairs reach 4.5:1 on surface and raised; line and brand, 3:1. */
+  --guide-ink: light-dark(#141413, #eeece4);
+  --guide-muted: light-dark(#5e5d59, #a9a69b);
+  --guide-surface: light-dark(#faf9f5, #181715);
+  --guide-raised: light-dark(#f0eee6, #23221f);
+  --guide-line: light-dark(#8b897f, #7c796f);
+  --guide-rule: light-dark(#dedcd1, #34332f);
+  --guide-accent: light-dark(#a9472a, #e99a7e);
+  --guide-on-accent: light-dark(#faf9f5, #181715);
+  --guide-brand: light-dark(#c6613f, #e08a6a);
+  --guide-danger: light-dark(#b3261e, #ff8a80);
+  --guide-on-danger: light-dark(#faf9f5, #181715);
+  --guide-success: light-dark(#2e6b3a, #7acb8c);
+  --guide-warning: light-dark(#8a5a00, #e8b04a);
+  --guide-focus: light-dark(#a9472a, #e99a7e);
+
+  /* Code: always on slate, in both modes. The rule marks its edge where the page is dark too. */
+  --guide-code-surface: #141413;
+  --guide-code-raised: #1f1e1b;
+  --guide-code-ink: #e8e6dc;
+  --guide-code-muted: #8f8c81;
+  --guide-code-accent: #e89273;
+  --guide-code-string: #cdb98c;
+  --guide-code-rule: light-dark(#141413, #34332f);
 
   /* Space */
   --guide-space-1: 0.25rem;
@@ -42,29 +77,30 @@
   --guide-space-7: 3rem;
   --guide-space-8: 4rem;
 
-  /* Type */
-  --guide-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --guide-font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+  /* Type: a serif for headings, a quiet sans for text, a mono for code. */
+  --guide-font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --guide-font-sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --guide-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   --guide-text-xs: 0.75rem;
   --guide-text-sm: 0.875rem;
   --guide-text-base: 1rem;
   --guide-text-lg: 1.125rem;
-  --guide-text-xl: 1.25rem;
-  --guide-text-2xl: 1.5rem;
-  --guide-text-3xl: 2rem;
-  --guide-leading-tight: 1.25;
+  --guide-text-xl: 1.375rem;
+  --guide-text-2xl: 1.75rem;
+  --guide-text-3xl: 2.5rem;
+  --guide-leading-tight: 1.15;
   --guide-leading-normal: 1.6;
   --guide-weight-normal: 400;
   --guide-weight-medium: 500;
-  --guide-weight-bold: 700;
+  --guide-weight-bold: 600;
 
   /* Shape */
   --guide-radius-sm: 0.25rem;
-  --guide-radius-md: 0.5rem;
-  --guide-radius-lg: 0.75rem;
+  --guide-radius-md: 0.75rem;
+  --guide-radius-lg: 1rem;
   --guide-radius-full: 9999px;
-  --guide-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
-  --guide-shadow-md: 0 4px 12px rgb(0 0 0 / 0.12);
+  --guide-shadow-sm: 0 1px 2px rgb(20 20 19 / 0.08);
+  --guide-shadow-md: 0 4px 12px rgb(20 20 19 / 0.12);
   --guide-focus-width: 2px;
 
   /* Motion */

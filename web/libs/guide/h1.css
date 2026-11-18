@@ -1,9 +1,10 @@
 :where(h1) {
+  font-family: var(--guide-font-display);
   margin: 0 0 var(--guide-space-4);
   font-size: var(--guide-text-3xl);
-  font-weight: var(--guide-weight-bold);
+  font-weight: var(--guide-weight-normal);
   line-height: var(--guide-leading-tight);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 @supports (text-wrap: balance) {

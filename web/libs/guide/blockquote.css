@@ -1,6 +1,6 @@
 :where(blockquote) {
   margin: 0 0 var(--guide-space-4);
   padding: var(--guide-space-2) var(--guide-space-4);
-  border-inline-start: 4px solid var(--guide-line);
+  border-inline-start: 3px solid var(--guide-brand);
   color: var(--guide-muted);
 }

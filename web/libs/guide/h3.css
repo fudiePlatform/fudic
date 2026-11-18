@@ -1,4 +1,5 @@
 :where(h3) {
+  font-family: var(--guide-font-display);
   margin: var(--guide-space-5) 0 var(--guide-space-2);
   font-size: var(--guide-text-xl);
   font-weight: var(--guide-weight-medium);

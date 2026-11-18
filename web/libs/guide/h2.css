@@ -1,7 +1,8 @@
 :where(h2) {
+  font-family: var(--guide-font-display);
   margin: var(--guide-space-6) 0 var(--guide-space-3);
   font-size: var(--guide-text-2xl);
-  font-weight: var(--guide-weight-bold);
+  font-weight: var(--guide-weight-normal);
   line-height: var(--guide-leading-tight);
   letter-spacing: -0.01em;
 }
