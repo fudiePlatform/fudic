@@ -24,9 +24,23 @@ function asked(page: Page): string[] {
 
 /** The page of `ui`: its status in `.codigo`, and its link home. */
 async function expectUiPage(page: Page, status: number): Promise<void> {
-  await expect(page.locator('main[data-error-page="ui"]')).toBeVisible();
+  await expect(page.locator('[data-error-page="ui"]')).toBeVisible();
   await expect(page.locator('.codigo')).toHaveText(String(status));
   await expect(page.getByRole('link', { name: 'Ir al inicio' })).toBeVisible();
+}
+
+/**
+ * What the layout puts in every document it paints (SDD-88 §4.3): `<html lang="es">`, its
+ * viewport, the runtime (its marker becomes the boot script, under the app's base) and the
+ * `<main>` the route's body goes in. Read off the page as the browser has it.
+ */
+async function layoutOf(page: Page): Promise<{ lang: string; viewport: number; boot: string[]; main: number }> {
+  return page.evaluate(() => ({
+    lang: document.documentElement.lang,
+    viewport: document.head.querySelectorAll('meta[name="viewport"]').length,
+    boot: [...document.head.querySelectorAll<HTMLScriptElement>('script[src*="fudic-boot-"]')].map((s) => new URL(s.src).pathname.replace(/-[0-9a-f]+\.js$/u, '.js')),
+    main: document.querySelectorAll('body > main').length,
+  }));
 }
 
 /** /admin/fallos, its buttons and its form live: the client ran. */
@@ -62,9 +76,13 @@ test.describe('admin: the page of ui, under /admin/', () => {
     await expectUiPage(page, 500);
     await expect(page.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/admin/fallos');
     await expect(page.getByRole('link', { name: 'Ir al inicio' })).toHaveAttribute('href', '/admin/');
-    // The call, and every /_fudic/ the browser asked after it, under /admin/.
+    // The call, and every /_fudic/ the browser asked after it, under /admin/ — except the pieces
+    // of the published runtime (`/_fudic/<version>/…`), which carry no base on purpose (SDD-45
+    // §4.2): one copy on the origin for every app. The error page loads them since it has a
+    // layout, and with it the runtime (SDD-88).
     expect(paths).toContain('/admin/_fudic/fn/routes/fallos/rompe');
-    expect(paths.filter((p) => p.includes('/_fudic/')).every((p) => p.startsWith('/admin/'))).toBe(true);
+    const runtimePiece = /^\/_fudic\/\d+\.\d+\.\d+-[0-9a-f]+\//u;
+    expect(paths.filter((p) => p.includes('/_fudic/') && !p.startsWith('/admin/') && !runtimePiece.test(p))).toEqual([]);
   });
 
   test('the 403 goes to /admin/entrar', async ({ page }) => {
@@ -87,11 +105,43 @@ test.describe('admin: the page of ui, under /admin/', () => {
   });
 });
 
+test.describe('an error page is a page: the same layout as the app’s pages (SDD-88 §4.3, criterion 29)', () => {
+  test('admin: its error page (ui’s) and /admin/ are painted by the same layout, ui’s', async ({ page }) => {
+    await page.goto(`${ADMIN}/admin/`);
+    const home = await layoutOf(page);
+    await page.goto(`${ADMIN}/admin/no-existe`);
+    await expectUiPage(page, 404);
+    const error = await layoutOf(page);
+    expect(home).toEqual({ lang: 'es', viewport: 1, boot: ['/admin/fudic-boot.js'], main: 1 });
+    expect(error).toEqual(home);
+    // The error page sits inside the layout's <main>, as a route's body does.
+    await expect(page.locator('body > main [data-error-page="ui"]')).toBeVisible();
+  });
+
+  test('tienda: its error page and / are painted by the same layout, tienda’s', async ({ page }) => {
+    await page.goto(`${TIENDA}/`);
+    const home = await layoutOf(page);
+    const sheets = await page.evaluate(() => [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href));
+    await page.goto(`${TIENDA}/no-existe`);
+    const error = await layoutOf(page);
+    expect(home).toEqual({ lang: 'es', viewport: 1, boot: ['/fudic-boot.js'], main: 1 });
+    expect(error).toEqual(home);
+    // The project's guide sheet is on every page, each with its pruned copy (SDD-49), so it is
+    // compared by name, not by hash. tienda.css styles only <tienda-card>, which the error page
+    // does not render: its copy there is empty and nothing is written for it.
+    const errorSheets = await page.evaluate(() => [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href));
+    const named = (urls: readonly string[]): string[] => urls.map((u) => new URL(u).pathname.replace(/-[\w-]+\.css$/u, '.css'));
+    expect(named(sheets).filter((s) => s === '/assets/guide.css')).toHaveLength(1);
+    expect(named(errorSheets)).toEqual(['/assets/guide.css']);
+    await expect(page.locator('body > main [data-error-page="tienda"]')).toBeVisible();
+  });
+});
+
 test.describe('tienda: its own page wins', () => {
   test('/no-existe is painted with the page of tienda, not with the one of ui', async ({ page }) => {
     const response = await page.goto(`${TIENDA}/no-existe`);
     expect(response?.status()).toBe(404);
-    await expect(page.locator('main[data-error-page="tienda"]')).toBeVisible();
+    await expect(page.locator('[data-error-page="tienda"]')).toBeVisible();
     await expect(page.locator('h1')).toHaveText('La tienda no encuentra eso (404)');
     await expect(page.getByRole('link', { name: 'Ir al inicio' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Volver a la tienda' })).toHaveAttribute('href', '/');
