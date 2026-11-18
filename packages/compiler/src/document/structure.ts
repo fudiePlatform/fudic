@@ -372,8 +372,30 @@ export function structureDocument(
   const bodies: Diagnostic[] = [];
   checkSnippetBodies(structured.value.snippets, bodies);
   rejectDuplicateSnippets(structured.value.snippets, bodies);
+  rejectMisplacedRuntime(doc.children, structured.value, bodies);
   if (bodies.length === 0) return structured;
   return withDiagnostics(structured.value, [...structured.diagnostics, ...bodies]);
+}
+
+/**
+ * `FUD1583` over every runtime marker that is not a direct child of a layout's `<head>` (SDD-88).
+ * The runtime is the layout's: its marker is where every page that links it gets its scripts.
+ * Anywhere else — a route's `<head>` or markup, a component, a layout's `<body>` — it was written
+ * as it is and the page got no runtime. Every kind of node is walked through its children, the
+ * branches of a Razor construct included.
+ */
+function rejectMisplacedRuntime(nodes: readonly unknown[], structured: StructuredDocument, diagnostics: Diagnostic[]): void {
+  const allowed = structured.type === 'layout-document' ? new Set<unknown>(structured.head.children) : new Set<unknown>();
+  const visit = (node: unknown): void => {
+    if (typeof node !== 'object' || node === null) return;
+    const el = node as ElementNode;
+    if (el.type === 'element' && isRuntimeMarker(el) && !allowed.has(el)) diagnostics.push(FUD1583({ span: el.span }));
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (typeof value === 'object' && value !== null && 'type' in value) visit(value);
+    }
+  };
+  nodes.forEach(visit);
 }
 
 function byRole(source: string, doc: HtmlDocument): ParseResult<StructuredDocument> {
@@ -687,11 +709,6 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
     if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
   }
   rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
-  // The runtime is the layout's: its marker is where every page that links it gets its scripts,
-  // and one in a route's `<head>` goes nowhere (FUD1583).
-  for (const child of head?.children ?? []) {
-    if (isElement(child) && isRuntimeMarker(child)) diagnostics.push(FUD1583({ span: child.span }));
-  }
 
   // `structureDocument` only routes here when a layout link exists, so the non-optional
   // field is always filled; the placeholder keeps the type total without a cast.
