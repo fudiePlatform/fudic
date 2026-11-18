@@ -174,13 +174,9 @@ La CLI genera un workspace pensado para vivir solo. Para integrarlo en el del re
 - La raíz de `web/` se queda solo con `dev` y `preview`. Su `build` (`pnpm -r build`) relanzaría
   el build de todo el monorepo, y `build`, `test` y `spec` duplicarían lo que ya hace el fan-out
   de la raíz.
+- La web **no usa Service Worker**: se borraron `sw.json` y `sw.headers`.
 
-Hallazgos de la CLI:
-
-- `fudic new` dentro de un repo git existente hace su propio `git init` y su commit, y deja un
-  repo incrustado. Se evitó con `--no-git`; debería detectarlo sola.
-- `fudic new --workspace` dentro de un workspace pnpm existente crea uno anidado en vez de
-  sumarse al de fuera.
+Todo lo que la CLI no resuelve sola se anota en [hallazgos-cli.md](hallazgos-cli.md).
 
 ## 7. Orden de trabajo
 
@@ -200,3 +196,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 |---|---|
 | 2026-11-18 | Worktree `web-publica` creado. Boceto movido a `docs/web/hero.html`. Este documento. |
 | 2026-11-18 | Plan validado. Workspace `web/` creado con la CLI e integrado en el monorepo (§6). |
+| 2026-11-18 | Fuera el Service Worker. Notas de la CLI en `hallazgos-cli.md`. |
