@@ -181,8 +181,16 @@ describe('fudicDiagnostics and the index', () => {
     expect(index.errorPage(`${app}/src/routes/index.fud`)).toBe(false);
     // Windows separators read as POSIX.
     expect(index.errorPage(`${app}/src/routes/_error.fud`.replaceAll('/', '\\'))).toBe(true);
-    // No fudic.json anywhere above: nobody's error page.
+    // No fudic.json anywhere above, and no project swept there: nobody's error page.
     expect(index.errorPage(`${loose}/src/routes/_error.fud`)).toBe(false);
+  });
+
+  it('a project with no fudic.json is an app: the check says FUD1581 for its src/routes/_error.fud, as the build does', () => {
+    const root = project({ 'src/routes/_error.fud': '<h1>x</h1>\n' });
+    expect(codesIn(root, 'src/routes/_error.fud')).toContain('FUD1581');
+    // Its src/_error.fud is no app's error page.
+    const other = project({ 'src/_error.fud': '<h1>x</h1>\n' });
+    expect(codesIn(other, 'src/_error.fud')).not.toContain('FUD1581');
   });
 });
 
