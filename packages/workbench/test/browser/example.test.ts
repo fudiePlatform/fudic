@@ -47,7 +47,7 @@ describe('app-card of the example', () => {
         '  then\n    min-height app-card 1\n    visible app-card\n    text app-card "Featured"\n\n' +
         'criterion pulsar\n  given\n    props destacada\n  when\n    click role:link/"Featured"\n',
     );
-    expect(measure).toMatchObject({ verdict: 'pass', pageErrors: [] });
+    expect(measure, JSON.stringify(measure).slice(0, 2500)).toMatchObject({ verdict: 'pass', pageErrors: [] });
     expect(measure!.steps.map((s) => [s.term, s.layer, 'pass' in s && s.pass])).toEqual([
       ['route', 'workspace', true],
       ['set-attribute', 'framework', true],
