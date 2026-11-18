@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- The same line as the storefront's layout, and it resolves to a different worker:
-         the URL is derived from this build's `base`, so it is `/admin/fudic-sw.js` and its
-         scope is `/admin/`. -->
+    <!-- The layout of the library: every app that uses it writes this same line, and in each
+         it resolves to that app's own worker. The URL is derived from the build's `base`, so in
+         `admin` it is `/admin/fudic-sw.js` and its scope is `/admin/`. -->
     <script type="module" src="fudic:runtime"></script>
 
     @RenderHead()

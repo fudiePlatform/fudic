@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 21 / 26 — `En curso`.
+> **Progreso:** 24 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -207,7 +207,7 @@
 
 ## Fase 8 — Los ejemplos y el cierre
 
-- [ ] **23. `examples/workspace`.**
+- [x] **23. `examples/workspace`.**
   - El layout de `admin` pasa a `libs/ui/src/layouts/_layout.fud`, exportado. Las rutas de `admin`
     lo enlazan por el paquete. `libs/ui/src/_error.fud` y `tienda/src/routes/_error.fud` como rutas
     con layout. `tests/errores.spec.ts` con lo de SDD §4.3 (criterios 28, 29).
@@ -216,12 +216,12 @@
   - *Ficheros:* `libs/ui/package.json`, `libs/ui/src/layouts/_layout.fud`, `libs/ui/src/_error.fud`,
     `apps/admin/src/layouts/_layout.fud` (borrado), `apps/admin/src/routes/*.fud`,
     `apps/tienda/src/routes/_error.fud`, `tests/errores.spec.ts`.
-- [ ] **24. `verify:generated`.**
+- [x] **24. `verify:generated`.**
   - El paso `g error-page --project ui` necesita el layout de `ui`: un paso `g layout _layout
     --project ui` antes. El resto de pasos, sin cambios.
   - *Depende de:* 18.
   - *Ficheros:* `scripts/verify-generated.mjs`.
-- [ ] **25. Las notas en los SDD cerrados.**
+- [x] **25. Las notas en los SDD cerrados.**
   - «Enmendada por SDD-88» en SDD-22 §4.5 (regla 3) y en SDD-87 §3.6 y §8.1, decisión 12 (SDD §8.1,
     decisión 12).
   - *Depende de:* —.
