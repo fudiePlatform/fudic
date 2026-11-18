@@ -30,6 +30,18 @@ describe('templates', () => {
     expect(TEMPLATES.map((spec) => spec.file).sort()).toEqual(onDisk);
   });
 
+  // SDD-88 criterion 21: no template writes a page without a layout.
+  it('no template is a page without a layout: page.fud is gone, and every doctype is a layout', () => {
+    const onDisk = readdirSync(templatePath('.')).filter((file) => file.endsWith('.fud'));
+    expect(onDisk).not.toContain('page.fud');
+    expect(TEMPLATES.map((spec) => spec.role as string)).not.toContain('page-document');
+    for (const spec of TEMPLATES) {
+      const source = renderTemplate(spec.file, spec.sample);
+      if (/^\s*<!DOCTYPE/iu.test(source)) expect(spec.role, spec.file).toBe('layout-document');
+    }
+    expect(TEMPLATES.find((spec) => spec.file === '_error.fud')?.role).toBe('route-document');
+  });
+
   it('a missing placeholder value is a hard failure, never a {{leak}}', () => {
     expect(() => renderTemplate('component.fud', { tag: 'app-card' })).toThrow(/no value for/u);
   });

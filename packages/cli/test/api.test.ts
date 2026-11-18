@@ -215,13 +215,15 @@ describe('criterion 2: g api on a route', () => {
     expect(errorsOf(fs.at('src/routes/about.fud'))).toEqual([]);
   });
 
-  it('on a page with no layout, the link goes inside <head>', async () => {
+  // SDD-88: a whole document is a layout (decision 183), and a layout has no server.
+  it('on a whole document, a layout since SDD-88, it refuses with FUD1240 and writes nothing', async () => {
     const fs = project();
-    const { code } = await cli(fs, 'g', 'api', 'src/routes/solo.fud', '--cwd', CWD);
-    expect(code).toBe(0);
-    expect(fs.at('src/routes/solo.fud')).toBe(PAGE.replace('  <head>\n', '  <head>\n    <link rel="server" href="./solo.fudapi">\n'));
-    expect(fs.at('src/routes/solo.fudapi')).toContain('load\n  title  str\n');
-    expect(fs.at('src/server/routes/solo.ts')).toContain("from 'fudic:routes/solo'");
+    const before = fs.paths();
+    const { code, out } = await cli(fs, 'g', 'api', 'src/routes/solo.fud', '--cwd', CWD);
+    expect(code).not.toBe(0);
+    expect(out).toContain('FUD1240');
+    expect(fs.at('src/routes/solo.fud')).toBe(PAGE);
+    expect(fs.paths()).toEqual(before);
   });
 });
 
