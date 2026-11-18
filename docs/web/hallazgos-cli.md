@@ -43,3 +43,18 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   del README y de `page.headers`.
 - **Qué debería hacer.** Que las plantillas dependan de si hay Service Worker. El README de la app
   debería decir que se borren los dos ficheros, no solo `sw.json`.
+
+## 4. La CLI recomienda `pnpm dev` y no sus propios comandos
+
+- **Qué pasó.** La CLI tiene `fudic dev`, `fudic test` y `fudic spec`, pero su propia salida manda
+  a los scripts de pnpm. Lo hacen el «Next» de `fudic new` (`pnpm dev`, `pnpm test`, `pnpm spec`),
+  la tabla de `fudic g component` (`pnpm test`, `pnpm spec`) y el README de la app
+  (`pnpm run dev`…).
+- **Y con `--pm npm` recomienda comandos que no existen.** El «Next» dice `npm dev` y `npm spec`,
+  pero npm solo ejecuta así sus scripts integrados (`npm test` sí funciona). Los demás necesitan
+  `npm run dev` y `npm run spec`. El README sí lo escribe bien.
+- **Cómo se resolvió.** En la documentación de la web se enseñan los comandos de la CLI
+  (`npx fudic dev`, `npx fudic test`, `npx fudic spec`). La salida de la CLI que aparece citada se
+  deja tal cual la imprime.
+- **Qué debería hacer.** Recomendar sus propios comandos (`fudic dev`…), que funcionan igual con
+  cualquier gestor de paquetes. Si sigue recomendando scripts, con `npm run` para npm.
