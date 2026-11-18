@@ -1,0 +1,87 @@
+@code {
+  /**
+   * A block of code with the file it belongs to and a button that copies it. The code is the
+   * <pre> written between its tags, so it is in the page even before any script runs.
+   */
+  import { signal } from "@fudic/core";
+
+  const { path = "" } = props<{
+    /** The file the code belongs to, e.g. "src/routes/index.fud". Empty for a command. */
+    path?: string;
+  }>();
+
+  const copied = signal(false);
+
+  async function copy(event: MouseEvent) {
+    const root = (event.currentTarget as HTMLElement).getRootNode() as ShadowRoot;
+    const text = root.host.querySelector("pre")?.textContent ?? "";
+    try {
+      await navigator.clipboard.writeText(text);
+      copied.set(true);
+      setTimeout(() => copied.set(false), 1600);
+    } catch {
+      copied.set(false);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      margin: 0 0 var(--guide-space-5);
+    }
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--guide-space-3);
+      padding: var(--guide-space-2) var(--guide-space-3) var(--guide-space-2) var(--guide-space-5);
+      font-family: var(--guide-font-mono);
+      font-size: var(--guide-text-xs);
+      color: var(--guide-code-muted);
+      background: var(--guide-code-raised);
+      border: 1px solid var(--guide-code-rule);
+      border-bottom: 0;
+      border-radius: var(--guide-radius-md) var(--guide-radius-md) 0 0;
+    }
+    .path {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .copy {
+      margin-inline-start: auto;
+      padding: var(--guide-space-1) var(--guide-space-3);
+      font-size: var(--guide-text-xs);
+      color: var(--guide-code-ink);
+      background: transparent;
+      border: 1px solid var(--guide-code-muted);
+      border-radius: var(--guide-radius-sm);
+    }
+    .copy:focus-visible {
+      outline-color: var(--guide-code-accent);
+    }
+    .status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<ui-code>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button">
+    <div class="bar">
+      @if (path !== "") {
+        <span class="path">@path</span>
+      }
+      <button type="button" class="copy" @click=@copy>@(copied() ? "Copiado" : "Copiar")</button>
+      <span class="status" role="status">@(copied() ? "Código copiado" : "")</span>
+    </div>
+    <slot></slot>
+  </template>
+</ui-code>

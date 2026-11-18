@@ -1,18 +1,12 @@
 /* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
+/* Newsreader has no italic face here: the one italic glyph the site uses, the @ of the wordmark,
+   is synthesized from the roman, and that saves a download. */
 @font-face {
   font-family: "Newsreader";
   font-style: normal;
   font-weight: 200 800;
   font-display: swap;
-  src: url(./fonts/newsreader-latin-standard-normal.woff2) format("woff2");
-}
-
-@font-face {
-  font-family: "Newsreader";
-  font-style: italic;
-  font-weight: 200 800;
-  font-display: swap;
-  src: url(./fonts/newsreader-latin-standard-italic.woff2) format("woff2");
+  src: url(./fonts/newsreader-latin-wght-normal.woff2) format("woff2");
 }
 
 @font-face {
@@ -37,6 +31,36 @@
   font-weight: 100 800;
   font-display: swap;
   src: url(./fonts/jetbrains-mono-latin-wght-normal.woff2) format("woff2");
+}
+
+/* A system font shaped like each web font, so the text does not move when the web font arrives.
+   The overrides come from the fonts' metrics (Capsize): size-adjust matches the average width,
+   the rest the vertical metrics at that size. */
+@font-face {
+  font-family: "Newsreader Fallback";
+  src: local("Georgia");
+  size-adjust: 96.12%;
+  ascent-override: 76.47%;
+  descent-override: 27.57%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Inter Tight Fallback";
+  src: local("Arial");
+  size-adjust: 96.39%;
+  ascent-override: 100.51%;
+  descent-override: 25.03%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "JetBrains Mono Fallback";
+  src: local("Courier New");
+  size-adjust: 99.98%;
+  ascent-override: 102.02%;
+  descent-override: 30%;
+  line-gap-override: 0%;
 }
 
 :root {
@@ -78,9 +102,9 @@
   --guide-space-8: 4rem;
 
   /* Type: a serif for headings, a quiet sans for text, a mono for code. */
-  --guide-font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
-  --guide-font-sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --guide-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  --guide-font-display: "Newsreader", "Newsreader Fallback", Georgia, serif;
+  --guide-font-sans: "Inter Tight", "Inter Tight Fallback", Arial, sans-serif;
+  --guide-font-mono: "JetBrains Mono", "JetBrains Mono Fallback", "Courier New", monospace;
   --guide-text-xs: 0.75rem;
   --guide-text-sm: 0.875rem;
   --guide-text-base: 1rem;

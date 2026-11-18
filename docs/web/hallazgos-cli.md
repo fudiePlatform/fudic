@@ -58,3 +58,52 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   deja tal cual la imprime.
 - **Qué debería hacer.** Recomendar sus propios comandos (`fudic dev`…), que funcionan igual con
   cualquier gestor de paquetes. Si sigue recomendando scripts, con `npm run` para npm.
+
+## 5. `--project ui` escoge el `ui` de otro workspace
+
+- **Qué pasó.** Desde `web/`, `fudic g c code --project ui --dry-run` iba a escribir en
+  `examples/workspace/libs/ui/…`. Con `web/` integrado en el monorepo, la CLI sube hasta el
+  `pnpm-workspace.yaml` de la raíz, ve todos los proyectos del repo y se queda con el primero que
+  se llama `ui`. Sin `--dry-run`, habría escrito en un ejemplo ajeno sin avisar.
+- **Cómo se resolvió.** Los generadores se lanzan desde dentro del proyecto (`web/libs/ui`,
+  `web/apps/site`) y sin `--project`: la CLI usa el `fudic.json` más cercano, y ahí acierta.
+- **Qué debería hacer.** Ante dos proyectos con el mismo nombre, no escoger uno: decir que el
+  nombre es ambiguo y listar las rutas. Y preferir el proyecto más cercano al directorio actual. Se
+  relaciona con el nº 2: la CLI no sabe vivir dentro de un monorepo que no ha creado ella.
+
+## 6. `fudic g page --layout @web/ui/…` revienta, y la alternativa escribe una ruta frágil
+
+- **Qué pasó.** En `web/apps/site`,
+  `fudic g page docs/getting-started --layout @web/ui/layouts/docs.fud` termina con
+  `error ENOENT: … examples\vista-errores\package.json`. Para resolver el href recorre todos los
+  proyectos del `pnpm-workspace.yaml` de la raíz, y `examples/vista-errores` es una carpeta sin
+  `package.json` (encaja en `examples/*`). Un proyecto ajeno roto tumba el comando.
+- **La alternativa.** Con la ruta relativa (`--layout ../../libs/ui/src/layouts/docs.fud`) sí
+  genera la página, pero escribe `<link rel="layout" href="../../../../../libs/ui/src/layouts/docs.fud">`:
+  una ruta que cruza de un paquete a otro y se salta los `exports` de la librería.
+- **Cómo se resolvió.** Se generó con la ruta relativa y se cambió el `href` a mano por
+  `@web/ui/layouts/docs.fud`.
+- **Qué debería hacer.** Ignorar, o como mucho avisar de, las carpetas del workspace que no son
+  proyectos, en vez de abortar. Y cuando el layout es de otro paquete, escribir el enlace por el
+  nombre del paquete aunque se le haya dado por ruta.
+- **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
+  la primera letra del segmento, pero deja el guion.
+
+## 7. No hay generador para la hoja de estilos de un layout
+
+- **Qué pasó.** El light DOM de un layout (cabecera, columnas, pie) se estiliza con una hoja que el
+  layout enlaza (`<link rel="stylesheet" href="../styles/docs.css">`). `fudic g style` no sirve
+  para eso: escribe una hoja de `globalStyles`, que se adopta dentro de los shadow roots.
+- **Cómo se resolvió.** `web/libs/ui/src/styles/docs.css` se escribió a mano, y el enlace también.
+- **Qué debería hacer.** Que `fudic g layout` cree su hoja y la enlace, o que `fudic g style`
+  tenga una opción para una hoja de página.
+
+## 8. `fudic preview` en una app sirve todas las del monorepo
+
+- **Qué pasó.** Su ayuda dice «In an app, that app alone». Desde `web/apps/site`, `fudic preview`
+  intentó servir todas las apps del `pnpm-workspace.yaml` de la raíz y terminó con un
+  `FUD0454` por cada una sin compilar (`project`, `render-project`, `vista-errores`…).
+- **Cómo se resolvió.** `fudic preview --project site`. Funciona porque solo hay un proyecto
+  `site` en todo el repo (ver el nº 5).
+- **Qué debería hacer.** Lo que dice su ayuda: dentro de una app, solo esa app. Es la misma causa
+  que el nº 2 y el nº 5.

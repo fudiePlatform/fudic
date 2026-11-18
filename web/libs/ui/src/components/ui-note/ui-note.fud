@@ -1,0 +1,54 @@
+@code {
+  /**
+   * A note beside the text: a remark, a tip or something important. Its text is what is written
+   * between the tags.
+   */
+  const { kind = "note" } = props<{
+    /** "note" for a remark, "tip" for advice, "important" for what must not be missed. */
+    kind?: "note" | "tip" | "important";
+  }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      margin: 0 0 var(--guide-space-5);
+      padding: var(--guide-space-4) var(--guide-space-5);
+      background: var(--guide-raised);
+      border-inline-start: 3px solid var(--guide-muted);
+      border-radius: var(--guide-radius-sm);
+    }
+    :host([kind="tip"]) {
+      border-inline-start-color: var(--guide-success);
+    }
+    :host([kind="important"]) {
+      border-inline-start-color: var(--guide-accent);
+    }
+    .label {
+      margin: 0 0 var(--guide-space-2);
+      font-size: var(--guide-text-sm);
+      font-weight: var(--guide-weight-bold);
+      color: var(--guide-muted);
+    }
+    :host([kind="tip"]) .label {
+      color: var(--guide-success);
+    }
+    :host([kind="important"]) .label {
+      color: var(--guide-accent);
+    }
+  </style>
+</head>
+
+<ui-note kind=@kind role="note">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p">
+    @if (kind === "tip") {
+      <p class="label">Consejo</p>
+    } @else if (kind === "important") {
+      <p class="label">Importante</p>
+    } @else {
+      <p class="label">Nota</p>
+    }
+    <slot></slot>
+  </template>
+</ui-note>

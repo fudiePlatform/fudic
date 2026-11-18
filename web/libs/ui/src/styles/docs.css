@@ -1,0 +1,203 @@
+/* The light DOM of the documentation: the header, the three columns and the footer. Every value is
+   a guide token, so the dark mode needs nothing here. */
+
+.skip {
+  position: absolute;
+  inset-inline-start: var(--guide-space-4);
+  inset-block-start: var(--guide-space-4);
+  z-index: 10;
+  padding: var(--guide-space-2) var(--guide-space-4);
+  color: var(--guide-on-accent);
+  background: var(--guide-accent);
+  border-radius: var(--guide-radius-sm);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* Header */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--guide-space-4);
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: var(--guide-space-5) var(--guide-space-5);
+  border-bottom: 1px solid var(--guide-rule);
+}
+
+.wordmark {
+  font-family: var(--guide-font-display);
+  font-size: var(--guide-text-2xl);
+  font-weight: var(--guide-weight-medium);
+  letter-spacing: -0.02em;
+  color: var(--guide-ink);
+  text-decoration: none;
+}
+
+.wordmark .at {
+  font-style: italic;
+  color: var(--guide-brand);
+}
+
+.site-header ul {
+  display: flex;
+  gap: var(--guide-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header li {
+  margin: 0;
+}
+
+.site-header nav a {
+  color: var(--guide-muted);
+  text-decoration: none;
+}
+
+.site-header nav a:hover {
+  color: var(--guide-ink);
+}
+
+/* The three columns */
+
+.docs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "nav" "toc" "page";
+  gap: var(--guide-space-5);
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: var(--guide-space-5);
+}
+
+.docs-nav { grid-area: nav; }
+.docs-toc { grid-area: toc; }
+.docs-page { grid-area: page; min-width: 0; max-width: 46rem; }
+
+@media (min-width: 64rem) {
+  .docs {
+    grid-template-columns: 14rem minmax(0, 1fr) 14rem;
+    grid-template-areas: "nav page toc";
+    gap: var(--guide-space-7);
+    padding-block: var(--guide-space-7);
+  }
+
+  .docs-nav,
+  .docs-toc {
+    position: sticky;
+    top: var(--guide-space-5);
+    align-self: start;
+    max-height: calc(100vh - 2 * var(--guide-space-5));
+    overflow: auto;
+  }
+}
+
+/* On a wide screen the lists are always open: the summary goes, the content stays. Without
+   ::details-content they stay as they are on a phone, closed and openable. */
+@supports selector(::details-content) {
+  @media (min-width: 64rem) {
+    .docs details::details-content {
+      content-visibility: visible;
+      display: contents;
+    }
+
+    .docs details > summary {
+      display: none;
+    }
+
+    .docs details {
+      padding: 0;
+      border: 0;
+    }
+  }
+}
+
+/* The chapters and the headings of the page */
+
+.docs summary {
+  padding: var(--guide-space-2) var(--guide-space-3);
+  font-weight: var(--guide-weight-medium);
+  background: var(--guide-raised);
+  border-radius: var(--guide-radius-sm);
+  cursor: pointer;
+}
+
+.docs-nav ol,
+.docs-toc ul {
+  margin: var(--guide-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-nav li,
+.docs-toc li {
+  margin: 0;
+}
+
+.docs-toc li li {
+  padding-inline-start: var(--guide-space-3);
+}
+
+.docs-nav a,
+.docs-toc a {
+  display: block;
+  padding: var(--guide-space-1) var(--guide-space-3);
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+  text-decoration: none;
+  border-inline-start: 2px solid transparent;
+}
+
+.docs-nav a:hover,
+.docs-toc a:hover {
+  color: var(--guide-ink);
+}
+
+.docs-nav a[aria-current],
+.docs-toc a[aria-current] {
+  color: var(--guide-accent);
+  border-inline-start-color: var(--guide-accent);
+}
+
+/* What the page writes inside ui-code and ui-note. It is light DOM, so it is styled here: a
+   ::slotted() rule in the component would lose to the guide, as the standard says it must. */
+
+ui-code > pre {
+  margin: 0;
+  border-top: 0;
+  border-radius: 0 0 var(--guide-radius-md) var(--guide-radius-md);
+}
+
+ui-note > :last-child {
+  margin-bottom: 0;
+}
+
+/* The page */
+
+.docs-page > h1 {
+  font-size: clamp(2.25rem, 5vw, var(--guide-text-3xl));
+}
+
+.docs-page h2,
+.docs-page h3 {
+  scroll-margin-top: var(--guide-space-5);
+}
+
+/* Footer */
+
+.site-footer {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: var(--guide-space-6) var(--guide-space-5);
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+  border-top: 1px solid var(--guide-rule);
+}

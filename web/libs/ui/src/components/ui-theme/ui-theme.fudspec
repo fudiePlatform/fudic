@@ -1,0 +1,7 @@
+component ui-theme
+
+criterion renders
+  given
+    props base
+  then
+    present ui-theme

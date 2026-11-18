@@ -1,0 +1,29 @@
+@* The pieces every page of the site shares, written in the light DOM so their links and headings
+   belong to the document. *@
+
+@snippet header() {
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Fudic, inicio"><span class="at" aria-hidden="true">@@</span>fudic</a>
+    <nav aria-label="Principal">
+      <ul>
+        <li><a href="/docs/getting-started">Documentación</a></li>
+        <li><a href="https://github.com/fudiePlatform/fudic">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+}
+
+@snippet footer() {
+  <footer class="site-footer">
+    <p>Fudic, componentes web estándar pintados en el servidor. Licencia MIT.</p>
+  </footer>
+}
+
+@snippet docsNav(current: string) {
+  <details class="chapters">
+    <summary>Capítulos</summary>
+    <ol>
+      <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar</a></li>
+    </ol>
+  </details>
+}

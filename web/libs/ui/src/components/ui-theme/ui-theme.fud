@@ -1,0 +1,8 @@
+<head>
+  <style></style>
+</head>
+
+<ui-theme>
+  <template shadowrootmode="open">
+  </template>
+</ui-theme>

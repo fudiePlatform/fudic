@@ -1,0 +1,7 @@
+component ui-note
+
+criterion renders
+  given
+    props base
+  then
+    present ui-note

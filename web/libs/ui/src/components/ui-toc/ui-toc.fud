@@ -1,0 +1,42 @@
+@code {
+  /**
+   * The headings of the page, marking the one being read. The links are the list written between
+   * its tags, so they work without any script; this only moves aria-current as the page scrolls.
+   */
+  onConnect((host) => {
+    const links = [...host.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
+    const targets = links
+      .map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))))
+      .filter((target): target is HTMLElement => target !== null);
+    if (targets.length === 0) return;
+
+    const visible = new Set<Element>();
+    const mark = () => {
+      const first = targets.find((target) => visible.has(target)) ?? null;
+      if (first === null) return;
+      for (const link of links) {
+        if (link.hash === `#${first.id}`) link.setAttribute("aria-current", "location");
+        else link.removeAttribute("aria-current");
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        mark();
+      },
+      { rootMargin: "0px 0px -70% 0px" },
+    );
+    for (const target of targets) observer.observe(target);
+    return () => observer.disconnect();
+  });
+}
+
+<ui-toc>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</ui-toc>

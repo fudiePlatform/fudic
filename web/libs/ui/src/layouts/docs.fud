@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+@* The documentation: the site header, the chapters on the left, the page in the middle and its
+   headings on the right. A page fills `nav` with the chapter list marking itself, and `toc`
+   with the links to its own headings. *@
+<html lang="es">
+  <head>
+    <link rel="snippet" href="../snippets/site.fud">
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../styles/docs.css">
+    @* Keep this line: fudic puts its scripts here. *@
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <a class="skip" href="#content">Saltar al contenido</a>
+    @render header()
+
+    <div class="docs">
+      <nav class="docs-nav" aria-label="Capítulos">
+        @RenderSection(nav)
+      </nav>
+
+      <aside class="docs-toc" aria-label="En esta página">
+        @RenderSection(toc)
+      </aside>
+
+      <main id="content" class="docs-page">@RenderBody()</main>
+    </div>
+
+    @render footer()
+  </body>
+</html>

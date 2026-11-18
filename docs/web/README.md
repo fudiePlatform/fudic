@@ -198,3 +198,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-18 | Plan validado. Workspace `web/` creado con la CLI e integrado en el monorepo (§6). |
 | 2026-11-18 | Fuera el Service Worker. Notas de la CLI en `hallazgos-cli.md`. |
 | 2026-11-18 | Capítulo 1, **Empezar**, validado en Markdown (`docs/01-empezar.md`). |
+| 2026-11-18 | Guía con los colores del boceto. Layout `docs`, snippets `site`, `ui-code`, `ui-note`, `ui-toc` y la página `/docs/getting-started`. Lighthouse: escritorio 100/100/100/100, móvil 92/100/100/100. Hallazgos del framework en `hallazgos-fudic.md`. |
