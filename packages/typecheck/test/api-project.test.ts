@@ -10,7 +10,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { apiContextOf, apiDiagnostics, readApiProject, writeApiDeclarations } from '../src/api-project.js';
 import { toPosix } from '../src/index.js';
 
-const PAGE = '<!DOCTYPE html>\n<html>\n<head><link rel="server" href="./[id].fudapi"><title>t</title></head>\n<body><p>x</p></body>\n</html>\n';
+/**
+ * A page: a route that links a layout (SDD-88). The layout is a library's, by its package
+ * specifier, so the props its `layout` returns are the same type from wherever the page is.
+ */
+const PAGE = '<link rel="layout" href="@acme/ui/layouts/_layout.fud">\n<link rel="server" href="./[id].fudapi">\n<head><title>t</title></head>\n<p>x</p>\n';
+
+/** What `apiContextOf` reads off `PAGE`'s layout link (SDD-88 §3.7). */
+const LAYOUT_PROPS = "import('@acme/ui/layouts/_layout.fud').$Props";
 
 let roots: string[] = [];
 
@@ -81,7 +88,7 @@ describe('apiContextOf', () => {
   it('a sibling of a route: its params and its pattern', () => {
     const root = project({ 'src/routes/products/[id].fudapi': 'load\n  name  str\n', 'src/routes/products/[id].fud': PAGE });
     const source = readApiProject(root).sources[0]!;
-    expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id' } });
+    expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id', layoutProps: LAYOUT_PROPS } });
   });
 
   it('a route that links components: the <id> of each one with a .fudapi (SDD-82 §3.4)', () => {
@@ -92,13 +99,13 @@ describe('apiContextOf', () => {
     ].join('');
     const root = project({
       'src/routes/products/[id].fudapi': 'load\n  name  str\n',
-      'src/routes/products/[id].fud': PAGE.replace('<title>', `${links}<title>`),
+      'src/routes/products/[id].fud': PAGE.replace('<head>', `${links}\n<head>`),
       'src/components/user-card.fudapi': 'post vote\n',
       'src/components/plain.fud': '',
       'outside/x.fudapi': 'post x\n',
     });
     const source = readApiProject(root).sources.find((s) => s.id === 'routes/products/[id]')!;
-    expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id', components: ['components/user-card'] } });
+    expect(apiContextOf(root, source)).toEqual({ route: { params: ['id'], pattern: '/products/:id', layoutProps: LAYOUT_PROPS, components: ['components/user-card'] } });
   });
 
   it('the error page of a folder, and the index of a folder', () => {
@@ -109,8 +116,8 @@ describe('apiContextOf', () => {
       'src/routes/shop/index.fud': PAGE.replace('[id]', 'index'),
     });
     const [error, index] = readApiProject(root).sources;
-    expect(apiContextOf(root, error!)).toEqual({ route: { params: [], pattern: '/shop/_error', error: true } });
-    expect(apiContextOf(root, index!)).toEqual({ route: { params: [], pattern: '/shop' } });
+    expect(apiContextOf(root, error!)).toEqual({ route: { params: [], pattern: '/shop/_error', error: true, layoutProps: LAYOUT_PROPS } });
+    expect(apiContextOf(root, index!)).toEqual({ route: { params: [], pattern: '/shop', layoutProps: LAYOUT_PROPS } });
   });
 
   it('a route with a layout: the props its layout declares', () => {
@@ -175,7 +182,8 @@ describe('the error page of a library', () => {
 
   it('src/_error.fudapi of a library is an error page’s: load is FUD1010, not FUD1090', () => {
     const root = project({ 'fudic.json': LIB, 'src/_error.fudapi': 'load\n  n  i32\n', 'src/_error.fud': ERROR_PAGE });
-    expect(apiContextOf(root, readApiProject(root).sources[0]!)).toEqual({ route: { params: [], error: true } });
+    // With the props of the layout it links, which its `layout` returns (SDD-88 §3.6).
+    expect(apiContextOf(root, readApiProject(root).sources[0]!)).toEqual({ route: { params: [], error: true, layoutProps: LAYOUT_PROPS } });
     expect(apiDiagnostics(root).map((f) => [f.file.slice(root.length + 1), f.diagnostics.map((d) => d.code)])).toEqual([
       ['src/_error.fudapi', ['FUD1010']],
     ]);

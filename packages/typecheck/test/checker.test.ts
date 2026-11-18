@@ -39,15 +39,22 @@ const BADGE = `@code {
 </app-badge>
 `;
 
-const page = (tone: string): string => `<!DOCTYPE html>
+/** A page: a route that links the project's layout, as every page does (SDD-88). */
+const page = (tone: string): string => `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head>
+  <title>t</title>
+</head>
+<app-badge .tone="@(${tone})">hi</app-badge>
+`;
+
+/** The layout every page links; `project` writes it into every project that has none. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
   <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <title>t</title>
+    @RenderHead()
   </head>
-  <body>
-    <app-badge .tone="@(${tone})">hi</app-badge>
-  </body>
+  <body>@RenderBody()</body>
 </html>
 `;
 
@@ -56,7 +63,8 @@ type Files = Readonly<Record<string, string>>;
 /** A project on disk; `tsconfig: false` leaves it without one. */
 function project(files: Files, options: { readonly tsconfig?: boolean } = {}): string {
   const root = toPosix(mkdtempSync(join(tmpdir(), 'fudic-checker-')));
-  const all: Files = options.tsconfig === false ? files : { 'tsconfig.json': TSCONFIG, ...files };
+  const withLayout: Files = { 'src/layouts/_layout.fud': LAYOUT, ...files };
+  const all: Files = options.tsconfig === false ? withLayout : { 'tsconfig.json': TSCONFIG, ...withLayout };
   write(root, all);
   return root;
 }
@@ -149,7 +157,7 @@ describe('createProjectChecker — what it reports', () => {
   it('reports the fudic rules too, with their severity, and drops the hints (§4.3)', () => {
     const root = project({
       ...BASE,
-      'src/routes/index.fud': page(`'info'`).replace('</body>', '  <app-ghost></app-ghost>\n  </body>'),
+      'src/routes/index.fud': page(`'info'`).replace('hi</app-badge>\n', 'hi</app-badge>\n<app-ghost></app-ghost>\n'),
       'src/routes/broken.fud': page(`'info'`).replace('app-badge.fud', 'nowhere.fud'),
     });
     const report = createProjectChecker({ root }).check();
@@ -220,16 +228,12 @@ describe('createProjectChecker — what it reports', () => {
       'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', version: '1.0.0' }),
       'node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'acme' }),
       'node_modules/@acme/ui/acme-card.fud': `@code {\n  const n: number = 'broken';\n  const { size } = props<{ size: number }>();\n}\n<acme-card>\n  <template shadowrootmode="open"><p>@n @size</p></template>\n</acme-card>\n`,
-      'src/routes/index.fud': `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="@acme/ui/acme-card.fud">
-    <title>t</title>
-  </head>
-  <body>
-    <acme-card .size="@(1)"></acme-card>
-  </body>
-</html>
+      'src/routes/index.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="@acme/ui/acme-card.fud">
+<head>
+  <title>t</title>
+</head>
+<acme-card .size="@(1)"></acme-card>
 `,
     });
     const report = createProjectChecker({ root }).check();
@@ -321,7 +325,7 @@ describe('createProjectChecker — the live program (§4.5)', () => {
     const root = project({
       'src/data.ts': 'export const tone = "info";\n',
       'src/components/app-badge.fud': BADGE,
-      'src/routes/index.fud': page('tone').replace('<title>t</title>', '<title>t</title>\n@code {\n  import { tone } from "../data";\n}'),
+      'src/routes/index.fud': page('tone').replace('<head>', '@code {\n  import { tone } from "../data";\n}\n<head>'),
     });
     const checker = createProjectChecker({ root });
     expect(checker.check().problems).toEqual([]);

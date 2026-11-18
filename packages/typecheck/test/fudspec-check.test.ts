@@ -141,13 +141,13 @@ describe('the .fudspec of a project in check()', () => {
     }
   });
 
-  it('what the disk says now: a component that became a page, or went, is no component to name', () => {
+  it('what the disk says now: a component that became a route, or went, is no component to name', () => {
     const root = project({ [SPEC_FILE]: SPEC });
     try {
       const checker = createProjectChecker({ root });
       expect(shown(checker.check(), root)).toEqual([`${SPEC_FILE} FUD0951`]);
       // Nobody said so to the index: the criteria read the file as it is.
-      write(root, { 'src/components/app-card/app-card.fud': '<!DOCTYPE html>\n<html>\n<head><title>t</title></head>\n<body></body>\n</html>\n' });
+      write(root, { 'src/components/app-card/app-card.fud': '<link rel="layout" href="../../layouts/_layout.fud">\n<head><title>t</title></head>\n<p>x</p>\n' });
       const asPage = checker.check().problems.filter((p) => p.file.endsWith('.fudspec'));
       expect(asPage.map((p) => p.code)).not.toContain('FUD0951');
       unlinkSync(join(root, 'src/components/app-card/app-card.fud'));

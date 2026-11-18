@@ -57,7 +57,8 @@ function withLibrary(app: object, extra: Readonly<Record<string, string>> = {}, 
       'acme-note',
       'textarea { field-sizing: content; } @supports selector(:state(x)) { :host(:state(x)) { color: red; } }',
     ),
-    'src/routes/index.fud': `<!DOCTYPE html>\n<html>\n  <head><title>t</title></head>\n  <body><p>x</p></body>\n</html>\n`,
+    'src/routes/index.fud': `<link rel="layout" href="../layouts/_layout.fud">\n<head><title>t</title></head>\n<p>x</p>\n`,
+    'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
     ...extra,
   });
 }
