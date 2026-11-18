@@ -45,15 +45,19 @@ const COUNTER = `@code {
 </x-counter>
 `;
 
-const page = (title: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-  <link rel="component" href="../components/x-card.fud">
-  <title>${title}</title>
-  <style>p.a { margin: 0 } .nadie { x: 1 }</style>
-</head>
-<body><p class="a">texto</p><x-card></x-card></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const page = (title: string): string => `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/x-card.fud">
+<head><title>${title}</title>
+  <style>p.a { margin: 0 } .nadie { x: 1 }</style></head>
+<p class="a">texto</p><x-card></x-card>
 `;
 
 interface OutFile {
@@ -71,6 +75,7 @@ function project(): string {
   writeFileSync(join(root, 'src/styles/theme.css'), ':host { color: blue }\n');
   writeFileSync(join(root, 'src/styles/panel.css'), ':host { padding: 1px }\n');
   writeFileSync(join(root, 'src/routes/index.fud'), page('Uno'));
+  writeFileSync(join(root, 'src/routes/_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'src/routes/otra.fud'), page('Otra'));
   writeFileSync(
     join(root, 'src/routes/cuenta.fud'),

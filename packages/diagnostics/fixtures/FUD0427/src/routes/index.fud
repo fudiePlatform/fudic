@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Hello</title>
     <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
   </head>
   <body>
     @section nav {
@@ -11,5 +12,6 @@
     }
 
     <h1>Hello</h1>
+    @RenderBody()
   </body>
 </html>

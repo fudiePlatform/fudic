@@ -11,23 +11,20 @@ import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentClientModule,
-  emitPageModule,
+  emitRouteModule,
 } from '../../src/emit/index.js';
 import { fudBus } from '../../src/emit/maps.js';
-import { fixturesDir, fixtureIo, memoryIo } from './_support.js';
+import { BARE_LAYOUT, fixturesDir, fixtureIo, memoryIo } from './_support.js';
 
-/** A page linking the given components, with one instance of each. */
+/** A route linking the given components, with one instance of each. */
 function home(tags: readonly string[]): string {
-  const links = tags.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n    ');
+  const links = tags.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n');
   const body = tags.map((t) => `<${t}></${t}>`).join('');
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    ${links}
-  </head>
-  <body>${body}</body>
-</html>
+  return `<link rel="layout" href="./_layout.fud">
+${links}
+${body}
 `;
 }
 
@@ -77,10 +74,11 @@ describe('fud-bus — the canonical pair (§6.21)', () => {
     ).toEqual({ 'product-list': ['shopping-cart'] });
   });
 
-  it('the page module carries it as a compile-time constant', () => {
-    const graph = resolveComponents(
+  it('the route module carries it as a compile-time constant', () => {
+    const graph = resolveDocument(
       '/app/home.fud',
       memoryIo({
+        '/app/_layout.fud': BARE_LAYOUT,
         '/app/home.fud': home(['product-list', 'shopping-cart']),
         '/app/product-list.fud': emitter(
           'product-list',
@@ -93,8 +91,8 @@ describe('fud-bus — the canonical pair (§6.21)', () => {
           '    <ul bus:carrito="@onCarrito($event)"></ul>',
         ),
       }),
-    );
-    expect(emitPageModule(graph)).toContain('const FUD_BUS = {"product-list":["shopping-cart"]};');
+    ).value;
+    expect(emitRouteModule(graph)).toContain('const FUD_BUS = {"product-list":["shopping-cart"]};');
   });
 
   it('two subscribers of the same name are both dependencies, once each', () => {

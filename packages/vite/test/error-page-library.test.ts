@@ -22,22 +22,28 @@ import { runtimeAlias } from './helpers/alias.js';
 const manifest = (name: string, deps: readonly string[] = []): string =>
   JSON.stringify({ name, version: '1.0.0', type: 'module', dependencies: Object.fromEntries(deps.map((d) => [d, '*'])) }, null, 2);
 
-/** A whole document, so no layout is needed: what the page says is who painted it. */
-const errorPage = (who: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): each project of the workspace has this one. */
+const LAYOUT = `<!DOCTYPE html>
 <html lang="es">
-<head><title>@data.status @data.title</title></head>
-<body>
-<h1>${who} @data.status</h1>
-<a href=@data.home>Inicio</a>
-</body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
 `;
 
-const INDEX = `<!DOCTYPE html>
-<html lang="es">
+/** A library's page links its layout from `src/`; an app's, from `src/routes/`. */
+const LIB_LAYOUT = './layouts/_layout.fud';
+const APP_LAYOUT = '../layouts/_layout.fud';
+
+/** What the page says is who painted it. */
+const errorPage = (who: string, layout = LIB_LAYOUT): string => `<link rel="layout" href="${layout}">
+<head><title>@data.status @data.title</title></head>
+<h1>${who} @data.status</h1>
+<a href=@data.home>Inicio</a>
+`;
+
+const INDEX = `<link rel="layout" href="${APP_LAYOUT}">
 <head><title>Inicio</title></head>
-<body><p>inicio</p></body>
-</html>
+<p>inicio</p>
 `;
 
 /** A workspace: `ui` and `marketing` libraries, and `admin` (depends on `deps`). Its root. */
@@ -51,6 +57,9 @@ function workspace(deps: readonly string[], files: Readonly<Record<string, strin
     'apps/admin/package.json': manifest('@acme/admin', deps),
     'apps/admin/fudic.json': JSON.stringify({ kind: 'app', id: 'admin', prefix: 'adm', ...(locales !== undefined ? { locales } : {}) }),
     'apps/admin/src/routes/index.fud': INDEX,
+    'apps/admin/src/layouts/_layout.fud': LAYOUT,
+    'libs/ui/src/layouts/_layout.fud': LAYOUT,
+    'libs/marketing/src/layouts/_layout.fud': LAYOUT,
     ...files,
   };
   for (const [path, contents] of Object.entries(tree)) {
@@ -85,7 +94,7 @@ describe('discoverRoutes and the page of a library (criterion 13)', () => {
   it('own: the app’s page, and no errorPageFrom, though its chain has one', () => {
     const ws = workspace(['@acme/ui'], {
       'libs/ui/src/_error.fud': errorPage('ui'),
-      'apps/admin/src/routes/_error.fud': errorPage('admin'),
+      'apps/admin/src/routes/_error.fud': errorPage('admin', APP_LAYOUT),
     });
     const found = discover(ws);
     expect(found).not.toHaveProperty('errorPageFrom');
@@ -111,6 +120,15 @@ describe('discoverRoutes and the page of a library (criterion 13)', () => {
     expect(d!.message).toContain('fudic g error-page');
   });
 
+  it('the library itself: its own src/_error.fud, read where it is, with no routes folder', () => {
+    const ws = workspace([], { 'libs/ui/src/_error.fud': errorPage('ui') });
+    const found = discoverRoutes(join(ws, 'libs', 'ui'), resolveOptions({}).options);
+    expect(found).not.toHaveProperty('errorPageFrom');
+    expect(posix(found.errorPage!.absPath)).toMatch(/\/libs\/ui\/src\/_error\.fud$/u);
+    expect(found.diagnostics).toEqual([]);
+    expect(found.parse).toEqual([]);
+  });
+
   it('none: no page, no diagnostic', () => {
     const found = discover(workspace(['@acme/ui']));
     expect(found.errorPage).toBeUndefined();
@@ -133,7 +151,7 @@ describe('errorPageLine (criterion 16)', () => {
   });
 
   it('says nothing with the app’s own page or with none', () => {
-    const own = workspace(['@acme/ui'], { 'apps/admin/src/routes/_error.fud': errorPage('admin'), 'libs/ui/src/_error.fud': errorPage('ui') });
+    const own = workspace(['@acme/ui'], { 'apps/admin/src/routes/_error.fud': errorPage('admin', APP_LAYOUT), 'libs/ui/src/_error.fud': errorPage('ui') });
     expect(errorPageLine(discover(own), admin(own))).toBeUndefined();
     const none = workspace(['@acme/ui']);
     expect(errorPageLine(discover(none), admin(none))).toBeUndefined();
@@ -181,7 +199,7 @@ describe('the build says where the error page comes from (criterion 16)', () => 
 
   it('with its own page or with none: no such line', async () => {
     const own = await buildAdmin(
-      workspace(['@acme/ui'], { 'libs/ui/src/_error.fud': errorPage('ui'), 'apps/admin/src/routes/_error.fud': errorPage('admin') }),
+      workspace(['@acme/ui'], { 'libs/ui/src/_error.fud': errorPage('ui'), 'apps/admin/src/routes/_error.fud': errorPage('admin', APP_LAYOUT) }),
     );
     expect(own.error).toBeUndefined();
     const none = await buildAdmin(workspace(['@acme/ui']));

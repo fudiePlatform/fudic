@@ -57,8 +57,10 @@ describe('home.fud specifics', () => {
   const tokens = tokenize(source).value;
   const slice = (t: Token): string => source.slice(t.span.start, t.span.end);
 
-  it('opens with a doctype', () => {
-    expect(tokens[0]?.type).toBe('doctype');
+  // A route since SDD-88: it opens with its layout link, and the layout with the doctype.
+  it('opens with its layout link; its layout, with a doctype', () => {
+    expect(tokens[0]).toMatchObject({ type: 'tag-open-start', name: 'link' });
+    expect(tokenize(read('_layout.fud')).value[0]?.type).toBe('doctype');
   });
 
   it('keeps Razor live inside <title> (§4.6)', () => {

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { emptyBenchDir, isAlive, removeBenchDir, removeTagFiles, sweepBenchDirs, writePlanFiles } from '../src/bench-dir.js';
+import { BENCH_LAYOUT, BENCH_LAYOUT_FILE, emptyBenchDir, isAlive, removeBenchDir, removeTagFiles, sweepBenchDirs, writePlanFiles } from '../src/bench-dir.js';
 
 let root: string;
 let benches: string;
@@ -17,13 +17,18 @@ afterEach(() => {
 });
 
 describe('the workbench folder', () => {
-  it('starts empty, with its routes folder, whatever was there', () => {
+  it('starts empty, with its routes folder and the bench layout, whatever was there', () => {
     const dir = join(benches, 'app-card');
     mkdirSync(join(dir, 'components'), { recursive: true });
     writeFileSync(join(dir, 'components', 'old.fud'), 'old');
     emptyBenchDir(dir);
-    expect(readdirSync(dir)).toEqual(['routes']);
+    expect(readdirSync(dir).sort()).toEqual(['_bench-layout.fud', 'routes']);
     expect(readdirSync(join(dir, 'routes'))).toEqual([]);
+    // Every page of the bench links it (SDD-88): a document whose body is the route's markup.
+    expect(readFileSync(join(dir, BENCH_LAYOUT_FILE), 'utf8')).toBe(BENCH_LAYOUT);
+    expect(BENCH_LAYOUT).toContain('@RenderHead()');
+    expect(BENCH_LAYOUT).toContain('@RenderBody()');
+    expect(BENCH_LAYOUT).toContain('<script type="module" src="fudic:runtime"></script>');
   });
 
   it('replaces one component\'s generated files with its plan, and leaves the other components\' alone', () => {

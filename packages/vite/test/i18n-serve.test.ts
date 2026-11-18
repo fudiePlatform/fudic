@@ -14,35 +14,30 @@ import type { AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
 import { writeI18nProject } from './helpers/i18n-project.js';
 
-const ABOUT = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88), with the runtime script the pages carried in their own head. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
+<head><script src="fudic:runtime"></script>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+const ABOUT = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-counter.fud">
-<script src="fudic:runtime"></script>
-<title>Acerca</title>
-</head>
-<body><p>Hola mundo</p><app-counter></app-counter></body>
-</html>
+<head><title>Acerca</title></head>
+<p>Hola mundo</p><app-counter></app-counter>
 `;
 
-const POST = `<!DOCTYPE html>
-<html>
-<head>
-<title>Blog</title>
+const POST = `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[slug].fudapi">
-</head>
-<body><h1>Entrada @data.slug</h1></body>
-</html>
+<head><title>Blog</title></head>
+<h1>Entrada @data.slug</h1>
 `;
 
-const MISSING = `<!DOCTYPE html>
-<html>
-<head>
-<title>x</title>
+const MISSING = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./missing.fudapi">
-</head>
-<body><p>@data.n</p></body>
-</html>
+<head><title>x</title></head>
+<p>@data.n</p>
 `;
 
 /** The servers of both routes: a `load` each, rendered on request (SDD-60 §3.4). */
@@ -64,12 +59,9 @@ missing.handle(() => {
 });
 `;
 
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
-<head><title>Error</title>
-</head>
-<body><h1>Error @data.status</h1></body>
-</html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<head><title>Error</title></head>
+<h1>Error @data.status</h1>
 `;
 
 const COUNTER = `@code {
@@ -86,6 +78,7 @@ const COUNTER = `@code {
 const FILES = {
   'src/components/app-counter.fud': COUNTER,
   'src/routes/about.fud': ABOUT,
+  'src/layouts/_layout.fud': LAYOUT,
   'src/routes/blog/[slug].fud': POST,
   'src/routes/blog/[slug].fudapi': POST_API,
   'src/routes/missing.fud': MISSING,

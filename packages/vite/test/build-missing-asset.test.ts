@@ -19,14 +19,13 @@ import { runtimeAlias } from './helpers/alias.js';
 import { allCode } from './helpers/output.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Home</title></head>
-<body>
 <img src="./missing.png">
 <img src="./present.png">
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -41,6 +40,8 @@ const warnings: string[] = [];
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-missing-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'present.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9]));
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27

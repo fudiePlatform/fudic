@@ -22,12 +22,9 @@ export function showcaseMark(command: string): string {
   return `${MARK_START}${command}\`. Run it again instead of editing this file. -->`;
 }
 
-/**
- * Whether a file is the showcase's: its first line is the mark of a `fudic g showcase` — its
- * second in a whole document, where nothing may come before the `<!DOCTYPE html>`.
- */
+/** Whether a file is the showcase's: its first line is the mark of a `fudic g showcase`. */
 export function isShowcaseFile(contents: string): boolean {
-  return contents.replace(/^<!DOCTYPE html>\n/u, '').startsWith(`${MARK_START}fudic g showcase`);
+  return contents.startsWith(`${MARK_START}fudic g showcase`);
 }
 
 /** A component to show: how a page links it and imports its cases, and the cases, executed. */
@@ -55,10 +52,8 @@ export interface ShowcaseInput {
   readonly hostsDir: string;
   /** The `href` of the hosts' folder from a page. */
   readonly hostsHref: string;
-  /** The `href` of the layout from a page, or `null` when the pages are whole documents. */
-  readonly layout: string | null;
-  /** With no layout, the language of the document. */
-  readonly lang: string;
+  /** The `href` of the layout from a page: every page links one (SDD-88). */
+  readonly layout: string;
   /** The URL of the folder of the pages, ending in `/`: what the index links. */
   readonly url: string;
   /** What `FUD1242` names when there is nothing to show. */
@@ -197,18 +192,8 @@ function indexOf(shown: readonly ShowcaseComponent[], input: ShowcaseInput, mark
   return documentOf(input, mark, 'Showcase', [], '', `<h1>Showcase</h1>\n\n<ul>\n${items}\n</ul>\n`);
 }
 
-/** A route inside the layout, as `g page` writes it, or a whole document when there is none. */
+/** A route inside the layout, as `g page` writes it. */
 function documentOf(input: ShowcaseInput, mark: string, title: string, links: readonly string[], code: string, body: string): string {
-  if (input.layout !== null) {
-    const head = [`<link rel="layout" href="${input.layout}">`, ...links].join('\n');
-    return `${mark}\n${head}\n\n${code}<head>\n  <title>${title}</title>\n</head>\n\n${body}`;
-  }
-  const inHead = links.map((link) => `    ${link}\n`).join('');
-  const inCode = code === '' ? '' : `${code.trimEnd().split('\n').map((line) => (line === '' ? line : `    ${line}`)).join('\n')}\n`;
-  const indented = body.trimEnd().split('\n').map((line) => (line === '' ? line : `    ${line}`)).join('\n');
-  return (
-    `<!DOCTYPE html>\n${mark}\n<html lang="${input.lang}">\n  <head>\n    <meta charset="utf-8">\n` +
-    `    <meta name="viewport" content="width=device-width, initial-scale=1">\n${inHead}${inCode}` +
-    `    <script type="module" src="fudic:runtime"></script>\n    <title>${title}</title>\n  </head>\n  <body>\n${indented}\n  </body>\n</html>\n`
-  );
+  const head = [`<link rel="layout" href="${input.layout}">`, ...links].join('\n');
+  return `${mark}\n${head}\n\n${code}<head>\n  <title>${title}</title>\n</head>\n\n${body}`;
 }

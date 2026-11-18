@@ -46,8 +46,8 @@ const graph: ComponentGraph = resolveComponents(
   '/page.fud',
   memoryIo({
     '/page.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./x-mix.fud"></head>' +
-      '<body><x-mix></x-mix></body></html>\n',
+      '<link rel="layout" href="./_layout.fud"><link rel="component" href="./x-mix.fud">' +
+      '<x-mix></x-mix>\n',
     '/x-mix.fud': COMPONENT,
   }),
 );
@@ -106,8 +106,8 @@ describe('a mixed attribute is ONE template too', () => {
       '/page.fud',
       memoryIo({
         '/page.fud':
-          '<!DOCTYPE html>\n<html><head><link rel="component" href="./x-lone.fud"></head>' +
-          '<body><x-lone></x-lone></body></html>\n',
+          '<link rel="layout" href="./_layout.fud"><link rel="component" href="./x-lone.fud">' +
+          '<x-lone></x-lone>\n',
         '/x-lone.fud':
           '@code {\n  const { on } = props<{ on?: boolean }>();\n}\n' +
           '<x-lone>\n  <template shadowrootmode="open"><input disabled=@on></template>\n</x-lone>\n',
@@ -148,8 +148,8 @@ describe('the value is sanitized where it becomes markup, and only there', () =>
       '/page.fud',
       memoryIo({
         '/page.fud':
-          '<!DOCTYPE html>\n<html><head><link rel="component" href="./x-tick.fud"></head>' +
-          '<body><x-tick></x-tick></body></html>\n',
+          '<link rel="layout" href="./_layout.fud"><link rel="component" href="./x-tick.fud">' +
+          '<x-tick></x-tick>\n',
         '/x-tick.fud':
           '@code {\n  const { name = "" } = props<{ name?: string }>();\n}\n' +
           '<x-tick>\n  <template shadowrootmode="open">' +

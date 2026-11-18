@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveComponents, resolveDocument, contractDiagnostics } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { LINK_LAYOUT, memoryIo, withLayout } from './_support.js';
 
 const FUD_UNUSED = 'FUD0721';
 
@@ -30,14 +30,17 @@ const LINK = '<link rel="component" href="./app-badge.fud">';
 const codes = (graph: Parameters<typeof contractDiagnostics>[0]): readonly string[] =>
   contractDiagnostics(graph).map((d) => d.code);
 
-/** A page that links the badge and holds `body`. */
+/** A route that links the badge and holds `body`. */
+const pageSource = (body: string, links = LINK): string => `${LINK_LAYOUT}${links}\n${body}\n`;
+
+/** The graph of {@link pageSource}. */
 const pageGraph = (body: string, links = LINK): ReturnType<typeof resolveComponents> =>
   resolveComponents(
     '/page.fud',
-    memoryIo({
-      '/page.fud': `<!DOCTYPE html>\n<html>\n<head>${links}</head>\n<body>${body}</body>\n</html>\n`,
+    memoryIo(withLayout({
+      '/page.fud': pageSource(body, links),
       '/app-badge.fud': BADGE,
-    }),
+    })),
   );
 
 describe('FUD0721 — the link that leads nowhere', () => {
@@ -53,7 +56,7 @@ describe('FUD0721 — the link that leads nowhere', () => {
   });
 
   it('names the tag and says what to do, and points at the link itself', () => {
-    const source = `<!DOCTYPE html>\n<html>\n<head>${LINK}</head>\n<body><p>x</p></body>\n</html>\n`;
+    const source = pageSource('<p>x</p>');
     const diagnostic = contractDiagnostics(pageGraph('<p>x</p>')).find((d) => d.code === FUD_UNUSED)!;
     expect(diagnostic.message).toContain('`<app-badge>`');
     expect(diagnostic.message).toContain('used nowhere in this file');
@@ -96,9 +99,8 @@ describe('what counts as a use', () => {
     const graph = resolveComponents(
       '/page.fud',
       memoryIo({
-        '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./other.fud"></head>\n<body><p>x</p></body>\n</html>\n',
-        '/other.fud': '<!DOCTYPE html><html><head></head><body><p>a page, not a component</p></body></html>',
+        '/page.fud': pageSource('<p>x</p>', '<link rel="component" href="./other.fud">'),
+        '/other.fud': `${LINK_LAYOUT}<p>a route, not a component</p>\n`,
       }),
     );
     expect(codes(graph)).not.toContain(FUD_UNUSED);

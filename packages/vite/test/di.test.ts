@@ -59,7 +59,8 @@ describe('the IoC module of a component', () => {
   it('is not emitted for a component that registers nothing, nor for a page', () => {
     const root = project({
       'x-plain.fud': PLAIN,
-      'home.fud': '<!DOCTYPE html><html><head></head><body><p>hi</p></body></html>',
+      'home.fud': '<link rel="layout" href="./_layout.fud"><p>hi</p>',
+      '_layout.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
     });
     expect(transformFudIoc(join(root, 'x-plain.fud'), nodeIo())).toBeNull();
     expect(transformFudIoc(join(root, 'home.fud'), nodeIo())).toBeNull();
@@ -162,8 +163,10 @@ describe('the dev server', () => {
     const root = project({
       'components/x-owner.fud': OWNER,
       'components/x-plain.fud': PLAIN,
+      // Every page links a layout (SDD-88).
+      'routes/_layout.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
       'routes/index.fud':
-        '<!DOCTYPE html><html><head><link rel="component" href="../components/x-owner.fud"><link rel="component" href="../components/x-plain.fud"></head><body><x-owner></x-owner><x-plain></x-plain></body></html>',
+        '<link rel="layout" href="./_layout.fud"><link rel="component" href="../components/x-owner.fud"><link rel="component" href="../components/x-plain.fud"><x-owner></x-owner><x-plain></x-plain>',
     });
     const asked: string[] = [];
     /* eslint-disable @typescript-eslint/no-explicit-any */

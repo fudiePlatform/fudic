@@ -16,18 +16,17 @@ import { tempProject, type TempProject } from '../helpers/project.js';
 const FILES: Readonly<Record<string, string>> = {
   'package.json': JSON.stringify({ name: 'bench-vocabulary', private: true, type: 'module', dependencies: { '@fudic/http': '0.0.0' } }),
   'vite.config.ts': "import { fudic } from '@fudic/vite';\n\nexport default { plugins: [fudic({ liveCheck: false })] };\n",
+  // Every page links a layout (SDD-88).
+  'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
   'src/http.fudapi': 'chain\n  use json\n',
-  'src/routes/hora.fud': `<!DOCTYPE html>
-<html>
-<head><title>Hora</title><link rel="server" href="./hora.fudapi"><link rel="icon" href="data:,"></head>
-<body>
+  'src/routes/hora.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./hora.fudapi">
+<head><title>Hora</title><link rel="icon" href="data:,"></head>
 <p role="note">@data.now</p>
 <p role="definition">@data.lang</p>
 @await data.total {
   <p role="status">total @data.total</p>
 }
-</body>
-</html>
 `,
   'src/routes/hora.fudapi': 'load\n  now    str\n  lang   str\n  total  i32  later\n',
   'src/server/hora.ts': `import { load } from 'fudic:routes/hora';

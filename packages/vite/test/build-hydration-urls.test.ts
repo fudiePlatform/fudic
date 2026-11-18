@@ -66,18 +66,15 @@ const PLAIN = `<x-plain>
 </x-plain>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="component" href="../components/x-counter.fud">
-  <link rel="component" href="../components/x-plain.fud">
-  <title>Home</title>
-</head>
-<body>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/x-counter.fud">
+<link rel="component" href="../components/x-plain.fud">
+<head><title>Home</title></head>
   <x-counter></x-counter>
   <x-plain>inerte</x-plain>
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -97,6 +94,8 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'components', 'x-counter.fud'), COUNTER);
   writeFileSync(join(root, 'src', 'components', 'x-out.fud'), OUT);
   writeFileSync(join(root, 'src', 'components', 'x-plain.fud'), PLAIN);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));

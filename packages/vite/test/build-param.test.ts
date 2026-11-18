@@ -14,15 +14,12 @@ import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { routeTable } from './helpers/manifest.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[id].fudapi">
-</head>
-<body>
 <h1>Customer</h1>
-</body>
-</html>
 `;
 
 /** No mode: the inference sends a param route with `load` and no `paths` to `sw`. */
@@ -48,6 +45,8 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-param-'));
   mkdirSync(join(root, 'src', 'routes', 'customer'), { recursive: true });
   writeHttpTypecheckConfig(root);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fudapi'), PAGE_API);
   mkdirSync(join(root, 'src', 'server'), { recursive: true });

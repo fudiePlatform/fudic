@@ -8,8 +8,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  resolveComponents,
-  emitPageModule,
+  resolveDocument,
+  emitLayoutModule,
+  emitRouteModule,
   type ResolveIo,
 } from '@fudic/compiler';
 import type { ConfigIo } from '@fudic/config';
@@ -83,8 +84,10 @@ describe('readStyles', () => {
 describe('the compiler never opens a stylesheet', () => {
   const FILES: Record<string, string> = {
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./s-card.fud">' +
-      '<title>t</title></head><body><s-card></s-card></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./s-card.fud">\n' +
+      '<head><title>t</title></head>\n<s-card></s-card>\n',
+    // Every page links a layout (SDD-88).
+    '/_layout.fud': '<!DOCTYPE html>\n<html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n',
     '/s-card.fud':
       '<head><style>.card{padding:8px}</style></head>\n' +
       '<s-card><template shadowrootmode="open"><slot></slot></template></s-card>',
@@ -113,13 +116,12 @@ describe('the compiler never opens a stylesheet', () => {
 
   it('emits a page handed project styles without asking anyone for a file', () => {
     const { io: resolveIo, asked } = strictIo();
-    const graph = resolveComponents('/home.fud', resolveIo);
-    const code = emitPageModule(graph, {
-      projectStyles: [{ specifier: '_theme', css: ':host{--gap:8px}' }],
-    });
+    const graph = resolveDocument('/home.fud', resolveIo).value;
+    const projectStyles = [{ specifier: '_theme', css: ':host{--gap:8px}' }];
+    const code = emitRouteModule(graph, { projectStyles }) + emitLayoutModule(graph, graph.layouts[0]!, { projectStyles });
     expect(code).not.toBe('');
-    // Two `.fud` and nothing else. The sheet arrived READ, through the options.
-    expect(asked).toEqual(['/home.fud', '/s-card.fud']);
+    // The three `.fud` and nothing else. The sheet arrived READ, through the options.
+    expect([...asked].sort()).toEqual(['/_layout.fud', '/home.fud', '/s-card.fud']);
   });
 });
 

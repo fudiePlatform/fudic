@@ -15,12 +15,13 @@ Rutas, layouts, los datos de una página (`load`), llamar al servidor desde una 
 - Una **ruta** empieza con `<link rel="layout" href="…">` y no escribe `<!DOCTYPE>`, `<html>` ni
   `<body>`: un fragmento `<head>` opcional (su `<title>`), `@section`s y markup, en este orden:
   `<link rel="layout">`, `<link rel="component">` y `<link rel="server">`, `@code`, `<head>`,
-  el resto (`FUD0421`). Un **documento de página** no tiene layout: un documento `<!DOCTYPE html>` completo
-  con la forma del layout de abajo, su `<title>` en `<head>`, su markup en `<body>`.
+  el resto (`FUD0421`). Toda página enlaza un layout: un fichero que empieza con `<!DOCTYPE html>` es
+  un layout, nunca una página, y uno sin ningún hueco (`@RenderBody()`…) es `FUD1580`.
 - `fudic_generate { kind: "page" }`, dada la URL (`/products`, `blog/:slug`), escribe la
   ruta enlazada al `_layout.fud` más cercano (subiendo desde la página, y luego `src/layouts/_layout.fud`),
-  una `@section` vacía por cada sección de ese layout y un test unitario; sin layout, un documento
-  de página. `fudic_generate { kind: "api" }` añade después el `.fudapi` con un `load` y su handler.
+  una `@section` vacía por cada sección de ese layout y un test unitario; sin layout que enlazar
+  se niega (`FUD1582`): créalo con `fudic_generate { kind: "layout", name: "_layout" }`.
+  `fudic_generate { kind: "api" }` añade después el `.fudapi` con un `load` y su handler.
 
 ## Layouts
 
@@ -177,7 +178,7 @@ load.handle(() => ({
 
 - Dentro de `@await` el campo es el valor; leído en otro sitio (`<p>@data.summary.total</p>` fuera
   del bloque) es `FUD1321`. `@await` sobre cualquier cosa que no sea un campo `later` de `data` es `FUD1320`.
-- Solo en el cuerpo de una ruta o de un documento de página, o en una `@section`; nunca en `<head>`, un componente
+- Solo en el cuerpo de una ruta, o en una `@section`; nunca en `<head>`, un componente
   ni un layout (`FUD1322`): pasa el valor resuelto a un componente como prop.
 - `@catch (e)` es opcional, justo después de la llave (`FUD1323`); `e` tiene `status` y `title`. No hay
   rama de carga. Cada `@await` espera al anterior: pon los lentos al final.
@@ -217,21 +218,38 @@ cadena con página y ninguna en la app es `FUD1570`: escribe la de la app. Se cr
 usa cada app (`project.errorPage`).
 
 ```fud path=src/_error.fud
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <title>@data.status · @data.title</title>
-  </head>
-  <body>
-    <h1>@data.status · @data.title</h1>
-    @if (data.back !== undefined) {
-      <p><a href=@data.back>Volver</a></p>
-    } @else {
-      <p><a href=@data.home>Ir al inicio</a></p>
-    }
-  </body>
-</html>
+<link rel="layout" href="./layouts/_layout.fud">
+
+<head>
+  <title>@data.status · @data.title</title>
+</head>
+
+<h1>@data.status · @data.title</h1>
+@if (data.back !== undefined) {
+  <p><a href=@data.back>Volver</a></p>
+} @else {
+  <p><a href=@data.home>Ir al inicio</a></p>
+}
+```
+
+La página de error es una página: enlaza el mismo layout que las demás páginas de la app, así que
+un error conserva la cabecera, el pie y los estilos de la app. La de una librería enlaza un layout
+de la librería (`./layouts/_layout.fud`), el único que alcanza desde su carpeta en todas las apps;
+una app que quiere que sus errores se parezcan a sus páginas usa ese layout también en sus rutas,
+o escribe su propio `_error.fud`. Un `_error.fud` que no enlaza layout es `FUD1581`, y la app pinta
+sus errores con una página mínima de serie hasta que lo enlace. Un layout con props que la página
+de error tiene que dar las resuelve en `layout` de `_error.fudapi`, cuyo handler recibe el error
+como `data` (una prop sin valor por defecto que falta es `FUD0702`):
+
+```fudapi path=src/routes/_error.fudapi
+# Las props del layout, a partir del error que se pinta.
+layout
+```
+
+```ts path=src/server/routes/_error.ts
+import { layout } from 'fudic:routes/_error';
+
+layout.handle((ctx, data) => ({ area: `Error ${data.status}` }));
 ```
 
 ## Llamar al servidor: `task`

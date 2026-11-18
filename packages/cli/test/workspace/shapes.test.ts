@@ -128,12 +128,22 @@ describe('fudic g app: its frame', () => {
     expect(fs.paths()).not.toContain('shop/apps/web/fudic.json');
   });
 
-  it('--no-layout makes its home a whole document', async () => {
+  // SDD-88 criterion 15: there is no app without a layout to ask for.
+  it('--no-layout is an unknown flag, and nothing is written', async () => {
     const fs = await withLibraryLayout();
-    const { out } = await cli(fs, 'g', 'app', 'web', '--no-layout', '--cwd', SHOP);
-    expect(out).toContain('  layout     none: each page is a whole document\n');
-    expect(fs.at('shop/apps/web/src/routes/index.fud')).toMatch(/^<!DOCTYPE html>/u);
-    expect(fs.at('shop/apps/web/README.md')).toContain('- No layout: each page is a whole document. `fudic g layout <name>` adds one.');
+    const before = fs.paths();
+    const { code, out, err } = await cli(fs, 'g', 'app', 'web', '--no-layout', '--cwd', SHOP);
+    expect(code).not.toBe(0);
+    expect(out + err).toContain('unknown flag --no-layout');
+    expect(fs.paths()).toEqual(before);
+  });
+
+  it('its README and its report say nothing of a page without a layout', async () => {
+    const fs = await withLibraryLayout();
+    const { out } = await cli(fs, 'g', 'app', 'web', '--cwd', SHOP);
+    expect(out).not.toContain('layout     none');
+    expect(fs.at('shop/apps/web/README.md')).not.toContain('No layout');
+    expect(fs.at('shop/apps/web/src/routes/index.fud').startsWith('<link rel="layout"')).toBe(true);
   });
 
   it('--layout <name> gives it a layout of its own under that name', async () => {
@@ -169,22 +179,28 @@ describe('fudic g page: the layout it renders inside', () => {
     expect(firstLine(fs, 'blog/[slug].fud')).toBe('<link rel="layout" href="../../layouts/shell.fud">');
   });
 
-  it('a whole document when the home page has no layout either', async () => {
+  /** `web` with no layout of its own and a home page that is `home`. */
+  async function bareWeb(home: string): Promise<MemoryFs> {
     const fs = await withLibraryLayout();
-    await cli(fs, 'g', 'app', 'web', '--no-layout', '--cwd', SHOP);
-    await cli(fs, 'g', 'page', 'about', '--project', 'web', '--cwd', SHOP);
-    expect(firstLine(fs, 'about.fud')).toBe('<!DOCTYPE html>');
-  });
+    await cli(fs, 'g', 'app', 'web', '--cwd', SHOP);
+    for (const file of files(fs, 'shop/apps/web/src/layouts/')) fs.remove(`${ROOT}/${file}`);
+    fs.write(`${SHOP}/apps/web/src/routes/index.fud`, home);
+    return fs;
+  }
 
+  // SDD-88 criterion 14: in a workspace the command it names carries `--project`.
   it.each([
-    ['an empty href', '<link rel="layout" href="">'],
-    ['an href to nothing', '<link rel="layout" href="../layouts/ghost.fud">'],
-  ])('a whole document when the home page links %s', async (_what, link) => {
-    const fs = await withLibraryLayout();
-    await cli(fs, 'g', 'app', 'web', '--no-layout', '--cwd', SHOP);
-    fs.write(`${SHOP}/apps/web/src/routes/index.fud`, `${link}\n<h1>Home</h1>\n`);
-    await cli(fs, 'g', 'page', 'about', '--project', 'web', '--cwd', SHOP);
-    expect(firstLine(fs, 'about.fud')).toBe('<!DOCTYPE html>');
+    ['links no layout either', '<h1>Home</h1>\n'],
+    ['links an empty href', '<link rel="layout" href="">\n<h1>Home</h1>\n'],
+    ['links an href to nothing', '<link rel="layout" href="../layouts/ghost.fud">\n<h1>Home</h1>\n'],
+  ])('FUD1582, and no page, when the home page %s', async (_what, home) => {
+    const fs = await bareWeb(home);
+    const { code, out } = await cli(fs, 'g', 'page', 'about', '--project', 'web', '--cwd', SHOP);
+    expect(code).not.toBe(0);
+    expect(out).toContain('FUD1582');
+    expect(out).toContain('the layout of apps/web/src/routes/index.fud');
+    expect(out).toContain('`fudic g layout _layout --project web`');
+    expect(fs.paths()).not.toContain('shop/apps/web/src/routes/about.fud');
   });
 
   it('refuses an href no project of the workspace maps (FUD0449)', async () => {

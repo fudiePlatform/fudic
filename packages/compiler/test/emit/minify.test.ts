@@ -11,16 +11,17 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { minifySync } from 'oxc-minify';
 import {
-  resolveComponents,
-  emitPageModule,
+  resolveDocument,
+  emitRouteModule,
+  emitLayoutModule,
   emitComponentModule,
-  type ComponentGraph,
+  type DocumentGraph,
 } from '../../src/emit/index.js';
 import { STYLE_POLYFILL } from '../../src/emit/polyfill.js';
 import { STYLE_POLYFILL_MIN } from '../../src/emit/polyfill.min.js';
-import { fixturesDir, fixtureIo, memoryIo, renderPageHtml } from './_support.js';
+import { fixturesDir, fixtureIo, LINK_LAYOUT, memoryIo, renderPageHtml, withLayout } from './_support.js';
 
-const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+const graph: DocumentGraph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
 
 const PAGE_DATA = {
   title: 'Inicio',
@@ -90,7 +91,8 @@ describe('BUG-07 §4.2 — the document skeleton carries no whitespace', () => {
   });
 
   it('runs the doctype into <html> and <head> with nothing between them', () => {
-    expect(html.startsWith('<!DOCTYPE html><html lang="es"><head>')).toBe(true);
+    // The fixture's layout writes a bare `<html>`: the document is the layout's (SDD-88).
+    expect(html.startsWith('<!DOCTYPE html><html><head>')).toBe(true);
     expect(html.endsWith('</html>')).toBe(true);
   });
 
@@ -98,8 +100,9 @@ describe('BUG-07 §4.2 — the document skeleton carries no whitespace', () => {
     expect(html).toContain('</head><body>');
     expect(html).toContain('</script><style type="module"');
     expect(html).toContain('</style><style type="module"');
-    // The author's own head elements too — the `<title>` and the `<meta>` the page wrote.
-    expect(html).toMatch(/<head><title>[^<]*<\/title><meta\b/u);
+    // The author's own head elements too — the `<meta>` the layout wrote and the route's
+    // `<title>` its `@RenderHead()` puts after them.
+    expect(html).toMatch(/<head><meta\b[^>]*><meta\b[^>]*><title>[^<]*<\/title>/u);
   });
 
   it('has no newline anywhere in the head, outside the raw-text elements', () => {
@@ -136,7 +139,8 @@ describe('BUG-07 §6.3–§6.5 — the markup collapses, and nothing disappears'
     // The browser collapses across text nodes anyway, so the render is identical either
     // way. What is left is a handful of bytes, and the price of them is slot assignment.
     const sources = [
-      emitPageModule(graph),
+      emitRouteModule(graph),
+      emitLayoutModule(graph, graph.layouts[0]!),
       ...[...graph.components.values()].map((c) => emitComponentModule(graph, c)),
     ];
     const literals = sources.flatMap((src) => [...src.matchAll(/\$dom\.text\((".*?")\)/gu)]);
@@ -167,43 +171,37 @@ describe('BUG-07 §6.3–§6.5 — the markup collapses, and nothing disappears'
 
 describe('BUG-07 §6.4 — a preserving component keeps its whitespace', () => {
   it('leaves the content verbatim when its own <style> declares white-space: pre', async () => {
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m-pre.fud"><title>t</title></head>' +
-        '<body><m-pre></m-pre></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m-pre.fud">\n<head><title>t</title></head>\n<m-pre></m-pre>',
       // The fact no external minifier can reach: the rule is in the component's OWN file.
       '/m-pre.fud':
         '<head><style>:host { white-space: pre; }</style></head>\n' +
         '<m-pre><template shadowrootmode="open"><code>one\n  two   three</code></template></m-pre>',
-    });
-    const html = await renderPageHtml(resolveComponents('/home.fud', io), {});
+    }));
+    const html = await renderPageHtml(resolveDocument('/home.fud', io).value, {});
     expect(html).toContain('one\n  two   three');
   });
 
   it('collapses the same content when the component says nothing about white-space', async () => {
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m-plain.fud"><title>t</title></head>' +
-        '<body><m-plain></m-plain></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m-plain.fud">\n<head><title>t</title></head>\n<m-plain></m-plain>',
       '/m-plain.fud':
         '<head><style>:host { display: block; }</style></head>\n' +
         '<m-plain><template shadowrootmode="open"><code>one\n  two   three</code></template></m-plain>',
-    });
-    const html = await renderPageHtml(resolveComponents('/home.fud', io), {});
+    }));
+    const html = await renderPageHtml(resolveDocument('/home.fud', io).value, {});
     expect(html).toContain('one two three');
   });
 
   it('preserves a <pre> whatever the stylesheet says, and only inside it', async () => {
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m-code.fud"><title>t</title></head>' +
-        '<body><m-code></m-code></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m-code.fud">\n<head><title>t</title></head>\n<m-code></m-code>',
       '/m-code.fud':
         '<m-code><template shadowrootmode="open">' +
         '<pre>keep   me</pre><span>drop   me</span>' +
         '</template></m-code>',
-    });
-    const html = await renderPageHtml(resolveComponents('/home.fud', io), {});
+    }));
+    const html = await renderPageHtml(resolveDocument('/home.fud', io).value, {});
     expect(html).toContain('<pre>keep   me</pre>');
     expect(html).toContain('<span>drop me</span>'); // the walk left the preserving context
   });
@@ -212,16 +210,14 @@ describe('BUG-07 §6.4 — a preserving component keeps its whitespace', () => {
     // `white-space` inherits and crosses the shadow boundary, so an ancestor in another
     // file can put this subtree in a preserving context. Nothing here can see that —
     // hence an attribute, and not a guess (§4.4).
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m-esc.fud"><title>t</title></head>' +
-        '<body><m-esc></m-esc></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m-esc.fud">\n<head><title>t</title></head>\n<m-esc></m-esc>',
       '/m-esc.fud':
         '<m-esc><template shadowrootmode="open">' +
         '<div data-fud-space="preserve"><b>keep   me</b></div><i>drop   me</i>' +
         '</template></m-esc>',
-    });
-    const html = await renderPageHtml(resolveComponents('/home.fud', io), {});
+    }));
+    const html = await renderPageHtml(resolveDocument('/home.fud', io).value, {});
     expect(html).toContain('<b>keep   me</b>'); // and its descendants too: it inherits
     expect(html).toContain('<i>drop me</i>');
   });

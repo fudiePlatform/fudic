@@ -183,8 +183,8 @@ describe('the sheets a component chooses, from its fudic.json', () => {
     expect(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN)).toBeUndefined();
   });
 
-  it('checks nothing on a page, which has no root template to choose from', async () => {
-    const { service, document } = withConfig('<!DOCTYPE html>\n<html><head><title>t</title></head><body></body></html>\n|');
+  it('checks nothing on a route, which has no root template to choose from', async () => {
+    const { service, document } = withConfig('<link rel="layout" href="./_layout.fud">\n<head><title>t</title></head>\n<p></p>\n|');
     const found = (await service.provideDiagnostics?.(document, TOKEN)) ?? [];
     expect(found.filter((d) => d.code === 'FUD0744')).toEqual([]);
   });

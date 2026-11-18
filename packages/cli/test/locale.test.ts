@@ -26,10 +26,13 @@ describe('criterion 3: fudic new --locale', () => {
     expect(lang(fs, 'tienda/src/layouts/_layout.fud')).toBe('es');
   });
 
-  it('without a layout, the home page is the whole document and carries the lang', async () => {
+  // SDD-88 §4.1: the lang is the layout's; the home page is a route and writes none.
+  it('the home page is a route that links the layout, and writes no lang of its own', async () => {
     const fs = new MemoryFs({}, ROOT);
-    await cli(fs, 'new', 'tienda', '--locale', 'es', '--no-layout', '--no-install', '--no-git', '--cwd', ROOT);
-    expect(lang(fs, 'tienda/src/routes/index.fud')).toBe('es');
+    await cli(fs, 'new', 'tienda', '--locale', 'es', '--no-install', '--no-git', '--cwd', ROOT);
+    const home = fs.at('tienda/src/routes/index.fud');
+    expect(home.startsWith('<link rel="layout" href="../layouts/_layout.fud">')).toBe(true);
+    expect(home).not.toContain('lang=');
   });
 
   it('the tag is canonicalized: --locale ES-es is es-ES', async () => {
@@ -107,12 +110,10 @@ describe('criterion 4: g layout and g page take the project\'s first language', 
     return fs;
   }
 
-  it('with "locales": ["fr", "en"] they write lang="fr"', async () => {
+  it('with "locales": ["fr", "en"] a new layout writes lang="fr"', async () => {
     const fs = await app(['fr', 'en']);
     await cli(fs, 'g', 'layout', 'docs', '--cwd', `${ROOT}/tienda`);
-    await cli(fs, 'g', 'page', 'about', '--no-layout', '--cwd', `${ROOT}/tienda`);
     expect(lang(fs, 'tienda/src/layouts/docs.fud')).toBe('fr');
-    expect(lang(fs, 'tienda/src/routes/about.fud')).toBe('fr');
   });
 
   it('without locales, DEFAULT_LOCALE', async () => {

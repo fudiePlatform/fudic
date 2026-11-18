@@ -15,12 +15,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
+  emitRouteModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { LINK_LAYOUT, memoryIo, withLayout } from './_support.js';
 
 const BADGE = `@code {
   const { tone = 'neutral' } = props<{ tone?: string }>();
@@ -43,25 +44,24 @@ const parent = (host: string): string => `<link rel="component" href="./app-badg
 </app-card>
 `;
 
-/** A page whose body holds the host under test, and which links the parent component. */
-const page = (host: string, links: string): string =>
-  `<!DOCTYPE html>\n<html>\n<head>${links}</head>\n<body>${host}</body>\n</html>\n`;
+/** A route whose markup holds the host under test, and which links the parent component. */
+const page = (host: string, links: string): string => `${LINK_LAYOUT}${links}\n${host}\n`;
 
 const BADGE_LINK = '<link rel="component" href="./app-badge.fud">';
 
-/** Emit the three outputs a host can appear in: page, server component, client chunk. */
+/** Emit the three outputs a host can appear in: route, server component, client chunk. */
 function outputs(host: string): { page: string; server: string; client: string } {
-  const io = memoryIo({
+  const io = memoryIo(withLayout({
     '/page.fud': page(host, BADGE_LINK),
     '/nested.fud': page('<app-card></app-card>', '<link rel="component" href="./app-card.fud">'),
     '/app-card.fud': parent(host),
     '/app-badge.fud': BADGE,
-  });
-  const pageGraph: ComponentGraph = resolveComponents('/page.fud', io);
+  }));
+  const pageGraph = resolveDocument('/page.fud', io).value;
   const cardGraph: ComponentGraph = resolveComponents('/nested.fud', io);
   const card = cardGraph.components.get('app-card')!;
   return {
-    page: emitPageModule(pageGraph),
+    page: emitRouteModule(pageGraph),
     server: emitComponentModule(cardGraph, card),
     client: emitComponentClientModule(cardGraph, card),
   };

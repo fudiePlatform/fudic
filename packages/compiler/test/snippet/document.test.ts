@@ -85,9 +85,9 @@ describe('a declaration is top-level, and its position is free (§4.1)', () => {
     expect(codes).toContain('FUD0824');
   });
 
-  it('is collected from the <head> of a page, where its links and its @code live', () => {
+  it('is collected from the <head> of a layout, where its links and its @code live', () => {
     const { doc, codes } = structure(
-      '<!DOCTYPE html><html><head>@snippet a() { <i></i> }</head><body></body></html>',
+      '<!DOCTYPE html><html><head>@snippet a() { <i></i> }@RenderHead()</head><body>@RenderBody()</body></html>',
     );
     expect(codes).toEqual([]);
     expect(doc.snippets).toHaveLength(1);
@@ -131,10 +131,10 @@ describe('<link rel="snippet"> (§4.3)', () => {
     expect(doc.links).toHaveLength(1);
   });
 
-  it('lives in the <head> of a page, beside its component links (decisions 59, 60)', () => {
+  it('lives in the <head> of a layout, beside its component links (decisions 59, 60)', () => {
     const { doc, codes } = structure(
       '<!DOCTYPE html>\n<html>\n<head>\n<link rel="snippet" href="./ui.fud">\n' +
-        '<link rel="component" href="./app-button.fud">\n<title>x</title>\n</head>\n<body></body>\n</html>\n',
+        '<link rel="component" href="./app-button.fud">\n<title>x</title>\n@RenderHead()\n</head>\n<body>@RenderBody()</body>\n</html>\n',
     );
     expect(codes).toEqual([]);
     expect(doc.snippetLinks).toHaveLength(1);

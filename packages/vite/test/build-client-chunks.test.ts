@@ -52,16 +52,14 @@ const CARD = `<link rel="component" href="./app-button.fud">
 </app-card>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-card.fud">
-    <title>Home</title>
-  </head>
-  <body>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-card.fud">
+<head><title>Home</title></head>
     <app-card .title="Hola"></app-card>
-  </body>
-</html>
+  
 `;
 
 interface OutFile {
@@ -79,6 +77,8 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-button.fud'), BUTTON);
   writeFileSync(join(root, 'src', 'components', 'app-card.fud'), CARD);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
 
   const result = (await build({

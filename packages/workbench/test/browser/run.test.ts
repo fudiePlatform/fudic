@@ -115,7 +115,7 @@ describe('runMain on a project — criterion 12', () => {
 
   it('a page is an error, a .fud without .fudspec is skipped with FUD0972, a .fudspec with errors is an error', async () => {
     project = tempProject('run-mixed');
-    project.write('src/index.fud', '<!DOCTYPE html>\n<html><body></body></html>\n');
+    project.write('src/index.fud', '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>\n');
     project.write('src/components/app-tabs.fudspec', 'component app-tabs\n\ncriterion roto\n  then\n    no-such-term app-tabs\n');
     const diagnostics: string[] = [];
     const done: string[] = [];

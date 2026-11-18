@@ -100,8 +100,9 @@ const LAYOUT = `<!DOCTYPE html>
 </html>
 `;
 
-const page = (head: string, body: string, rest = ''): string =>
-  `<!DOCTYPE html>\n<html>\n  <head>\n    <title>t</title>\n    ${head}\n  </head>\n  <body>\n    ${body}\n  </body>\n</html>\n${rest}`;
+/** A layout with `head` in its `<head>` and `body` in its `<body>`, before its holes. */
+const layout = (head: string, body: string): string =>
+  `<!DOCTYPE html>\n<html>\n  <head>\n    <title>t</title>\n    ${head}\n    @RenderHead()\n  </head>\n  <body>\n    ${body}\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`;
 
 describe('criterion 6 — an `@await` where nothing waits: FUD1322 on the keyword', () => {
   const AWAIT = '@await data.users { <p>x</p> }';
@@ -122,14 +123,13 @@ describe('criterion 6 — an `@await` where nothing waits: FUD1322 on the keywor
     expect(codes(LAYOUT.replace('BODY', AWAIT))).toEqual(['FUD1322 @await']);
   });
 
-  it('in the `<head>` of a page and in the body of a snippet of a page', () => {
-    expect(codes(page(AWAIT, '<p>b</p>'))).toEqual(['FUD1322 @await']);
-    // A page declares its snippets in its `<head>` (decisions 59, 60).
-    expect(codes(page(`@snippet row() { ${AWAIT} }`, '<p>@render row()</p>'))).toEqual(['FUD1322 @await']);
+  it('in the `<head>` of a layout and in the body of a snippet of a layout', () => {
+    expect(codes(layout(AWAIT, '<p>b</p>'))).toEqual(['FUD1322 @await']);
+    // A layout declares its snippets in its `<head>` (decisions 59, 60).
+    expect(codes(layout(`@snippet row() { ${AWAIT} }`, '<p>@render row()</p>'))).toEqual(['FUD1322 @await']);
   });
 
-  it('compiles in the body of a page, of a route, and in a `@section` of a route', () => {
-    expect(codes(page('', AWAIT))).toEqual([]);
+  it('compiles in the body of a route, and in a `@section` of a route', () => {
     expect(codes(route(`<head><title>t</title></head>\n<article>${AWAIT}</article>`))).toEqual([]);
     expect(codes(route(`@section nav { ${AWAIT} }\n<article></article>`))).toEqual([]);
   });

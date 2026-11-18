@@ -34,14 +34,19 @@ afterEach(async () => {
   await Promise.all(started.splice(0).map((check) => check.cancel()));
 });
 
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
 describe('startBackgroundCheck', () => {
   it('runs the real check in a child process and hands back the report', async () => {
     const root = mkdtempSync(join(tmpdir(), 'fudic-bgcheck-'));
     writeTypecheckConfig(root);
     mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+    mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+    writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
     writeFileSync(
       join(root, 'src', 'routes', 'index.fud'),
-      `@code {\n  const n: number = 'no';\n}\n<!DOCTYPE html><html><head><title>x</title></head><body>@n</body></html>\n`,
+      `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const n: number = 'no';\n}\n<head><title>x</title></head>\n@n\n`,
     );
     const report = await startBackgroundCheck(root).report;
     expect(report.problems).toContainEqual(

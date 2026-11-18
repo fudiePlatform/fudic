@@ -4,6 +4,7 @@
  * from the spec is a wrong help for whoever reads it.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/args.js';
 import { commandHelp, type Topic } from '../src/help/commands.js';
@@ -309,9 +310,9 @@ describe('a usage error (§6.8)', () => {
   it('lists the flags the command takes under an unknown one', () => {
     const cases: readonly (readonly [readonly string[], Topic, string])[] = [
       [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --skip-test, --skip-spec, --dry-run, --force'],
-      [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
+      [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --server, --sections, --skip-test, --dry-run, --force'],
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
-      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --layout, --no-layout, --locale, --dry-run, --force'],
+      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --layout, --locale, --dry-run, --force'],
       [['g', 'pipe', 'x', '--zz'], 'generate pipe', '--project, --on, --dry-run, --force'],
       [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],
@@ -320,7 +321,7 @@ describe('a usage error (§6.8)', () => {
       [['g', 'showcase', 'ui', '--zz'], 'generate showcase', '--app, --dry-run, --force'],
       [['fmt', '--zz'], 'fmt', '--check, --print-width, --tab-width, --use-tabs, --quote, --end-of-line, --dry-run, --force'],
       [['translate', '--zz'], 'translate', '--project, --dry-run, --force'],
-      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --no-layout, --target, --id, --prefix, --workspace, --app, --uses, --lib, --locale, --dry-run, --force'],
+      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --target, --id, --prefix, --workspace, --app, --uses, --lib, --locale, --dry-run, --force'],
     ];
     for (const [argv, topic, flags] of cases) {
       expect(usage(argv), argv.join(' ')).toEqual({ message: expect.stringContaining('unknown flag --zz'), hints: [`it takes: ${flags}`], topic });
@@ -350,5 +351,32 @@ describe('FUD0440 suggests a tag of the project (§6.6)', () => {
     const fs = new MemoryFs({ 'fudic.json': JSON.stringify({ id: 'shop' }) }, CWD);
     const plan = await planComponent('card', options, fs);
     expect(plan.errors[0]?.message).toContain('(e.g. "project-card")');
+  });
+});
+
+/** SDD-88 criterion 20: no help nor the README offers a page without a layout. */
+describe('no --no-layout anywhere, and --layout for g error-page', () => {
+  const README = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+
+  it.each(['new', 'generate app', 'generate page', 'generate error-page'] as const)('the help of %s does not name --no-layout', (topic) => {
+    expect(commandHelp(topic)).not.toContain('--no-layout');
+  });
+
+  it('nor the README of the CLI', () => {
+    expect(README).not.toContain('--no-layout');
+    expect(README).not.toMatch(/whole document/iu);
+  });
+
+  it('g page says it links the nearest layout and refuses without one', () => {
+    const help = commandHelp('generate page');
+    expect(help).toMatch(/layout/u);
+    expect(help).toMatch(/nothing|refuse/iu);
+  });
+
+  it('g error-page documents --layout and says which layout it links', () => {
+    const help = commandHelp('generate error-page');
+    expect(help).toContain('--layout');
+    expect(help).toContain('src/layouts/_layout.fud');
+    expect(help).toMatch(/no layout to link, it writes nothing/u);
   });
 });

@@ -96,8 +96,10 @@ describe('casePage: one case, its props as literals of the page', () => {
     const page = casePage(TARGET, 'case-0', { label: 'Save', count: 2, tags: ['a'], $content: '<b>x</b>' });
     expect(page).toEqual({ source: expect.any(String) });
     const { source } = page as { source: string };
+    // A route that links the bench layout (SDD-88), from `routes/<tag>/<id>.fud`.
+    expect(source.startsWith('<link rel="layout" href="../../_bench-layout.fud">\n')).toBe(true);
     expect(source).toContain('<link rel="component" href="/p/src/components/app-card.fud">');
-    expect(source).toContain('    @code {\n      const label = "Save";\n      const count = 2;\n      const tags = ["a"];\n    }\n');
+    expect(source).toContain('@code {\n  const label = "Save";\n  const count = 2;\n  const tags = ["a"];\n}\n');
     expect(source).toContain('<app-card .label=@label .count=@count .tags=@tags><b>x</b></app-card>');
     expect(source).toContain('<title>app-card · case-0</title>');
   });

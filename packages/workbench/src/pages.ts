@@ -10,6 +10,7 @@
 import { FUD0972, FUD0974, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import { argText, normalizeTerm, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
 import type { Bench, CriterionNames, CriterionSetup } from '@fudic/vite';
+import { BENCH_LAYOUT_FILE } from './bench-dir.js';
 import { fixtureOf } from './access.js';
 import { hostComponent } from './host.js';
 import { caseShape, propAttrs, signalLiterals } from './mount-source.js';
@@ -107,7 +108,7 @@ export function benchRoutesDir(pid: number = process.pid): string {
  * whose pages live one level down, at `/<tag>/<slug>`.
  */
 export function mountFiles(target: BenchTarget): ReadonlyMap<string, string> {
-  return new Map([[`routes/${target.tag}.fud`, pageSource(target.tag, target.tag, bare(target))]]);
+  return new Map([[`routes/${target.tag}.fud`, pageSource(target.tag, target.tag, bare(target), BARE_LAYOUT_HREF)]]);
 }
 
 export function planBench(input: PlanInput): BenchPlan {
@@ -184,16 +185,23 @@ function bare(target: BenchTarget): Mount {
   return { href: target.component, tag: target.tag, code: '', attrs: '', content: '' };
 }
 
-export function pageSource(tag: string, title: string, mount: Mount): string {
+/** The `href` of the bench layout from a component's bare page, `routes/<tag>.fud`. */
+export const BARE_LAYOUT_HREF = `../${BENCH_LAYOUT_FILE}`;
+
+/** The `href` of the bench layout from a criterion's or a case's page, `routes/<tag>/<id>.fud`. */
+export const CASE_LAYOUT_HREF = `../../${BENCH_LAYOUT_FILE}`;
+
+/**
+ * A page of the bench: a route that links the bench layout (SDD-88), with the mounted component
+ * as the only thing in its body.
+ */
+export function pageSource(tag: string, title: string, mount: Mount, layoutHref: string): string {
   return (
-    '<!DOCTYPE html>\n<html>\n  <head>\n' +
-    `    <link rel="component" href="${mount.href}">\n` +
+    `<link rel="layout" href="${layoutHref}">\n` +
+    `<link rel="component" href="${mount.href}">\n` +
     mount.code +
-    '    <script type="module" src="fudic:runtime"></script>\n' +
-    `    <title>${tag} · ${title}</title>\n` +
-    '  </head>\n  <body>\n' +
-    `    <${mount.tag}${mount.attrs}>${mount.content}</${mount.tag}>\n` +
-    '  </body>\n</html>\n'
+    `<head>\n  <title>${tag} · ${title}</title>\n</head>\n` +
+    `<${mount.tag}${mount.attrs}>${mount.content}</${mount.tag}>\n`
   );
 }
 
@@ -230,8 +238,8 @@ class Planner {
       const code =
         order.length === 0
           ? ''
-          : `    @code {\n      import fixtures from "${specifier}";\n` +
-            `      const { ${order.join(', ')} } = ${fixtureOf(fixture)};\n    }\n`;
+          : `@code {\n  import fixtures from "${specifier}";\n` +
+            `  const { ${order.join(', ')} } = ${fixtureOf(fixture)};\n}\n`;
       const attrs = propAttrs(order, (prop) => prop);
       this.page(id, { href: component, tag: this.target.tag, code, attrs, content });
       return base;
@@ -265,6 +273,6 @@ class Planner {
   }
 
   private page(id: string, mount: Mount): void {
-    this.files.set(`routes/${this.target.tag}/${id}.fud`, pageSource(this.target.tag, id, mount));
+    this.files.set(`routes/${this.target.tag}/${id}.fud`, pageSource(this.target.tag, id, mount, CASE_LAYOUT_HREF));
   }
 }

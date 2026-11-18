@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
-import { resolveComponents, hydratableTags, type ComponentGraph } from '../../src/emit/index.js';
+import { resolveComponents, resolveDocument, hydratableTags, type ComponentGraph } from '../../src/emit/index.js';
 import { fudTree } from '../../src/emit/maps.js';
 import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
@@ -31,11 +31,9 @@ ${markup}
 }
 
 const CHAIN = {
-  '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./app-parent.fud"></head>
-  <body><app-parent></app-parent></body>
-</html>
+  '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./app-parent.fud">
+<app-parent></app-parent>
 `,
   '/app/app-parent.fud': stateful('app-parent', ['app-child'], '    <app-child></app-child>'),
   '/app/app-child.fud': stateful('app-child', ['app-grandchild'], '    <app-grandchild></app-grandchild>'),
@@ -56,11 +54,9 @@ describe('fud-tree — by tag (§6.25)', () => {
     // CATALOGUE, so it comes out identical — that is what makes its weight irrelevant.
     const many = {
       ...CHAIN,
-      '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./app-parent.fud"></head>
-  <body>${'<app-parent></app-parent>'.repeat(200)}</body>
-</html>
+      '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./app-parent.fud">
+${'<app-parent></app-parent>'.repeat(200)}
 `,
     };
     expect(treeOf(resolveComponents('/app/home.fud', memoryIo(many)))).toEqual(
@@ -75,11 +71,9 @@ describe('fud-tree — by tag (§6.25)', () => {
     const graph = resolveComponents(
       '/app/home.fud',
       memoryIo({
-        '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-outer.fud"></head>
-  <body><x-outer></x-outer></body>
-</html>
+        '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-outer.fud">
+<x-outer></x-outer>
 `,
         '/app/x-outer.fud': stateful(
           'x-outer',
@@ -97,11 +91,9 @@ describe('fud-tree — by tag (§6.25)', () => {
     const graph = resolveComponents(
       '/app/home.fud',
       memoryIo({
-        '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-outer.fud"></head>
-  <body><x-outer></x-outer></body>
-</html>
+        '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-outer.fud">
+<x-outer></x-outer>
 `,
         '/app/x-outer.fud': stateful(
           'x-outer',
@@ -126,7 +118,7 @@ describe('fud-tree — only the effective N3 (§6.26)', () => {
   it('no id, no entry and no slice — the three of them, on the same render', async () => {
     // They come out of the same pass, so a failure that only broke one of the three would
     // be a failure of coupling. `app-badge` is the case: props and `class:`, nothing else.
-    const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+    const graph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
     const page = await pageModuleOf(graph);
     const { io, dom } = ssrIo();
     const html = await drain(page({ title: 'x', items: [{ id: 'a', title: 'T', description: 'D', featured: true }] }, io));
@@ -140,11 +132,9 @@ describe('fud-tree — only the effective N3 (§6.26)', () => {
     const graph = resolveComponents(
       '/app/home.fud',
       memoryIo({
-        '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-outer.fud"></head>
-  <body><x-outer></x-outer></body>
-</html>
+        '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-outer.fud">
+<x-outer></x-outer>
 `,
         '/app/x-outer.fud': stateful('x-outer', ['x-inert'], '    <x-inert .tone="info"></x-inert>'),
         '/app/x-inert.fud': `@code {

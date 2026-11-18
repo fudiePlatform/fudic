@@ -1,5 +1,5 @@
 /**
- * Derivation of `data` in page and route files (SDD-23 §4.2).
+ * Derivation of `data` in route files (SDD-23 §4.2): every page is one (SDD-88).
  *
  * The template never declares the type of `data`; it reads it off the `load` of the route's
  * `.fudapi` (SDD-60 §4.7):

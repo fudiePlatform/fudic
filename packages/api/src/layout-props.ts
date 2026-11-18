@@ -24,6 +24,9 @@ export function layoutPropsType(pagePath: string, pageSource: string, typesFile:
     if (!REL_LAYOUT.test(tag)) continue;
     const href = HREF.exec(tag)?.[2];
     if (href === undefined || href === '' || href.startsWith('/')) return undefined;
+    // A library's layout, by its package specifier (`@acme/ui/layouts/_layout.fud`): imported as
+    // written, with no path composed around it (SDD-88 §3.7).
+    if (!href.startsWith('.')) return `import('${href}').$Props`;
     const layout = join(dirOf(pagePath), href);
     return `import('${relative(dirOf(typesFile), layout)}').$Props`;
   }

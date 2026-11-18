@@ -59,16 +59,18 @@ const LIB_PACKAGE = JSON.stringify(
 
 const LIB_FUDIC = JSON.stringify({ kind: 'lib', prefix: 'ui' }, null, 2);
 
-const page = (href: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-    <link rel="component" href="${href}">
-    <title>Tienda</title>
-  </head>
-  <body>
-    <ui-card .title="Hola">contenido</ui-card>
-  </body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const page = (href: string): string => `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="${href}">
+<head><title>Tienda</title></head>
+    <ui-card .title="Hola">contenido</ui-card>
 `;
 
 interface OutFile {
@@ -106,6 +108,7 @@ async function buildWorkspace(options: {
   const app = join(ws, 'apps', 'tienda');
   mkdirSync(join(app, 'src', 'routes'), { recursive: true });
   writeFileSync(join(app, 'src', 'routes', 'index.fud'), page(options.href));
+  writeFileSync(join(app, 'src', 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(app, 'fudic.json'), JSON.stringify({ kind: 'app', id: 'tienda' }, null, 2));
   // The app DECLARES the library, as a real app does. Since SDD-35 the build typechecks first
   // with the editor's index, which finds a library by the dependencies of `package.json`
@@ -213,7 +216,7 @@ describe('SDD-43 §4.2 — a bare specifier in an href', () => {
     // Since SDD-35 the build stops earlier, in the typecheck, and the typecheck says the same
     // FUD0760 over the href: a package specifier names its fix, never a bare «cannot resolve».
     expect(bareUnscoped.error ?? '').toMatch(/the typecheck failed/u);
-    expect(bareUnscoped.printed.join('\n')).toMatch(/index\.fud:4:33 - error FUD0760: "acme-ui\/ui-card\.fud" names a package that is not installed/u);
+    expect(bareUnscoped.printed.join('\n')).toMatch(/index\.fud:2:29 - error FUD0760: "acme-ui\/ui-card\.fud" names a package that is not installed/u);
     expect(bareUnscoped.printed.join('\n')).not.toMatch(/FUD0460/u);
   });
 

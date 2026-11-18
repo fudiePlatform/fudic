@@ -43,4 +43,9 @@ export interface LinkIndex {
    */
   read?(path: string): string | undefined;
   serverPath?(fromFile: string, href: string): string;
+  /**
+   * Whether a file is the error page of its project (SDD-88): `src/routes/_error.fud` of an app,
+   * `src/_error.fud` of a library. Optional: an index that cannot tell leaves `FUD1581` unsaid.
+   */
+  errorPage?(path: string): boolean;
 }

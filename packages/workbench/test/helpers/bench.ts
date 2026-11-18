@@ -14,6 +14,7 @@ import { fudic } from '@fudic/vite';
 import { parseSpec, type BlockKind, type TermParam } from '@fudic/spec';
 import { createServer as createVite, type ViteDevServer } from 'vite';
 import { launchBrowser, type BrowserLike } from '../../src/browser.js';
+import { emptyBenchDir } from '../../src/bench-dir.js';
 import type { LoadedTerm } from '../../src/engine.js';
 import type { LoadedExtension } from '../../src/extension.js';
 import { benchDir, planBench, type BenchPlan, type ExecutedFixtures } from '../../src/pages.js';
@@ -52,8 +53,8 @@ export interface TestBench {
  */
 export async function startBench(root: string): Promise<TestBench> {
   const dir = benchDir(root);
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(`${dir}/routes`, { recursive: true });
+  // As the real workbench starts it: empty, with its routes folder and the layout its pages link.
+  emptyBenchDir(dir);
 
   const http: Server = createHttp();
   const vite = await createVite({

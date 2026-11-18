@@ -1,8 +1,8 @@
 /**
- * `fudic g page <ruta>` (SDD-22 §4.5): ONE resolved form, never a menu. Offering "with
+ * `fudic g page <ruta>` (SDD-22 §4.5, SDD-88): ONE resolved form, never a menu. Offering "with
  * layout / without layout" would push a choice onto the user that only reveals itself as
  * wrong at compile time. The command picks the layout, writes the `rel="layout"` edge and
- * declares the sections the layout can render.
+ * declares the sections the layout can render; with no layout to link it refuses (`FUD1582`).
  */
 
 import { API_EXTENSION } from '@fudic/api';
@@ -14,7 +14,7 @@ import { targetChange } from '../project.js';
 import { routeToFile, routeToUrl } from '../route.js';
 import { dependOnModule, installFor } from '../workspace/modules.js';
 import { resolveTarget, routeRefusal } from '../workspace/target.js';
-import { indent, pageTest, renderTemplate, sectionBlocks, serverLink } from '../templates.js';
+import { pageTest, renderTemplate, sectionBlocks, serverLink } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, PageOptions, Plan, PlanDiagnostic } from '../types.js';
 
@@ -41,7 +41,7 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
   const layout = resolveLayout(
     file,
     opts.layout,
-    { cwd: opts.cwd, routesDir, layoutsDir: joinPosix(resolved.target.dir, LAYOUTS_DIR) },
+    { cwd: opts.cwd, routesDir, layoutsDir: joinPosix(resolved.target.dir, LAYOUTS_DIR), ...(opts.project !== undefined ? { project: opts.project } : {}) },
     io,
   );
   const diagnostics: PlanDiagnostic[] = [...layout.diagnostics];
@@ -54,21 +54,13 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
   // server folder (SDD-60 §3.4, §3.12); the `.fud` only links it.
   const api = file.replace(/\.fud$/u, API_EXTENSION);
   const link = serverLink(`./${api.slice(api.lastIndexOf('/') + 1)}`);
-  const contents =
-    layout.path === null
-      ? renderTemplate('page.fud', {
-          // The project's first language (SDD-71 §3.6): the reader fills `DEFAULT_LOCALE` when it
-          // declares none, and never leaves the list empty.
-          lang: resolved.target.config.locales[0]!,
-          title: titleOf(route),
-          code: opts.server ? indent(link, '    ') : '',
-        })
-      : renderTemplate('route.fud', {
-          layoutHref: layout.specifier ?? hrefBetween(file, layout.path),
-          code: opts.server ? link : '',
-          title: opts.server ? '@data.title' : titleOf(route),
-          sections: sectionBlocks(sections),
-        });
+  // Every page links a layout (SDD-88): with none to link, `resolveLayout` refused above.
+  const contents = renderTemplate('route.fud', {
+    layoutHref: layout.specifier ?? hrefBetween(file, layout.path!),
+    code: opts.server ? link : '',
+    title: opts.server ? '@data.title' : titleOf(route),
+    sections: sectionBlocks(sections),
+  });
 
   const changes: FileChange[] = [];
   const written = [{ file, contents }];

@@ -21,11 +21,12 @@ import { specifiersOf } from './helpers/specifiers.js';
 import { renderUrlOf, emitted } from './helpers/manifest.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Home</title></head>
-<body><h1>Home</h1></body>
-</html>
+<h1>Home</h1>
 `;
 
 interface OutFile {
@@ -43,6 +44,8 @@ function projectRoot(options: { serviceWorker: boolean; shell?: readonly string[
   const root = mkdtempSync(join(tmpdir(), 'fudic-swself-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'public'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'public', 'logo.svg'), '<svg/>');
   if (options.serviceWorker) {

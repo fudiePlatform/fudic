@@ -33,7 +33,7 @@ all. The directory path is the URL:
 | `src/routes/customer/index.fud` | `/customer` |
 | `src/routes/customer/[id].fud` | `/customer/:id` |
 
-Only page documents (a `<!DOCTYPE html>`) are routes; component `.fud` files are pulled in
+Only routes — a `.fud` that starts with `<link rel="layout">` — are pages. A file with a `<!DOCTYPE html>` is a layout, never a route. Component `.fud` files are pulled in
 transitively through `<link rel="component">` and may live anywhere — a shared
 `src/components/` directory outside `routesDir` resolves from any route depth. Routes are ordered by descending
 specificity (static before param), which the emitted manifest matches first-hit.

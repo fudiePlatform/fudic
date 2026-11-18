@@ -281,7 +281,7 @@ describe('the emit walks descend into both blocks too', () => {
     const graph = resolveComponents(
       '/app/home.fud',
       memoryIo({
-        '/app/home.fud': '<!DOCTYPE html>\n<html>\n  <head>\n    <link rel="component" href="./x-parent.fud">\n  </head>\n  <body><x-parent></x-parent></body>\n</html>\n',
+        '/app/home.fud': '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./x-parent.fud">\n<x-parent></x-parent>\n',
         '/app/x-parent.fud':
           '<link rel="component" href="./x-badge.fud">\n' +
           tpl('x-parent', "@code {\n  import { signal } from '@fudic/core';\n  const n = signal(0);\n}", '<p>@(n())</p>@await data.users { } @catch (e) { <x-badge .tone="success"></x-badge> }'),

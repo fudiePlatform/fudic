@@ -16,17 +16,21 @@ import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 
-/** The two cases verbatim from the example — `@@` in content, and entities in content. */
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+/** The two cases verbatim from the example — `@@` in content, and entities in content. */
+const PAGE = `<link rel="layout" href="./_layout.fud">
 <head><title>Acerca de</title></head>
-<body>
 <ul>
   <li><code>/blog</code> — <code>@@server load</code> ⇒ lo pinta el Service Worker.</li>
 </ul>
 <p>Ninguna de las cuatro escribe <code>&lt;html&gt;</code>.</p>
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -41,6 +45,7 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-literal-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
   const result = (await build({
     root,
     logLevel: 'silent',

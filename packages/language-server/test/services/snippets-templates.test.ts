@@ -51,16 +51,6 @@ describe('the skeletons are the CLI templates', () => {
     );
   });
 
-  it('page', () => {
-    expect(bodyOf('page')).toBe(
-      renderTemplate('page.fud', {
-        lang: '${1:en}',
-        title: '${2:Home}',
-        code: '',
-      }),
-    );
-  });
-
   it('layout', () => {
     expect(bodyOf('layout')).toBe(
       renderTemplate('layout.fud', {

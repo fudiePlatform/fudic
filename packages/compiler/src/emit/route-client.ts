@@ -58,7 +58,7 @@ import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import { stampOption } from './source-locations.js';
 import type { DocumentGraph } from './resolve.js';
-import type { RouteDocument, PageDocument } from '../document/index.js';
+import type { RouteDocument } from '../document/index.js';
 import type { DataShape, Diagnostic } from '../types/index.js';
 import { apiFields, apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
 
@@ -94,7 +94,7 @@ const layoutNode = (id: number): string => `$lp${id}`;
 class ComposeWalker {
   readonly #adopt: CodeWriter;
   readonly #em: ClientMarkupEmitter;
-  readonly #route: RouteDocument | PageDocument;
+  readonly #route: RouteDocument;
   readonly #graph: DocumentGraph;
   /**
    * The layout nodes `enter` held, declared at CLOSURE scope by the caller and only assigned
@@ -108,7 +108,7 @@ class ComposeWalker {
     this.#adopt = adopt;
     this.#em = em;
     this.#graph = graph;
-    this.#route = graph.entry as RouteDocument | PageDocument;
+    this.#route = graph.entry as RouteDocument;
   }
 
   level(items: readonly ComposeItem[], parent: string, depth: number): void {
@@ -164,10 +164,7 @@ class ComposeWalker {
   }
 
   #content(hole: Parameters<typeof holeContent>[1]): readonly HtmlContent[] {
-    // A page owns its `<body>` and declares no section: its one hole is its body.
-    return this.#route.type === 'route-document'
-      ? holeContent(this.#route, hole)
-      : this.#route.body.children;
+    return holeContent(this.#route, hole);
   }
 }
 

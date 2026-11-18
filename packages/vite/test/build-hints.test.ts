@@ -32,25 +32,20 @@ const COUNTER = `@code {
 </x-counter>
 `;
 
-const HYDRATES = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="component" href="../components/x-counter.fud">
-  <link rel="stylesheet" href="../styles/site.css">
-  <title>Cuenta</title>
-</head>
-<body><p>texto</p><x-counter></x-counter></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const HYDRATES = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/x-counter.fud">
+<head><link rel="stylesheet" href="../styles/site.css">
+  <title>Cuenta</title></head>
+<p>texto</p><x-counter></x-counter>
 `;
 
-const STATIC = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="stylesheet" href="../styles/site.css">
-  <title>Quieta</title>
-</head>
-<body><p>texto</p></body>
-</html>
+const STATIC = `<link rel="layout" href="../layouts/_layout.fud">
+<head><link rel="stylesheet" href="../styles/site.css">
+  <title>Quieta</title></head>
+<p>texto</p>
 `;
 
 interface OutFile {
@@ -60,20 +55,17 @@ interface OutFile {
   readonly source?: unknown;
 }
 
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="stylesheet" href="../styles/error.css">
-  <title>Error</title>
-</head>
-<body><h1 class="e">@data.status</h1></body>
-</html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<head><link rel="stylesheet" href="../styles/error.css">
+  <title>Error</title></head>
+<h1 class="e">@data.status</h1>
 `;
 
 async function built(config: Record<string, unknown>, errorPage = false): Promise<ManifestFile> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-hints-'));
   writeTypecheckConfig(root);
-  for (const dir of ['src/routes', 'src/components', 'src/styles']) mkdirSync(join(root, dir), { recursive: true });
+  for (const dir of ['src/routes', 'src/components', 'src/styles', 'src/layouts']) mkdirSync(join(root, dir), { recursive: true });
+  writeFileSync(join(root, 'src/layouts/_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src/components/x-counter.fud'), COUNTER);
   writeFileSync(join(root, 'src/styles/site.css'), 'p { color: red }\n');
   writeFileSync(join(root, 'src/routes/index.fud'), HYDRATES);

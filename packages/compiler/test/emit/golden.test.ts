@@ -15,7 +15,9 @@ import {
   resolveComponents,
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
+  emitLayoutModule,
+  emitRouteModule,
+  resolveDocument,
   type ComponentGraph,
 } from '../../src/emit/index.js';
 import { fixturesDir, fixtureIo } from './_support.js';
@@ -35,8 +37,12 @@ describe('SSR emit — golden output (byte-for-byte)', () => {
     });
   }
 
-  it('emits home.mjs exactly', async () => {
-    await expect(emitPageModule(graph)).toMatchFileSnapshot(golden('home.mjs'));
+  // The fixture page is a route since SDD-88: `home.mjs` is its route module, and its layout has its own.
+  it('emits home.mjs (the route) and home.layout.mjs exactly', async () => {
+    const doc = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo);
+    expect(doc.diagnostics).toEqual([]);
+    await expect(emitRouteModule(doc.value)).toMatchFileSnapshot(golden('home.mjs'));
+    await expect(emitLayoutModule(doc.value, doc.value.layouts[0]!)).toMatchFileSnapshot(golden('home.layout.mjs'));
   });
 });
 

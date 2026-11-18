@@ -3,8 +3,10 @@
   <head>
     <link rel="component" href="./app-child.fud">
     <title>Fix</title>
+    @RenderHead()
   </head>
   <body>
     <app-child></app-child>
+    @RenderBody()
   </body>
 </html>

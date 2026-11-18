@@ -45,28 +45,30 @@ function project(
 const SHEET = ':root {\n  --gap:   1rem;\n}\n';
 
 /**
- * A standalone page, which owns its own `<head>` — so the module the transform emits is the
- * one that carries the embedded sheet. (A layout's head lands in the LAYOUT's module, which
- * `@fudic/compiler` covers on its own side.)
+ * A route whose layout's `<head>` carries `head`. Since SDD-88 there is no page without a layout,
+ * and a layout's prunable sheet is the route's to write (SDD-49 §4.6): the module the transform
+ * emits for the ROUTE (`id`) is the one that carries the embedded sheet. `layout` is the file
+ * that owns the `<head>`.
  */
 function page(
   head: string,
   files: Readonly<Record<string, string>> = {},
-): { readonly root: string; readonly id: string } {
+): { readonly root: string; readonly id: string; readonly layout: string } {
   const root = mkdtempSync(join(tmpdir(), 'fudic-inline-page-'));
   const id = join(root, 'p.fud');
+  const layout = join(root, '_layout.fud');
   writeFileSync(
-    id,
+    layout,
     `<!DOCTYPE html><html><head><title>t</title>\n${head}\n` +
-      '@code { const n = signal(1); }\n' +
-      '</head><body><output>@n()</output></body></html>\n',
+      '@RenderHead()</head><body>@RenderBody()</body></html>\n',
   );
+  writeFileSync(id, '<link rel="layout" href="./_layout.fud">\n@code { const n = signal(1); }\n<output>@n()</output>\n');
   for (const [name, text] of Object.entries(files)) {
     const path = join(root, name);
     mkdirSync(join(path, '..'), { recursive: true });
     writeFileSync(path, text);
   }
-  return { root, id };
+  return { root, id, layout };
 }
 
 describe('assetText — the bytes of a resource the author asked to embed', () => {
@@ -86,11 +88,12 @@ describe('assetText — the bytes of a resource the author asked to embed', () =
   });
 
   it('reads a PUBLIC sheet through the registry that owns public files', () => {
-    const { root, id } = page('<link rel="stylesheet" href="/tokens.css?inline">', {
+    const { root, layout } = page('<link rel="stylesheet" href="/tokens.css?inline">', {
       'public/tokens.css': SHEET,
     });
+    // A public sheet is not pruned per page (SDD-49), so the layout that names it writes it.
     const result = transformFud(
-      id,
+      layout,
       nodeIo(),
       'ruta',
       undefined,
@@ -103,11 +106,11 @@ describe('assetText — the bytes of a resource the author asked to embed', () =
   });
 
   it('a public sheet that is not there stays a URL', () => {
-    const { root, id } = page('<link rel="stylesheet" href="/nope.css?inline">', {
+    const { root, layout } = page('<link rel="stylesheet" href="/nope.css?inline">', {
       'public/tokens.css': SHEET,
     });
     const result = transformFud(
-      id,
+      layout,
       nodeIo(),
       'ruta',
       undefined,
@@ -142,9 +145,9 @@ describe('inlineRuntimeOf — where this render asked for the inline form', () =
     expect(result?.inlineRuntime?.offset).toBeGreaterThan(0);
   });
 
-  it('finds it in a standalone page’s own head', () => {
-    const { id } = page('<script src="fudic:runtime?inline"></script>');
-    expect(transformFud(id, nodeIo(), 'pagina')?.inlineRuntime?.file).toBe(id);
+  it('finds it in a layout’s own head', () => {
+    const { layout } = page('<script src="fudic:runtime?inline"></script>');
+    expect(transformFud(layout, nodeIo(), 'pagina')?.inlineRuntime?.file).toBe(layout);
   });
 
   it('reports nothing for the file form, and nothing when there is no marker', () => {

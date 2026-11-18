@@ -296,17 +296,33 @@ describe('criterion 11: an app on its own', () => {
     expect(fs.at('solo/src/routes/index.fud').startsWith('<!--')).toBe(false);
   });
 
-  it('in an app with no layout, each page is a whole document that is still a page', async () => {
+  // SDD-88 criterion 19: every page links a layout, so with none it writes nothing.
+  it('in an app with no layout, it refuses with FUD1582 and writes nothing', async () => {
     const fs = new MemoryFs({}, W);
-    expect((await cli(fs, kit({}), 'new', 'bare', '--no-layout', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
+    expect((await cli(fs, kit({}), 'new', 'bare', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
     expect((await cli(fs, kit({}), 'g', 'component', 'card', '--cwd', `${W}/bare`)).code).toBe(0);
+    for (const file of fs.paths().filter((p) => p.startsWith('bare/src/layouts/'))) fs.remove(`${W}/${file}`);
+    fs.write(`${W}/bare/src/routes/index.fud`, '<h1>bare</h1>\n');
     const tag = fs.paths().find((path) => /^bare\/src\/components\/[^/]+\/[^/]+\.fixture\.ts$/u.test(path))!.split('/')[3]!;
-    const { code } = await cli(fs, kit({ [tag]: { base: { title: 'T' } } }), 'g', 'showcase', '--cwd', `${W}/bare`);
-    expect(code).toBe(0);
+    const before = fs.paths();
+    const { code, out } = await cli(fs, kit({ [tag]: { base: { title: 'T' } } }), 'g', 'showcase', '--cwd', `${W}/bare`);
+    expect(code).not.toBe(0);
+    expect(out).toContain('FUD1582');
+    expect(out).toContain('fudic g layout _layout');
+    expect(fs.paths()).toEqual(before);
+  });
+
+  it('with a layout, each page is a route that links it, with no diagnostic', async () => {
+    const fs = new MemoryFs({}, W);
+    expect((await cli(fs, kit({}), 'new', 'framed', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
+    expect((await cli(fs, kit({}), 'g', 'component', 'card', '--cwd', `${W}/framed`)).code).toBe(0);
+    const tag = fs.paths().find((path) => /^framed\/src\/components\/[^/]+\/[^/]+\.fixture\.ts$/u.test(path))!.split('/')[3]!;
+    expect((await cli(fs, kit({ [tag]: { base: { title: 'T' } } }), 'g', 'showcase', '--cwd', `${W}/framed`)).code).toBe(0);
     for (const file of [`${tag}.fud`, 'index.fud']) {
-      const parsed = parseFud(fs.at(`bare/src/routes/showcase/${file}`));
+      const parsed = parseFud(fs.at(`framed/src/routes/showcase/${file}`));
       expect(parsed.diagnostics.filter((d) => d.severity === 'error'), file).toEqual([]);
-      expect(parsed.doc.type, file).toBe('page-document');
+      expect(parsed.doc.type, file).toBe('route-document');
+      expect(fs.at(`framed/src/routes/showcase/${file}`), file).toContain('<link rel="layout" href="../../layouts/_layout.fud">');
     }
   });
 });

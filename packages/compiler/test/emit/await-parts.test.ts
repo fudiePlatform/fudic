@@ -8,7 +8,8 @@
  * by chunk. The `later` fields are promises resolved by hand — already settled the way
  * `runLoad` settles them (`{ ok }` or `{ error, cause }`) — so no test waits on a real timer.
  *
- * Both shapes of a page: a standalone one, which owns its shell, and a route with a layout.
+ * Both shapes of a route (every page links a layout since SDD-88): one under a layout that is
+ * only the shell (`SHELL`), and one under a layout with markup of its own around the body.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -21,7 +22,6 @@ import { resolveDocument } from '../../src/emit/resolve.js';
 import {
   emitComponentModule,
   emitLayoutModule,
-  emitPageModule,
   emitRouteModule,
 } from '../../src/emit/index.js';
 import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
@@ -64,16 +64,17 @@ const VIEW = [
   '<p class="after">fin</p>',
 ].join('\n');
 
-function standalone(view: string, head = ''): string {
-  return [
-    '<!DOCTYPE html><html><head><title>t</title>',
-    '<link rel="component" href="./c.fud">',
-    '<script src="fudic:runtime"></script>',
-    head,
-    '</head><body><main>',
-    view,
-    '</main></body></html>',
-  ].join('\n');
+/** A layout that is only the shell: a title, the runtime marker and a `<main>` for the body. */
+const SHELL = [
+  '<!DOCTYPE html><html><head><title>t</title>',
+  '<script src="fudic:runtime"></script>',
+  '@RenderHead()',
+  '</head><body><main>@RenderBody()</main></body></html>',
+].join('\n');
+
+/** A route under {@link SHELL}: the counter linked, and nothing of a `.fudapi`. */
+function shelled(view: string): string {
+  return ['<link rel="layout" href="./l.fud">', '<link rel="component" href="./c.fud">', view].join('\n');
 }
 
 function routed(view: string, code = ''): string {
@@ -100,37 +101,33 @@ const API: LinkedApi = {
 
 // ── the harness ─────────────────────────────────────────────────────────────
 
-type Shape = 'standalone' | 'layout';
+/** Under {@link SHELL}, or under {@link LAYOUT} (or the layout a test passes). */
+type Shape = 'shell' | 'layout';
 
 /**
- * Emit every module of the graph to a temp dir and import the entry's `page`: the components,
- * the layout and the page, as `build.ts` lays them out, each importing the next by specifier.
+ * Emit every module of the graph to a temp dir and import the route's `page`: the components,
+ * the layout and the route, as `build.ts` lays them out, each importing the next by specifier.
  */
 async function pageOf(
   shape: Shape,
   source: string,
   routeName?: string,
-  layout = LAYOUT,
+  layout = shape === 'shell' ? SHELL : LAYOUT,
   api: LinkedApi = API,
+  files: Record<string, string> = { '/c.fud': COUNTER },
 ): Promise<{ page: PageFn; module: string }> {
-  const entry = shape === 'standalone' ? '/p.fud' : '/r.fud';
   const io: ResolveIo = {
-    ...memoryIo({ [entry]: source, '/l.fud': layout, '/c.fud': COUNTER }),
+    ...memoryIo({ '/r.fud': source, '/l.fud': layout, ...files }),
     api: (path) => (path === '/r.fudapi' ? api : undefined),
   };
-  const graph = resolveDocument(entry, io).value;
+  const graph = resolveDocument('/r.fud', io).value;
   const dir = mkdtempSync(join(tmpdir(), 'fudic-parts-'));
   for (const comp of graph.components.values()) {
     writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
   }
   const options = routeName === undefined ? {} : { routeName };
-  let module: string;
-  if (shape === 'standalone') {
-    module = emitPageModule(graph, options);
-  } else {
-    writeFileSync(join(dir, 'l.mjs'), emitLayoutModule(graph, graph.layouts[0]!), 'utf8');
-    module = emitRouteModule(graph, options);
-  }
+  writeFileSync(join(dir, 'l.mjs'), emitLayoutModule(graph, graph.layouts[0]!), 'utf8');
+  const module = emitRouteModule(graph, options);
   writeFileSync(join(dir, 'entry.mjs'), module, 'utf8');
   const mod = (await import(pathToFileURL(join(dir, 'entry.mjs')).href)) as { page: PageFn };
   return { page: mod.page, module };
@@ -205,8 +202,8 @@ function blocks(html: string): Map<number, Record<string, unknown>> {
   return new Map([...html.matchAll(BLOCK)].map((m) => [Number(m[1]), JSON.parse(m[2]!) as Record<string, unknown>]));
 }
 
-const SHAPES: readonly Shape[] = ['standalone', 'layout'];
-const sourceOf = (shape: Shape, view = VIEW): string => (shape === 'standalone' ? standalone(view) : routed(view));
+const SHAPES: readonly Shape[] = ['shell', 'layout'];
+const sourceOf = (shape: Shape, view = VIEW): string => (shape === 'shell' ? shelled(view) : routed(view));
 
 // ── criterion 9 ─────────────────────────────────────────────────────────────
 
@@ -422,9 +419,8 @@ describe.each(SHAPES)('criterion 15 — a field in a branch that does not paint 
 describe('criterion 16 — without @await nothing changes; with one, the runtime goes `async`', () => {
   const plain = '<h1>x</h1>\n<app-counter></app-counter>';
 
-  it('a standalone page without @await is the plain generator, with its blocks at the end', async () => {
-    const { page, module } = await pageOf('standalone', standalone(plain));
-    expect(module).toContain('export function* page(data, io, $ioc) {');
+  it('a route under the bare shell without @await: no parts, with its blocks at the end', async () => {
+    const { page, module } = await pageOf('shell', shelled(plain));
     expect(module).not.toContain('$parts');
     const html = await rest(chunks(streamOf(page({}, partsIo()))));
     expect(html).toContain('<script type="module" src="/main.js"></script>');
@@ -434,10 +430,9 @@ describe('criterion 16 — without @await nothing changes; with one, the runtime
     expect(html).toContain('id="fud-state"');
   });
 
-  it('a standalone page with one is an async generator, and its runtime tag carries `async`', async () => {
-    const { module } = await pageOf('standalone', standalone(VIEW));
-    expect(module).toContain('export async function* page(data, io, $ioc) {');
-    const { page } = await pageOf('standalone', standalone(VIEW));
+  it('a route under the bare shell with one: its runtime tag carries `async`', async () => {
+    const { page, module } = await pageOf('shell', shelled(VIEW));
+    expect(module).toContain('$parts');
     const html = await rest(chunks(streamOf(page({ users: Promise.resolve({ ok: [] }), stats: Promise.resolve({ ok: 1 }) }, partsIo()))));
     expect(html).toContain('<script type="module" async src="/main.js"></script>');
   });
@@ -521,32 +516,17 @@ describe('the opening of a page in parts (§3.5)', () => {
     expect(opening).toBe('$dom, $parent, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "ruta" }, fields: true, ioc: $root }');
   });
 
-  it('a standalone page: the same, from its own body', () => {
-    const page = [
-      '<!DOCTYPE html><html><head><title>t</title>',
-      LINKS,
-      CODE,
-      '</head><body>',
-      '<signal-display .count=@count></signal-display>',
-      TAGS,
-      AWAIT,
-      '</body></html>',
-    ].join('\n');
-    const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page, ...FILES })).value;
-    const opening = openingOf(emitPageModule(graph, { routeName: 'pagina' }));
-    expect(opening).toBe('$dom, $body, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "pagina" }, fields: true, ioc: $root }');
+  it('a route under the bare shell: the same, from the body its layout gives it', () => {
+    const route = ['<link rel="layout" href="./l.fud">', LINKS, CODE, '<signal-display .count=@count></signal-display>', TAGS, AWAIT].join('\n');
+    const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': route, ...FILES, '/l.fud': SHELL })).value;
+    const opening = openingOf(emitRouteModule(graph, { routeName: 'pagina' }));
+    expect(opening).toBe('$dom, $parent, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "pagina" }, fields: true, ioc: $root }');
   });
 
   it('an `@await` in the light DOM of a component: the host is in the tree before the cut', async () => {
     const card = '<x-card><template shadowrootmode="open"><div><slot></slot></div></template></x-card>';
-    const page = standalone('<x-card><b>antes</b>@await data.users { <i>@data.users</i> }</x-card>').replace('./c.fud', './x.fud');
-    const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page, '/x.fud': card })).value;
-    const dir = mkdtempSync(join(tmpdir(), 'fudic-parts-'));
-    for (const comp of graph.components.values()) {
-      writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
-    }
-    writeFileSync(join(dir, 'entry.mjs'), emitPageModule(graph), 'utf8');
-    const { page: render } = (await import(pathToFileURL(join(dir, 'entry.mjs')).href)) as { page: PageFn };
+    const route = shelled('<x-card><b>antes</b>@await data.users { <i>@data.users</i> }</x-card>').replace('./c.fud', './x.fud');
+    const { page: render } = await pageOf('shell', route, undefined, SHELL, API, { '/x.fud': card });
     const users = later();
     const reader = chunks(streamOf(render({ users: users.promise }, partsIo())));
     const first = (await reader.next())!;
@@ -559,13 +539,13 @@ describe('the opening of a page in parts (§3.5)', () => {
   });
 
   it('an `@await` that names no field cuts nothing; a component never cuts', () => {
-    const page = standalone('@await data.users { <p>a</p> }\n@await signal() { <p>b</p> }');
-    const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page, '/c.fud': COUNTER })).value;
-    expect(emitPageModule(graph).match(/\.cut\(/gu)).toHaveLength(1);
+    const route = shelled('@await data.users { <p>a</p> }\n@await signal() { <p>b</p> }');
+    const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': route, '/l.fud': SHELL, '/c.fud': COUNTER })).value;
+    expect(emitRouteModule(graph).match(/\.cut\(/gu)).toHaveLength(1);
 
     const comp = '<x-a><template shadowrootmode="open">@await data.users { <p>a</p> }</template></x-a>';
-    const host = standalone('<x-a></x-a>').replace('./c.fud', './x.fud');
-    const withComp = resolveDocument('/p.fud', memoryIo({ '/p.fud': host, '/x.fud': comp })).value;
+    const host = shelled('<x-a></x-a>').replace('./c.fud', './x.fud');
+    const withComp = resolveDocument('/r.fud', memoryIo({ '/r.fud': host, '/l.fud': SHELL, '/x.fud': comp })).value;
     const xa = [...withComp.components.values()].find((c) => c.tag === 'x-a')!;
     const module = emitComponentModule(withComp, xa);
     expect(module).not.toContain('.cut(');

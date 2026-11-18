@@ -38,7 +38,7 @@ import {
   tagNameAt,
   wordContextAt,
 } from '../../src/services/position.js';
-import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from '../_support.js';
+import { component, LAYOUT, NESTED_LAYOUT, route } from '../_support.js';
 
 const doc = (source: string) => parseFud(source).document;
 
@@ -62,7 +62,7 @@ describe('linksOf', () => {
   it('adds the parent link of a nested layout, and nothing for a plain one', () => {
     expect(linksOf(doc(NESTED_LAYOUT)).map((link) => link.rel)).toEqual(['layout']);
     expect(linksOf(doc(LAYOUT))).toEqual([]);
-    expect(linksOf(doc(PAGE))).toEqual([]);
+    expect(linksOf(doc('<!DOCTYPE html>\n<html><head></head><body></body></html>\n'))).toEqual([]);
   });
 });
 

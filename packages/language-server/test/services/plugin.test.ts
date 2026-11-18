@@ -759,7 +759,7 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(labels).not.toContain('@section');
   });
 
-  it('a file with nothing but the word being typed offers the four skeletons', async () => {
+  it('a file with nothing but the word being typed offers the three skeletons', async () => {
     const { service, document, position } = setup('rou|', '/p/new.fud');
     const list = await completionsOf(service, document, position);
     const labels = list?.items.map((entry) => entry.label);
@@ -767,7 +767,7 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     // Ours are there — the editor is the one that filters `rou` down to `route`.
     expect(labels).toContain('component');
     expect(labels).toContain('route');
-    expect(labels).toContain('page');
+    expect(labels).not.toContain('page');
     expect(labels).toContain('layout');
     expect(item(list, 'route')?.textEdit?.newText).toContain('<link rel="layout"');
   });

@@ -30,14 +30,23 @@ const TYPES = `declare module 'fudic:routes/r' {
 
 const API = 'load\n  n  i32\n\nget save\n  id  i32\n  -> i32\n';
 
+/** A page: a route that links the project's layout (SDD-88), with `body` as its markup. */
 const PAGE = (body: string): string =>
-  `<!DOCTYPE html>\n<html>\n<head><link rel="server" href="./r.fudapi"><title>t</title></head>\n<body>\n${body}\n</body>\n</html>\n`;
+  `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="server" href="./r.fudapi">\n<head><title>t</title></head>\n${body}\n`;
+
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
 
 type Files = Readonly<Record<string, string>>;
 
 function project(files: Files): string {
   const root = toPosix(mkdtempSync(join(tmpdir(), 'fudic-impl-')));
-  write(root, { 'tsconfig.json': TSCONFIG, '.fudic/api/routes/r.d.ts': TYPES, 'src/routes/r.fudapi': API, ...files });
+  write(root, {
+    'tsconfig.json': TSCONFIG,
+    '.fudic/api/routes/r.d.ts': TYPES,
+    'src/routes/r.fudapi': API,
+    'src/layouts/_layout.fud': BARE_LAYOUT,
+    ...files,
+  });
   return root;
 }
 
@@ -132,8 +141,8 @@ describe('a .fud with <link rel="server"> (SDD-60 §4.7)', () => {
   it('reads data and its functions from fudic:<id>, typed', () => {
     const root = project({
       'src/routes/r.fud': PAGE('<p>@(data.n + 1)</p>\n<p>@data.nope</p>\n<button @click=@go>go</button>').replace(
-        '<title>',
-        '@code {\n  const go = (): Promise<number> => save({ id: 1 });\n}\n<title>',
+        '<head>',
+        '@code {\n  const go = (): Promise<number> => save({ id: 1 });\n}\n<head>',
       ),
     });
     expect(shown(createProjectChecker({ root }).check(), root)).toEqual(['src/routes/r.fud TS2339']);

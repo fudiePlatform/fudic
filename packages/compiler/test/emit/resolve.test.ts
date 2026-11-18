@@ -11,19 +11,20 @@ import { join } from 'node:path';
 const comp = (tag: string, links: string): string =>
   `${links}\n<${tag}>\n  <template shadowrootmode="open"><span></span></template>\n</${tag}>\n`;
 
-// A `<!DOCTYPE>` is what marks a document as a PAGE (with links); a component has none.
-const page = (body: string): string => `<!DOCTYPE html>\n<html>${body}</html>`;
+// A route links its layout first and then its components (decision 83); a component has no
+// `<link rel="layout">`. `resolveComponents` never reads the layout, so none is written.
+const page = (links: string, markup = ''): string => `<link rel="layout" href="./_layout.fud">\n${links}\n${markup}`;
 
 describe('linkHref', () => {
   const linksOf = (source: string) => parse(source).links;
 
   it('returns the static href of a <link>', () => {
-    const [link] = linksOf(page('<head><link rel="component" href="./a.fud"></head><body></body>'));
+    const [link] = linksOf(page('<link rel="component" href="./a.fud">'));
     expect(linkHref(link!)).toBe('./a.fud');
   });
 
   it('returns undefined when there is no href attribute', () => {
-    const [link] = linksOf(page('<head><link rel="component"></head><body></body>'));
+    const [link] = linksOf(page('<link rel="component">'));
     expect(linkHref(link!)).toBeUndefined();
   });
 
@@ -31,13 +32,13 @@ describe('linkHref', () => {
     // The href of a component or layout link is read verbatim, so `@` is a character like
     // any other. It used to open a construct, and `linkHref` then dropped the expression
     // part in silence — which is why `@acme/ui/card.fud` arrived here as `/ui/card.fud`.
-    const [link] = linksOf(page('<head><link rel="component" href="@x"></head><body></body>'));
+    const [link] = linksOf(page('<link rel="component" href="@x">'));
     expect(linkHref(link!)).toBe('@x');
   });
 
   it('returns a scoped package specifier exactly as written', () => {
     const [link] = linksOf(
-      page('<head><link rel="component" href="@acme/ui/card.fud"></head><body></body>'),
+      page('<link rel="component" href="@acme/ui/card.fud">'),
     );
     expect(linkHref(link!)).toBe('@acme/ui/card.fud');
   });
@@ -45,17 +46,15 @@ describe('linkHref', () => {
   it('leaves `@@` alone too: verbatim is verbatim', () => {
     // Nothing is un-escaped in an href any more, because nothing is escaped in one. A
     // package literally called `@@acme` would be spelt `@@acme`, and the rule stays one rule.
-    const [link] = linksOf(page('<head><link rel="component" href="@@a.fud"></head><body></body>'));
+    const [link] = linksOf(page('<link rel="component" href="@@a.fud">'));
     expect(linkHref(link!)).toBe('@@a.fud');
   });
 });
 
 describe('resolveComponents', () => {
-  it('walks the transitive graph from a page entry', () => {
+  it('walks the transitive graph from a route entry', () => {
     const io = memoryIo({
-      '/home.fud': page(
-        '<head><link rel="component" href="./a.fud"><link rel="component" href="./b.fud"></head><body></body>',
-      ),
+      '/home.fud': page('<link rel="component" href="./a.fud"><link rel="component" href="./b.fud">'),
       '/a.fud': comp('comp-a', '<link rel="component" href="./b.fud">'),
       '/b.fud': comp('comp-b', ''),
     });
@@ -71,9 +70,7 @@ describe('resolveComponents', () => {
     // b is linked directly by home AND by a. It must land as a single entry, no loop.
     let bReads = 0;
     const files: Record<string, string> = {
-      '/home.fud': page(
-        '<head><link rel="component" href="./a.fud"><link rel="component" href="./b.fud"></head><body></body>',
-      ),
+      '/home.fud': page('<link rel="component" href="./a.fud"><link rel="component" href="./b.fud">'),
       '/a.fud': comp('comp-a', '<link rel="component" href="./b.fud">'),
       '/b.fud': comp('comp-b', ''),
     };
@@ -93,8 +90,8 @@ describe('resolveComponents', () => {
 
   it('ignores a linked file that is not a component document', () => {
     const io = memoryIo({
-      '/home.fud': page('<head><link rel="component" href="./page2.fud"></head><body></body>'),
-      '/page2.fud': page('<head></head><body><p>not a component</p></body>'),
+      '/home.fud': page('<link rel="component" href="./page2.fud">'),
+      '/page2.fud': page('', '<p>not a component</p>'),
     });
     const graph = resolveComponents('/home.fud', io);
     expect(graph.entryDeps).toEqual(['./page2.fud']);

@@ -19,13 +19,17 @@ interface OutFile {
   readonly source?: string | Uint8Array;
 }
 
-/** The page of `examples/i18n`, cut to what SDD-74 adds: the form and the reserve button. */
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88), with the runtime script the pages carried in their own head. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-<script src="fudic:runtime"></script>
+<head><script src="fudic:runtime"></script>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+/** The page of `examples/i18n`, cut to what SDD-74 adds: the form and the reserve button. */
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./index.fudapi">
-<title>Inicio</title>
 @code {
   import { signal, task } from '@fudic/core';
   const reservar = task(reserve);
@@ -35,8 +39,7 @@ const PAGE = `<!DOCTYPE html>
     motivo.set(r.status === "failed" ? (r.error as Error).message : "");
   }
 }
-</head>
-<body>
+<head><title>Inicio</title></head>
 <form control=@newsletter form:=@subscribe>
   <input id="email" control=@newsletter.email type="email">
   <small error=@newsletter.email></small>
@@ -46,8 +49,6 @@ const PAGE = `<!DOCTYPE html>
 @if (motivo() !== "") {
   <p role="alert">@motivo()</p>
 }
-</body>
-</html>
 `;
 
 const API = `load ssg
@@ -76,6 +77,7 @@ reserve.handle(() => {
 
 const FILES = {
   'src/routes/index.fud': PAGE,
+  'src/layouts/_layout.fud': LAYOUT,
   'src/routes/index.fudapi': API,
   'src/server/index.ts': SERVER,
   'sw.json': JSON.stringify({ shell: [] }),

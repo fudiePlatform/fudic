@@ -112,9 +112,9 @@ describe('where the rule does NOT apply', () => {
     expect(codes(host('', '<app-child class:active="@on"></app-child>'))).not.toContain('FUD0720');
   });
 
-  it('a page is not judged: it has no identity tag to carry anything', () => {
-    const page = '<!DOCTYPE html>\n<html>\n<head></head>\n<body><p class:a="@x">hi</p></body>\n</html>\n';
-    expect(codes(page)).not.toContain('FUD0720');
+  it('a route is not judged: it has no identity tag to carry anything', () => {
+    const route = '<link rel="layout" href="./_layout.fud">\n<p class:a="@x">hi</p>\n';
+    expect(codes(route)).not.toContain('FUD0720');
   });
 
   it('a component with no attributes at all is not even looked at', () => {

@@ -15,11 +15,12 @@ import { runtimeAlias } from './helpers/alias.js';
 import { missingShellEntries } from '../src/plugin.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Home</title></head>
-<body><h1>Home</h1></body>
-</html>
+<h1>Home</h1>
 `;
 
 /** Build a project whose `sw.json` declares `shell`, collecting the plugin's warnings. */
@@ -28,6 +29,8 @@ async function buildWithShell(shell: readonly string[]): Promise<string[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-shell-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   mkdirSync(join(root, 'public'), { recursive: true });
+  mkdirSync(join(root, 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'public', 'logo.svg'), '<svg/>');
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell }));

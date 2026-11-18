@@ -18,13 +18,16 @@ import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 const HTTP_PACKAGE = fileURLToPath(new URL('../../http', import.meta.url));
 
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
 const FILES: Readonly<Record<string, string>> = {
+  'src/layouts/_layout.fud': BARE_LAYOUT,
   'src/http.fudapi': 'chain\n  use json\n',
-  'src/routes/usuarios.fud': `<!DOCTYPE html>
-<html>
-<head><title>Usuarios</title><link rel="server" href="./usuarios.fudapi"></head>
-<body><h1>@data.title</h1></body>
-</html>
+  'src/routes/usuarios.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./usuarios.fudapi">
+<head><title>Usuarios</title></head>
+<h1>@data.title</h1>
 `,
   'src/routes/usuarios.fudapi': `load
   title  str

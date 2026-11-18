@@ -8,14 +8,12 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  resolveComponents,
   resolveDocument,
-  emitPageModule,
   emitRouteModule,
   emitLayoutModule,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, LINK_LAYOUT, memoryIo, pageModuleOf, ssrIo, withLayout } from './_support.js';
 
 const CARD =
   '<head><style>.card { padding: 8px; }</style></head>\n' +
@@ -23,15 +21,16 @@ const CARD =
 const PLAIN =
   '<s-plain><template shadowrootmode="open"><span><slot></slot></span></template></s-plain>';
 
-/** A page over the given hosts, with whichever of the two components it names. */
+/** A route over the given hosts, with whichever of the two components it names, in a bare layout. */
 function pageOf(body: string, components: readonly string[]): ReturnType<typeof memoryIo> {
   const links = components.map((c) => `<link rel="component" href="./${c}.fud">`).join('');
-  return memoryIo({
-    '/home.fud':
-      `<!DOCTYPE html>\n<html><head>${links}<title>t</title></head><body>${body}</body></html>`,
-    '/s-card.fud': CARD,
-    '/s-plain.fud': PLAIN,
-  });
+  return memoryIo(
+    withLayout({
+      '/home.fud': `${LINK_LAYOUT}${links}\n<head><title>t</title></head>\n${body}\n`,
+      '/s-card.fud': CARD,
+      '/s-plain.fud': PLAIN,
+    }),
+  );
 }
 
 const THEME: ProjectStyle = { specifier: '_theme', css: ':host { --gap: 8px; }' };
@@ -41,7 +40,7 @@ async function render(
   io: ReturnType<typeof memoryIo>,
   projectStyles: readonly ProjectStyle[],
 ): Promise<string> {
-  const page = await pageModuleOf(resolveComponents('/home.fud', io), { projectStyles });
+  const page = await pageModuleOf(resolveDocument('/home.fud', io).value, { projectStyles });
   return await drain(page({}, ssrIo().io));
 }
 
@@ -155,7 +154,7 @@ describe('SDD-42 §4.1 — a route with a layout, which is the shape a real app 
 
 describe('SDD-42 §4.7 — one path for CSS', () => {
   it('§6.8 the guide is compacted by the pass a component’s sheet goes through', () => {
-    const code = emitPageModule(resolveComponents('/home.fud', pageOf('<s-card></s-card>', ['s-card'])), {
+    const code = emitRouteModule(resolveDocument('/home.fud', pageOf('<s-card></s-card>', ['s-card'])).value, {
       projectStyles: [{ specifier: '_theme', css: ':host {\n  --gap:   8px;\n}\n' }],
     });
     // The whitespace is gone; what a component's `<style>` loses, this loses too.
@@ -164,8 +163,8 @@ describe('SDD-42 §4.7 — one path for CSS', () => {
 
   it('§6.8 a url(…) inside the guide is linked, and a missing one is reported not inlined', () => {
     const io = pageOf('<s-card></s-card>', ['s-card']);
-    const graph = resolveComponents('/home.fud', io);
-    const present = emitPageModule(graph, {
+    const graph = resolveDocument('/home.fud', io).value;
+    const present = emitRouteModule(graph, {
       linkAssets: true,
       assetExists: (spec) => spec === './logo.svg',
       projectStyles: [{ specifier: '_theme', css: ':host{background:url(./logo.svg)}' }],
@@ -175,7 +174,7 @@ describe('SDD-42 §4.7 — one path for CSS', () => {
 
     // A url nobody can resolve stays a literal, so the build does not abort — the host
     // reports FUD0363 from `missingAssets`, exactly as it does for a component's sheet.
-    const missing = emitPageModule(graph, {
+    const missing = emitRouteModule(graph, {
       linkAssets: true,
       assetExists: () => false,
       projectStyles: [{ specifier: '_theme', css: ':host{background:url(./nope.svg)}' }],

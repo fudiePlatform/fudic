@@ -24,7 +24,7 @@ import { memoryIo } from './_support.js';
 function both(code: string, template = '<p>x</p>'): { server: string; client: string } {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud': `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
   });
   const graph = resolveComponents('/home.fud', io);

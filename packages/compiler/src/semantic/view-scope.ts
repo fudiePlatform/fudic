@@ -103,8 +103,8 @@ export interface ViewScope {
   imported(name: string): string | undefined;
 }
 
-/** The documents `load()` feeds: a page, a route and a layout read its result as `data`. */
-const DATA_ROLES: ReadonlySet<string> = new Set(['page-document', 'route-document', 'layout-document']);
+/** The documents `load()` feeds: a route and its layout read its result as `data`. */
+const DATA_ROLES: ReadonlySet<string> = new Set(['route-document', 'layout-document']);
 
 /** The prefixes whose value is a deferred handler, and not the view's (decision 96). */
 const EVENT_PREFIX = '@';

@@ -26,19 +26,16 @@ export async function listPosts() {
 }
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <link rel="server" href="./index.fudapi">
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
 
-    <title>@data.title</title>
-  </head>
-  <body>
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<link rel="server" href="./index.fudapi">
+<head><title>@data.title</title></head>
     <h1>@data.title</h1>
     <app-badge>ok</app-badge>
-  </body>
-</html>
+  
 `;
 
 const PAGE_API = `load
@@ -59,6 +56,8 @@ load.handle(async () => {
 function writeProject(root: string): void {
   writeHttpTypecheckConfig(root);
   for (const dir of ['routes', 'components', 'data', 'server']) mkdirSync(join(root, 'src', dir), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'index.fudapi'), PAGE_API);
   writeFileSync(join(root, 'src', 'server', 'index.ts'), PAGE_SERVER);

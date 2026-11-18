@@ -16,11 +16,18 @@ import { fudic } from '../src/index.js';
 import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head><title>About</title><link rel="component" href="../components/dev-widget.fud"></head>
-<body><h1>About us</h1><dev-widget></dev-widget></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/dev-widget.fud">
+<head><title>About</title></head>
+<h1>About us</h1><dev-widget></dev-widget>
 `;
 
 /** A hydratable component: it has client code, so it gets a client module. */
@@ -42,16 +49,12 @@ const WIDGET = `@code {
  * which `@fudic/dom` loads INSIDE Vite's module runner here. Reading `import.meta.env` there
  * through an alias made this a 500 (SDD-32 §9.1).
  */
-const LINK = `<!DOCTYPE html>
-<html>
-<head>
-<title>Link</title>
+const LINK = `<link rel="layout" href="./_layout.fud">
 @code {
   const target = "/about";
 }
-</head>
-<body><a href="@target">About</a></body>
-</html>
+<head><title>Link</title></head>
+<a href="@target">About</a>
 `;
 
 let server: ViteDevServer;
@@ -65,6 +68,7 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'link.fud'), LINK);
+  writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'src', 'components', 'dev-widget.fud'), WIDGET);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));

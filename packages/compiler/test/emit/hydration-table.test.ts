@@ -7,9 +7,9 @@
  * phase 7 (`FUD_WRITE_LEVELS=1`). It is keyed by path, so the migration of the examples (phase
  * 11) has to keep every row as it is.
  *
- * Each file is asked the questions the plugin asks: a route or a page, whether it is reactive,
+ * Each file is asked the questions the plugin asks: a route, whether it is reactive,
  * how it comes up and which tags of its graph hydrate; a component, whether it hydrates on its
- * own, reached from a page that links it and nothing else. A link this filesystem cannot follow
+ * own, reached from a route that links it and nothing else. A link this filesystem cannot follow
  * (a package `href`, a template's placeholder) reads as an empty file, on both sides of the
  * comparison alike.
  */
@@ -56,7 +56,10 @@ type Row =
 
 function rowOf(path: string): Row | undefined {
   const doc = parse(readFileSync(path, 'utf8'));
-  if (doc.type === 'route-document' || doc.type === 'page-document') {
+  // A layout is asked the route's questions too: the table was taken with a `parse` that reads
+  // no `@Render…` directive, so every document with a doctype (layout or not) was a row of its
+  // own, and keeping them keeps the table as it was.
+  if (doc.type === 'route-document' || doc.type === 'layout-document') {
     const graph = resolveComponents(path, ioWith({}));
     return {
       kind: 'route',
@@ -67,7 +70,8 @@ function rowOf(path: string): Row | undefined {
   }
   if (doc.type === 'component-document' && doc.name !== '') {
     const probe = join(dirname(path), PROBE);
-    const page = `<!DOCTYPE html>\n<html><head><link rel="component" href="./${basename(path)}"></head><body><${doc.name}></${doc.name}></body></html>\n`;
+    // A route that links it; its layout is not followed by `resolveComponents`.
+    const page = `<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./${basename(path)}">\n<${doc.name}></${doc.name}>\n`;
     const graph = resolveComponents(probe, ioWith({ [probe]: page }));
     const comp = graph.components.get(doc.name);
     return comp === undefined ? undefined : { kind: 'component', tag: doc.name, hydrates: isIntrinsicallyHydratable(comp) };

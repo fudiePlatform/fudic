@@ -36,8 +36,6 @@ export { apiDiagnostics, fileInputDiagnostics } from './api-links.js';
 export {
   emitComponentModule,
   emitComponentModuleMapped,
-  emitPageModule,
-  emitPageModuleMapped,
   type ComponentSpecifier,
   type LayoutSpecifier,
   type EmitOptions,

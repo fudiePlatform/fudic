@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveComponents, linkHref } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { LINK_LAYOUT, memoryIo } from './_support.js';
 
 const BADGE = `<app-badge>
   <template shadowrootmode="open"><span><slot></slot></span></template>
@@ -39,9 +39,7 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
   it('maps each link of the entry to the tag of the file it points at', () => {
     expect(
       tagsOf({
-        '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-badge.fud"></head>\n' +
-          '<body><app-badge>hi</app-badge></body>\n</html>\n',
+        '/page.fud': `${LINK_LAYOUT}<link rel="component" href="./app-badge.fud">\n<app-badge>hi</app-badge>\n`,
         '/app-badge.fud': BADGE,
       }),
     ).toEqual([['./app-badge.fud', 'app-badge']]);
@@ -53,10 +51,10 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
     // that, a link that IS used would be reported as dead.
     const pairs = tagsOf({
       '/page.fud':
-        '<!DOCTYPE html>\n<html>\n<head>' +
+        LINK_LAYOUT +
         '<link rel="component" href="./app-badge.fud">' +
         '<link rel="component" href="./app-card.fud">' +
-        '</head>\n<body><app-badge>hi</app-badge><app-card></app-card></body>\n</html>\n',
+        '\n<app-badge>hi</app-badge><app-card></app-card>\n',
       // The card reaches the badge too: by the time the page's own second link is looked up,
       // the badge is long since in `components`.
       '/app-card.fud': component('app-card', ['./app-badge.fud'], '<app-badge>inner</app-badge>'),
@@ -73,10 +71,10 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
       '/page.fud',
       memoryIo({
         '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head>' +
+          LINK_LAYOUT +
           '<link rel="component" href="./app-badge.fud">' +
           '<link rel="component" href="./app-badge.fud">' +
-          '</head>\n<body><app-badge>hi</app-badge></body>\n</html>\n',
+          '\n<app-badge>hi</app-badge>\n',
         '/app-badge.fud': BADGE,
       }),
     );
@@ -87,10 +85,9 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
   it('leaves out a link whose file is not a component: it declares no tag', () => {
     expect(
       tagsOf({
-        '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./other.fud"></head>\n' +
-          '<body><p>x</p></body>\n</html>\n',
-        '/other.fud': '<!DOCTYPE html><html><head></head><body><p>a page</p></body></html>',
+        '/page.fud': `${LINK_LAYOUT}<link rel="component" href="./other.fud">\n<p>x</p>\n`,
+        // A layout: a `.fud` all the same, and no component.
+        '/other.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
       }),
     ).toEqual([]);
   });
@@ -98,8 +95,7 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
   it('leaves out a link with no href at all', () => {
     expect(
       tagsOf({
-        '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head><link rel="component"></head>\n<body><p>x</p></body>\n</html>\n',
+        '/page.fud': `${LINK_LAYOUT}<link rel="component">\n<p>x</p>\n`,
       }),
     ).toEqual([]);
   });
@@ -109,9 +105,7 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
     // `app-card` belongs to `app-card`'s own compilation, not to the page's.
     expect(
       tagsOf({
-        '/page.fud':
-          '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-card.fud"></head>\n' +
-          '<body><app-card></app-card></body>\n</html>\n',
+        '/page.fud': `${LINK_LAYOUT}<link rel="component" href="./app-card.fud">\n<app-card></app-card>\n`,
         '/app-card.fud': component('app-card', ['./app-badge.fud'], '<app-badge>inner</app-badge>'),
         '/app-badge.fud': BADGE,
       }),
@@ -121,7 +115,7 @@ describe('entryLinkTags — the path a link carries, resolved to the tag it decl
   it('is empty for an entry that links nothing', () => {
     const graph = resolveComponents(
       '/page.fud',
-      memoryIo({ '/page.fud': '<!DOCTYPE html><html><head></head><body><p>x</p></body></html>' }),
+      memoryIo({ '/page.fud': `${LINK_LAYOUT}<p>x</p>\n` }),
     );
     expect(graph.entryLinkTags.size).toBe(0);
   });

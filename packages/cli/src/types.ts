@@ -140,10 +140,10 @@ export interface NewOptions extends BaseOptions {
 
 /**
  * The frame of a new app's pages: one of its own (`--layout <name>`, `_layout` by default), one
- * it does not own — a library's, by its specifier (`--layout @shop/ui/layouts/main.fud`) —,
- * or none (`--no-layout`), its home page then a whole document.
+ * it does not own — a library's, by its specifier (`--layout @shop/ui/layouts/main.fud`). Never
+ * none: every page links a layout (SDD-88).
  */
-export type AppLayout = { readonly own: string } | { readonly href: string } | null;
+export type AppLayout = { readonly own: string } | { readonly href: string };
 
 /**
  * `fudic new <nombre> --workspace` (SDD-44 §3.2). It inherits everything `fudic new` takes,
@@ -203,6 +203,12 @@ export interface TargetedOptions extends BaseOptions {
   readonly project?: string;
 }
 
+/** `fudic g error-page` (SDD-88 §3.3): the project, and the layout its error page links. */
+export interface ErrorPageOptions extends TargetedOptions {
+  /** `--layout <href>`; absent ⇒ the one `g page` would choose (an app) or `src/layouts/_layout.fud` (a library). */
+  readonly layout?: string;
+}
+
 export interface ComponentOptions extends TargetedOptions {
   readonly dir: string;
   readonly wireInto: readonly string[];
@@ -226,8 +232,8 @@ export interface TermOptions extends TargetedOptions {
 
 export interface PageOptions extends TargetedOptions {
   readonly dir: string;
-  /** Path of the layout `.fud`, relative to `cwd`. `null` ⇒ --no-layout; absent ⇒ resolve. */
-  readonly layout?: string | null;
+  /** Path of the layout `.fud`, relative to `cwd`; absent ⇒ resolve the nearest (SDD-88: never none). */
+  readonly layout?: string;
   readonly server: boolean;
   /** `null` ⇒ every `@RenderSection` of the layout chain. */
   readonly sections: readonly string[] | null;

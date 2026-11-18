@@ -96,9 +96,18 @@ describe('home.fud specifics', () => {
   const result = parseDocument(source, { atConstructs: constructs });
   const doc = result.value;
 
-  it('is a page (decision 51)', () => {
-    expect(doc.mode).toBe('page');
-    expect(doc.children[0]).toMatchObject({ type: 'doctype' });
+  // A route since SDD-88 (decision 183): no doctype, its layout link first (decision 83).
+  it('is a route: component mode, its layout link first', () => {
+    expect(doc.mode).toBe('component');
+    expect(doc.children[0]).toMatchObject({ type: 'element', name: 'link' });
+    const rel = (doc.children[0] as ElementNode).attributes.find((a) => a.name === 'rel');
+    expect(rel?.value[0]).toMatchObject({ type: 'attribute-text' });
+  });
+
+  it('its layout is the page mode: a doctype first (decision 51, amended by 183)', () => {
+    const layout = parseDocument(read('_layout.fud'), { atConstructs: constructs }).value;
+    expect(layout.mode).toBe('page');
+    expect(layout.children[0]).toMatchObject({ type: 'doctype' });
   });
 
   it('keeps <title> interpolation as a Razor expression, not raw text', () => {
@@ -138,9 +147,9 @@ describe('home.fud specifics', () => {
     );
   });
 
-  it('marks the void meta elements', () => {
+  it('marks the void meta elements (of its layout, which holds the document)', () => {
     const metas: ElementNode[] = [];
-    walk(doc, (n) => {
+    walk(parseDocument(read('_layout.fud'), { atConstructs: constructs }).value, (n) => {
       if (n.type === 'element' && (n as ElementNode).name === 'meta') metas.push(n as ElementNode);
     });
     expect(metas.length).toBeGreaterThan(0);

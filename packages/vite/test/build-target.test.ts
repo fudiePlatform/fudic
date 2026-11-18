@@ -18,11 +18,17 @@ import { baselineTarget } from '../src/config.js';
 import { nestedTarget } from '../src/nested.js';
 import { runtimeAlias } from './helpers/alias.js';
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head><title>Home</title></head>
-<body><h1>Home</h1></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<head><title>Home</title></head>
+<h1>Home</h1>
 `;
 
 interface OutFile {
@@ -35,6 +41,7 @@ function projectRoot(config: object): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-target-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test', ...config }));
   return root;

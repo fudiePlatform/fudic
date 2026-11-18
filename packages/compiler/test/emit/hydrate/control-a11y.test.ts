@@ -70,7 +70,7 @@ const TEMPLATE =
 
 const io = memoryIo({
   '/home.fud':
-    '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+    '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
   '/m.fud':
     "@code {\n  import { f } from './user.form.js';\n}\n" +
     `<m-el>\n  <template shadowrootmode="open">${TEMPLATE}</template>\n</m-el>\n`,

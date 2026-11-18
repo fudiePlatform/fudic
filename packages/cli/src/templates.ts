@@ -49,7 +49,7 @@ export function templateBytes(file: string): Uint8Array {
 }
 
 /** The document role a `.fud` template must structure as, once materialized. */
-export type TemplateRole = 'component-document' | 'route-document' | 'page-document' | 'layout-document' | 'snippet-document';
+export type TemplateRole = 'component-document' | 'route-document' | 'layout-document' | 'snippet-document';
 
 export interface TemplateSpec {
   readonly file: string;
@@ -82,14 +82,9 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     },
   },
   {
-    file: 'page.fud',
-    role: 'page-document',
-    sample: { lang: 'en', title: 'Home', code: indent(serverLink('./index.fudapi'), '    ') },
-  },
-  {
     file: '_error.fud',
-    role: 'page-document',
-    sample: { lang: 'es' },
+    role: 'route-document',
+    sample: { layoutHref: '../layouts/_layout.fud' },
   },
   {
     file: 'layout.fud',
@@ -204,12 +199,4 @@ export function componentSpec(tag: string): string {
 /** The fixture the criteria mount a new component with: `base`, empty, since it has no props yet. */
 export function componentFixture(tag: string): string {
   return renderTemplate('component/fixture.ts.tmpl', { tag });
-}
-
-/** Indent every non-empty line of a block. */
-export function indent(block: string, prefix: string): string {
-  return block
-    .split('\n')
-    .map((line) => (line === '' ? line : `${prefix}${line}`))
-    .join('\n');
 }

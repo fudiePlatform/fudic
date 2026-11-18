@@ -103,10 +103,15 @@ get search
 delete remove
 `;
 
-const USUARIOS = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-<title>Usuarios</title>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+const USUARIOS = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./usuarios.fudapi">
 <link rel="component" href="../components/user-form.fud">
 @code {
@@ -117,9 +122,8 @@ const USUARIOS = `<!DOCTYPE html>
     void search({ q: 'a' });
   }
 }
-</head>
-<body><p>usuarios: @data.count</p><button @click=@find>buscar @clicks()</button><user-form></user-form></body>
-</html>
+<head><title>Usuarios</title></head>
+<p>usuarios: @data.count</p><button @click=@find>buscar @clicks()</button><user-form></user-form>
 `;
 
 const USUARIOS_SERVER = `import { inject } from '@fudic/di';
@@ -142,10 +146,7 @@ const INDEX_API = `get hola
   -> str
 `;
 
-const INDEX = `<!DOCTYPE html>
-<html>
-<head>
-<title>Inicio</title>
+const INDEX = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./index.fudapi">
 @code {
   import { signal } from '@fudic/core';
@@ -155,9 +156,8 @@ const INDEX = `<!DOCTYPE html>
     void hola();
   }
 }
-</head>
-<body><button @click=@bump>@n()</button></body>
-</html>
+<head><title>Inicio</title></head>
+<button @click=@bump>@n()</button>
 `;
 
 const INDEX_SERVER = `import { hola } from 'fudic:routes/index';
@@ -165,14 +165,10 @@ const INDEX_SERVER = `import { hola } from 'fudic:routes/index';
 hola.handle(() => 'ROOT_HANDLE_MARK');
 `;
 
-const OTRA = `<!DOCTYPE html>
-<html>
-<head>
-<title>Otra</title>
+const OTRA = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/user-form.fud">
-</head>
-<body><user-form></user-form></body>
-</html>
+<head><title>Otra</title></head>
+<user-form></user-form>
 `;
 
 const USER_FORM_API = `put save
@@ -207,14 +203,10 @@ save.handle(() => ({ from: 'COMPONENT_HANDLE_MARK', count: inject(Users).all().l
 
 /** A route whose `load` throws: its page, its `.fudapi` and its handler. */
 const throwing = (name: string, body: string): Record<string, string> => ({
-  [`src/routes/${name}.fud`]: `<!DOCTYPE html>
-<html>
-<head>
-<title>x</title>
+  [`src/routes/${name}.fud`]: `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./${name}.fudapi">
-</head>
-<body><p>@data.n</p></body>
-</html>
+<head><title>x</title></head>
+<p>@data.n</p>
 `,
   [`src/routes/${name}.fudapi`]: 'load\n  n  i32\n',
   [`src/server/${name}.ts`]: `import { notFound, redirect } from '@fudic/http';
@@ -227,12 +219,9 @@ load.handle(async (): Promise<{ n: number }> => {
 });
 
 /** `data` is cast: nothing types `_error.fud`'s data yet (reported, not in any task). */
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
-<head><title>Error</title>
-</head>
-<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p></body>
-</html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<head><title>Error</title></head>
+<h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p>
 `;
 
 /** The types of Node, as a real app has them: the typecheck reads `src/server` (SDD-60 §4.6). */
@@ -251,7 +240,7 @@ function project(files: Readonly<Record<string, string>>): string {
     typeRoots: [NODE_TYPES],
     types: ['node'],
   });
-  for (const [path, text] of Object.entries(files)) {
+  for (const [path, text] of Object.entries({ 'src/layouts/_layout.fud': LAYOUT, ...files })) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
   }
@@ -573,14 +562,10 @@ describe('without _error.fud', () => {
 describe('criterion 37: the prerender of a path that throws', () => {
   it('fails the build naming the URL and the status', async () => {
     const r = project({
-      'src/routes/blog/[slug].fud': `<!DOCTYPE html>
-<html>
-<head>
-<title>Blog</title>
+      'src/routes/blog/[slug].fud': `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[slug].fudapi">
-</head>
-<body><h1>@data.slug</h1></body>
-</html>
+<head><title>Blog</title></head>
+<h1>@data.slug</h1>
 `,
       'src/routes/blog/[slug].fudapi': 'load\n  slug  str\n\npaths\n',
       'src/server/blog.ts': `import { notFound } from '@fudic/http';
@@ -600,14 +585,10 @@ load.handle(async (ctx) => {
 
   it('a redirect for a path names its location', async () => {
     const r = project({
-      'src/routes/old/[slug].fud': `<!DOCTYPE html>
-<html>
-<head>
-<title>Old</title>
+      'src/routes/old/[slug].fud': `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[slug].fudapi">
-</head>
-<body><h1>@data.n</h1></body>
-</html>
+<head><title>Old</title></head>
+<h1>@data.n</h1>
 `,
       'src/routes/old/[slug].fudapi': 'load\n  n  i32\n\npaths\n',
       'src/server/old.ts': `import { redirect } from '@fudic/http';

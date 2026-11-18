@@ -14,7 +14,7 @@ import { ERROR_FILE } from '@fudic/conventions';
 import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
 import { localizeRoutes } from './i18n.js';
-import { FUD0364, FUD0434, FUD1570, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
+import { FUD0364, FUD0434, FUD1570, FUD1580, FUD1581, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -56,6 +56,9 @@ export interface DiscoverResult {
 
 const NEVER: ModeDecision = { mode: 'excluded', prerender: false, enumerate: false, prerenderedHtml: false };
 
+/** The code of a whole document with no hole (SDD-88): it has said why it is no error page. */
+const HOLLOW = FUD1580({ span: { start: 0, end: 0 } }).code;
+
 /** All `.fud` files under `dir`, as POSIX-style paths relative to `dir`. */
 function listFud(dir: string): string[] {
   let entries: string[];
@@ -95,16 +98,28 @@ export function discoverRoutes(
   }
   const errorPageFrom = source.kind === 'library' ? source.package : undefined;
   if (source.kind === 'own' || source.kind === 'library') {
-    // The app's own keeps the path it always had; a library's is the file `errorPageOf` found.
-    const absPath = source.kind === 'own' ? join(routesRoot, ERROR_FILE) : source.file;
+    // An app's own keeps the path it always had, under routesDir. Anything else — a library's own
+    // `src/_error.fud`, or the one its chain offers — is the file `errorPageOf` found.
+    const absPath = source.kind === 'own' && files.includes(ERROR_FILE) ? join(routesRoot, ERROR_FILE) : source.file;
     const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
-    errorPage = {
-      route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
-      absPath,
-      analysis,
-      decision: NEVER,
-    };
+    // An error page is a page, and every page links a layout (SDD-88): one that is not a route
+    // is not compiled as the error page, and the app paints its errors with the minimal one. A
+    // whole document with no hole has said `FUD1580` in its parse; anything else that is not a
+    // route — a component, or a layout with its holes — is `FUD1581`, over its first line: the
+    // span the typecheck gives it, so the build says it once.
+    if (analysis.isPage) {
+      errorPage = {
+        route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
+        absPath,
+        analysis,
+        decision: NEVER,
+      };
+    } else if (!analysis.diagnostics.some((d) => d.code === HOLLOW)) {
+      const text = readFileSync(absPath, 'utf8');
+      const end = text.indexOf('\n');
+      parse.push({ ...FUD1581({ span: { start: 0, end: end === -1 ? text.length : end } }), file: absPath });
+    }
   }
 
   const builds: RouteBuild[] = [];
@@ -167,6 +182,6 @@ export function discoverRoutes(
     parse,
     errorPages,
     ...(errorPages[0] !== undefined ? { errorPage: errorPages[0] } : {}),
-    ...(errorPageFrom !== undefined ? { errorPageFrom } : {}),
+    ...(errorPage !== undefined && errorPageFrom !== undefined ? { errorPageFrom } : {}),
   };
 }

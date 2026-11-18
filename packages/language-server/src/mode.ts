@@ -2,7 +2,7 @@
  * What a `.fud` IS (SDD-24 §4.5, decision 51 and SDD-21).
  *
  * The role is read from the structured document, never from the file name or the folder: a
- * layout is a layout because it has a doctype and one `@RenderBody()`, and `_layout.fud` is
+ * layout is a layout because it has a doctype (decision 183), and `_layout.fud` is
  * a convention of the CLI, not a rule of the language.
  *
  * Pure — the disk enters in the workspace index, which is the only module that reads it.
@@ -14,15 +14,13 @@
 import type { StructuredDocument } from '@fudic/compiler';
 
 /** The roles the `href` completion filters by (§4.2), one per kind of file (SDD-29 §4.9). */
-export type FudRole = 'component' | 'page' | 'route' | 'layout' | 'snippet';
+export type FudRole = 'component' | 'route' | 'layout' | 'snippet';
 
 /** The role of a parsed document. */
 export function roleOf(document: StructuredDocument): FudRole {
   switch (document.type) {
     case 'component-document':
       return 'component';
-    case 'page-document':
-      return 'page';
     case 'route-document':
       return 'route';
     case 'snippet-document':

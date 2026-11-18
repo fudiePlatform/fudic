@@ -21,7 +21,7 @@ import {
 } from '../../src/emit/index.js';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
-import { memoryIo, parse } from './_support.js';
+import { BARE_LAYOUT, memoryIo, parse } from './_support.js';
 
 const TAG = 'app-x';
 
@@ -122,13 +122,11 @@ describe('BUG-13 — a failed parse is not an empty parse (§7.3)', () => {
   it("reports the entry's own, not a dependency's — the spans belong to another file", () => {
     // Every dependency is a module of its own and comes back through here, so its
     // diagnostics surface against its own source instead of being pinned on this one.
-    // The page is spelled out in full here — doctype and links inside the `<head>` —
-    // because this is the one test that asserts the entry reports NOTHING.
+    // The page is spelled out in full here — a route with its layout beside it — because
+    // this is the one test that asserts the entry reports NOTHING.
     const io = memoryIo({
-      '/page.fud':
-        '<!DOCTYPE html>\n<html>\n  <head>\n' +
-        `    <link rel="component" href="./${TAG}.fud">\n` +
-        `  </head>\n  <body><${TAG}></${TAG}></body>\n</html>\n`,
+      '/_layout.fud': BARE_LAYOUT,
+      '/page.fud': `<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./${TAG}.fud">\n<${TAG}></${TAG}>\n`,
       [`/${TAG}.fud`]: component('  @* c *@\n' + CLIENT),
     });
     expect(resolveDocument('/page.fud', io).diagnostics).toEqual([]);

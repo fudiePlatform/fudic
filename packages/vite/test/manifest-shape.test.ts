@@ -23,15 +23,19 @@ const NAV = `<site-nav>
 </site-nav>
 `;
 
-/** `up` is the climb from the route's own directory to the project root. */
-const page = (title: string, up: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-  <link rel="component" href="${up}components/site-nav.fud">
-  <title>${title}</title>
-</head>
-<body><site-nav>ok</site-nav></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+/** `up` is the climb from the route's own directory to the project root. */
+const page = (title: string, up: string): string => `<link rel="layout" href="${up}layouts/_layout.fud">
+<link rel="component" href="${up}components/site-nav.fud">
+<head><title>${title}</title></head>
+<site-nav>ok</site-nav>
 `;
 
 interface OutFile {
@@ -48,6 +52,8 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'site-nav.fud'), NAV);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), page('Home', '../'));
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), page('About', '../'));
   writeFileSync(join(root, 'src', 'routes', 'blog', 'index.fud'), page('Blog', '../../'));

@@ -16,10 +16,10 @@ import { cached } from './cache.js';
 import { FILE_EXPORT } from './constants.js';
 import { hostAttribute, pageShell, showPage } from './document.js';
 import { graphOf } from './graph.js';
-import { hostPage } from './host.js';
+import { HOST_LAYOUT_NAME, hostLayout, hostPage } from './host.js';
 import { chunkMap, hydrate, type ChunkMap } from './hydrate.js';
 import { renderPage } from './page.js';
-import { localized } from './project.js';
+import { localized, projectOf } from './project.js';
 import { settled, track } from './pending.js';
 import type { ProviderOverride } from './providers.js';
 import { serverRoot } from './api.js';
@@ -116,10 +116,16 @@ function assertJson(tag: string, name: string, value: unknown): void {
 async function paintHost(component: MountTarget, props: object, url: string): Promise<string> {
   const { tag } = component;
   const attrs = Object.keys(props).map((name) => ` .${name}=@(data[${JSON.stringify(name)}])`);
+  // The layout every host page links, beside it in the cache (SDD-88), named by its content:
+  // a project that changes its language gets a new one rather than a stale file.
+  const layout = cached(HOST_LAYOUT_NAME, 'fud', hostLayout(projectOf().lang));
   const page = cached(
     'mount',
     'fud',
-    hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
+    hostPage(
+      { links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` },
+      layout.slice(layout.lastIndexOf('/') + 1),
+    ),
   );
   return renderPage(localized(page), { hasDi: true }, '/', url, props);
 }

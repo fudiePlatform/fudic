@@ -11,13 +11,11 @@
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  resolveComponents,
   resolveDocument,
   emitLayoutModule,
   emitLayoutModuleMapped,
   emitRouteModule,
   emitRouteModuleMapped,
-  emitPageModule,
   type DocumentGraph,
 } from '../../src/emit/index.js';
 import { drain, layoutFixturesDir, fixtureIo, memoryIo, minimalSsr, type PageFn } from './_support.js';
@@ -80,8 +78,8 @@ const NONCE = 'n0nc3-t3st';
 const TAGS = ['app-badge', 'app-card', 'app-button'];
 
 /** Emit route + layout from the fixtures, link them in memory and run the result. */
-async function renderComposed(): Promise<string> {
-  const graph = resolveDocument(fixturePath('blog.fud'), fixtureIo).value;
+async function renderComposed(entry = 'blog.fud'): Promise<string> {
+  const graph = resolveDocument(fixturePath(entry), fixtureIo).value;
   const layout = evalModule(
     emitLayoutModule(graph, graph.layouts[0]!),
     componentBindings(TAGS),
@@ -320,12 +318,11 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 // --- equivalence ------------------------------------------------------------------
 
 describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
-  const monolithicGraph = resolveComponents(fixturePath('blog-monolithic.fud'), fixtureIo);
+  // Since SDD-88 the monolithic page is a route too: all of the shell lives in its body, under a
+  // bare layout (`_layout-monolithic.fud`) that only renders the head and the body.
   let monolithic: string;
   beforeAll(async () => {
-    monolithic = await render(
-      evalModule(emitPageModule(monolithicGraph), componentBindings(TAGS), 'page') as PageFn,
-    );
+    monolithic = await renderComposed('blog-monolithic.fud');
   });
 
   it('produces the same <head>, byte for byte (§6.11)', async () => {

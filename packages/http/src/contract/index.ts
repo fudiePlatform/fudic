@@ -38,6 +38,7 @@ export {
   type Use,
 } from './middleware.js';
 export { fails, titleOf } from './fails.js';
+export type { ErrorPage } from '../errors.js';
 // What a route's fixture holds, for its `.d.ts` (SDD-82 §3.4).
 export type {
   Answer,

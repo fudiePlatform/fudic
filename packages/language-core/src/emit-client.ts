@@ -125,7 +125,7 @@ export function emitClientVirtual(
   // The shell's own elements, which `templateContent` steps inside of: a layout writes
   // `<html lang="@culture">`, and until these were projected that `@culture` was a stretch
   // the editor had no program behind — no completion, no hover, no error (BUG-44).
-  if (doc.type === 'page-document' || doc.type === 'layout-document') {
+  if (doc.type === 'layout-document') {
     for (const shell of [doc.html, doc.head, doc.body]) emitElementBindings(ctx, shell);
   }
   emitContent(ctx, content);

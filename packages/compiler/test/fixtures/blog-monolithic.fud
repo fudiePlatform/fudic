@@ -1,23 +1,18 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <link rel="component" href="../../fixtures/app-badge.fud">
-    <link rel="component" href="../../fixtures/app-card.fud">
-    <link rel="server" href="./blog-monolithic.fudapi">
+<link rel="layout" href="./_layout-monolithic.fud">
+<link rel="component" href="../../fixtures/app-badge.fud">
+<link rel="component" href="../../fixtures/app-card.fud">
+<link rel="server" href="./blog-monolithic.fudapi">
 
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@data.title</title>
-  </head>
-  <body>
-    <header class="site"><app-badge .tone="info">fudic</app-badge></header>
-    <main>
-      <h1>@data.title</h1>
-      @foreach (const post of data.posts) key (post.slug) {
-        <app-card .title="@post.title" .variant="default">@post.summary</app-card>
-      }
-    </main>
-    <footer>fudic 2026</footer>
-    <p class="analytics">@data.title</p>
-  </body>
-</html>
+<head>
+  <title>@data.title</title>
+</head>
+
+<header class="site"><app-badge .tone="info">fudic</app-badge></header>
+<main>
+  <h1>@data.title</h1>
+  @foreach (const post of data.posts) key (post.slug) {
+    <app-card .title="@post.title" .variant="default">@post.summary</app-card>
+  }
+</main>
+<footer>fudic 2026</footer>
+<p class="analytics">@data.title</p>

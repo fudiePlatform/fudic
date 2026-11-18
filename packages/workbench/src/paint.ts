@@ -15,7 +15,7 @@ import { caseShape, propAttrs } from './mount-source.js';
 import { nodeTargetFs } from './open.js';
 import { htmlOf } from './html.js';
 import { outlineOf } from './outline.js';
-import { mountFiles, pageSource } from './pages.js';
+import { CASE_LAYOUT_HREF, mountFiles, pageSource } from './pages.js';
 import { startProject } from './project.js';
 import { resolveTarget, type BenchTarget } from './target.js';
 import { isFailure, type WorkbenchFailure } from './types.js';
@@ -40,11 +40,13 @@ export function casePage(target: BenchTarget, id: string, values: Readonly<Recor
   for (const prop of shape.order) {
     const literal = jsonLiteral(shape.props[prop]);
     if (literal === undefined) return { notJson: prop };
-    consts.push(`      const ${prop} = ${literal};\n`);
+    consts.push(`  const ${prop} = ${literal};\n`);
   }
-  const code = consts.length === 0 ? '' : `    @code {\n${consts.join('')}    }\n`;
+  const code = consts.length === 0 ? '' : `@code {\n${consts.join('')}}\n`;
   const attrs = propAttrs(shape.order, (prop) => prop);
-  return { source: pageSource(target.tag, id, { href: target.component, tag: target.tag, code, attrs, content: shape.content }) };
+  return {
+    source: pageSource(target.tag, id, { href: target.component, tag: target.tag, code, attrs, content: shape.content }, CASE_LAYOUT_HREF),
+  };
 }
 
 export interface PaintInput {

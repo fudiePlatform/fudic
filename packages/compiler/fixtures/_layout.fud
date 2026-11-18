@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{lang}}">
+<html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="module" src="fudic:runtime"></script>
-    <title>{{title}}</title>
-{{code}}
+    @RenderHead()
   </head>
   <body>
-    <h1>{{title}}</h1>
+    @RenderBody()
   </body>
 </html>

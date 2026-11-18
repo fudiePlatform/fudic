@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
-import { emitPageModule, emitRouteModule } from '../../src/emit/index.js';
+import { emitRouteModule } from '../../src/emit/index.js';
 import { needsRuntime } from '../../src/emit/maps.js';
 import { memoryIo } from './_support.js';
 
@@ -36,13 +36,6 @@ function routeModule(route: string, routeName?: string, extra: Record<string, st
   const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, ...extra });
   const graph = resolveDocument('/r.fud', io).value;
   return emitRouteModule(graph, routeName === undefined ? {} : { routeName });
-}
-
-/** The emitted module of a STANDALONE page — a route that owns its own shell. */
-function pageModule(page: string, routeName?: string, extra: Record<string, string> = {}): string {
-  const io = memoryIo({ '/p.fud': page, ...extra });
-  const graph = resolveDocument('/p.fud', io).value;
-  return emitPageModule(graph, routeName === undefined ? {} : { routeName });
 }
 
 /** Whether the module loads the hydration runtime. `boot` rides every page and is not it. */
@@ -70,18 +63,6 @@ describe('a route with no components still carries the runtime (BUG-35)', () => 
     const module = routeModule(route, 'ruta-evento');
     expect(loadsRuntime(module)).toBe(true);
   });
-
-  it('a standalone page answers it the same way, and it owns its own head', () => {
-    const page = [
-      '<!DOCTYPE html><html><head><title>t</title>',
-      '<script src="fudic:runtime"></script>',
-      '@code { const n = signal(1); }',
-      '</head><body><output>@n()</output></body></html>',
-    ].join('\n');
-    const module = pageModule(page, 'pagina');
-    expect(module).toContain('"fud-route"');
-    expect(loadsRuntime(module)).toBe(true);
-  });
 });
 
 describe('and a page with nothing to hydrate still carries none (BUG-31 §T1)', () => {
@@ -89,17 +70,6 @@ describe('and a page with nothing to hydrate still carries none (BUG-31 §T1)', 
     const route = '<link rel="layout" href="./l.fud">\n<p>estática</p>';
     const module = routeModule(route, 'about');
     expect(module).toContain('io.runtime.boot'); // offline-first: this one always rides
-    expect(loadsRuntime(module)).toBe(false);
-  });
-
-  it('a standalone page with no client half either', () => {
-    const page = [
-      '<!DOCTYPE html><html><head><title>t</title>',
-      '<script src="fudic:runtime"></script>',
-      '</head><body><p>hola</p></body></html>',
-    ].join('\n');
-    const module = pageModule(page, 'about');
-    expect(module).toContain('io.runtime.boot'); // the marker WAS there and still answered
     expect(loadsRuntime(module)).toBe(false);
   });
 

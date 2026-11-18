@@ -15,6 +15,7 @@ import {
   type FudicOptions,
   type RouteBuild,
 } from '@fudic/vite/harness';
+import { DEFAULT_LOCALE } from '@fudic/conventions';
 import { inject } from 'vitest';
 import { OPTIONS_KEY, ROOT_KEY } from './constants.js';
 
@@ -38,6 +39,8 @@ export interface Project {
    * untagged module for that locale (SDD-71).
    */
   readonly locale: string | undefined;
+  /** The language of its documents: its first locale, `DEFAULT_LOCALE` when it declares none (SDD-71). */
+  readonly lang: string;
 }
 
 let project: Project | undefined;
@@ -57,7 +60,7 @@ export function projectOf(): Project {
     const api = contracts.hasRoot();
     // One locale tags nothing (SDD-71): the plugin compiles the untagged module for it.
     const locale = locales === undefined || locales.length < 2 ? undefined : locales[0];
-    project = { root, base, routes: found.routes, errorPage: found.errorPage, api, locale };
+    project = { root, base, routes: found.routes, errorPage: found.errorPage, api, locale, lang: locales?.[0] ?? DEFAULT_LOCALE };
   }
   return project;
 }

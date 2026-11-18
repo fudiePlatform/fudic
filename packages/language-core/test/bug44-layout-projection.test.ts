@@ -27,16 +27,13 @@ const LAYOUT = `<!DOCTYPE html>
 </html>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html lang="@data.lang">
-  <head>
-    <link rel="server" href="./index.fudapi">
-    <title>t</title>
-  </head>
-  <body class="@data.lang">
-    <p>hi</p>
-  </body>
-</html>
+/** A page: a route since SDD-88, the shell is its layout's. Its `data` is read in its markup. */
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<link rel="server" href="./index.fudapi">
+<head>
+  <title>t</title>
+</head>
+<p class="@data.lang">@data.lang</p>
 `;
 
 /** The generated text a mapping of `source`'s `nth` occurrence of `text` lands on. */
@@ -57,13 +54,13 @@ describe('the shell’s own attributes are projected (BUG-44 §3.2)', () => {
     expect(mappedAt(virtual, LAYOUT, 'culture', 3)).toBe('culture');
   });
 
-  it('does the same for a page', () => {
+  it('maps the `data` of a route in its markup the same way', () => {
     const virtual = emitClient(PAGE, 'routes/index.fud', registryOf({}));
     expect(mappedAt(virtual, PAGE, 'data.lang', 0)).toBe('data.lang');
     expect(mappedAt(virtual, PAGE, 'data.lang', 1)).toBe('data.lang');
   });
 
-  it('declares `data` for a page and never for a layout', () => {
+  it('declares `data` for a route and never for a layout', () => {
     expect(emitClient(PAGE, 'routes/index.fud').text).toContain('declare const data');
     expect(emitClient(LAYOUT, '_layout.fud').text).not.toContain('declare const data');
   });

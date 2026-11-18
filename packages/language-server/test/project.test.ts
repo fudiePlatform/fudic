@@ -18,7 +18,10 @@ const TSCONFIG = JSON.stringify({
 
 const BADGE = '<app-badge>\n  <template shadowrootmode="open"><span>x</span></template>\n</app-badge>\n';
 
-const PAGE = '<!DOCTYPE html>\n<html>\n<head><title>t</title></head>\n<body>\n  <app-badge></app-badge>\n</body>\n</html>\n';
+/** Every page links a layout (SDD-88): `project` writes this one into every project. */
+const LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = '<link rel="layout" href="../layouts/_layout.fud">\n<head><title>t</title></head>\n<app-badge></app-badge>\n';
 
 const LIST = (header: string, type = 'readonly Item[]'): string =>
   `@code {\n  type Item = { readonly id: number; readonly name: string };\n  const { items = [] } = props<{ items?: ${type} }>();\n}\n\n<app-list>\n  <template shadowrootmode="open">\n    <ul>\n      @foreach (${header} of items) {\n        <li>x</li>\n      }\n    </ul>\n  </template>\n</app-list>\n`;
@@ -28,7 +31,7 @@ let roots: string[] = [];
 function project(files: Readonly<Record<string, string>>): string {
   const root = toPosix(mkdtempSync(join(tmpdir(), 'fudic-ls-project-')));
   roots.push(root);
-  write(root, { 'tsconfig.json': TSCONFIG, ...files });
+  write(root, { 'tsconfig.json': TSCONFIG, 'src/layouts/_layout.fud': LAYOUT, ...files });
   return root;
 }
 
@@ -102,7 +105,7 @@ describe('openProject — repairs', () => {
     const first = service.repairs(problem!.file, problem!);
     expect(service.repairs(problem!.file, problem!)).toEqual(first);
     // The same tag one line lower: the repair follows the text on disk.
-    write(root, { 'src/routes/index.fud': PAGE.replace('<body>\n', '<body>\n  <p>first</p>\n') });
+    write(root, { 'src/routes/index.fud': PAGE.replace('</head>\n', '</head>\n<p>first</p>\n') });
     const [moved] = problems(root, 'FUD0191');
     expect(service.repairs(moved!.file, moved!)).toHaveLength(1);
   });

@@ -1,15 +1,10 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="C:/proj/src/components/app-card.fud">
-    @code {
-      import fixtures from "C:/proj/src/components/app-card.fixture";
-      const { title, href } = fixtures["titulo-largo"];
-    }
-    <script type="module" src="fudic:runtime"></script>
-    <title>app-card · titulo-largo-visible</title>
-  </head>
-  <body>
-    <app-card .title=@title .href=@href></app-card>
-  </body>
-</html>
+<link rel="layout" href="../../_bench-layout.fud">
+<link rel="component" href="/proj/src/components/app-card.fud">
+@code {
+  import fixtures from "/proj/src/components/app-card.fixture";
+  const { title, href } = fixtures["titulo-largo"];
+}
+<head>
+  <title>app-card · titulo-largo-visible</title>
+</head>
+<app-card .title=@title .href=@href></app-card>

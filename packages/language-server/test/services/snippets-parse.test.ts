@@ -41,7 +41,6 @@ describe('the skeletons parse as their role, with nothing to report', () => {
   it.each([
     ['component', 'component-document'],
     ['route', 'route-document'],
-    ['page', 'page-document'],
     ['layout', 'layout-document'],
   ])('%s is a %s', (label, type) => {
     const source = materialize(of(label, 'empty-document').body);
@@ -51,8 +50,10 @@ describe('the skeletons parse as their role, with nothing to report', () => {
     expect(parsed.diagnostics.map((d) => `${d.code} ${d.message}`)).toEqual([]);
   });
 
-  it('covers the four of them', () => {
-    expect(skeletons.map((snippet) => snippet.label)).toEqual(['component', 'route', 'page', 'layout']);
+  // SDD-88 criterion 22: there is no page without a layout to start a file with.
+  it('covers the three of them, and there is no page', () => {
+    expect(skeletons.map((snippet) => snippet.label)).toEqual(['component', 'route', 'layout']);
+    expect(SNIPPETS.filter((snippet) => snippet.label === 'page')).toEqual([]);
   });
 });
 
@@ -125,19 +126,6 @@ describe('the @code bodies parse where they are offered', () => {
 
   it('a route takes it at top level', () => {
     const source = `<link rel="layout" href="./_layout.fud">\n${codeOf('route')}\n<h1>hi</h1>\n`;
-    expect(codes(source)).toEqual([]);
-  });
-
-  it('a page takes it inside <head>', () => {
-    const source = `<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <title>hi</title>
-${codeOf('page')}
-  </head>
-  <body><h1>hi</h1></body>
-</html>
-`;
     expect(codes(source)).toEqual([]);
   });
 

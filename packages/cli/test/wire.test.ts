@@ -83,12 +83,14 @@ describe('--in, by document role', () => {
     expect(link).toBeLessThan(contents.indexOf('</head>'));
   });
 
-  it('a standalone page takes the link inside <head> (decision 59)', async () => {
-    const contents = await wire('routes/solo.fud', PAGE);
-    const doc = parseFud(contents).doc;
-    expect(doc.type).toBe('page-document');
-    expect(doc.links).toHaveLength(1);
-    expect(contents.indexOf('<link rel="component"')).toBeLessThan(contents.indexOf('</head>'));
+  // SDD-88: a whole document without a hole is no page any more but a layout written wrong
+  // (FUD1580), so it is a file that does not parse, and it is left as it is.
+  it('a whole document without a hole is left untouched (FUD0445), as any broken file', async () => {
+    const fs = projectFs({ 'routes/solo.fud': PAGE });
+    const plan = await planComponent('app-icon', options({ wireInto: ['routes/solo.fud'] }), fs);
+    expect(plan.errors.map((e) => e.code)).toContain('FUD0445');
+    expect(plan.diagnostics.map((d) => d.diagnostic.code)).toContain('FUD1580');
+    expect(plan.changes.some((change) => change.path === 'routes/solo.fud')).toBe(false);
   });
 
   it('leaves a broken target byte-for-byte identical and exits 2 (§6.6)', async () => {

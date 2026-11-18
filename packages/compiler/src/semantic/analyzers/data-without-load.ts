@@ -12,7 +12,7 @@ import { nameOf } from '../view-ast.js';
 import { codeStatements } from '../view-scope.js';
 
 /** The roles whose `data` is what `load` returns. A layout's comes from its route. */
-const READS_LOAD: ReadonlySet<string> = new Set(['page-document', 'route-document']);
+const READS_LOAD: ReadonlySet<string> = new Set(['route-document']);
 
 export const dataWithoutLoad: Analyzer = {
   name: 'data-without-load',

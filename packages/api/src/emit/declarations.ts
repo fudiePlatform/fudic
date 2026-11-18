@@ -211,7 +211,11 @@ function pathsDecl(_d: PathsDecl, c: DeclCtx): string {
 function layoutDecl(_d: LayoutDecl, c: DeclCtx): string {
   c.http.add('PageContext');
   c.http.add('PagePiece');
-  const data = c.source.file.declarations.some((d) => d.kind === 'load') ? 'LoadData' : 'undefined';
+  // The error page has no `load`: its `data` is the error it paints, and its layout reads the
+  // same (SDD-88 §3.6).
+  const error = c.api.route?.error === true;
+  if (error) c.http.add('ErrorPage');
+  const data = error ? 'ErrorPage' : c.source.file.declarations.some((d) => d.kind === 'load') ? 'LoadData' : 'undefined';
   const props = c.api.route?.layoutProps ?? 'Readonly<Record<string, unknown>>';
   return `${I}export type LayoutHandler = (ctx: PageContext<${params(c)}>, data: ${data}) => ${props} | Promise<${props}>;\n${I}export const layout: PagePiece<LayoutHandler>;`;
 }

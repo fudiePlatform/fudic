@@ -6,21 +6,22 @@
  * page has to say so or a click on the child reaches nobody.
  */
 import { describe, expect, it } from 'vitest';
-import { emitPageModule, hydratableTags, resolveComponents } from '../../src/emit/index.js';
+import { emitRouteModule, hydratableTags, resolveComponents, resolveDocument } from '../../src/emit/index.js';
 import { aroundTags } from '../../src/emit/maps.js';
-import { memoryIo } from './_support.js';
+import { BARE_LAYOUT, memoryIo } from './_support.js';
 
-/** A page linking the given components, with one instance of the first. */
+/** A route linking the given components, with one instance of the first. */
 function home(tags: readonly string[], body = `<${tags[0]!}></${tags[0]!}>`): string {
-  const links = tags.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n    ');
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    ${links}
-  </head>
-  <body>${body}</body>
-</html>
+  const links = tags.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n');
+  return `<link rel="layout" href="./_layout.fud">
+${links}
+${body}
 `;
+}
+
+/** The route module of `/app/home.fud`, with the bare layout beside it. */
+function routeModule(files: Record<string, string>): string {
+  return emitRouteModule(resolveDocument('/app/home.fud', memoryIo({ '/app/_layout.fud': BARE_LAYOUT, ...files })).value);
 }
 
 /** A component whose shadow is `markup`, with a handler `go` and a `@client` signal. */
@@ -104,8 +105,8 @@ describe('fud-around (SDD-85 decision 43)', () => {
       '/app/x-own.fud': comp('x-own', '<section @click=@go><x-kid></x-kid></section>', ['x-kid']),
       '/app/x-kid.fud': KID,
     };
-    expect(emitPageModule(resolveComponents('/app/home.fud', memoryIo(own)))).toContain(`'fud-around', FUD_AROUND`);
+    expect(routeModule(own)).toContain(`'fud-around', FUD_AROUND`);
     const flat = { '/app/home.fud': home(['x-kid']), '/app/x-kid.fud': KID };
-    expect(emitPageModule(resolveComponents('/app/home.fud', memoryIo(flat)))).not.toContain('fud-around');
+    expect(routeModule(flat)).not.toContain('fud-around');
   });
 });

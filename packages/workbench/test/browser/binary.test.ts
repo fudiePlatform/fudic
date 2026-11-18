@@ -206,7 +206,7 @@ describe('the binary — criterion 22', () => {
 
   it('with a page, an error line with FUD0970 and exit code 1', async () => {
     project = tempProject('bin-page');
-    project.write('src/index.fud', '<!DOCTYPE html>\n<html><body></body></html>\n');
+    project.write('src/index.fud', '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>\n');
     const { line, exited } = await launch([project.path('src/index.fud')]);
     expect(line).toEqual({
       error: { code: 'FUD0970', message: expect.stringContaining('is not a component with a tag') as unknown },

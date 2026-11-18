@@ -37,15 +37,22 @@ const BAD_CLIENT = `@code {
 </x-bad>
 `;
 
-const page = (links: readonly string[], body: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-${links.map((name) => `    <link rel="component" href="../components/${name}.fud">\n`).join('')}    <title>Test</title>
-  </head>
-  <body>
-${body}
-  </body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+/** A route; with one link, the comment keeps `body` on line 8, where it was as a whole document. */
+const page = (links: readonly string[], body: string): string => `<link rel="layout" href="./_layout.fud">
+${links.map((name) => `<link rel="component" href="../components/${name}.fud">\n`).join('')}<head>
+  <title>Test</title>
+</head>
+@* every page links a layout (SDD-88) *@
+
+${body}
 `;
 
 let server: ViteDevServer;
@@ -59,9 +66,12 @@ beforeAll(async () => {
     'src/components/app-badge.fud': BADGE,
     'src/components/x-bad.fud': BAD_CLIENT,
     // `.tone="@(42)"` on line 8, `tone` at column 17: the editor marks it, so dev refuses it.
+    'src/routes/_layout.fud': LAYOUT,
     'src/routes/broken.fud': page(['app-badge'], '    <app-badge .tone="@(42)">hi</app-badge>'),
     'src/routes/fine.fud': page(['app-badge'], `    <app-badge .tone="@('info')">hi</app-badge>`),
     'src/routes/scripted.fud': page(['x-bad'], '    <x-bad></x-bad>'),
+    // Its layout does not exist (SDD-88: every page is a route, a deleted layout is likely).
+    'src/routes/orphan.fud': '<link rel="layout" href="./_gone.fud">\n<h1>orphan</h1>\n',
   };
   for (const [relative, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, relative)), { recursive: true });
@@ -120,6 +130,24 @@ describe('vite dev — a page whose graph has a type error (criterion 18)', () =
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('<app-badge');
   }, 60_000);
+});
+
+describe('vite dev — a route whose layout does not exist (SDD-88)', () => {
+  it('is refused with the overlay naming FUD0460, not a bare 500', async () => {
+    const res = await vi.waitFor(
+      async () => {
+        const answer = await fetch(`${origin}/orphan`, { headers: { accept: 'text/html' } });
+        expect(answer.status).toBe(500);
+        const body = await answer.text();
+        expect(body).toContain('const error = ');
+        return body;
+      },
+      { timeout: 60_000, interval: 250 },
+    );
+    const error = overlayError(res);
+    expect(error.message).toContain('FUD0460');
+    expect(error.loc?.file.replace(/\\/gu, '/')).toMatch(/src\/routes\/orphan\.fud$/u);
+  });
 });
 
 describe('vite dev — fudic’s scripts (criterion 20)', () => {

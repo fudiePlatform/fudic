@@ -1,6 +1,6 @@
 # SDD-88 — Toda página tiene layout
 
-> **Estado:** `Listo` (2026-11-18) — [tareas](./SDD-88-Task.md).
+> **Estado:** `Hecho` (2026-11-18) — [tareas](./SDD-88-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/diagnostics` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/typecheck` · `@fudic/formatter` · `@fudic/api` · `@fudic/vite` ·
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
@@ -8,7 +8,7 @@
 > **Depende de:** 21 (layouts), 22 (la CLI y `g page`), 40 (props de layout), 43 (librerías), 48
 > (huecos del layout), 56 (`_error.fud`), 58 (idiomas), 60 (el `.fudapi` y `layout`), 78 (ver la
 > pieza), 87 (la página de error compartida y `g error-page`).
-> **Rango de diagnósticos:** `FUD1580`–`FUD1589` (nuevo). Usados: `FUD1580`, `FUD1581`, `FUD1582`.
+> **Rango de diagnósticos:** `FUD1580`–`FUD1589` (nuevo). Usados: `FUD1580`, `FUD1581`, `FUD1582`, `FUD1583` (§8.2).
 > **Decisiones de gramática:** 183 (nueva); enmienda la 51 y la 82.
 > **Origen:** la revisión de las notas que dejó el cierre de SDD-87, hablada con Pedro el
 > 2026-11-18. Al mirar el `lang` de una página sin layout salió que esa forma de página existía.
@@ -534,3 +534,47 @@ Nada.
 12. **Los SDD cerrados no se reescriben.** SDD-22 (§4.5, regla 3 de `resolveLayout`) y SDD-87
     (§3.6 y decisión 12) llevan una nota «Enmendada por SDD-88». La gramática sí se actualiza
     (§3.2): es el documento vivo.
+
+### 8.2. Tomadas al implementar
+
+1. **`FUD1581` también para un `_error.fud` que es un layout con huecos.** El §3.5 lo decía solo de
+   un fichero sin doctype ni `<link rel="layout">`. Un layout con `@RenderBody()` como página de
+   error se quedaba sin compilar como tal y sin ningún aviso: la app pintaba la página mínima y
+   nadie decía por qué, que es lo que el §5 prohíbe. Ahora el descubrimiento y el typecheck dicen
+   `FUD1581` de toda página de error que no es una ruta, salvo el documento sin huecos, que ya dice
+   `FUD1580`. Lo encontró la sesión de test.
+2. **`FUD1583`: el runtime es del layout.** Un `<script type="module" src="fudic:runtime">` en el
+   `<head>` de una ruta se escribía tal cual y la página se quedaba sin runtime, sin preloads y sin
+   decirlo. Una página sin layout lo llevaba en su `<head>`; una ruta no tiene dónde ponerlo, porque
+   el documento es del layout. Es un error del pase de estructura (editor, `fudic check`, build),
+   sobre el `<script>`, y vale para todo marcador que no sea hijo directo del `<head>` de un layout:
+   el `<head>` o el markup de una ruta, un componente, el `<body>` de un layout. Lo encontró la
+   sesión de test al convertir los tests de páginas a rutas.
+3. **El layout de host de `@fudic/testing` lleva el `lang` del proyecto.** La página sin layout lo
+   ponía con `htmlLang`; un layout sin `lang` y con un solo idioma sale sin él (§4.1), y `mount`
+   perdía `document.documentElement.lang` (SDD-71 §3.1). El layout de host escribe el primer idioma
+   del proyecto (`DEFAULT_LOCALE` sin idiomas) y se guarda con `cached` por su contenido,
+   `_host-layout-<hash>.fud`, en vez del nombre fijo del §3.4: un proyecto que cambia de idioma no
+   lee un fichero viejo. El layout del banco sigue sin `lang`: sus páginas nunca lo tuvieron.
+4. **El layout del banco vive en la carpeta de cada proceso**, `<proyecto>/<BENCH_FOLDER>/<pid>/`
+   `_bench-layout.fud`, junto a `routes/`, y no en `<BENCH_FOLDER>/` directamente: la limpieza de
+   carpetas huérfanas borra todo lo que no es un pid. Lo escribe `emptyBenchDir`, y las páginas lo
+   enlazan por un `href` relativo (`../` desde la página desnuda, `../../` desde la de un criterio),
+   para que las esperadas de `app-card` no dependan del disco.
+5. **Los espacios junto a un componente.** La página sin layout quitaba los blancos entre etiquetas
+   de componente leyendo los estilos de su `<head>` (`pageBoxes`); una ruta nunca lo ha hecho. Se
+   acepta: no se porta `pageBoxes` a las rutas, y el HTML de una página que antes no tenía layout
+   lleva algún espacio más.
+6. **`ErrorPage` sale también por `@fudic/http/contract`**, que es de donde importa el `.d.ts`
+   generado: el `layout` de `_error.fudapi` recibe `data: ErrorPage`. El `src/_error.fudapi` de una
+   librería gana además las props de su layout (`layoutProps`), como el de una app.
+7. **`resolveLayout` recibe el `--project`** para que el mensaje de `FUD1582` diga
+   `fudic g layout _layout --project <nombre>` cuando se dio, y `libraryLayout` elige el layout de la
+   página de error de una librería.
+8. **El descubrimiento lee la página de error de una librería donde está.** Al cerrar, `verify:generated`
+   destapó un fallo de SDD-87 que esta SDD hizo visible: en la propia librería, el descubrimiento
+   buscaba su `_error.fud` en `src/routes/` en vez de en `src/`, y `fudic test` de un workspace con
+   `g error-page --project <lib>` no arrancaba. Ahora una página de error que no es la de las rutas
+   de una app se lee en el fichero que da `errorPageOf`. De paso, `dataShapeOf`, `laterFieldsOf` y
+   `routeBlocksOf` reciben solo un `DocumentGraph`: la rama sin `serverApis` era de la página sin
+   layout.

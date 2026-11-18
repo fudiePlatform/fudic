@@ -763,6 +763,9 @@ El prefijo dice quién contesta: `.` el contrato del componente, `@` el dicciona
 
 **43.c.** `<script>` permitido en modo componente y en modo página sin restricción. Responsabilidad del developer asumir consecuencias de duplicación si se usa en componentes reutilizables.
 
+> **Enmendada por la decisión [183](#183) (SDD-88).** No hay modo página: lo que aquí dice
+> «modo página» aplica ahora al layout.
+
 <a id="129"></a>
 **129.** **Un `<script>` de CÓDIGO no lleva cuerpo; uno de DATOS sí** (`FUD0161`).
 
@@ -826,6 +829,9 @@ Tres precisiones que la regla no cambia:
 **50.** CDATA `<![CDATA[...]]>` permitido solo dentro de `<svg>` / `<math>`. Fuera, error.
 
 **51.** Detección automática de modo: fichero que empieza con `<!DOCTYPE` → modo página. Si no → modo componente.
+
+> **Enmendada por la decisión [183](#183) (SDD-88).** El doctype ya no es «modo página», es
+> «modo layout»: un fichero que empieza con `<!DOCTYPE` es siempre un layout.
 
 **52.** ~~Fragments permitidos en modo componente. Múltiples elementos raíz sin wrapper.~~
 **Sustituida por la decisión 75:** el markup de un componente tiene exactamente un elemento
@@ -906,6 +912,9 @@ tag_name
 
 **61.** Orden dentro de `<head>` en modo página: recomendado pero no estricto. El compilador eleva y deduplica en emit (cascade del head).
 
+> **Las 58, 59, 60 y 61, enmendadas por la decisión [183](#183) (SDD-88).** No hay modo página:
+> lo que dicen de «modo página» aplica ahora al layout.
+
 **62.** `<head>` permitido como fragment top-level en modo componente. Se eleva al `<head>` raíz de la página consumidora con deduplicación. `<link rel="component">` se consume, no sube.
 
 > Las decisiones **63–66** están en la sección de `@code`; las **67–74** viven en los docs de
@@ -951,16 +960,16 @@ el `<head>` del componente → error.
 escriben como hasta ahora; el envoltorio + template DSD del punto 75 es la forma de la
 **definición** (el fichero componente), y es el emit quien materializa el DSD en el output.
 
+> **Enmendada por la decisión [183](#183) (SDD-88).** No hay modo página: lo que aquí dice
+> «modo página» aplica ahora al layout y a la ruta.
+
 ### Gramática de referencia
 
 ```
-document
-  : page_document
+document                         // decisión 183: no hay página autónoma
+  : layout_document              // sección 12
+  | route_document               // sección 12
   | component_document
-  ;
-
-page_document
-  : doctype whitespace* html_root
   ;
 
 component_document
@@ -1061,37 +1070,52 @@ El envoltorio `<app-card>` + `<template shadowrootmode>` es la **identidad** del
 (decisión 75): de ahí sale el nombre del tag, el scope del `<style>` del head (decisión 76) y
 el nombre de registro en N3.
 
-### Ejemplo canónico (modo página)
+### Ejemplo canónico (una página: ruta más layout)
+
+Desde la decisión [183](#183) toda página es una ruta que enlaza un layout. El layout pone el
+documento:
 
 ```fud
+@* layouts/_layout.fud *@
 <!DOCTYPE html>
-<html>
+<html lang="es">
   <head>
-    <link rel="component" href="./app-card.fud">
-    <link rel="component" href="./app-button.fud">
-
-    @code {
-      type PageData = { title: string; items: Item[] };
-
-      @server {
-        import { db } from './db';
-        async function load(): Promise<PageData> {
-          const items = await db.query('SELECT ...');
-          return { title: 'Inicio', items };
-        }
-      }
-    }
-
-    <title>Mi página</title>
     <meta charset="utf-8">
+    @RenderHead()
   </head>
   <body>
-    <h1>@data.title</h1>
-    @foreach (const item of data.items) {
-      <app-card title="@item.title">@item.description</app-card>
-    }
+    @RenderBody()
   </body>
 </html>
+```
+
+Y la página es la ruta, sin doctype:
+
+```fud
+@* routes/index.fud *@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-card.fud">
+
+@code {
+  type PageData = { title: string; items: Item[] };
+
+  @server {
+    import { db } from './db';
+    async function load(): Promise<PageData> {
+      const items = await db.query('SELECT ...');
+      return { title: 'Inicio', items };
+    }
+  }
+}
+
+<head>
+  <title>Mi página</title>
+</head>
+
+<h1>@data.title</h1>
+@foreach (const item of data.items) {
+  <app-card title="@item.title">@item.description</app-card>
+}
 ```
 
 ---
@@ -1121,6 +1145,10 @@ doctype (page-shaped) que contiene **exactamente un** `@RenderBody()`. Un docume
 > es layout si tiene **cualquier** hueco —`@RenderBody()`, `@RenderHead()` o `@RenderSection()`—, y
 > sin ninguno es página. Un layout sin `@RenderBody()` es `FUD0423` en su propio fichero: borrar el
 > `@RenderBody()` para reescribirlo ya no convierte el fichero en página a mitad de edición.
+
+> **Enmendada por la decisión [183](#183) (SDD-88).** Desaparece «un documento con doctype sin
+> `@RenderBody()` sigue siendo una página autónoma»: un documento con doctype es siempre un layout,
+> y sin ningún hueco es `FUD1580`.
 
 **83.** **Orden top-level de una ruta:** `<link rel="layout">` (uno, el primero) →
 `<link rel="component">`* → `@code`? → `<head>`-fragment? → markup. El markup de una ruta admite
@@ -1459,6 +1487,16 @@ tipo del valor dice de verdad si hay uno o varios (Pedro, 2026-11-08).* *Ampliad
 §8.2.31): elegir un fichero marca el campo y lo valida, y `fn.url(args)` es parte de la vista
 portable (amplía la 162).*
 
+<a id="183"></a>
+**183.** **Toda página enlaza un layout** (SDD-88). Un fichero que empieza con `<!DOCTYPE` es un
+layout; sin ningún hueco (`@RenderBody()`, `@RenderHead()`, `@RenderSection()`) es `FUD1580`. Una
+página es siempre una ruta: `<link rel="layout">` primero, sin doctype (decisión 83). No hay
+página autónoma. Enmienda la 51 (el doctype ya no es «modo página», es «modo layout») y la 82
+(desaparece «un documento con doctype sin `@RenderBody()` sigue siendo una página autónoma»). Un
+`_error.fud` que no enlaza layout es `FUD1581`, y la CLI se niega a escribir una página sin layout
+que enlazar (`FUD1582`). *Por qué: una app tiene una estructura, y una página que no la usa, aunque
+sea la de error, la rompe (Pedro, 2026-11-18).*
+
 ### Gramática de referencia
 
 ```
@@ -1475,8 +1513,8 @@ layout_link
     (WS+ attribute)* GT                   // href estático obligatorio
   ;
 
-layout_document                           // decisión 82: page_document + @RenderBody()
-  : doctype whitespace* html_root
+layout_document                           // decisiones 82, 183: doctype + algún hueco
+  : doctype whitespace* html_root         // sin ningún hueco, FUD1580
   ;
 
 render_directive                          // decisión 85: paréntesis obligatorios
@@ -1678,7 +1716,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 48 | HTML | Comentarios HTML se emiten |
 | 49 | HTML | ~~Entities pass-through~~ — derogada por BUG-14: se decodifican en compilación |
 | 50 | HTML | CDATA solo en SVG/MathML |
-| 51 | HTML | Detección automática componente vs página |
+| 51 | HTML | Detección automática componente vs página (enmendada por la 183: el doctype es un layout) |
 | 52 | HTML | ~~Fragments en componente~~ — sustituida por 75 |
 | 53 | Documento | Orden top-level estricto en componente |
 | 54 | Documento | Cero o un `@code` |
@@ -1698,7 +1736,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 79 | Control flujo | El `}` crudo siempre cierra el bloque; llave literal vía `&#123;`/`&#125;` |
 | 80 | Control flujo | Test de `case` corta en el 1.er `:` a profundidad 0 (delimitadores y ternario) |
 | 81 | Layouts | La ruta es el 3.er rol de documento, declarado con `<link rel="layout" href>` |
-| 82 | Layouts | Un layout se identifica por su forma (doctype + `@RenderBody()`), no por su nombre |
+| 82 | Layouts | Un layout se identifica por su forma (doctype + `@RenderBody()`), no por su nombre (enmendada por la 183) |
 | 83 | Layouts | Orden top-level de la ruta; markup multi-raíz, sin envoltorio host |
 | 84 | Layouts | `@RenderBody` / `@RenderHead` / `@RenderSection` / `@section`, ortografía de Razor |
 | 85 | Layouts | Paréntesis obligatorios; `@RenderSection` toma identificador desnudo; sección ausente = silencio |
@@ -1787,3 +1825,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 180 | `.fudapi` | `runs remote`: la regla la pregunta el navegador mientras se escribe; `debounce`, `use`/`skip` (`FUD1460`, `FUD1461`); solo `remote` tiene ruta (SDD-80) |
 | 181 | `.fudapi` | `file`, `file?`, `file[]`: en cuerpo, `form`, `->` y `type`; no en URL (`FUD1480`), datos de página (`FUD1481`), valor inicial (`FUD1482`), `rule`/`fails` (`FUD1483`). Reglas `max-size` y `accept`; tamaños con unidad (`FUD1487`) (SDD-81) |
 | 182 | Formularios | `<input type="file">` con `bindFile`; `multiple` casa con el tipo (`FUD1484`, `FUD1485`, `FUD1486`); `accept` escrito desde la regla; `$value` `File \| null` / `readonly File[]`. Enmienda la 178 (SDD-81) |
+| 183 | Documento | Toda página enlaza un layout: un fichero con doctype es un layout, sin huecos `FUD1580`; `_error.fud` sin layout `FUD1581`; la CLI sin layout se niega (`FUD1582`). Enmienda la 51 y la 82 (SDD-88) |

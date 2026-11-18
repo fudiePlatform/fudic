@@ -45,14 +45,18 @@ const { fudic } = await import('../src/index.js');
 const BADGE = `<x-badge><template shadowrootmode="open"><span><slot></slot></span></template></x-badge>
 `;
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-  <link rel="component" href="../components/x-badge.fud">
-  <title>uno</title>
-</head>
-<body><x-badge>hola</x-badge></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/x-badge.fud">
+<head><title>uno</title></head>
+<x-badge>hola</x-badge>
 `;
 
 describe('three passes, one compile per .fud', () => {
@@ -65,6 +69,7 @@ describe('three passes, one compile per .fud', () => {
     mkdirSync(join(root, 'src', 'components'), { recursive: true });
     writeFileSync(join(root, 'src', 'components', 'x-badge.fud'), BADGE);
     writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+    writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
     // A Service Worker, so the link pass runs too.
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
     writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));

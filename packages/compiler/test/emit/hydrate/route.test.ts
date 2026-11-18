@@ -18,11 +18,10 @@ import { signal, computed, effect, live, owned, painted, subscribe, written, wri
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import {
   emitLayoutModule,
-  emitPageModule,
   emitRouteModule,
   emitRouteClientModule,
 } from '../../../src/emit/index.js';
-import { drain, memoryIo, ssrIo, type PageFn } from '../_support.js';
+import { BARE_LAYOUT, drain, memoryIo, ssrIo, type PageFn } from '../_support.js';
 
 const LAYOUT = [
   '<!DOCTYPE html><html><head>@RenderHead()</head>',
@@ -292,28 +291,15 @@ describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', 
   });
 });
 
-describe('a page that owns its own shell adopts the same way', () => {
-  it('walks straight off the `<body>`, with no layout to step over', async () => {
-    const io = memoryIo({
-      '/p.fud': [
-        '<!DOCTYPE html><html><head>',
-        '@code { const n = signal(3); function mas() { n.set(n() + 1); } }',
-        '</head><body>',
-        '<button class="mas" @click=@mas>+1</button>',
-        '<output>@n()</output>',
-        '</body></html>',
-      ].join('\n'),
-    });
-    const graph = resolveDocument('/p.fud', io).value;
-    const page = evalModule(emitPageModule(graph), {}, 'page') as PageFn;
-    const html = await drain(page({}, ssrIo().io));
-    const open = html.indexOf('>', html.indexOf('<body')) + 1;
-    document.body.innerHTML = html.slice(open, html.lastIndexOf('</body>'));
-
-    const guard = guardedDom();
-    const controller = routeFactory(emitRouteClientModule(graph)!)([guard.dom, document.body, {}]);
-    controller.h();
-    guard.open();
+describe('a route under a layout that adds nothing adopts the same way', () => {
+  it('walks straight off the `<body>`, with nothing of the layout to step over', async () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { const n = signal(3); function mas() { n.set(n() + 1); } }',
+      '<button class="mas" @click=@mas>+1</button>',
+      '<output>@n()</output>',
+    ].join('\n');
+    await hydrate(route, { '/l.fud': BARE_LAYOUT });
     const out = document.querySelector('output')!;
     expect(out.textContent).toBe('3');
     (document.querySelector('button.mas') as HTMLElement).click();

@@ -56,7 +56,7 @@ describe('AssetLinker.linkable', () => {
 const componentSrc = (linkAssets: boolean): string => {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<m-el>\n  <template shadowrootmode="open">' +
       '<img src="./logo.png">' +
@@ -117,7 +117,7 @@ describe('emitComponentModule — the host names the asset', () => {
   const src = (() => {
     const io = memoryIo({
       '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+        '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
       '/m.fud':
         '<m-el>\n  <template shadowrootmode="open">' +
         '<img src="./logo.png">' +

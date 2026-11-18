@@ -99,7 +99,7 @@ describe('BUG-08 §6.2 / decision 136 — what was an interpolation is plain CSS
    */
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '@code {\n  const { size = 1 } = props<{ size?: number }>();\n}\n\n' +
       '<head>\n  <style>\n    .badge { padding: @(size)rem @(size  *  2)rem; }\n  </style>\n</head>\n\n' +
@@ -137,7 +137,7 @@ describe('BUG-08 §6.5 — the emitted CSS is equivalent to the source CSS', () 
 describe('BUG-08 §6.3 / BUG-40 §6.11 — the licence survives, the prose does not', () => {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<head>\n  <style>\n    /*! (c) keep   me */\n    /* the card, for whoever opens this */\n' +
       '    .a { color: red; }\n  </style>\n</head>\n\n' +
@@ -166,7 +166,7 @@ describe('BUG-08 §6.3 / BUG-40 §6.11 — the licence survives, the prose does 
 describe('BUG-08 §6.4 — the asset linking still reaches into the compacted CSS', () => {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<head>\n  <style>\n    .a {\n      background: url(./bg.png);\n    }\n  </style>\n</head>\n\n' +
       '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n',

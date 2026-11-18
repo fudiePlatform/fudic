@@ -383,6 +383,10 @@ al compilador le está vedado, con una regla explícita y local:
    nueva, primero dentro de `--dir` y después en `src/layouts/` (BUG-20 §4.5).
 3. Si no aparece ninguno, página autónoma, sin error.
 
+> **Enmendada por [SDD-88](./SDD-88-toda-pagina-con-layout.md) §3.3.** No hay página autónoma: si
+> no aparece ningún layout (ni el de `routes/index.fud`), `g page` se niega con `FUD1582` y no
+> escribe nada. `--no-layout` desaparece, y con él la plantilla `page.fud`.
+
 Elegido el layout, la CLI **lo parsea, sigue su cadena de `rel="layout"` y recolecta los
 `@RenderSection(name)`**, y emite en la página nueva un `@section name { … }` por cada uno.
 Sin esto el comando apenas ahorra teclas. `--sections` restringe ese conjunto; una sección

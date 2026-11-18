@@ -43,6 +43,7 @@ beforeAll(async () => {
   mkdirSync(routes, { recursive: true });
   for (const f of [
     'home.fud',
+    '_layout.fud',
     'app-card.fud',
     'app-button.fud',
     'app-badge.fud',

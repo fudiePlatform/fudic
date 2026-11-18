@@ -1,15 +1,15 @@
 /**
  * Two emit contracts the Vite plugin depends on (SDD-19 §4.5/§4.11.1):
  *
- * 1. The page `<head>` is the author's: every element passes through VERBATIM — favicon,
+ * 1. A route's `<head>` is the author's: every element passes through VERBATIM — favicon,
  *    stylesheet, `<script src>`, `<base>` — except `<title>` (interpolated) and
  *    `<link rel="component">` (the component graph, never output).
  * 2. `componentSpecifier` is injected, so a component may live outside the importing
  *    file's directory. Without it the emit keeps the sibling default `./<tag><ext>`.
  */
 import { describe, expect, it } from 'vitest';
-import { resolveComponents, emitPageModule } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { resolveDocument, emitRouteModule } from '../../src/emit/index.js';
+import { BARE_LAYOUT, memoryIo } from './_support.js';
 
 const BADGE = `@code {
   const { tone = 'neutral' } = props<{ tone?: string }>();
@@ -24,33 +24,30 @@ const BADGE = `@code {
 </app-badge>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <title>@data.title</title>
-    <meta charset="utf-8">
-    <link rel="icon" href="./logo.svg">
-    <link rel="stylesheet" href="https://cdn.example/reset.css">
-    <script type="module" src="/fudic-main.js"></script>
-  </head>
-  <body>
-    <app-badge tone="success">ok</app-badge>
-  </body>
-</html>
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head>
+  <title>@data.title</title>
+  <meta charset="utf-8">
+  <link rel="icon" href="./logo.svg">
+  <link rel="stylesheet" href="https://cdn.example/reset.css">
+  <script type="module" src="/fudic-main.js"></script>
+</head>
+<app-badge tone="success">ok</app-badge>
 `;
 
 const io = memoryIo({
+  '/app/layouts/_layout.fud': BARE_LAYOUT,
   '/app/routes/index.fud': PAGE,
   '/app/components/app-badge.fud': BADGE,
 });
-const graph = resolveComponents('/app/routes/index.fud', io);
+const graph = resolveDocument('/app/routes/index.fud', io).value;
 
 /** The emitted module quotes the head with JSON escapes; read it back unescaped. */
 const unescaped = (code: string): string => code.replace(/\\"/gu, '"');
 
-describe('page <head> passthrough', () => {
-  const src = unescaped(emitPageModule(graph));
+describe('route <head> passthrough', () => {
+  const src = unescaped(emitRouteModule(graph));
 
   it('keeps every element the author wrote', () => {
     expect(src).toContain('<meta charset="utf-8">');
@@ -68,7 +65,7 @@ describe('page <head> passthrough', () => {
 
 describe('asset linking inside <head> (linkAssets)', () => {
   const src = unescaped(
-    emitPageModule(graph, { linkAssets: true, assetExists: (spec) => spec === './logo.svg' }),
+    emitRouteModule(graph, { linkAssets: true, assetExists: (spec) => spec === './logo.svg' }),
   );
 
   it('rewrites a relative, existing URL to the import binding Vite resolves', () => {
@@ -84,12 +81,12 @@ describe('asset linking inside <head> (linkAssets)', () => {
 
 describe('componentSpecifier', () => {
   it('defaults to the sibling file convention', () => {
-    expect(emitPageModule(graph)).toContain("from './app-badge.mjs'");
-    expect(emitPageModule(graph, { importExt: '.fud' })).toContain("from './app-badge.fud'");
+    expect(emitRouteModule(graph)).toContain("from './app-badge.mjs'");
+    expect(emitRouteModule(graph, { importExt: '.fud' })).toContain("from './app-badge.fud'");
   });
 
   it('uses the injected specifier, so the component can live anywhere', () => {
-    const src = emitPageModule(graph, {
+    const src = emitRouteModule(graph, {
       importExt: '.fud',
       componentSpecifier: (c) => `../components/${c.tag}.fud`,
     });

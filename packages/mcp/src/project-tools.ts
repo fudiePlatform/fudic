@@ -4,13 +4,16 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { FUD1404, FUD1408, FUD1409 } from '@fudic/diagnostics';
+import { FUD1404, FUD1408, FUD1409, FUD1582 } from '@fudic/diagnostics';
 import { nodeIo, record } from '@fudic/history';
 import type { Plan } from '@fudic/cli';
 import type { Checks } from './checks.js';
 import { afterInstall, flagsOf, runPlan, type OptionValue } from './plans.js';
 import { isFudicProject, type Project } from './project.js';
 import { respond } from './respond.js';
+
+/** The code `g page` and `g error-page` refuse with when there is no layout (SDD-88), named by its own house. */
+const NO_LAYOUT = FUD1582({ searched: [], create: '' }).code;
 
 /** What `fudic g` generates, as its help lists them. */
 export const GENERATE_KINDS = [
@@ -63,8 +66,7 @@ const GENERATE_OPTIONS = {
   slot: z.boolean().optional().describe('component: with a default <slot>'),
   skipTest: z.boolean().optional(),
   skipSpec: z.boolean().optional(),
-  layout: z.string().optional(),
-  noLayout: z.boolean().optional(),
+  layout: z.string().optional().describe('the layout the page links; by default the nearest _layout.fud'),
   server: z.boolean().optional().describe('page: with its .fudapi'),
   sections: list.optional(),
   noHead: z.boolean().optional(),
@@ -105,8 +107,7 @@ export function registerProjectTools(server: McpServer, project: Project, checks
         uses: list.optional(),
         prefix: z.string().optional().describe('The prefix of its component tags; by default, from the name'),
         id: z.string().optional(),
-        layout: z.string().optional(),
-        noLayout: z.boolean().optional(),
+        layout: z.string().optional().describe('its own layout by name (default _layout), or a library layout by its href'),
         noSw: z.boolean().optional(),
         target: z.string().optional(),
         locale: z.string().optional(),
@@ -134,7 +135,9 @@ export function registerProjectTools(server: McpServer, project: Project, checks
         'Creates a piece of the fudic project exactly as `fudic g <kind>` does: component, page, layout, snippet, app, lib, ' +
         'guide, spec, flow, term, api, showcase, service, form, pipe, style or error-page. Never write these files from scratch. ' +
         'error-page takes no name: in an app it writes src/routes/_error.fud, in a library src/_error.fud — the page every app ' +
-        'that depends on the library and has none of its own paints its errors with. ' +
+        'that depends on the library and has none of its own paints its errors with. Every page links a layout: page and ' +
+        'error-page link the nearest one (the error page of a library, its src/layouts/_layout.fud), and with none they refuse ' +
+        `with ${NO_LAYOUT} and write nothing. ` +
         'A component or a page takes `purpose`: what the user asked for, in one sentence.',
       inputSchema: {
         kind: z.enum(GENERATE_KINDS),

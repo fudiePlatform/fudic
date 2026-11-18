@@ -64,12 +64,12 @@ function namesLayout(document: CachedDocument, link: ElementNode): boolean {
 }
 
 /**
- * Whether this file may link a `.fudapi` (SDD-60 §3.14): a route, a page or a component — the
+ * Whether this file may link a `.fudapi` (SDD-60 §3.14): a route or a component — the
  * file being started among them. A layout or a snippet file has no server (`FUD1112`).
  */
 function linksServer(document: CachedDocument): boolean {
   const type = document.document.type;
-  return type === 'component-document' || type === 'route-document' || type === 'page-document';
+  return type === 'component-document' || type === 'route-document';
 }
 
 /** The `.fudapi` of the app, as the `href` completion of a `<link rel="server">` asks for them. */

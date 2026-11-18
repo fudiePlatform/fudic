@@ -18,18 +18,20 @@ import { type RouteBuild } from '../src/discover.js';
 import { NO_STRATEGY } from '../src/strategy.js';
 import { nodeIo } from '../src/io.js';
 
-/** A page that pulls in a SHARED component, so the pass has a real dep graph. */
-const PAGE = (title: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <title>${title}</title>
-  </head>
-  <body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+/** A page that pulls in a SHARED component, so the pass has a real dep graph. */
+const PAGE = (title: string): string => `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head><title>${title}</title></head>
     <h1>${title}</h1>
     <app-badge>ok</app-badge>
-  </body>
-</html>
 `;
 
 const BADGE = `<head>
@@ -50,7 +52,7 @@ function routeBuild(pattern: string, file: string, decision: ModeDecision): Rout
     route: { file, pattern, params: pattern.includes(':') ? ['id'] : [] },
     absPath: join(root, 'routes', file),
     analysis: {
-      role: 'page' as const,
+      role: 'route' as const,
       isPage: true,
       hasLoad: false,
       hasPaths: false,
@@ -122,6 +124,7 @@ describe('runLinkPass', () => {
     mkdirSync(join(root, 'routes'), { recursive: true });
     mkdirSync(join(root, 'components'), { recursive: true });
     writeFileSync(join(root, 'routes', 'about.fud'), PAGE('About'));
+    writeFileSync(join(root, 'routes', '_layout.fud'), LAYOUT);
     writeFileSync(join(root, 'routes', 'now.fud'), PAGE('Now'));
     writeFileSync(join(root, 'routes', 'account.fud'), PAGE('Account'));
     writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
@@ -232,14 +235,10 @@ describe('runLinkPass — a dep reached twice is listed once', () => {
   </template>
 </${tag}>
 `;
-  const page = (title: string, ...tags: string[]): string => `<!DOCTYPE html>
-<html>
-  <head>
-    ${tags.map((t) => `<link rel="component" href="../components/${t}.fud">`).join('\n    ')}
-    <title>${title}</title>
-  </head>
-  <body>${tags.map((t) => `<${t}></${t}>`).join('')}</body>
-</html>
+  const page = (title: string, ...tags: string[]): string => `<link rel="layout" href="./_layout.fud">
+${tags.map((t) => `<link rel="component" href="../components/${t}.fud">`).join('\n')}
+<head><title>${title}</title></head>
+${tags.map((t) => `<${t}></${t}>`).join('')}
 `;
   let diamond: LinkResult;
 
@@ -251,6 +250,7 @@ describe('runLinkPass — a dep reached twice is listed once', () => {
     writeFileSync(join(root, 'components', 'x-left.fud'), component('x-left'));
     writeFileSync(join(root, 'components', 'x-right.fud'), component('x-right'));
     writeFileSync(join(root, 'routes', 'both.fud'), page('Both', 'x-left', 'x-right'));
+    writeFileSync(join(root, 'routes', '_layout.fud'), LAYOUT);
     writeFileSync(join(root, 'routes', 'left.fud'), page('Left', 'x-left'));
     writeFileSync(join(root, 'routes', 'right.fud'), page('Right', 'x-right'));
     diamond = await runLinkPass(

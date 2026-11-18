@@ -22,11 +22,13 @@ const PLAIN_API = `load ssr
   n  i32
 `;
 
-const PLAIN = `<!DOCTYPE html>
-<html>
-<head><title>Plain</title><link rel="server" href="./plain.fudapi"></head>
-<body><p>n = @data.n</p></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PLAIN = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./plain.fudapi">
+<head><title>Plain</title></head>
+<p>n = @data.n</p>
 `;
 
 const PLAIN_SERVER = `import { load } from 'fudic:routes/plain';
@@ -42,6 +44,7 @@ function project(): string {
     // worker of the first, so it must not break that build (SDD-84).
     'fudic.json': JSON.stringify({ id: 'test', diagnostics: { FUD1554: 'error' } }),
     'sw.headers': "Content-Security-Policy:\n  default-src 'self'\n  script-src 'self' 'unsafe-eval'\n",
+    'src/layouts/_layout.fud': BARE_LAYOUT,
     'src/routes/plain.fudapi': PLAIN_API,
     'src/routes/plain.fud': PLAIN,
     'src/server/plain.ts': PLAIN_SERVER,

@@ -73,22 +73,23 @@ type Saved
   user    str
 `;
 
-const BLOG = `<!DOCTYPE html>
-<html>
-<head><title>Blog</title><link rel="server" href="./[slug].fudapi"></head>
-<body><h1>@data.title</h1></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const BLOG = `<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="server" href="./[slug].fudapi">
+<head><title>Blog</title></head>
+<h1>@data.title</h1>
 `;
 
 const PLAIN_API = `load ssr ttl 5m cache-first
   n  i32
 `;
 
-const PLAIN = `<!DOCTYPE html>
-<html>
-<head><title>Plain</title><link rel="server" href="./plain.fudapi"></head>
-<body><p>n = @data.n</p></body>
-</html>
+const PLAIN = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./plain.fudapi">
+<head><title>Plain</title></head>
+<p>n = @data.n</p>
 `;
 
 const AUTH_API = `middleware auth
@@ -166,6 +167,7 @@ let origin: string;
 
 beforeAll(async () => {
   root = project({
+    'src/layouts/_layout.fud': BARE_LAYOUT,
     'src/routes/blog/[slug].fudapi': BLOG_API,
     'src/routes/blog/[slug].fud': BLOG,
     'src/routes/plain.fudapi': PLAIN_API,

@@ -49,6 +49,8 @@ export const STEPS = [
   { in: 'acme', argv: ['g', 'style', 'theme', '--project', 'web'], covers: 'style' },
   { in: 'acme', argv: ['g', 'term', 'then', 'cart-has', '--project', 'web'], covers: 'term' },
   // Before `g app`: the new app depends on the library whose error page it paints with (SDD-87).
+  // A library's error page links its own layout (SDD-88): the library gets one first.
+  { in: 'acme', argv: ['g', 'layout', '_layout', '--project', 'ui'] },
   { in: 'acme', argv: ['g', 'error-page', '--project', 'ui'], covers: 'error-page' },
   { in: 'acme', argv: ['g', 'lib', 'kit'], covers: 'lib' },
   { in: 'acme', argv: ['g', 'app', 'admin'], covers: 'app' },

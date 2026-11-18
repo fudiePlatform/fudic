@@ -21,29 +21,30 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveComponents } from '../../src/emit/index.js';
-import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { resolveDocument } from '../../src/emit/index.js';
+import { drain, LINK_LAYOUT, memoryIo, pageModuleOf, ssrIo, withLayout } from './_support.js';
 
 const goldenDir = join(dirname(fileURLToPath(import.meta.url)), '__golden__');
 const golden = (file: string): string => readFileSync(join(goldenDir, file), 'utf8');
 
 /** `s-card` brings a stylesheet; `s-plain` brings none. Nothing else differs. */
-const io = memoryIo({
+const io = memoryIo(withLayout({
   '/home.fud':
-    '<!DOCTYPE html>\n<html><head>' +
-    '<link rel="component" href="./s-card.fud">' +
-    '<link rel="component" href="./s-plain.fud">' +
-    '<title>sin styles</title></head>' +
-    '<body><s-card></s-card><s-plain></s-plain></body></html>',
+    LINK_LAYOUT +
+    '<link rel="component" href="./s-card.fud">\n' +
+    '<link rel="component" href="./s-plain.fud">\n' +
+    '<head><title>sin styles</title></head>\n' +
+    '<s-card></s-card><s-plain></s-plain>',
   '/s-card.fud':
     '<head><style>.card { padding: 8px; }</style></head>\n' +
     '<s-card><template shadowrootmode="open"><div class="card"><slot></slot></div></template></s-card>',
   '/s-plain.fud':
     '<s-plain><template shadowrootmode="open"><span><slot></slot></span></template></s-plain>',
-});
+  // The document is the layout's (SDD-88): it writes the `lang` the golden has always held.
+}, '<!DOCTYPE html>\n<html lang="es"><head>@RenderHead()</head><body>@RenderBody()</body></html>\n'));
 
 async function render(): Promise<string> {
-  const page = await pageModuleOf(resolveComponents('/home.fud', io));
+  const page = await pageModuleOf(resolveDocument('/home.fud', io).value);
   return await drain(page({}, ssrIo().io));
 }
 

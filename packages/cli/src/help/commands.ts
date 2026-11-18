@@ -68,7 +68,6 @@ libs/guide, and the app and the libraries you name.`,
       ['--id <id>', 'the identity of the app for its caches; never change it   (default: its name)'],
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: the app\'s name)'],
       ['--layout <name|href>', "a name: the app's own layout   (default: _layout). An href: a library's, e.g. @shop/ui/layouts/main.fud"],
-      ['--no-layout', 'no layout: the home page is a whole document'],
       ['--locale <tag>', "the app's language, a BCP 47 tag   (default: en)"],
       ['--target <name>', 'where you deploy it   (default: static)'],
       ['--pm <pnpm|npm|yarn>', 'the package manager   (default: pnpm)'],
@@ -134,8 +133,9 @@ A name with a hyphen, like "shop-button", is used as it is.`,
   'generate page': {
     usage: 'fudic generate page <route>',
     alias: 'fudic g p',
-    about: `Creates the page that answers <route> under src/routes, inside the nearest
-layout, and its unit test.`,
+    about: `Creates the page that answers <route> under src/routes, linking the nearest
+layout, and its unit test. Every page links a layout: with none to link, it writes
+nothing and says how to create one (fudic g layout _layout) or pick one (--layout).`,
     args: [
       [
         '<route>',
@@ -147,7 +147,6 @@ The file is src/routes/about.fud, src/routes/blog/[slug].fud, src/routes/index.f
       IN_APP,
       ['--dir <path>', 'another folder for the routes   (default: src/routes)'],
       ['--layout <path|href>', "this layout instead of the nearest one; a library's by its href, e.g. @shop/ui/layouts/main.fud"],
-      ['--no-layout', 'a whole document of its own, with no layout'],
       ['--server', 'with a load declared in its .fudapi and implemented in src/server'],
       ['--sections <a,b>', 'fill only these sections of the layout   (default: all)'],
       ['--skip-test', 'no unit test'],
@@ -185,7 +184,6 @@ and installs its dependencies.`,
       ['--uses <lib>', 'a library of the workspace it uses; repeatable'],
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: <name>)'],
       ['--layout <name|href>', "a name: its own layout   (default: _layout). An href: a library's, which it then uses"],
-      ['--no-layout', 'no layout: the home page is a whole document'],
       ['--locale <tag>', 'its language, a BCP 47 tag   (default: en)'],
       ['--id <id>', 'the identity of the app for its caches; never change it   (default: <name>)'],
       ['--dir <path>', 'another folder of the workspace   (default: apps)'],
@@ -327,12 +325,19 @@ src/routes/showcase. Run it again whenever a fixture changes: it rewrites its ow
     examples: ['fudic g showcase ui', 'fudic g showcase'],
   },
   'generate error-page': {
-    usage: 'fudic generate error-page',
-    about: `Writes the error page of the project, one whole document. In an app it is
-src/routes/_error.fud; in a library, src/_error.fud: every app that depends on the
-library and has no _error.fud of its own paints its errors with it.`,
+    usage: 'fudic generate error-page [--layout <href>]',
+    about: `Writes the error page of the project, a page that links a layout like every other.
+In an app it is src/routes/_error.fud and links the layout g page would choose for it;
+in a library, src/_error.fud, linking the library's src/layouts/_layout.fud: every app
+that depends on the library and has no _error.fud of its own paints its errors with it.
+With no layout to link, it writes nothing and says how to create one.`,
     args: [],
-    options: [IN_PROJECT, DRY_RUN, FORCE],
+    options: [
+      IN_PROJECT,
+      ['--layout <path|href>', "this layout instead; a library's by its href, e.g. @shop/ui/layouts/main.fud"],
+      DRY_RUN,
+      FORCE,
+    ],
     examples: ['fudic g error-page --project ui', 'fudic g error-page'],
   },
   'generate term': {

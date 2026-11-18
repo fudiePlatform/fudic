@@ -172,13 +172,23 @@ describe('parseArgs', () => {
     expect(parsed.opts).toMatchObject({ install: false, git: false, sw: false, pm: 'npm' });
   });
 
-  it('--no-layout and --layout are distinguishable from "not given"', () => {
-    const none = parseArgs(['g', 'p', 'solo', '--no-layout']);
+  it('--layout is distinguishable from "not given"', () => {
     const forced = parseArgs(['g', 'p', 'solo', '--layout', 'layouts/_admin.fud']);
     const absent = parseArgs(['g', 'p', 'solo']);
-    expect(none.kind === 'page' && none.opts.layout).toBe(null);
     expect(forced.kind === 'page' && forced.opts.layout).toBe('layouts/_admin.fud');
     expect(absent.kind === 'page' && 'layout' in absent.opts).toBe(false);
+  });
+
+  // SDD-88 criterion 15: there is no page without a layout to ask for.
+  it.each([
+    [['g', 'page', '/x', '--no-layout']],
+    [['new', 'app', '--no-layout']],
+    [['new', 'shop', '--workspace', '--app', 'web', '--no-layout']],
+    [['g', 'app', 'x', '--no-layout']],
+  ])('%j is an unknown flag', (argv) => {
+    const parsed = parseArgs(argv);
+    expect(parsed.kind).toBe('error');
+    expect(parsed.kind === 'error' ? parsed.error.message : '').toContain('unknown flag --no-layout');
   });
 
   it('rejects a valued flag with no value', () => {

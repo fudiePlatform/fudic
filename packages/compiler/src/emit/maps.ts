@@ -16,7 +16,7 @@
  * would leave a page pointing at chunks of the previous build.
  */
 
-import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import type { HtmlContent } from '../html/index.js';
 import { classifyAttribute } from '../binding/index.js';
@@ -377,7 +377,7 @@ const DATA_BLOCK = 'fud-data';
  * and no chunks, so an id there would be an attribute nobody reads (§4.7).
  */
 export function routeBlocksOf(
-  graph: ComponentGraph,
+  graph: DocumentGraph,
   routeName: string | undefined,
 ): RouteBlocks | undefined {
   const entry = entryHalf(graph);

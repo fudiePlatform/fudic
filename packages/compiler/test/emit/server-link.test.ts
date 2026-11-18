@@ -11,11 +11,9 @@ import {
   apiDiagnostics,
   emitComponentClientModule,
   emitComponentModule,
-  emitPageModuleMapped,
   emitRouteClientModule,
   entryComponent,
   emitRouteModuleMapped,
-  resolveComponents,
   resolveDocument,
   type ResolveIo,
 } from '../../src/emit/index.js';
@@ -50,11 +48,9 @@ const component = (links: string, code = ''): string =>
 const codes = (ds: readonly { readonly code: string }[]): string[] => ds.map((d) => d.code);
 
 describe('the link, in the structure', () => {
-  it('a route, a component and a page keep their server links', () => {
-    expect(parse(route('<link rel="server" href="./r.fudapi">'))).toMatchObject({ serverLinks: [{ name: 'link' }] });
+  it('a route and a component keep their server links', () => {
+    expect(parse(route('<link rel="server" href="./r.fudapi">'))).toMatchObject({ type: 'route-document', serverLinks: [{ name: 'link' }] });
     expect(parse(component('<link rel="server" href="./c.fudapi">'))).toMatchObject({ serverLinks: [{ name: 'link' }] });
-    const page = '<!DOCTYPE html><html><head><link rel="server" href="./p.fudapi"></head><body></body></html>';
-    expect(parse(page)).toMatchObject({ type: 'page-document', serverLinks: [{ name: 'link' }] });
   });
 
   it('a file without one has no list at all', () => {
@@ -70,11 +66,6 @@ describe('the link, in the structure', () => {
     expect(wrong.diagnostics[0]!.message).toContain('"./r.ts"');
     // Not followed: the host is never asked about a file that is not a contract.
     expect(wrong.value.serverApis).toEqual([]);
-  });
-
-  it('FUD1111 for a page link too', () => {
-    const page = '<!DOCTYPE html><html><head><link rel="server"></head><body></body></html>';
-    expect(codes(resolveDocument('/p.fud', ioOf({ '/p.fud': page })).diagnostics)).toEqual(['FUD1111']);
   });
 
   it('FUD1112 in a layout and in a snippet file, which link no server', () => {
@@ -201,11 +192,10 @@ describe('what the links say together (apiDiagnostics)', () => {
     expect(apiDiagnostics({ ...layout, serverApis: [{ link: layout.entry as never, href: './x.fudapi', path: '/x.fudapi' }] })).toEqual([]);
   });
 
-  it('a component and a page are checked like a route', () => {
+  it('a component is checked like a route, and a link nobody calls is no error', () => {
     const c = resolveDocument('/c.fud', ioOf({ '/c.fud': component('<link rel="server" href="./c.fudapi">', '  const save = 1;') }, { '/c.fudapi': api({ functions: ['save'] }) }));
     expect(codes(apiDiagnostics(c.value))).toEqual(['FUD1113']);
-    const page = '<!DOCTYPE html><html><head><link rel="server" href="./p.fudapi"></head><body></body></html>';
-    const p = resolveDocument('/p.fud', ioOf({ '/p.fud': page }, { '/p.fudapi': api({ functions: ['f'] }) }));
+    const p = resolveDocument('/p.fud', ioOf({ '/p.fud': route('<link rel="server" href="./p.fudapi">') }, { '/p.fudapi': api({ functions: ['f'] }) }));
     expect(apiDiagnostics(p.value)).toEqual([]);
   });
 
@@ -257,12 +247,10 @@ describe('`data` and FUD0621 with a linked `load`', () => {
     expect(emitted({}, false)).not.toContain('FUD0621');
   });
 
-  it('a page reached without the document graph: the emit says nothing, and neither does the analyzer without links', () => {
-    const page =
-      '<!DOCTYPE html><html><head>@code { const n = signal(1); function hi() { alert(data.user); } }</head>' +
-      '<body><output>@n()</output></body></html>';
-    const graph = resolveComponents('/p.fud', memoryIo({ '/p.fud': page }));
-    expect(codes(emitPageModuleMapped(graph, { routeName: 'p' }).diagnostics)).not.toContain('FUD0621');
+  it('a route with no server link: the emit says nothing, and neither does the analyzer without links', () => {
+    const page = route('', '  const n = signal(1);\n  function hi() { alert(data.user); }', '<output>@n()</output>');
+    const graph = resolveDocument('/p.fud', ioOf({ '/p.fud': page })).value;
+    expect(codes(emitRouteModuleMapped(graph, { routeName: 'p' }).diagnostics)).not.toContain('FUD0621');
     expect(codes(analyze(viewInput(page)).diagnostics)).not.toContain('FUD0621');
     expect(codes(analyze({ ...viewInput(page), apis: { data: false, names: new Set() } }).diagnostics)).toContain('FUD0621');
   });
@@ -347,13 +335,10 @@ describe('the names a link brings into the browser (SDD-60 §3.14, §4.3)', () =
     expect(routeClient).toContain('$d.push($sub(() => ((!person.$valid())), $u));');
   });
 
-  it('and the render module of the server imports them too: a route, a page and a component', () => {
+  it('and the render module of the server imports them too: a route and a component', () => {
     const facts = { '/r.fudapi': api({ load: true, route: '/r.fud', functions: ['save'], forms: ['person'] }) };
     const routeCode = emitRouteModuleMapped(resolveDocument('/r.fud', ioOf({ '/r.fud': route('<link rel="server" href="./r.fudapi">') }, facts)).value).code;
     expect(routeCode).toContain('import { save, person } from "fudic:routes/r";');
-    const page = '<!DOCTYPE html><html><head><link rel="server" href="./r.fudapi"></head><body><p>x</p></body></html>';
-    const pageCode = emitPageModuleMapped(resolveDocument('/p.fud', ioOf({ '/p.fud': page }, facts)).value).code;
-    expect(pageCode).toContain('import { save, person } from "fudic:routes/r";');
     const io = ioOf({ '/c.fud': component('<link rel="server" href="./c.fudapi">') }, { '/c.fudapi': api({ id: 'components/c', functions: ['save'] }) });
     const graph = resolveDocument('/c.fud', io).value;
     expect(emitComponentModule(graph, entryComponent(graph)!)).toContain('import { save } from "fudic:components/c";');

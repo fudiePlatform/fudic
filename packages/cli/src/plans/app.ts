@@ -59,7 +59,7 @@ function asNewOptions(opts: AppOptions): NewOptions {
  * named it: a page cannot render inside a layout of a package the app does not depend on.
  */
 function layoutLibrary(layout: AppLayout, cwd: string, io: ReadIo): { readonly library?: string; readonly error?: CliError } {
-  if (layout === null || !('href' in layout)) return {};
+  if (!('href' in layout)) return {};
   const found = workspaceFile(layout.href, cwd, io);
   if (found === undefined || !isLayout(cwd, found.file, io)) return { error: FUD0449({ file: layout.href }) };
   return { library: found.project };
@@ -167,7 +167,6 @@ function appReport(r: AppReport): readonly string[] {
 
 /** The report's line about the frame of its pages, when it is not a layout of its own. */
 function layoutLine(layout: AppLayout): readonly string[] {
-  if (layout === null) return ['  layout     none: each page is a whole document'];
   return 'href' in layout ? [`  layout     ${layout.href}`] : [];
 }
 

@@ -45,7 +45,7 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD0131: ['error', "Unbalanced CSS braces in `<style>`"],
   FUD0132: ['error', "Razor inside `<style>`"],
   FUD0150: ['error', "Doctype is not `<!DOCTYPE html>`"],
-  FUD0151: ['error', "Page skeleton incomplete"],
+  FUD0151: ['error', "Layout skeleton incomplete"],
   FUD0152: ['error', "Component link outside `<head>`"],
   FUD0153: ['error', "`@code` outside `<head>`"],
   FUD0154: ['error', "More than one `@code` block"],
@@ -478,6 +478,10 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1562: ['error', "A declaration hides a lifecycle hook"],
   FUD1563: ['error', "A layout hook reads a prop of the layout"],
   FUD1570: ['error', "Two error pages in the chain"],
+  FUD1580: ['error', "A whole document is a layout"],
+  FUD1581: ['error', "The error page links no layout"],
+  FUD1582: ['error', "No layout to link"],
+  FUD1583: ['error', "The runtime is the layout's"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */

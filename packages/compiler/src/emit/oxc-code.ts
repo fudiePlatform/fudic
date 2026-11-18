@@ -12,7 +12,6 @@
 import type {
   ComponentDocument,
   LayoutDocument,
-  PageDocument,
   RouteDocument,
 } from '../document/index.js';
 import type { HtmlContent } from '../html/index.js';
@@ -548,20 +547,20 @@ type MapOffset = (bufferOffset: number) => number;
  * One vocabulary, four roles: a layout declares props with the same `props<T>()` a component
  * and a route use, so it reads them with the same code (SDD-40 §5).
  */
-export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | LayoutDocument;
+export type CodeDocument = ComponentDocument | RouteDocument | LayoutDocument;
 
 /**
  * The JS fragments of a document's TEMPLATE, whichever role it takes.
  *
  * The three differ only in where their markup hangs: a component's inside the `<template>`
- * its host wrapper opens, a route's at the top level plus one list per `@section`, a page's
+ * its host wrapper opens, a route's at the top level plus one list per `@section`, a layout's
  * inside its `<body>`. A section is registered like any other run of markup — it is another
  * position of the same walk, not a second kind of tree (SDD-39 §4.4).
  */
 /** The markup a document's template is made of, sections included; a layout's is its body. */
 export function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
   if (doc.type === 'route-document') return [...doc.markup, ...doc.sections.flatMap((s) => s.children)];
-  if (doc.type === 'layout-document' || doc.type === 'page-document') return doc.body.children;
+  if (doc.type === 'layout-document') return doc.body.children;
   return doc.template?.children ?? [];
 }
 
@@ -580,14 +579,6 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
     // The `<body>`'s own attributes too: the emit writes them from the source, but the rule of
     // what a body may hold (`FUD0704`) reads them by their AST, and a fragment nobody
     // registered is one it could not tell a prop read from any other expression (BUG-44).
-    collectAttributeJs(doc.body, register);
-    collectTemplateJs(doc.body.children, register);
-    return;
-  }
-  if (doc.type === 'page-document') {
-    // A page without a layout owns its `<body>` as a layout does, and its emit writes the
-    // body's attributes: an `@expr` there is a read of the `@code` like any in the markup, or
-    // the binding it reads is cut from the server as unused.
     collectAttributeJs(doc.body, register);
     collectTemplateJs(doc.body.children, register);
     return;

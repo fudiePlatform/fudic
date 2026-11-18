@@ -317,9 +317,9 @@ describe('what an expansion drags with it (§4.5)', () => {
 describe('every role of document expands (§4.9)', () => {
   const card = '@snippet card(t: string) { <i>@t</i> }';
 
-  it('a page', () => {
+  it('a route', () => {
     const { source } = expand({
-      [ENTRY]: `<!DOCTYPE html><html><head>${card}</head><body><p>@render card("A")</p></body></html>`,
+      [ENTRY]: `<link rel="layout" href="./_layout.fud">\n${card}\n<p>@render card("A")</p>\n`,
     });
     expect(source).toContain('<p><i>@("A")</i></p>');
   });

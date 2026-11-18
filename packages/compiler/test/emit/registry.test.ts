@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveComponents, graphRegistry, contractDiagnostics } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { memoryIo, withLayout } from './_support.js';
 
 /** A component `tag` whose shadow root holds `markup`, with `code` in front of it. */
 const component = (tag: string, code: string, markup: string): string =>
@@ -21,13 +21,12 @@ const CIRCLE = component(
   '<b>@name</b><slot name="PEPITO"></slot><slot></slot>',
 );
 
-/** A page that links `app-circle` and holds `inner` in its body. */
+/** A route that links `app-circle` and holds `inner` in its markup. */
 const page = (inner: string): string =>
-  '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-circle.fud"></head>\n' +
-  `<body>${inner}</body>\n</html>\n`;
+  '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./app-circle.fud">\n' + `${inner}\n`;
 
 const graphOf = (inner: string, circle: string = CIRCLE): ReturnType<typeof resolveComponents> =>
-  resolveComponents('/page.fud', memoryIo({ '/page.fud': page(inner), '/app-circle.fud': circle }));
+  resolveComponents('/page.fud', memoryIo(withLayout({ '/page.fud': page(inner), '/app-circle.fud': circle })));
 
 describe('graphRegistry', () => {
   it('answers what a component the graph reached is and declares', () => {

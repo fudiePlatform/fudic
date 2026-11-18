@@ -2,9 +2,11 @@
 <html>
   <head>
     <title>Fix</title>
+    @RenderHead()
   </head>
   <body>
     <link rel="component" href="./app-child.fud">
     <app-child></app-child>
+    @RenderBody()
   </body>
 </html>

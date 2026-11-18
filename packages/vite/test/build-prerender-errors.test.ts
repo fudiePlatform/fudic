@@ -26,7 +26,7 @@ interface OutFile {
 async function buildRoutes(files: Record<string, string>): Promise<{ output: OutFile[]; warnings: string[] }> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerr-'));
   writeHttpTypecheckConfig(root);
-  for (const [rel, content] of Object.entries(files)) {
+  for (const [rel, content] of Object.entries({ 'layouts/_layout.fud': BARE_LAYOUT, ...files })) {
     const abs = join(root, 'src', rel);
     mkdirSync(join(abs, '..'), { recursive: true });
     writeFileSync(abs, content);
@@ -46,18 +46,17 @@ async function buildRoutes(files: Record<string, string>): Promise<{ output: Out
   return { output: result.output, warnings };
 }
 
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
 describe('what the prerender does with a route it cannot render', () => {
   describe('a paths() entry missing a param (FUD0362)', () => {
     let output: OutFile[];
     let warnings: string[];
     beforeAll(async () => {
-      const page = `<!DOCTYPE html>
-<html>
-<head>
+      const page = `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[id].fudapi">
-</head>
-<body><h1>C @data.id</h1></body>
-</html>
+<h1>C @data.id</h1>
 `;
       const api = 'load\n  id  str\n\npaths\n';
       // The entry that misses `id` is cast past the contract's `string`: what FUD0362 guards
@@ -88,16 +87,13 @@ paths.handle(() => ['1', { wrong: 'x' } as unknown as string]);
       // undefined, and reading a field of it throws a TypeError while prerendering. A name that
       // does not exist would no longer get this far: since SDD-35 the typecheck stops the build
       // on it first (TS2304).
-      const page = `<!DOCTYPE html>
-<html>
-<head>
+      const page = `<link rel="layout" href="../layouts/_layout.fud">
 @code {
   type Item = { n: number };
   const lista: readonly Item[] = [];
 }
-<title>Boom</title></head>
-<body><h1>@(lista[0].n)</h1></body>
-</html>
+<head><title>Boom</title></head>
+<h1>@(lista[0].n)</h1>
 `;
       await expect(buildRoutes({ 'routes/boom.fud': page })).rejects.toThrow(/FUD0620/u);
     }, 120000);

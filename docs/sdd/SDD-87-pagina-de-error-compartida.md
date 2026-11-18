@@ -260,6 +260,11 @@ fudic g error-page [--project <name>] [--force]
   - en una librería: «toda app que dependa de `<paquete>` y no tenga su `_error.fud` usará esta»;
   - en una app cuya cadena ya trae una: «esta sustituye a la de `<paquete>` en esta app».
 
+> **Enmendada por [SDD-88](./SDD-88-toda-pagina-con-layout.md) §3.3.** La página de error ya no es un
+> documento entero: es una ruta que enlaza el layout que elige `resolveLayout` (en una app) o el
+> `src/layouts/_layout.fud` de la librería, con `--layout` para elegir otro. Sin layout que enlazar,
+> `FUD1582`. El informe gana la línea `layout`.
+
 `fudic g app` añade como dependencia de la app nueva, además de las librerías con guía, las que
 tienen `src/_error.fud`. `fudic g lib` no cambia: una librería no pinta errores.
 
@@ -536,6 +541,8 @@ solo fichero (§8.1, decisión 4).
     paquetes, y una segunda copia sería una segunda respuesta el día que una se quede atrás.
 12. **El generador escribe un documento entero, sin layout.** Una página de error no debe depender de
     un layout cuyas props quizá no se puedan resolver sin `load`. El comentario dice cómo enlazar uno.
+    *Enmendada por [SDD-88](./SDD-88-toda-pagina-con-layout.md) §8.1, decisión 6: se revierte; toda
+    página enlaza un layout, y sus props se resuelven con `layout` en `_error.fudapi`.*
 13. **El build y el MCP dicen de dónde sale la página.** Una página que llega sin que nadie la nombre
     tiene que decirse en algún sitio, y el agente tiene que verlo sin leer el código (Pedro: «el MCP
     se tiene que enterar»).

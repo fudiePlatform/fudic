@@ -21,7 +21,7 @@ import type { ComponentGraph, DocumentGraph } from './resolve.js';
 export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
   const entry = graph.entry;
   const apis = graph.serverApis;
-  if (apis.length === 0 || (entry.type !== 'component-document' && entry.type !== 'route-document' && entry.type !== 'page-document')) {
+  if (apis.length === 0 || (entry.type !== 'component-document' && entry.type !== 'route-document')) {
     return [];
   }
   const out: Diagnostic[] = [];
@@ -60,7 +60,7 @@ export function fileInputDiagnostics(
   isComponent: (tag: string) => boolean,
   forms: readonly Readonly<Record<string, Readonly<Record<string, LinkedField>>>>[],
 ): readonly Diagnostic[] {
-  if (document.type !== 'component-document' && document.type !== 'route-document' && document.type !== 'page-document') return [];
+  if (document.type !== 'component-document' && document.type !== 'route-document') return [];
   return fileFieldDiagnostics(source, templateRootsOf(document), isComponent, formFieldsOf(forms));
 }
 
@@ -99,18 +99,16 @@ export function loadImport(graph: ComponentGraph): string | undefined {
  * page writes `fud-data` with and the chunk reads it back with. Both ends ask this one function,
  * so a link the host could not read — no shape — leaves the block with its keys on both.
  */
-export function dataShapeOf(graph: ComponentGraph): DataShape | undefined {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.find((a) => a.api?.load === true)?.api?.data;
+export function dataShapeOf(graph: DocumentGraph): DataShape | undefined {
+  return graph.serverApis.find((a) => a.api?.load === true)?.api?.data;
 }
 
 /**
  * The fields of `load` marked `later` (SDD-70 §3.1): promises when the page is painted, so they
  * are never part of what `fud-data` carries — they travel in the `fields` of their part.
  */
-export function laterFieldsOf(graph: ComponentGraph): readonly string[] {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.find((a) => a.api?.load === true)?.api?.later ?? [];
+export function laterFieldsOf(graph: DocumentGraph): readonly string[] {
+  return graph.serverApis.find((a) => a.api?.load === true)?.api?.later ?? [];
 }
 
 /**

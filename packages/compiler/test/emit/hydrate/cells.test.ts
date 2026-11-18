@@ -90,8 +90,8 @@ const graph: ComponentGraph = resolveComponents(
   '/page.fud',
   memoryIo({
     '/page.fud':
-      '<!DOCTYPE html>\n<html>\n  <head><link rel="component" href="./cx-owner.fud"></head>\n' +
-      '  <body><cx-owner></cx-owner><cx-owner></cx-owner></body>\n</html>\n',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./cx-owner.fud">\n' +
+      '<cx-owner></cx-owner><cx-owner></cx-owner>\n',
     '/cx-owner.fud': OWNER,
     '/cx-view.fud': VIEW,
     '/cx-kid.fud': KID,

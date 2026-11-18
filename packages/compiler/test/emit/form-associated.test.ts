@@ -11,23 +11,26 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import {
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
+  emitRouteModule,
+  resolveDocument,
   resolveComponents,
   formAssociatedTags,
   type ComponentGraph,
+  type DocumentGraph,
 } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { BARE_LAYOUT, memoryIo } from './_support.js';
 
-/** A page hosting `<app-input>` — marked or not — plus a plain component beside it. */
-function build(marker: string): ComponentGraph {
-  return resolveComponents(
+/** A route hosting `<app-input>` — marked or not — plus a plain component beside it. */
+function build(marker: string): DocumentGraph {
+  return resolveDocument(
     '/home.fud',
     memoryIo({
+      '/_layout.fud': BARE_LAYOUT,
       '/home.fud':
-        '<!DOCTYPE html>\n<html><head>' +
+        '<link rel="layout" href="./_layout.fud">' +
         '<link rel="component" href="./app-input.fud">' +
         '<link rel="component" href="./app-plain.fud">' +
-        '</head><body><app-input></app-input><app-plain></app-plain></body></html>',
+        '<app-input></app-input><app-plain></app-plain>',
       '/app-input.fud':
         "@code {\n  import { f } from './user.form.js';\n}\n" +
         `<app-input>\n  <template shadowrootmode="open"${marker}><input control="@f.title"></template>\n</app-input>\n`,
@@ -35,7 +38,7 @@ function build(marker: string): ComponentGraph {
         '@code {\n  const n = 1;\n}\n' +
         '<app-plain>\n  <template shadowrootmode="open"><button @click="@go()"></button></template>\n</app-plain>\n',
     }),
-  );
+  ).value;
 }
 
 const marked = build(' formassociated');
@@ -69,8 +72,8 @@ describe('§6.9 — the marker decides the class', () => {
       '/home.fud',
       memoryIo({
         '/home.fud':
-          '<!DOCTYPE html>\n<html><head><link rel="component" href="./app-live.fud"></head>' +
-          '<body><app-live></app-live></body></html>',
+          '<link rel="layout" href="./_layout.fud"><link rel="component" href="./app-live.fud">' +
+          '<app-live></app-live>',
         '/app-live.fud':
           '@code {\n  import { signal } from \'@fudic/core\';\n  const n = signal(1);\n}\n' +
           '<app-live>\n  <template shadowrootmode="open" formassociated><p>@(n())</p></template>\n</app-live>\n',
@@ -109,10 +112,10 @@ describe('§6.9 — the marker delegates focus', () => {
     expect(pageHtml(plain)).not.toContain('shadowrootdelegatesfocus');
   });
 
-  it('the page module passes the flag to the host it fabricates', () => {
+  it('the route module passes the flag to the host it fabricates', () => {
     // No bridge unless its author writes one (decision 132): the compiler invents no target.
-    expect(emitPageModule(marked)).toContain('$dom.attachShadow($n0, true)');
-    expect(emitPageModule(plain)).toContain('$dom.attachShadow($n0)');
+    expect(emitRouteModule(marked)).toContain('$dom.attachShadow($n0, true)');
+    expect(emitRouteModule(plain)).toContain('$dom.attachShadow($n0)');
   });
 
   it('the marker itself never reaches the DOM', () => {
@@ -125,15 +128,15 @@ describe('§6.9 — the marker delegates focus', () => {
 
 describe('§6.9 — the marker joins `eager`, and nothing else does', () => {
   it('the page map lists the marked tag and only it', () => {
-    const page = emitPageModule(marked);
+    const page = emitRouteModule(marked);
     expect(page).toContain('const FUD_EAGER = ["app-input"];');
-    expect(page).toContain("jsonBlock($dom, $body, 'fud-eager', FUD_EAGER);");
+    expect(page).toContain("jsonBlock($dom, $parent, 'fud-eager', FUD_EAGER);");
     // The plain component of the same page hydrates too — and by gesture, not by this list.
     expect(page).not.toContain('app-plain"]');
   });
 
   it('a page with no control-component publishes no list at all', () => {
-    const page = emitPageModule(plain);
+    const page = emitRouteModule(plain);
     expect(page).not.toContain('FUD_EAGER');
     expect(page).not.toContain('fud-eager');
   });

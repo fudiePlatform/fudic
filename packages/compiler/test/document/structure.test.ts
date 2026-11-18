@@ -1,6 +1,6 @@
 /**
  * SDD-10 — document structure. Covers every acceptance criterion of §6: both state
- * machines (component / page), the DSD host identity, and every degradation.
+ * machines (component / layout shell), the DSD host identity, and every degradation.
  *
  * Inputs are parsed with the real SDD-05 parser wired to the real SDD-08 `@code` parser
  * and a balancer stand-in for the SDD-06 control bodies, so the `StructuredDocument` is
@@ -16,13 +16,15 @@ import {
   type HtmlDocument,
 } from '../../src/html/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
+import { parseDirective } from '../../src/layout/index.js';
 import { scanBraces, scanParens } from '../../src/balancer/index.js';
 import { ok, span, type Diagnostic } from '../../src/types/index.js';
 import {
   structureDocument,
   isComponentLink,
   type ComponentDocument,
-  type PageDocument,
+  type LayoutDocument,
+  type RouteDocument,
 } from '../../src/document/index.js';
 
 function skipWhitespace(text: string, from: number): number {
@@ -44,6 +46,8 @@ const constructs: AtConstructParser = {
     return ok({ type: keyword, span: span(keywordSpan.start, end) });
   },
   parseCodeBlock,
+  // The real SDD-21 directives: a shell with a hole is a layout, one without is FUD1580 (SDD-88).
+  parseDirective,
 };
 
 function parse(source: string): HtmlDocument {
@@ -233,67 +237,77 @@ describe('structureDocument — head styles (§6.13, decision 76)', () => {
   });
 });
 
-describe('structureDocument — page mode (§6.6)', () => {
+describe('structureDocument — the fixture page is a route (§6.6, SDD-88)', () => {
   it('structures the home fixture into named fields', () => {
     const source = loadFixture('home.fud');
     const { value, diagnostics } = structure(source);
 
     expect(diagnostics).toEqual([]);
-    expect(value.type).toBe('page-document');
-    const doc = value as PageDocument;
+    expect(value.type).toBe('route-document');
+    const doc = value as RouteDocument;
+    expect(doc.layoutHref).toBe('./_layout.fud');
+    expect(doc.links).toHaveLength(6);
+    expect(doc.code?.type).toBe('code');
+    expect(doc.head?.name).toBe('head');
+    expect(doc.markup.length).toBeGreaterThan(0);
+  });
+
+  it('structures its layout as a layout-document with the shell in named fields', () => {
+    const { value, diagnostics } = structure(loadFixture('_layout.fud'));
+    expect(diagnostics).toEqual([]);
+    expect(value.type).toBe('layout-document');
+    const doc = value as LayoutDocument;
     expect(doc.doctype.type).toBe('doctype');
     expect(doc.html.name).toBe('html');
     expect(doc.head.name).toBe('head');
     expect(doc.body.name).toBe('body');
-    expect(doc.links).toHaveLength(6);
-    expect(doc.code?.type).toBe('code');
   });
 });
 
-describe('structureDocument — page validation (§6.7, §6.8, §6.9)', () => {
+describe('structureDocument — layout shell validation (§6.7, §6.8, §6.9)', () => {
   it('reports FUD0150 for a doctype other than html (§6.7)', () => {
-    const { codes: c } = structure('<!DOCTYPE HTML5><html><head></head><body></body></html>');
+    const { codes: c } = structure('<!DOCTYPE HTML5><html><head></head><body>@RenderBody()</body></html>');
     expect(c).toContain('FUD0150');
   });
 
   it('accepts <!DOCTYPE html> in any case (§6.7)', () => {
-    const { diagnostics } = structure('<!dOcTyPe HTML><html><head></head><body></body></html>');
+    const { diagnostics } = structure('<!dOcTyPe HTML><html><head>@RenderHead()</head><body>@RenderBody()</body></html>');
     expect(diagnostics).toEqual([]);
   });
 
-  it('reports FUD0151 for a page without <body> (§6.8)', () => {
-    const { value, codes: c } = structure('<!DOCTYPE html><html><head></head></html>');
+  it('reports FUD0151 for a layout without <body> (§6.8)', () => {
+    const { value, codes: c } = structure('<!DOCTYPE html><html><head>@RenderHead()</head></html>');
     expect(c).toContain('FUD0151');
-    expect((value as PageDocument).body.name).toBe('body'); // degraded placeholder
+    expect((value as LayoutDocument).body.name).toBe('body'); // degraded placeholder
   });
 
   it('reports FUD0151 for <body> before <head> (§6.8)', () => {
-    const { codes: c } = structure('<!DOCTYPE html><html><body></body><head></head></html>');
+    const { codes: c } = structure('<!DOCTYPE html><html><body>@RenderBody()</body><head></head></html>');
     expect(c).toContain('FUD0151');
   });
 
   it('reports FUD0151 when <html> is missing', () => {
-    const { codes: c } = structure('<!DOCTYPE html><head></head><body></body>');
+    const { codes: c } = structure('<!DOCTYPE html><head></head><body>@RenderBody()</body>');
     expect(c).toContain('FUD0151');
   });
 
   it('reports FUD0152 for a component link inside <body> (§6.9)', () => {
     const source =
-      '<!DOCTYPE html><html><head></head><body><link rel="component" href="./a.fud"></body></html>';
+      '<!DOCTYPE html><html><head></head><body><link rel="component" href="./a.fud">@RenderBody()</body></html>';
     const { codes: c } = structure(source);
     expect(c).toContain('FUD0152');
   });
 
   it('reports FUD0153 for a @code inside <body> (§6.9)', () => {
     const source =
-      '<!DOCTYPE html><html><head></head><body>@code { const a = 1; }</body></html>';
+      '<!DOCTYPE html><html><head></head><body>@code { const a = 1; }@RenderBody()</body></html>';
     const { codes: c } = structure(source);
     expect(c).toContain('FUD0153');
   });
 
   it('reports FUD0154 for two @code blocks in the head', () => {
     const source =
-      '<!DOCTYPE html><html><head>@code { const a = 1; }@code { const b = 2; }</head><body></body></html>';
+      '<!DOCTYPE html><html><head>@code { const a = 1; }@code { const b = 2; }</head><body>@RenderBody()</body></html>';
     const { codes: c } = structure(source);
     expect(c).toContain('FUD0154');
   });
@@ -323,7 +337,7 @@ describe('structureDocument — defensive doctype fallback', () => {
 
     const result = structureDocument('', doc);
     expect(codes(result.diagnostics)).toContain('FUD0150');
-    expect((result.value as PageDocument).doctype.type).toBe('doctype');
+    expect((result.value as LayoutDocument).doctype.type).toBe('doctype');
   });
 });
 
@@ -332,6 +346,7 @@ describe('structureDocument — never throws (SDD-10 §5)', () => {
     const sources = [
       '<link rel="component" href="./a.fud"><app-x><template shadowrootmode="open">',
       '<!DOCTYPE html><html><head><link rel="component"',
+      '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
       loadFixture('app-card.fud'),
       loadFixture('home.fud'),
     ];

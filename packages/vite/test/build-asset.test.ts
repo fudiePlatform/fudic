@@ -15,14 +15,13 @@ import { runtimeAlias } from './helpers/alias.js';
 import { allCode } from './helpers/output.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Home</title></head>
-<body>
 <img src="./logo.png">
 <img src="https://cdn.example/remote.png">
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -37,6 +36,8 @@ let output: OutFile[];
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-asset-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   // Arbitrary bytes with a .png extension — Vite hashes and emits it by content. Big
   // enough to clear the DEFAULT inline limit, because the link pass is a nested build that

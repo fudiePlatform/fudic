@@ -938,8 +938,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Pruned copies are served from memory in dev, under a prefix no file of the project
       // can collide with (SDD-49 §4.8); a build publishes them beside every other asset. With
       // `css: "link"` the registry publishes every sheet of a page as a file (SDD-73 §3.5).
+      // In dev the page goes through Vite's `transformIndexHtml`, which joins the `base` onto every
+      // root-absolute URL of the HTML: written with it already, a guide sheet or an icon of an app
+      // under `/admin/` came out as `/admin/admin/…` and 404'd. So dev names them from `/`, and the
+      // middleware below answers them with the `base` or without (a URL a script writes has none).
       linked = new LinkedAssets(
-        config.base,
+        isDev ? '/' : config.base,
         publicDir,
         isDev ? DEV_SHEET_DIR : 'assets',
         project.config?.css === 'link',
@@ -1169,7 +1173,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Dev has no bundle to put them in, and a page that works built and 404s in dev — or
       // the other way round — is the kind of difference that is found last.
       server.middlewares.use((req, res, next) => {
-        const asset = linked.served((req.url ?? '').split('?')[0] ?? '');
+        const path = (req.url ?? '').split('?')[0] ?? '';
+        const asset = linked.served(base !== '/' && path.startsWith(base) ? `/${path.slice(base.length)}` : path);
         if (asset === undefined) {
           next();
           return;

@@ -102,8 +102,8 @@ export interface TreeVisitor {
  * analyzers read it from `documentCode`, so it is not walked here.
  */
 export function documentRoots(document: StructuredDocument): readonly HtmlContent[] {
-  // A shell (page or layout) is fully reachable from its `<html>`.
-  if (document.type === 'page-document' || document.type === 'layout-document') {
+  // A layout is fully reachable from its `<html>`.
+  if (document.type === 'layout-document') {
     return [document.html];
   }
   // A `@snippet` body is markup of THIS file until the expansion moves it: the tags it uses

@@ -2,11 +2,12 @@
 <html>
   <head>
     @code {
-      const n = 1;
+      const { n = 1 } = props<{ n?: number }>();
     }
     <title>Fix</title>
+    @RenderHead()
   </head>
   <body>
-    <p>a</p>
+    @RenderBody()
   </body>
 </html>

@@ -25,7 +25,7 @@ import {
   type StructuredDocument,
 } from '@fudic/compiler';
 import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
-import { PIPES_DIR, SRC_DIR } from '@fudic/conventions';
+import { ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ServerImport } from '@fudic/language-core';
 import { findLibraries, type LookupFailure } from '@fudic/resolve';
 import type { CheckFs, FudList } from './files.js';
@@ -274,6 +274,26 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
     const module: ProjectModule = { path, source, library: true };
     this.#modules.set(path, module);
     return module;
+  }
+
+  /**
+   * Whether `path` is the error page of its project (SDD-88 §3.5): `src/routes/_error.fud` of an
+   * app, `src/_error.fud` of a library. The project is the nearest folder above with a
+   * `fudic.json`, read each time: the file can be renamed or the project change kind.
+   */
+  errorPage(path: string): boolean {
+    const file = toPosix(path);
+    if (!file.endsWith(`/${ERROR_FILE}`)) return false;
+    for (let dir = file.slice(0, file.lastIndexOf('/')); dir.includes('/'); dir = dir.slice(0, dir.lastIndexOf('/'))) {
+      const text = this.fs.readFile(`${dir}/${CONFIG_FILE}`);
+      if (text === undefined) continue;
+      const { config } = readProjectConfig(dir, { exists: () => true, read: () => text });
+      const home = config?.kind === 'lib' ? SRC_DIR : ROUTES_DIR;
+      return file === `${dir}/${home}/${ERROR_FILE}`;
+    }
+    // No `fudic.json` above it: an app all the same, as the build reads it — the error page of a
+    // swept project is its `src/routes/_error.fud`.
+    return [...this.#roots].some((root) => file === `${root}/${ROUTES_DIR}/${ERROR_FILE}`);
   }
 
   /** The folder of pipes of a project (SDD-71 §3.1): its `fudic.json`'s `pipes`, read each time. */

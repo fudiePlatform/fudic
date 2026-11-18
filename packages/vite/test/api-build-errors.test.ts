@@ -23,11 +23,13 @@ const RULE = `rule nif-unique
   fails taken
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head><title>x</title><link rel="server" href="./users.fudapi"></head>
-<body><p>x</p></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./users.fudapi">
+<head><title>x</title></head>
+<p>x</p>
 `;
 
 const SAVE = "import { save } from 'fudic:routes/users';\nsave.handle((ctx) => ctx.args.name);\n";
@@ -35,7 +37,7 @@ const SAVE = "import { save } from 'fudic:routes/users';\nsave.handle((ctx) => c
 function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-api-errors-'));
   writeHttpTypecheckConfig(root, { module: 'esnext', moduleResolution: 'bundler', verbatimModuleSyntax: true, strict: true });
-  const all = { 'src/routes/users.fudapi': API, 'src/routes/users.fud': PAGE, 'src/rules/nif.fudapi': RULE, ...files };
+  const all = { 'src/layouts/_layout.fud': BARE_LAYOUT, 'src/routes/users.fudapi': API, 'src/routes/users.fud': PAGE, 'src/rules/nif.fudapi': RULE, ...files };
   for (const [path, text] of Object.entries(all)) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);

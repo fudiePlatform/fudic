@@ -91,7 +91,7 @@ Un `.fud` de componente tiene un nivel superior fijo, en este orden (`FUD0155`):
 4. el host: un elemento con el nombre del tag del componente (`FUD0156`), cuyo único hijo es
    `<template shadowrootmode="open">` (`FUD0157`; `closed` es `FUD0158`).
 
-Un fichero que empieza con `<!DOCTYPE html>` es una página o un layout, no un componente: un
+Un fichero que empieza con `<!DOCTYPE html>` es un layout, no un componente: un
 documento completo con `<html>`, `<head>` y `<body>` (`FUD0150`, `FUD0151`). Mira `pages`.
 
 ## El `<style>` del componente

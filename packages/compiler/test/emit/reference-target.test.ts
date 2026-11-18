@@ -26,7 +26,7 @@ function graphWith(template: string): ComponentGraph {
     '/home.fud',
     memoryIo({
       '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+        '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
       '/m.fud':
         '<link rel="component" href="./app-input.fud">\n' +
         "@code {\n  import { f } from './user.form.js';\n}\n" +

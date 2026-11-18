@@ -308,7 +308,8 @@ describe('the step of each phase', () => {
 describe('fudic_status: which error page the project paints with', () => {
   const dirs: { dispose(): void }[] = [];
   afterAll(() => dirs.forEach((d) => d.dispose()));
-  const PAGE = '<!DOCTYPE html>\n<html><head><title>@data.status</title></head><body></body></html>\n';
+  // Every page links a layout (SDD-88); only the file's existence counts here.
+  const PAGE = '<link rel="layout" href="./layouts/_layout.fud">\n<head><title>@data.status</title></head>\n';
 
   /** A workspace: libraries `ui` and `marketing`, linked under its node_modules, and `apps/admin` on `deps`. */
   function workspace(deps: readonly string[], files: Readonly<Record<string, string>> = {}): string {

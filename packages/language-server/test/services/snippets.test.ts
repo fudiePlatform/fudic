@@ -105,25 +105,10 @@ const LAYOUT_HEAD = `<!DOCTYPE html>
 </html>
 `;
 
-/** A standalone page — no `@RenderBody`, so it is not a layout — with the cursor in its head. */
-const PAGE_HEAD = `<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    |
-  </head>
-  <body>
-    <h1>hi</h1>
-  </body>
-</html>
-`;
-
-/** The same page with the cursor in its body. */
-const PAGE_BODY = PAGE_HEAD.replace('    |\n', '').replace('<h1>hi</h1>', '<h1>hi</h1>\n    |');
-
 describe('snippetsAt — the skeletons', () => {
-  it('offers the four documents in an empty file, and only there', () => {
-    expect(labelsAt('|')).toEqual(['component', 'route', 'page', 'layout']);
+  // SDD-88 criterion 22: no page without a layout to start a file with.
+  it('offers the three documents in an empty file, and only there', () => {
+    expect(labelsAt('|')).toEqual(['component', 'route', 'layout']);
     expect(labelsAt(HOST)).not.toContain('component');
   });
 
@@ -197,17 +182,10 @@ describe('snippetsAt — where a @code may go', () => {
     expect(labelsAt(ROUTE)).not.toContain('@code');
   });
 
-  it('is offered inside the <head> of a page, and not in its body (decision 59)', () => {
-    // A page writes its `@code` in the head, where a `<script>` would go, so `in-head` is the
-    // placement that decides — and it is the only role left that has one.
-    expect(labelsAt(PAGE_HEAD)).toContain('@code');
-    expect(labelsAt(PAGE_BODY)).not.toContain('@code');
-  });
-
-  it('is offered in the <head> of a layout, and not in its body', () => {
+  it('is offered in the <head> of a layout, and not in its body (decision 59)', () => {
     // The cursor of `LAYOUT_HEAD` sits right after a `<meta>`: a tag with no closing tag has no
     // content, so it is never what the cursor is inside of. The head is where a layout's
-    // `@code` goes, as a page's does.
+    // `@code` goes, where a `<script>` would.
     expect(labelsAt(LAYOUT_HEAD)).toContain('@code');
     expect(labelsAt(LAYOUT)).not.toContain('@code');
   });
@@ -220,11 +198,11 @@ describe('snippetsAt — where a @code may go', () => {
     expect(labelsAt(withCode)).not.toContain('@code');
   });
 
-  it('and control flow is the mirror: the body of a page, never its head', () => {
+  it('and control flow is the mirror: the body of a layout, never its head', () => {
     // A `<head>` is a list of declarations, not a template — nobody loops over `<meta>` — so a
     // `@foreach` offered there is noise in front of the two names the author is after.
-    expect(labelsAt(PAGE_BODY)).toContain('@foreach');
-    expect(labelsAt(PAGE_HEAD)).not.toContain('@foreach');
+    expect(labelsAt(LAYOUT)).toContain('@foreach');
+    expect(labelsAt(LAYOUT_HEAD)).not.toContain('@foreach');
   });
 
   it('and a @section only at top level of the route (structure.ts)', () => {
@@ -308,11 +286,10 @@ describe('snippetsAt — the <link> of fudic (BUG-43)', () => {
     expect(links(HOST)).toEqual([]);
   });
 
-  it('offers a page the two imports and its server in its <head>, a layout no server, and none in the body', () => {
-    expect(links(PAGE_HEAD)).toEqual(['link-component', 'link-snippet', 'link-server']);
+  it('offers a layout the two imports in its <head> and no server, and none in its body', () => {
     // A layout has no server (`FUD1112`, BUG-52).
     expect(links(LAYOUT_HEAD)).toEqual(['link-component', 'link-snippet']);
-    expect(links(PAGE_BODY)).toEqual([]);
+    expect(links(LAYOUT)).toEqual([]);
   });
 
   it('ends inside the href, and asks for the list of what it can link', () => {

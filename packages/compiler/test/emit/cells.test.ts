@@ -9,13 +9,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentClientModule,
   emitComponentModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
 import { cellSlots, childTargets } from '../../src/emit/state.js';
 import { codeOf, splicedOffset } from '../../src/emit/oxc-code.js';
-import { drain, bareProps, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, bareProps, memoryIo, pageModuleOf, ssrIo, withLayout } from './_support.js';
 
 const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
@@ -231,13 +232,13 @@ describe('two cells in one component — the splices are applied back to front',
 });
 
 describe('the payload of the acceptance page (§6.5, §6.6)', () => {
-  const g = resolveComponents(
+  const g = resolveDocument(
     '/page.fud',
-    memoryIo({
+    memoryIo(withLayout({
       '/page.fud':
-        '<!DOCTYPE html>\n<html>\n' +
-        '  <head><link rel="component" href="./cc-owner.fud"></head>\n' +
-        '  <body><cc-owner></cc-owner></body>\n</html>\n',
+        '<link rel="layout" href="./_layout.fud">\n' +
+        '<link rel="component" href="./cc-owner.fud">\n' +
+        '<cc-owner></cc-owner>\n',
       '/cc-owner.fud':
         '<link rel="component" href="./cc-view.fud">\n\n' +
         '@code {\n  const { start = 0 } = props<{ start?: number }>();\n' +
@@ -252,8 +253,8 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
       '/cc-view.fud':
         '@code {\n  const { value } = props<{ value: Signal<number> }>();\n}\n' +
         '<cc-view><template shadowrootmode="open"><p>@value()</p></template></cc-view>\n',
-    }),
-  );
+    })),
+  ).value;
 
   it('the cell in the owner’s slice, the marker in the child’s', async () => {
     const page = await pageModuleOf(g);

@@ -324,7 +324,7 @@ describe('runCriterion — SDD-59 §6.3, the workbench is extended from outside'
     const page = fakePage();
     let second = false;
     const { result } = await run(page, criterion([{ block: 'then', term: 'ok', args: [] }]), terms({ ok }), [
-      loaded('C:/proj/fudic/bench.js', {
+      loaded('/proj/fudic/bench.js', {
         setup: async () => {
           throw new Error('no route\n  at stack');
         },
@@ -335,7 +335,7 @@ describe('runCriterion — SDD-59 §6.3, the workbench is extended from outside'
         },
       }),
     ]);
-    expect(result).toMatchObject({ verdict: 'error', steps: [], error: 'C:/proj/fudic/bench.js: no route' });
+    expect(result).toMatchObject({ verdict: 'error', steps: [], error: '/proj/fudic/bench.js: no route' });
     expect(second).toBe(false);
     expect(page.calls.some((c) => c.startsWith('goto'))).toBe(false);
     expect(page.closed).toBe(true);
@@ -353,14 +353,14 @@ describe('runCriterion — SDD-59 §6.3, the workbench is extended from outside'
         },
       }),
       [
-        loaded('C:/proj/fudic/bench.js', {
+        loaded('/proj/fudic/bench.js', {
           context: () => {
             throw new TypeError('ctx.nope is not a function');
           },
         }),
       ],
     );
-    expect(result).toMatchObject({ verdict: 'error', steps: [], error: 'C:/proj/fudic/bench.js: ctx.nope is not a function' });
+    expect(result).toMatchObject({ verdict: 'error', steps: [], error: '/proj/fudic/bench.js: ctx.nope is not a function' });
     expect(ran).toBe(false);
   });
 
@@ -627,7 +627,7 @@ describe('runCriterion — SDD-59 §4.2, without @fudic/terms', () => {
           return { pass: true, evidence: null };
         },
       }),
-      [missingRuntime('C:/proj')],
+      [missingRuntime('/proj')],
     );
     expect(result.steps).toEqual([
       {
@@ -635,14 +635,14 @@ describe('runCriterion — SDD-59 §4.2, without @fudic/terms', () => {
         term: 'uses',
         layer: 'framework',
         args: ['app-card'],
-        error: '@fudic/terms is not installed in C:/proj: pnpm add -D @fudic/terms',
+        error: '@fudic/terms is not installed in /proj: pnpm add -D @fudic/terms',
         code: 'FUD1204',
       },
     ]);
   });
 
   it('a term that does not touch ctx still runs', async () => {
-    const { result } = await run(fakePage(), criterion([{ block: 'then', term: 'ok', args: [] }]), terms({ ok }), [missingRuntime('C:/proj')]);
+    const { result } = await run(fakePage(), criterion([{ block: 'then', term: 'ok', args: [] }]), terms({ ok }), [missingRuntime('/proj')]);
     expect(result.verdict).toBe('pass');
   });
 });

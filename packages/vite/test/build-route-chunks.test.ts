@@ -16,10 +16,11 @@ import { fudic } from '../src/index.js';
 import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
 /** A parameterised route with a client half: one chunk, many URLs. */
-const BLOG = `<!DOCTYPE html>
-<html>
-<head>
+const BLOG = `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[slug].fudapi">
 @code {
   import { signal } from '@fudic/core';
@@ -27,12 +28,8 @@ const BLOG = `<!DOCTYPE html>
   const abierto = signal(false);
   const alterna = () => abierto.set(!abierto());
 }
-<title>Blog</title>
-</head>
-<body>
+<head><title>Blog</title></head>
   <button @click=@alterna()>@abierto()</button>
-</body>
-</html>
 `;
 
 /** Its server, declared beside it and implemented in `src/server` (SDD-60). */
@@ -49,11 +46,9 @@ paths.handle(() => ['uno', 'dos']);
 `;
 
 /** A route with no client half at all: the base case, and it costs nothing. */
-const ESTATICA = `<!DOCTYPE html>
-<html>
+const ESTATICA = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Estática</title></head>
-<body><h1>sin javascript</h1></body>
-</html>
+<h1>sin javascript</h1>
 `;
 
 interface OutFile {
@@ -82,6 +77,8 @@ async function buildRoot(): Promise<OutFile[]> {
   writeHttpTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
   mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fud'), BLOG);
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fudapi'), BLOG_API);
   writeFileSync(join(root, 'src', 'server', 'blog.ts'), BLOG_SERVER);
@@ -146,13 +143,15 @@ describe('two files that would be written to one name (FUD0622, §3.5)', () => {
       join(root, 'src', 'components', 'app-card.fud'),
       '<app-card><template shadowrootmode="open"><p>card</p></template></app-card>\n',
     );
+    mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+    writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
     writeFileSync(
       join(root, 'src', 'routes', 'app', 'card.fud'),
       [
-        '<!DOCTYPE html><html><head>',
+        '<link rel="layout" href="../../layouts/_layout.fud">',
         '<link rel="component" href="../../components/app-card.fud">',
         '@code { import { signal } from "@fudic/core"; const n = signal(1); }',
-        '</head><body><app-card></app-card><output>@n()</output></body></html>',
+        '<app-card></app-card><output>@n()</output>',
       ].join('\n'),
     );
 

@@ -15,14 +15,13 @@ import { runtimeAlias } from './helpers/alias.js';
 import { renderUrlOf } from './helpers/manifest.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>About</title></head>
-<body>
 <h1>About us</h1>
 <p>A static page.</p>
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -39,6 +38,8 @@ let withSw: OutFile[];
 async function buildAbout(serviceWorker: boolean): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   if (serviceWorker) {
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));

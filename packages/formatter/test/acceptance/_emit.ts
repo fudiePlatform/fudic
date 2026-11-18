@@ -23,7 +23,6 @@ import { dirname, resolve as resolvePath } from 'node:path';
 import {
   emitComponentModule,
   emitLayoutModule,
-  emitPageModule,
   emitRouteModule,
   resolveDocument,
   type ResolveIo,
@@ -49,7 +48,6 @@ export function emitModule(path: string, source: string, read: (p: string) => st
   const graph = resolveDocument(path, io).value;
   const entry = graph.entry;
 
-  if (entry.type === 'page-document') return emitPageModule(graph);
   if (entry.type === 'route-document') return emitRouteModule(graph);
   if (entry.type === 'layout-document') {
     return emitLayoutModule(graph, {

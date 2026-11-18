@@ -406,24 +406,63 @@ describe('runPlan', () => {
 });
 
 /** SDD-87 criterion 24: in a library, `fudic_generate { kind: "error-page" }` writes what the CLI does. */
+describe('no page without a layout in the tools (SDD-88 criterion 26)', { timeout: 60_000 }, () => {
+  it('fudic_generate and fudic_new take no noLayout; layout says what it links, and generate says it refuses', async () => {
+    const { tools } = await (await clientIn(folder('any'))).listTools();
+    const schema = (name: string): Record<string, { description?: string }> =>
+      (tools.find((t) => t.name === name)!.inputSchema as { properties: Record<string, { description?: string }> }).properties;
+    for (const name of ['fudic_generate', 'fudic_new']) {
+      expect(Object.keys(schema(name)), name).not.toContain('noLayout');
+      expect(schema(name)['layout']?.description, name).toBeTruthy();
+    }
+    expect(schema('fudic_generate')['layout']?.description).toContain('nearest _layout.fud');
+    expect(tools.find((t) => t.name === 'fudic_generate')!.description).toContain('FUD1582');
+  });
+});
+
 describe('fudic_generate error-page in a library', { timeout: 60_000 }, () => {
-  it('src/_error.fud, and nothing else, as `fudic g error-page`', async () => {
-    quietCommands();
-    const mcp = folder('ui');
-    for (const [path, text] of Object.entries({
+  /** A library folder, with its layout or without one. */
+  function library(withLayout: boolean): string {
+    const dir = folder('ui');
+    const files: Record<string, string> = {
       'package.json': JSON.stringify({ name: '@acme/ui', version: '0.0.0' }),
       'fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui' }),
-    })) {
-      mkdirSync(join(mcp, path, '..'), { recursive: true });
-      writeFileSync(join(mcp, path), text);
+      ...(withLayout
+        ? { 'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html lang="es">\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n' }
+        : {}),
+    };
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(join(dir, path, '..'), { recursive: true });
+      writeFileSync(join(dir, path), text);
     }
+    return dir;
+  }
+
+  it('src/_error.fud linking the library’s layout, and nothing else, as `fudic g error-page`', async () => {
+    quietCommands();
+    const mcp = library(true);
     const cli = folder('ui');
     cpSync(mcp, cli, { recursive: true });
     const before = tree(mcp);
     const answer = await call(await clientIn(mcp), 'fudic_generate', { kind: 'error-page' });
     expect(answer.isError, JSON.stringify(answer.body)).toBe(false);
     expect(Object.keys(tree(mcp)).filter((p) => !(p in before))).toEqual(['src/_error.fud']);
+    // SDD-88: the error page is a route that links the library's layout.
+    expect(tree(mcp)['src/_error.fud']!.startsWith('<link rel="layout" href="./layouts/_layout.fud">')).toBe(true);
     await cliWrites(['g', 'error-page'], cli);
     expect(tree(mcp)).toEqual(tree(cli));
+  });
+
+  // SDD-88 criterion 26: no layout to link, no page written.
+  it('in a library without a layout: FUD1582, and nothing written', async () => {
+    quietCommands();
+    const mcp = library(false);
+    const before = tree(mcp);
+    const answer = await call(await clientIn(mcp), 'fudic_generate', { kind: 'error-page' });
+    expect(answer.isError).toBe(true);
+    const codes = (answer.body['diagnostics'] as readonly { code: string }[]).map((d) => d.code);
+    expect(codes).toEqual(['FUD1582']);
+    expect(JSON.stringify(answer.body)).toContain('fudic g layout _layout');
+    expect(tree(mcp)).toEqual(before);
   });
 });

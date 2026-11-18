@@ -48,7 +48,10 @@ const BADGE = `@code {
 
 const PLAIN = '<app-plain>\n  <template shadowrootmode="open"><b>x</b></template>\n</app-plain>\n';
 
-const INDEX = '<!DOCTYPE html>\n<html>\n<head><title>t</title><link rel="component" href="../components/app-badge.fud"></head>\n<body>\n  <app-badge label="x"></app-badge>\n</body>\n</html>\n';
+const INDEX = '<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<head><title>t</title></head>\n<app-badge label="x"></app-badge>\n';
+
+/** Every page links a layout (SDD-88). */
+const LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
 
 const PRODUCT = '<link rel="server" href="./[id].fudapi">\n<link rel="server">\n<link rel="server" href="./gone.fudapi">\n\n<h1>Product</h1>\n';
 
@@ -165,6 +168,7 @@ describe('over a project of its own', () => {
       'src/components/app-badge.fud': BADGE,
       'src/components/app-plain.fud': PLAIN,
       'src/routes/index.fud': INDEX,
+      'src/layouts/_layout.fud': LAYOUT,
       'src/routes/about/index.fud': '<h1>About</h1>\n',
       'src/routes/_layout.fud': '<slot></slot>\n',
       'src/routes/products/[id].fud': PRODUCT,

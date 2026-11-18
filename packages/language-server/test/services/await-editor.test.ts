@@ -48,10 +48,8 @@ const snippetLabels = (marked: string, hasLater: boolean, path = ROUTE): readonl
 };
 
 describe('the `@await` snippet (criterion 24)', () => {
-  it('in the body of a route or a page whose `.fudapi` has a later field', () => {
+  it('in the body of a route whose `.fudapi` has a later field', () => {
     expect(snippetLabels(route('@|'), true)).toContain('@await');
-    const page = '<!DOCTYPE html>\n<html>\n<head><title>t</title></head>\n<body>\n  @|\n</body>\n</html>\n';
-    expect(snippetLabels(page, true, '/p/src/pages/index.fud')).toContain('@await');
   });
 
   it('not without one', () => {

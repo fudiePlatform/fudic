@@ -133,7 +133,7 @@ describe('one process, two components — criterion 5', () => {
     try {
       const foreign = await s.open(other.path(TABS));
       expect(isFailure(foreign) && foreign.diagnostic).toMatchObject({ code: 'FUD0977', severity: 'error' });
-      project!.write('src/index.fud', '<!DOCTYPE html>\n<html><body></body></html>\n');
+      project!.write('src/index.fud', '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>\n');
       const page = await s.open(project!.path('src/index.fud'));
       expect(isFailure(page) && page.diagnostic.code).toBe('FUD0970');
     } finally {

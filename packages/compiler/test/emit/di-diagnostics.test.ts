@@ -16,16 +16,12 @@ import { resolveComponents } from '../../src/emit/index.js';
 import { injectionDiagnostics } from '../../src/emit/di-diagnostics.js';
 import { memoryIo } from './_support.js';
 
-/** A page that links every component of `files` and instantiates `body`. */
+/** A route that links every component of `files` and instantiates `body`. */
 function page(links: readonly string[], body: string): string {
-  const head = links.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n    ');
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    ${head}
-  </head>
-  <body>${body}</body>
-</html>
+  const head = links.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n');
+  return `<link rel="layout" href="./_layout.fud">
+${head}
+${body}
 `;
 }
 

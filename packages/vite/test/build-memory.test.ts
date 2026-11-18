@@ -77,7 +77,8 @@ function countingIo(): { io: ResolveIo; reads: string[]; resolves: Array<[string
 function project(): { root: string; route: string; component: (name: string) => string } {
   const root = mkdtempSync(join(tmpdir(), 'fudic-build-memory-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
-  const component = (name: string): string => {
+  writeFileSync(join(root, 'routes', '_layout.fud'), BARE_LAYOUT);
+  const component =(name: string): string => {
     const file = join(root, 'routes', `${name}.fud`);
     writeFileSync(file, `<${name}><template shadowrootmode="open"><slot></slot></template></${name}>\n`);
     return file;
@@ -86,10 +87,13 @@ function project(): { root: string; route: string; component: (name: string) => 
   return { root, route, component };
 }
 
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
 const page = (...tags: string[]): string =>
-  `<!DOCTYPE html><html><head>${tags.map((t) => `<link rel="component" href="./${t}.fud">`).join('')}</head><body>${tags
+  `<link rel="layout" href="./_layout.fud">\n${tags.map((t) => `<link rel="component" href="./${t}.fud">\n`).join('')}${tags
     .map((t) => `<${t}></${t}>`)
-    .join('')}</body></html>\n`;
+    .join('')}\n`;
 
 const tagsOf = (graph: ReturnType<typeof graphOf>): string[] => [...graph.components.keys()].sort();
 

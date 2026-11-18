@@ -42,15 +42,14 @@ const FORM = `<link rel="server" href="./app-person.fudapi">
 </app-person>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-person.fud">
-    <script src="fudic:runtime"></script>
-    <title>Home</title>
-  </head>
-  <body><app-person></app-person></body>
-</html>
+/** The layout every page links (SDD-88), with the runtime: it is the layout's, never a route's (FUD1583). */
+const BARE_LAYOUT =
+  '<!DOCTYPE html>\n<html>\n<head><script src="fudic:runtime"></script>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-person.fud">
+<head><title>Home</title></head>
+<app-person></app-person>
 `;
 
 interface OutFile {
@@ -68,6 +67,8 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-person.fudapi'), API);
   writeFileSync(join(root, 'src', 'components', 'app-person.fud'), FORM);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
 
   const scope = join(root, 'node_modules', '@fudic');

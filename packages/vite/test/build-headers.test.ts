@@ -15,11 +15,12 @@ import { NONCE_TOKEN } from '@fudic/transport';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>About</title></head>
-<body><h1>About us</h1></body>
-</html>
+<h1>About us</h1>
 `;
 
 interface OutFile {
@@ -38,6 +39,8 @@ async function buildApp(files: Readonly<Record<string, string>>, write = false):
   const root = mkdtempSync(join(tmpdir(), 'fudic-headers-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'public'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'public', 'favicon.ico'), '');
   for (const [name, text] of Object.entries(files)) {
@@ -134,10 +137,14 @@ describe('vite build — the headers of the app (SDD-84)', () => {
       '<x-count><template shadowrootmode="open"><button @click="@mas">+1</button><div>@raw(null)</div></template></x-count>',
     ].join('\n');
     const page = [
-      '<!DOCTYPE html><html><head><link rel="component" href="../components/x-count.fud"><title>c</title>',
-      '<script src="fudic:runtime"></script></head><body><x-count></x-count></body></html>',
+      '<link rel="layout" href="../layouts/_layout.fud">',
+      '<link rel="component" href="../components/x-count.fud">',
+      '<head><title>c</title></head>',
+      '<x-count></x-count>',
     ].join('\n');
     const failure = buildApp({
+      // The runtime is the layout's, never a route's (FUD1583).
+      'src/layouts/_layout.fud': BARE_LAYOUT.replace('<head>', '<head><script src="fudic:runtime"></script>'),
       'src/routes/count.fud': page,
       'src/components/x-count.fud': counter,
       'page.headers': "Content-Security-Policy:\n  script-src 'self'\n  require-trusted-types-for 'script'\n  trusted-types otra\n",

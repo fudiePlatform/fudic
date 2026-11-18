@@ -1,18 +1,17 @@
 /**
  * A localized graph read back to the files on disk (SDD-58 §5): the entry's map composed with the
- * rewrite's (`OffsetMap.through`), snippets included, and the `<html lang>` of a page module.
+ * rewrite's (`OffsetMap.through`), snippets included, and the `<html lang>` of a layout module.
  */
 
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  emitPageModule,
+  emitLayoutModule,
   localizedIo,
-  resolveComponents,
   resolveDocument,
+  type LocaleCompile,
   type ResolveIo,
 } from '../../src/index.js';
-import { fixtureIo, fixturesDir, memoryIo } from '../emit/_support.js';
+import { BARE_LAYOUT, LINK_LAYOUT, memoryIo, withLayout } from '../emit/_support.js';
 import { i18nOf } from './_compile.js';
 
 describe('diagnostics map back to the file on disk', () => {
@@ -151,18 +150,26 @@ describe('snippets expanded from rewritten files (OffsetMap.through)', () => {
   });
 });
 
-describe('the <html> of a page with no layout (EmitOptions.i18n)', () => {
-  const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+describe('the <html> of a layout, which owns the document (SDD-88)', () => {
+  /** The layout module of a route under {@link BARE_LAYOUT}, read through the locale when there is one. */
+  const layoutOf = (i18n?: LocaleCompile): string => {
+    const files = memoryIo(withLayout({ '/r.fud': `${LINK_LAYOUT}<p>x</p>\n` }));
+    const graph = resolveDocument('/r.fud', i18n === undefined ? files : localizedIo(files, i18n)).value;
+    return emitLayoutModule(graph, graph.layouts[0]!, i18n === undefined ? {} : { i18n });
+  };
 
-  it('is lang="es" without i18n, as it always was', () => {
-    expect(emitPageModule(graph)).toContain('<html lang="es"><head>');
+  it('is as the author wrote it without i18n: no lang is invented', () => {
+    expect(BARE_LAYOUT).toContain('<html>');
+    expect(layoutOf()).not.toContain('"lang"');
   });
 
   it('carries the locale of the graph', () => {
-    expect(emitPageModule(graph, { i18n: i18nOf({}, 'en') })).toContain('<html lang="en"><head>');
+    expect(layoutOf(i18nOf({}, 'en'))).toContain('$dom.setAttr($el, "lang", "en");');
   });
 
   it('and dir="rtl" for a locale written right to left', () => {
-    expect(emitPageModule(graph, { i18n: i18nOf({}, 'ar', ['es', 'ar']) })).toContain('<html lang="ar" dir="rtl"><head>');
+    const ar = layoutOf(i18nOf({}, 'ar', ['es', 'ar']));
+    expect(ar).toContain('$dom.setAttr($el, "lang", "ar");');
+    expect(ar).toContain('$dom.setAttr($el, "dir", "rtl");');
   });
 });
