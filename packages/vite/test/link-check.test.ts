@@ -17,10 +17,20 @@ import { checkLinks, type LinkCheckIo } from '../src/link-check.js';
 
 const ENTRY = '/ws/apps/tienda/src/routes/index.fud';
 
+/** Every page links a layout (SDD-88): this one, beside the route. */
+const LAYOUT_HREF = './_layout.fud';
+
 const page = (...hrefs: readonly string[]): string =>
-  `<!DOCTYPE html>\n<html>\n  <head>\n${hrefs
-    .map((href) => `    <link rel="component" href="${href}">`)
-    .join('\n')}\n  </head>\n  <body></body>\n</html>\n`;
+  `<link rel="layout" href="${LAYOUT_HREF}">\n${hrefs.map((href) => `<link rel="component" href="${href}">`).join('\n')}\n<h1>tienda</h1>\n`;
+
+/**
+ * A resolver that answers the page's layout link as a plain path, and asks `resolve` for every
+ * other href: what a test says about its component links is not said about the layout too.
+ */
+const withLayout =
+  (resolve: LinkCheckIo['resolve']): LinkCheckIo['resolve'] =>
+  (from, href) =>
+    href === LAYOUT_HREF ? { outcome: 'path', path: `${dir(from)}/_layout.fud` } : resolve(from, href);
 
 const component = (tag: string, ...hrefs: readonly string[]): string =>
   `${hrefs.map((href) => `<link rel="component" href="${href}">`).join('\n')}\n<${tag}>\n  <template shadowrootmode="open"><slot></slot></template>\n</${tag}>\n`;
@@ -47,11 +57,11 @@ describe('FUD0760 — a package specifier that does not resolve', () => {
   it('says INSTALL when the package is not installed', () => {
     const problems = checkLinks([ENTRY], {
       ...io({ [ENTRY]: page('@acme/ui/card.fud') }),
-      resolve: () => ({
+      resolve: withLayout(() => ({
         outcome: 'unresolved',
         specifier: '@acme/ui/card.fud',
         reason: 'not-installed',
-      }),
+      })),
     });
 
     expect(problems).toHaveLength(1);
@@ -66,11 +76,11 @@ describe('FUD0760 — a package specifier that does not resolve', () => {
     // library's package.json, and an install would not touch it.
     const problems = checkLinks([ENTRY], {
       ...io({ [ENTRY]: page('@acme/ui/card.fud') }),
-      resolve: () => ({
+      resolve: withLayout(() => ({
         outcome: 'unresolved',
         specifier: '@acme/ui/card.fud',
         reason: 'not-exported',
-      }),
+      })),
     });
 
     expect(problems).toHaveLength(1);
@@ -83,7 +93,7 @@ describe('FUD0760 — a package specifier that does not resolve', () => {
   it('names the package of an unscoped specifier too', () => {
     const problems = checkLinks([ENTRY], {
       ...io({ [ENTRY]: page('ui-kit/card.fud') }),
-      resolve: () => ({ outcome: 'unresolved', specifier: 'ui-kit/card.fud', reason: 'not-exported' }),
+      resolve: withLayout(() => ({ outcome: 'unresolved', specifier: 'ui-kit/card.fud', reason: 'not-exported' })),
     });
     expect(problems[0]?.message).toMatch(/"ui-kit"/);
   });
@@ -167,14 +177,14 @@ describe('the walk', () => {
             },
           },
         ),
-        resolve: (from, href) =>
+        resolve: withLayout((from, href) =>
           href === '@acme/ui/ui-card.fud'
             ? {
                 outcome: 'package',
                 path: card,
                 target: { name: '@acme/ui', root: '/ws/libs/ui', config: libConfig },
               }
-            : { outcome: 'unresolved', specifier: href, reason: 'not-installed' },
+            : { outcome: 'unresolved', specifier: href, reason: 'not-installed' }),
       },
     );
 
@@ -191,10 +201,10 @@ describe('the walk', () => {
         [other]: page('../components/app-card.fud'),
         [shared]: component('app-card', '@acme/rota/x.fud'),
       }),
-      resolve: (from, href) =>
+      resolve: withLayout((from, href) =>
         href.startsWith('@')
           ? { outcome: 'unresolved', specifier: href, reason: 'not-installed' }
-          : { outcome: 'path', path: shared },
+          : { outcome: 'path', path: shared }),
     });
 
     expect(problems).toHaveLength(1);
@@ -212,7 +222,7 @@ describe('the walk', () => {
   });
 
   it('ignores a link with no href and one with an empty href', () => {
-    const source = '<!DOCTYPE html>\n<html><head><link rel="component"><link rel="component" href=""></head><body></body></html>\n';
+    const source = `<link rel="layout" href="${LAYOUT_HREF}">\n<link rel="component"><link rel="component" href="">\n<h1>tienda</h1>\n`;
     expect(checkLinks([ENTRY], io({ [ENTRY]: source }))).toEqual([]);
   });
 

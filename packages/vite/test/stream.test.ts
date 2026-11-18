@@ -11,19 +11,26 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveComponents, emitPageModule } from '@fudic/compiler';
+import { resolveDocument, emitLayoutModule, emitRouteModule } from '@fudic/compiler';
 import { SsrDom, serializeChunks, escapeText, htmlToByteStream } from '@fudic/ssr';
 import { nodeIo } from '../src/io.js';
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head><title>HEADMARKER</title></head>
-<body><h1>BODYMARKER</h1></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
 `;
 
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<head><title>HEADMARKER</title></head>
+<h1>BODYMARKER</h1>
+`;
+
 type Io = { createDom: () => SsrDom; serialize: typeof serializeChunks; escapeText: typeof escapeText };
-type PageFn = (data: unknown, io: Io) => Iterable<string>;
+/** A route's `page` is an async generator: it awaits its layout's pieces (SDD-21). */
+type PageFn = (data: unknown, io: Io) => AsyncIterable<string>;
 
 const io = (): Io => ({ createDom: () => new SsrDom(), serialize: serializeChunks, escapeText });
 
@@ -34,8 +41,11 @@ beforeAll(async () => {
   mkdirSync(dir, { recursive: true });
   const fud = join(dir, 'index.fud');
   writeFileSync(fud, PAGE);
-  const graph = resolveComponents(fud, nodeIo());
-  writeFileSync(join(dir, 'index.mjs'), emitPageModule(graph), 'utf8');
+  writeFileSync(join(dir, '_layout.fud'), LAYOUT);
+  const graph = resolveDocument(fud, nodeIo()).value;
+  // The route imports its layout as the sibling `./_layout.mjs`.
+  writeFileSync(join(dir, '_layout.mjs'), emitLayoutModule(graph, graph.layouts[0]!), 'utf8');
+  writeFileSync(join(dir, 'index.mjs'), emitRouteModule(graph), 'utf8');
   const mod = (await import(pathToFileURL(join(dir, 'index.mjs')).href)) as { page: PageFn };
   page = mod.page;
 });
@@ -66,7 +76,8 @@ describe('streaming a trozos (§6.8b)', () => {
 
   it('joins byte-identically to the non-streamed document (mode-1 .html)', async () => {
     const streamed = (await chunks(htmlToByteStream(page({}, io()), { highWaterMark: 1 }))).join('');
-    const joined = [...page({}, io())].join('');
+    let joined = '';
+    for await (const piece of page({}, io())) joined += piece;
     expect(streamed).toBe(joined);
     expect(joined.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(joined).toContain('BODYMARKER');

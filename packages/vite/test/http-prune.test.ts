@@ -19,20 +19,24 @@ import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 const PACKAGES = { http: fileURLToPath(new URL('../../http', import.meta.url)), forms: fileURLToPath(new URL('../../forms', import.meta.url)) };
 
-/** A page that calls `search` on a click, so its stub is in the client. */
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-<title>Usuarios</title>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+/** A page that calls `search` on a click, so its stub is in the client. */
+const PAGE = `<link rel="layout" href="./_layout.fud">
 <link rel="server" href="./usuarios.fudapi">
 @code {
   function find(): void {
     void search({ q: 'a' });
   }
 }
-</head>
-<body><button @click=@find>buscar</button></body>
-</html>
+<head><title>Usuarios</title></head>
+<button @click=@find>buscar</button>
 `;
 
 const SERVER = `import { search } from 'fudic:routes/usuarios';
@@ -56,6 +60,7 @@ function project(api: string): string {
   writeHttpTypecheckConfig(root, { module: 'esnext', moduleResolution: 'bundler', verbatimModuleSyntax: true });
   const files: Record<string, string> = {
     'src/routes/usuarios.fud': PAGE,
+    'src/routes/_layout.fud': LAYOUT,
     'src/routes/usuarios.fudapi': api,
     'src/server/usuarios.ts': SERVER,
     'sw.json': JSON.stringify({ shell: [] }),

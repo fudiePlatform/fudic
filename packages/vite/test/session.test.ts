@@ -18,16 +18,20 @@ import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 const NODE_TYPES = fileURLToPath(new URL('../node_modules/@types', import.meta.url));
 
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
+<html>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
 /** A route with a `.fudapi` of one `load` and its handler's body. */
 const route = (name: string, line: string, body: string): Record<string, string> => ({
-  [`src/routes/${name}.fud`]: `<!DOCTYPE html>
-<html>
-<head>
-<title>x</title>
+  [`src/routes/${name}.fud`]: `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./${name}.fudapi">
-</head>
-<body><p>n: @data.n</p></body>
-</html>
+<head><title>x</title></head>
+<p>n: @data.n</p>
 `,
   [`src/routes/${name}.fudapi`]: `${line}\n  n  i32\n`,
   [`src/server/${name}.ts`]: `import { deleteCookie, setCookie, unauthorized } from '@fudic/http';
@@ -39,11 +43,9 @@ load.handle(async (ctx): Promise<{ n: number }> => {
 `,
 });
 
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Error</title></head>
-<body><h1>status @data.status</h1></body>
-</html>
+<h1>status @data.status</h1>
 `;
 
 /** Two cookies, a status, two headers fudic owns, and a read of the session. */
@@ -74,7 +76,7 @@ function project(files: Readonly<Record<string, string>>): string {
     typeRoots: [NODE_TYPES],
     types: ['node'],
   });
-  for (const [path, text] of Object.entries(files)) {
+  for (const [path, text] of Object.entries({ 'src/layouts/_layout.fud': LAYOUT, ...files })) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
   }

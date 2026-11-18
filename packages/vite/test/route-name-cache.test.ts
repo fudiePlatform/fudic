@@ -80,22 +80,24 @@ const ctx = (): Record<string, unknown> => ({
   error: vi.fn(),
 });
 
-/** A route with a client half, so it is reactive and therefore has a name to publish. */
-const reactiveRoute = (title: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+/** A route with a client half, so it is reactive and therefore has a name to publish. */
+const reactiveRoute = (title: string): string => `<link rel="layout" href="./_layout.fud">
 @code {
   import { signal } from '@fudic/core';
 
   const abierto = signal(false);
   const alterna = () => abierto.set(!abierto());
 }
-<title>${title}</title>
-</head>
-<body>
+<head><title>${title}</title></head>
   <button @click=@alterna()>@abierto()</button>
-</body>
-</html>
 `;
 
 describe('the route→name table is resolved once per build (criterion 1)', () => {
@@ -132,6 +134,7 @@ describe('a new set of routes rebuilds it (criterion 2)', () => {
     mkdirSync(join(root, 'src', 'routes'), { recursive: true });
     const routes = join(root, 'src', 'routes');
     writeFileSync(join(routes, 'uno.fud'), reactiveRoute('Uno'));
+    writeFileSync(join(routes, '_layout.fud'), LAYOUT);
 
     const p = setup(root, 'src/routes');
     await p.buildStart.call(ctx());
@@ -161,9 +164,10 @@ describe('a new set of routes rebuilds it (criterion 2)', () => {
     const root = mkdtempSync(join(tmpdir(), 'fudic-namecache-static-'));
     mkdirSync(join(root, 'src', 'routes'), { recursive: true });
     const routes = join(root, 'src', 'routes');
+    writeFileSync(join(routes, '_layout.fud'), LAYOUT);
     writeFileSync(
       join(routes, 'estatica.fud'),
-      '<!DOCTYPE html><html><head><title>Estática</title></head><body><h1>sin js</h1></body></html>\n',
+      '<link rel="layout" href="./_layout.fud">\n<head><title>Estática</title></head>\n<h1>sin js</h1>\n',
     );
 
     const p = setup(root, 'src/routes');

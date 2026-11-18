@@ -37,15 +37,22 @@ const BAD_CLIENT = `@code {
 </x-bad>
 `;
 
-const page = (links: readonly string[], body: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-${links.map((name) => `    <link rel="component" href="../components/${name}.fud">\n`).join('')}    <title>Test</title>
-  </head>
-  <body>
-${body}
-  </body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+/** A route; with one link, the comment keeps `body` on line 8, where it was as a whole document. */
+const page = (links: readonly string[], body: string): string => `<link rel="layout" href="./_layout.fud">
+${links.map((name) => `<link rel="component" href="../components/${name}.fud">\n`).join('')}<head>
+  <title>Test</title>
+</head>
+@* every page links a layout (SDD-88) *@
+
+${body}
 `;
 
 let server: ViteDevServer;
@@ -59,6 +66,7 @@ beforeAll(async () => {
     'src/components/app-badge.fud': BADGE,
     'src/components/x-bad.fud': BAD_CLIENT,
     // `.tone="@(42)"` on line 8, `tone` at column 17: the editor marks it, so dev refuses it.
+    'src/routes/_layout.fud': LAYOUT,
     'src/routes/broken.fud': page(['app-badge'], '    <app-badge .tone="@(42)">hi</app-badge>'),
     'src/routes/fine.fud': page(['app-badge'], `    <app-badge .tone="@('info')">hi</app-badge>`),
     'src/routes/scripted.fud': page(['x-bad'], '    <x-bad></x-bad>'),

@@ -13,12 +13,16 @@ import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { writeI18nProject } from './helpers/i18n-project.js';
 
-const page = (call: string): string => `<!DOCTYPE html>
+/** Every page links a layout (SDD-88), with the runtime script the page carried in its own head. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-<script src="fudic:runtime"></script>
+<head><script src="fudic:runtime"></script>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+const page = (call: string): string => `<link rel="layout" href="./_layout.fud">
 <link rel="server" href="./index.fudapi">
-<title>Vacío</title>
 @code {
   import { task } from '@fudic/core';
   const reservar = task(reserve);
@@ -26,9 +30,8 @@ const page = (call: string): string => `<!DOCTYPE html>
     ${call}
   }
 }
-</head>
-<body><button @click=@pulsar>Reservar</button></body>
-</html>
+<head><title>Vacío</title></head>
+<button @click=@pulsar>Reservar</button>
 `;
 
 const API = 'post reserve\n  catches 409\n\npost named\n  n  i32\n';
@@ -39,7 +42,7 @@ named.handle(() => undefined);
 
 async function buildWith(call: string): Promise<void> {
   const root = writeI18nProject({
-    files: { 'src/routes/index.fud': page(call), 'src/routes/index.fudapi': API, 'src/server/index.ts': SERVER, 'sw.json': '{"shell":[]}' },
+    files: { 'src/routes/_layout.fud': LAYOUT, 'src/routes/index.fud': page(call), 'src/routes/index.fudapi': API, 'src/server/index.ts': SERVER, 'sw.json': '{"shell":[]}' },
   });
   expect(existsSync(join(root, 'tsconfig.json'))).toBe(false);
   await build({ root, logLevel: 'silent', plugins: [fudic()], build: { write: false, minify: false } });

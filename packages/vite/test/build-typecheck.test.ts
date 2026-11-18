@@ -51,27 +51,32 @@ const NAV = `@code {
 </site-nav>
 `;
 
-/** A page that uses the badge with `tone` set to whatever `tone` is: line 8, `tone` at column 17. */
-const page = (tone: string, extra = ''): string => `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <title>Test</title>
-  </head>
-  <body>
+/**
+ * A page that uses the badge with `tone` set to whatever `tone` is: line 8, `tone` at column 17.
+ * A route since SDD-88; the comment keeps the badge on the line it had as a whole document.
+ */
+const page = (tone: string, extra = ''): string => `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head>
+  <title>Test</title>
+</head>
+@* every page links a layout (SDD-88) *@
+
     <app-badge .tone="@(${tone})">hi</app-badge>
-${extra}  </body>
-</html>
-`;
+${extra}`;
 
 /** A page around `body`, linking `components`. */
-const doc = (components: readonly string[], body: string): string => `<!DOCTYPE html>
+const doc = (components: readonly string[], body: string): string => `<link rel="layout" href="./_layout.fud">
+${components.map((name) => `<link rel="component" href="../components/${name}.fud">\n`).join('')}<head>
+  <title>Test</title>
+</head>
+${body}`;
+
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-${components.map((name) => `    <link rel="component" href="../components/${name}.fud">\n`).join('')}    <title>Test</title>
-  </head>
-  <body>
-${body}  </body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
 `;
 
@@ -88,7 +93,8 @@ interface Outcome {
 
 function writeProject(files: Files, tsconfig = true): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-typecheck-'));
-  const all: Files = tsconfig ? { 'tsconfig.json': TSCONFIG, ...files } : files;
+  const pages: Files = { 'src/routes/_layout.fud': LAYOUT, ...files };
+  const all: Files = tsconfig ? { 'tsconfig.json': TSCONFIG, ...pages } : pages;
   for (const [relative, text] of Object.entries(all)) {
     const file = join(root, relative);
     mkdirSync(dirname(file), { recursive: true });
@@ -251,16 +257,12 @@ describe('SDD-35 §6 — the build', () => {
     const outcome = await buildProject({
       // The page USES the library's component: had the library not been found, the link would
       // not resolve and the build would fail for that instead.
-      'src/routes/index.fud': `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="@acme/ui/acme-card.fud">
-    <title>Test</title>
-  </head>
-  <body>
-    <acme-card></acme-card>
-  </body>
-</html>
+      'src/routes/index.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="@acme/ui/acme-card.fud">
+<head>
+  <title>Test</title>
+</head>
+<acme-card></acme-card>
 `,
       'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', version: '1.0.0', type: 'module' }),
       'node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'acme' }),

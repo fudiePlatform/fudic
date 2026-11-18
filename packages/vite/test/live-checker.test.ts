@@ -58,7 +58,9 @@ describe('startLiveChecker', () => {
     writeTypecheckConfig(root);
     mkdirSync(join(root, 'src', 'routes'), { recursive: true });
     const index = join(root, 'src', 'routes', 'index.fud');
-    writeFileSync(index, `@code {\n  const n: number = 'no';\n}\n<!DOCTYPE html><html><head><title>x</title></head><body>@n</body></html>\n`);
+    // Every page links a layout (SDD-88).
+    writeFileSync(join(root, 'src', 'routes', '_layout.fud'), '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n');
+    writeFileSync(index, `<link rel="layout" href="./_layout.fud">\n@code {\n  const n: number = 'no';\n}\n<head><title>x</title></head>\n@n\n`);
     const checker = startLiveChecker(root);
 
     const broken = await checker.check();
@@ -67,7 +69,7 @@ describe('startLiveChecker', () => {
     );
 
     // The same child, told what changed, checks again.
-    writeFileSync(index, `@code {\n  const n: number = 1;\n}\n<!DOCTYPE html><html><head><title>x</title></head><body>@n</body></html>\n`);
+    writeFileSync(index, `<link rel="layout" href="./_layout.fud">\n@code {\n  const n: number = 1;\n}\n<head><title>x</title></head>\n@n\n`);
     // In the spelling the dev server hands it: posix, as `startLiveCheck` does.
     checker.invalidate(toPosix(index));
     const fixed = await checker.check();

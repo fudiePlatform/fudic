@@ -13,15 +13,25 @@ import { join } from 'node:path';
 import { transformFud } from '../src/transform.js';
 import { nodeIo } from '../src/io.js';
 
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
+<html>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
 const fixture = (name: string): string =>
   fileURLToPath(new URL(`../../compiler/fixtures/${name}`, import.meta.url));
 
 describe('transformFud', () => {
   it('emits a page as a streaming generator importing components by .fud', () => {
+    // The fixture page is a route since SDD-88: its generator awaits its layout's pieces.
     const result = transformFud(fixture('home.fud'), nodeIo());
     expect(result).not.toBeNull();
     const code = result!.code;
-    expect(code).toContain('export function* page(data, io, $ioc) {');
+    expect(code).toContain('export async function* page(data, io, $ioc, $props) {');
+    expect(code).toContain("from './_layout.fud';");
     expect(code).toContain("from './app-card.fud';");
     expect(code).toContain("from './app-badge.fud';");
     expect(code).not.toContain('.mjs'); // Vite owns the graph, not the standalone .mjs
@@ -51,7 +61,7 @@ describe('transformFud', () => {
     const result = transformFud(id, nodeIo())!;
     expect(result.map.version).toBe(3);
     expect(result.map.sources).toEqual([id.replace(/\\/gu, '/')]);
-    expect(result.map.sourcesContent[0]).toContain('<!DOCTYPE html>'); // the real .fud text
+    expect(result.map.sourcesContent[0]).toContain('<link rel="layout" href="./_layout.fud">'); // the real .fud text
     expect(result.map.mappings.length).toBeGreaterThan(0); // Base64 VLQ segments present
   });
 
@@ -64,9 +74,8 @@ describe('transformFud', () => {
     function contractOf(body: string, circle: string): readonly string[] {
       const root = mkdtempSync(join(tmpdir(), 'fudic-contract-'));
       writeFileSync(join(root, 'app-circle.fud'), circle);
-      const page =
-        '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-circle.fud"></head>\n' +
-        `<body>${body}</body>\n</html>\n`;
+      writeFileSync(join(root, '_layout.fud'), LAYOUT);
+      const page = '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./app-circle.fud">\n' + `${body}\n`;
       writeFileSync(join(root, 'page.fud'), page);
       return transformFud(join(root, 'page.fud'), nodeIo())!.diagnostics.map((d) => d.code);
     }
@@ -100,9 +109,8 @@ describe('transformFud', () => {
           '  const cart = inject(Cart);\n}\n' +
           '<app-panel>\n  <template shadowrootmode="open"><b>@(cart.id)</b></template>\n</app-panel>\n',
       );
-      const page =
-        '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-panel.fud"></head>\n' +
-        '<body><app-panel></app-panel></body>\n</html>\n';
+      writeFileSync(join(root, '_layout.fud'), LAYOUT);
+      const page = '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./app-panel.fud">\n<app-panel></app-panel>\n';
       writeFileSync(join(root, 'page.fud'), page);
       return transformFud(join(root, 'page.fud'), nodeIo())!.diagnostics.map((d) => d.code);
     }

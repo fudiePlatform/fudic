@@ -38,6 +38,8 @@ beforeAll(async () => {
   mkdirSync(routes, { recursive: true });
   for (const f of [
     'home.fud',
+    // home is a route since SDD-88: its layout comes with it.
+    '_layout.fud',
     'app-card.fud',
     'app-button.fud',
     'app-badge.fud',

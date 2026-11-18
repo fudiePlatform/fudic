@@ -45,10 +45,17 @@ vi.mock('../src/background-check.js', () => ({
 }));
 
 /** A route whose markup closes a tag it never opened: FUD0051 at line 4. */
-const BROKEN_PAGE = `<!DOCTYPE html>
-<html>
+const BROKEN_PAGE = `<link rel="layout" href="./_layout.fud">
 <head><title>x</title></head>
-<body><p>hi</q></p></body>
+@* every page links a layout (SDD-88) *@
+<p>hi</q></p>
+`;
+
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
+<html>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
 `;
 
@@ -74,6 +81,7 @@ beforeAll(() => {
   mkdirSync(join(root, 'routes'), { recursive: true });
   mkdirSync(join(root, 'components'), { recursive: true });
   writeFileSync(join(root, 'routes', 'broken.fud'), BROKEN_PAGE);
+  writeFileSync(join(root, 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'components', 'x-broken.fud'), BROKEN_CLIENT);
   writeFileSync(join(root, 'components', 'x-owner.fud'), BROKEN_OWNER);
 });
@@ -147,7 +155,7 @@ const broken = (): RouteBuild => ({
   route: { file: 'broken.fud', pattern: '/broken', params: [] },
   absPath: join(root, 'routes', 'broken.fud'),
   analysis: {
-    role: 'page',
+    role: 'route',
     isPage: true,
     hasLoad: false,
     hasPaths: false,

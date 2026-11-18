@@ -22,14 +22,22 @@ import { fudic } from '../src/index.js';
 import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { decodeMappings } from './helpers/vlq.js';
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="component" href="../components/app-counter.fud">
-  <title>Home</title>
-</head>
-<body><h1>Home</h1><app-counter></app-counter></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+/**
+ * The route copies text the map can point at (`@code`, `@title`): the compiler maps what it copies
+ * from the `.fud`, never static markup. A route of static markup only, under its layout's wrapper
+ * (SDD-88: every page is a route), would be a chunk of unmapped lines whatever the link pass did.
+ */
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-counter.fud">
+@code {
+  const title = 'Home';
+  const greeting = title + '!';
+}
+<head><title>@title</title></head>
+<h1>@greeting</h1><p>@title</p><app-counter></app-counter>
 `;
 
 /** A component with real client code: signals, a handler, and names worth resolving. */
@@ -92,6 +100,8 @@ async function buildRoot(): Promise<OutFile[]> {
   writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
   // With a Service Worker, so the LINK pass runs and its chunks can be measured too.

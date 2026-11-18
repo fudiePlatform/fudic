@@ -25,14 +25,18 @@ import { API_SCHEME, ApiProject } from '../src/api-modules.js';
 import { SERVER_ROOT_ID, emitRoot } from '../src/api-root.js';
 import { httpAlias } from './helpers/http-project.js';
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-    <link rel="server" href="./about.fudapi">
-    <title>@data.title</title>
-  </head>
-  <body><h1>@data.title</h1></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<link rel="server" href="./about.fudapi">
+<head><title>@data.title</title></head>
+<h1>@data.title</h1>
 `;
 
 const PAGE_API = `load
@@ -57,7 +61,7 @@ function routeBuild(pattern: string, file: string, decision: ModeDecision): Rout
     route: { file, pattern, params: [] },
     absPath: join(root, 'src', 'routes', file),
     analysis: {
-      role: 'page' as const,
+      role: 'route' as const,
       isPage: true,
       hasLoad: true,
       hasPaths: false,
@@ -96,6 +100,7 @@ describe('runEdgePass', () => {
     root = mkdtempSync(join(tmpdir(), 'fudic-edge-'));
     for (const dir of ['routes', 'server', 'data']) mkdirSync(join(root, 'src', dir), { recursive: true });
     writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
+    writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
     writeFileSync(join(root, 'src', 'routes', 'about.fudapi'), PAGE_API);
     writeFileSync(join(root, 'src', 'server', 'about.ts'), PAGE_SERVER);
     writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);

@@ -93,7 +93,7 @@ describe('discoverRoutes: an error page that links no layout (criteria 8, 9)', (
     expect(found.errorPages).toEqual([]);
     const fud1581 = found.parse.filter((d) => d.code === 'FUD1581');
     expect(fud1581).toHaveLength(1);
-    expect(posix(fud1581[0]!.file)).toBe(posix(join(admin(ws), 'src/routes/_error.fud')));
+    expect(posix(fud1581[0]!.file ?? "")).toBe(posix(join(admin(ws), 'src/routes/_error.fud')));
     expect(fud1581[0]!.span).toEqual({ start: 0, end: NO_LAYOUT.indexOf('\n') });
     expect(fud1581[0]!.severity).toBe('error');
     expect(fud1581[0]!.message).toContain('<link rel="layout"');
@@ -112,7 +112,7 @@ describe('discoverRoutes: an error page that links no layout (criteria 8, 9)', (
     expect(found).not.toHaveProperty('errorPageFrom');
     const fud1581 = found.parse.filter((d) => d.code === 'FUD1581');
     expect(fud1581).toHaveLength(1);
-    expect(posix(fud1581[0]!.file)).toMatch(/\/libs\/ui\/src\/_error\.fud$/u);
+    expect(posix(fud1581[0]!.file ?? "")).toMatch(/\/libs\/ui\/src\/_error\.fud$/u);
   });
 });
 
@@ -121,7 +121,7 @@ describe('discoverRoutes: an error page with a doctype (criterion 10)', () => {
     const ws = workspace({ 'apps/admin/src/routes/_error.fud': WHOLE });
     const found = discover(ws);
     expect(found.errorPage).toBeUndefined();
-    const codes = found.parse.filter((d) => posix(d.file).endsWith('_error.fud')).map((d) => d.code);
+    const codes = found.parse.filter((d) => posix(d.file ?? "").endsWith('_error.fud')).map((d) => d.code);
     expect(codes).toEqual(['FUD1580']);
     expect(found.parse.find((d) => d.code === 'FUD1580')?.span).toEqual({ start: 0, end: '<!DOCTYPE html>'.length });
   });
@@ -132,7 +132,7 @@ describe('discoverRoutes: an error page with a doctype (criterion 10)', () => {
     const ws = workspace({ 'apps/admin/src/routes/_error.fud': layout('wrong') });
     const found = discover(ws);
     expect(found.errorPage).toBeUndefined();
-    const codes = found.parse.filter((d) => posix(d.file).endsWith('_error.fud')).map((d) => d.code);
+    const codes = found.parse.filter((d) => posix(d.file ?? "").endsWith('_error.fud')).map((d) => d.code);
     expect(codes).toEqual(['FUD1581']);
     expect(found.parse.find((d) => d.code === 'FUD1581')?.span).toEqual({ start: 0, end: '<!DOCTYPE html>'.length });
     const lib = discover(workspace({ 'libs/ui/src/_error.fud': layout('wrong') }));

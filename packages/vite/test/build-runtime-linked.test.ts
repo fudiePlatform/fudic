@@ -55,26 +55,19 @@ const TICKER = `@code {
 </app-ticker>
 `;
 
-const LIVE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-ticker.fud">
-    <script src="fudic:runtime"></script>
-    <title>Live</title>
-  </head>
-  <body><app-ticker></app-ticker></body>
-</html>
+/** The layout every page links (SDD-88), with the runtime tag the pages used to write in their head. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head><script src="fudic:runtime"></script>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const LIVE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-ticker.fud">
+<head><title>Live</title></head>
+<app-ticker></app-ticker>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-counter.fud">
-    <script src="fudic:runtime"></script>
-    <title>Home</title>
-  </head>
-  <body><app-counter></app-counter></body>
-</html>
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-counter.fud">
+<head><title>Home</title></head>
+<app-counter></app-counter>
 `;
 
 /** No code at all: a component the page can name and that has nothing to hydrate. */
@@ -86,16 +79,11 @@ const STATIC = `<app-static>
 `;
 
 /** The coordinator travels in the document, so its source is a string inside a chunk. */
-const INLINE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/app-counter.fud">
-    <link rel="component" href="../components/app-static.fud">
-    <script src="fudic:runtime?inline"></script>
-    <title>Inline</title>
-  </head>
-  <body><app-counter></app-counter><app-static></app-static></body>
-</html>
+const INLINE = `<link rel="layout" href="../layouts/_inline.fud">
+<link rel="component" href="../components/app-counter.fud">
+<link rel="component" href="../components/app-static.fud">
+<head><title>Inline</title></head>
+<app-counter></app-counter><app-static></app-static>
 `;
 
 interface OutFile {
@@ -114,6 +102,9 @@ function project(extra: Readonly<Record<string, string>> = {}): string {
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
+  writeFileSync(join(root, 'src', 'layouts', '_inline.fud'), BARE_LAYOUT.replace('fudic:runtime', 'fudic:runtime?inline'));
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'app-ticker.fud'), TICKER);
   writeFileSync(join(root, 'src', 'routes', 'live.fud'), LIVE);

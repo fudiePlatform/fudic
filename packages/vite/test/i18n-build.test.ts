@@ -18,38 +18,24 @@ interface OutFile {
   readonly imports?: readonly string[];
 }
 
-const ABOUT = `<!DOCTYPE html>
-<html>
-<head>
+const ABOUT = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-price.fud">
 <link rel="component" href="../components/app-counter.fud">
-<script src="fudic:runtime"></script>
-<title>Acerca</title>
 @code {
   const enlace = '/contact';
 }
-</head>
-<body>
+<head><title>Acerca</title></head>
 <p>Hola mundo</p>
 <nav><a href="/contact">Contacto</a> <a href="/es/about">Español</a> <a href="/doc.pdf">Documento</a></nav>
 <app-price></app-price>
 <app-counter></app-counter>
 <p><a href=@enlace>Otro</a></p>
-</body>
-</html>
 `;
 
-const POST = `<!DOCTYPE html>
-<html>
-<head>
-<script src="fudic:runtime"></script>
-<title>Blog</title>
+const POST = `<link rel="layout" href="../../layouts/_layout.fud">
 <link rel="server" href="./[slug].fudapi">
-</head>
-<body>
+<head><title>Blog</title></head>
 <h1>Entrada @data.slug</h1>
-</body>
-</html>
 `;
 
 /** The post's server: `load` and `paths`, ssg by inference (SDD-60 §3.4). */
@@ -92,18 +78,13 @@ const COUNTER = `@code {
 `;
 
 /** A route with a client half: its own chunk, once per locale too. */
-const LIVE = `<!DOCTYPE html>
-<html>
-<head>
-<script src="fudic:runtime"></script>
-<title>Vivo</title>
+const LIVE = `<link rel="layout" href="../layouts/_layout.fud">
 @code {
   let n = 0;
   function mas(): void { n += 1; }
 }
-</head>
-<body><button @click="@mas">Pulsar</button></body>
-</html>
+<head><title>Vivo</title></head>
+<button @click="@mas">Pulsar</button>
 `;
 
 /** A layout: one chunk per locale in the Service Worker's pass, each under its own name. */
@@ -395,7 +376,7 @@ describe('criterion 31: the pipeline reads catalogs, and nothing more', () => {
 
 describe('criterion 37: a build in two or more locales needs site', () => {
   it('stops with FUD1027 when fudic.json has none', async () => {
-    const root = writeI18nProject({ locales: ['es', 'en'], files: { 'src/routes/live.fud': LIVE }, site: null });
+    const root = writeI18nProject({ locales: ['es', 'en'], files: { 'src/layouts/_layout.fud': LAYOUT, 'src/routes/live.fud': LIVE }, site: null });
     await expect(buildOf(root)).rejects.toThrow(/FUD1027/u);
   }, 240000);
 });
@@ -403,7 +384,9 @@ describe('criterion 37: a build in two or more locales needs site', () => {
 describe('§4.5: a single locale', () => {
   let output: OutFile[];
   beforeAll(async () => {
-    output = await buildOf(writeI18nProject({ locales: ['es'], files: FILES }));
+    // With one locale the emit adds no `lang` (SDD-88 §4.1): the author writes it in the layout.
+    const files = { ...FILES, 'src/layouts/_layout.fud': LAYOUT.replace('<html>', '<html lang="es">') };
+    output = await buildOf(writeI18nProject({ locales: ['es'], files }));
   }, 240000);
 
   it('has no prefix and no redirect: the routes are the ones it had', () => {

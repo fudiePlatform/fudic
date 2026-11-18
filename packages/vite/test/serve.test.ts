@@ -22,7 +22,7 @@ const build = (pattern: string, params: string[] = [], mode = 'ssg'): RouteBuild
     route: { file: `${pattern}.fud`, pattern, params },
     absPath: `/root/routes${pattern}.fud`,
     analysis: {
-      role: 'page' as const,
+      role: 'route' as const,
       isPage: true,
       hasLoad: false,
       hasPaths: false,

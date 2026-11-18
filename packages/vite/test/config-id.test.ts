@@ -16,11 +16,17 @@ import { fudic } from '../src/index.js';
 import { readProject } from '../src/config.js';
 import { runtimeAlias } from './helpers/alias.js';
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head><title>Home</title></head>
-<body><h1>Home</h1></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<head><title>Home</title></head>
+<h1>Home</h1>
 `;
 
 interface Project {
@@ -33,6 +39,7 @@ async function buildProject(project: Project): Promise<string | null> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-id-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'routes', '_layout.fud'), LAYOUT);
   if (project.sw === true) writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   if (project.config !== undefined) writeFileSync(join(root, 'fudic.json'), project.config);
 

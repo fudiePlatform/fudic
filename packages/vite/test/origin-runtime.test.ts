@@ -105,7 +105,12 @@ describe.each([
     writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'admin', kind: 'app', prefix: 'adm' }));
     writeFileSync(
       join(root, 'src/routes/index.fud'),
-      '<!DOCTYPE html>\n<html lang="es">\n<head>\n<title>i</title>\n@code {\n  import { signal } from "@fudic/core";\n  const n = signal(0);\n  function more() {\n    n.set(n() + 1);\n  }\n}\n</head>\n<body><button @click=@more()>@n()</button></body>\n</html>\n',
+      '<link rel="layout" href="./_layout.fud">\n@code {\n  import { signal } from "@fudic/core";\n  const n = signal(0);\n  function more() {\n    n.set(n() + 1);\n  }\n}\n<head>\n<title>i</title>\n</head>\n<button @click=@more()>@n()</button>\n',
+    );
+    // Every page links a layout (SDD-88).
+    writeFileSync(
+      join(root, 'src/routes/_layout.fud'),
+      '<!DOCTYPE html>\n<html lang="es">\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
     );
     const config = { root, base, logLevel: 'silent' as const, resolve: { alias: { ...runtimeAlias } }, plugins: [fudic({ liveCheck: false })], preview: { port: 0 } };
     await build({ ...config, build: { minify: false } });

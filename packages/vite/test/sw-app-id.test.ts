@@ -19,11 +19,17 @@ import { emitSwBootstrap } from '../src/bootstrap.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { runtimeAlias } from './helpers/alias.js';
 
-const PAGE = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head><title>Home</title></head>
-<body><h1>Home</h1></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+
+const PAGE = `<link rel="layout" href="./_layout.fud">
+<head><title>Home</title></head>
+<h1>Home</h1>
 `;
 
 interface OutFile {
@@ -41,6 +47,7 @@ async function buildWithId(id: string, sourcemap = false): Promise<readonly OutF
   const root = mkdtempSync(join(tmpdir(), 'fudic-appid-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id }));
 

@@ -64,15 +64,19 @@ get crash
   -> str
 `;
 
-const USUARIOS = `<!DOCTYPE html>
+/** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+const LAYOUT = `<!DOCTYPE html>
 <html>
-<head>
-<title>Usuarios</title>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
+const USUARIOS = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./usuarios.fudapi">
 <link rel="component" href="../components/user-form.fud">
-</head>
-<body><p>usuarios: @data.count</p><user-form></user-form></body>
-</html>
+<head><title>Usuarios</title></head>
+<p>usuarios: @data.count</p><user-form></user-form>
 `;
 
 const USUARIOS_SERVER = `import { inject } from '@fudic/di';
@@ -118,14 +122,10 @@ const throwing = (
   body: string,
   imports = "import { notFound, redirect } from '@fudic/http';",
 ): Record<string, string> => ({
-  [`src/routes/${name}.fud`]: `<!DOCTYPE html>
-<html>
-<head>
-<title>x</title>
+  [`src/routes/${name}.fud`]: `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./${name}.fudapi">
-</head>
-<body><p>@data.n</p></body>
-</html>
+<head><title>x</title></head>
+<p>@data.n</p>
 `,
   [`src/routes/${name}.fudapi`]: 'load\n  n  i32\n',
   [`src/server/${name}.ts`]: `${imports}
@@ -137,16 +137,14 @@ load.handle(async (): Promise<{ n: number }> => {
 `,
 });
 
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Error</title></head>
-<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p></body>
-</html>
+<h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p>
 `;
 
 /** Each file under `root`, its folders made. */
 function writeAll(root: string, files: Readonly<Record<string, string>>): void {
-  for (const [path, text] of Object.entries(files)) {
+  for (const [path, text] of Object.entries({ 'src/layouts/_layout.fud': LAYOUT, ...files })) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
   }

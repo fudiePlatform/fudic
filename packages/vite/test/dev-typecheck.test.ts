@@ -580,16 +580,17 @@ describe('startLiveCheck over the real checker (criterion 19)', () => {
   <template shadowrootmode="open"><span>@tone</span></template>
 </app-badge>
 `;
-  const PAGE = `<!DOCTYPE html>
+  /** Every page links a layout (SDD-88): the smallest one, which adds nothing to the body. */
+  const LAYOUT = `<!DOCTYPE html>
 <html>
-  <head>
-    <link rel="component" href="../components/app-badge.fud">
-    <title>Test</title>
-  </head>
-  <body>
-    <app-badge .tone="@('info')">hi</app-badge>
-  </body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`;
+  const PAGE = `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head><title>Test</title></head>
+    <app-badge .tone="@('info')">hi</app-badge>
 `;
 
   it('saving a component that breaks the page pushes the overlay; fixing it reloads', async () => {
@@ -599,6 +600,7 @@ describe('startLiveCheck over the real checker (criterion 19)', () => {
       'tsconfig.json': TSCONFIG,
       'src/components/app-badge.fud': BADGE(`'neutral' | 'info'`),
       'src/routes/index.fud': PAGE,
+      'src/routes/_layout.fud': LAYOUT,
     };
     for (const [relative, text] of Object.entries(files)) {
       mkdirSync(dirname(join(project, relative)), { recursive: true });
@@ -644,6 +646,7 @@ describe('startLiveCheck over the real checker (criterion 19)', () => {
       'tsconfig.json': TSCONFIG,
       'src/components/app-badge.fud': BADGE(`'neutral' | 'info'`),
       'src/routes/index.fud': PAGE,
+      'src/routes/_layout.fud': LAYOUT,
       'fudic/terms/then/shown.js': "export const meta = { name: 'shown', block: 'then', params: [] };\nexport async function run(ctx) {}\nexport const selfTest = [];\n",
     };
     for (const [relative, text] of Object.entries(files)) {

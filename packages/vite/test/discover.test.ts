@@ -57,8 +57,9 @@ describe('discoverRoutes — what parsing the routes said (SDD-35 §1.1)', () =>
     const dir = mkdtempSync(join(tmpdir(), 'fudic-discover-parse-'));
     mkdirSync(join(dir, 'routes'), { recursive: true });
     const broken = join(dir, 'routes', 'broken.fud');
-    writeFileSync(broken, '<!DOCTYPE html>\n<html><head><title>x</title></head><body><p>hi</q></p></body></html>\n');
-    writeFileSync(join(dir, 'routes', 'fine.fud'), '<!DOCTYPE html>\n<html><head><title>x</title></head><body></body></html>\n');
+    writeFileSync(broken, '<link rel="layout" href="./_layout.fud">\n<head><title>x</title></head>\n<p>hi</q></p>\n');
+    writeFileSync(join(dir, 'routes', 'fine.fud'), '<link rel="layout" href="./_layout.fud">\n<head><title>x</title></head>\n');
+    writeFileSync(join(dir, 'routes', '_layout.fud'), '<!DOCTYPE html>\n<html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n');
     const { routes, parse } = discoverRoutes(dir, resolveOptions({ routesDir: 'routes' }).options);
     // A route that does not parse is still a route: discovery reports, it does not drop.
     expect(routes.map((r) => r.route.pattern).sort()).toEqual(['/broken', '/fine']);

@@ -18,7 +18,7 @@ function routeBuild(
     route: { file: `${pattern}.fud`, pattern, params: pattern.includes(':') ? ['id'] : [] },
     absPath: `/abs${pattern}.fud`,
     analysis: {
-      role: 'page' as const,
+      role: 'route' as const,
       isPage: true,
       hasLoad: over.hasLoad ?? false,
       hasPaths: false,
