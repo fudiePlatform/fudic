@@ -77,23 +77,25 @@ export function snippetHost(input: SnippetHostInput): string {
   );
 }
 
-/** The file name of the host layout, beside the host pages in the cache. */
-export const HOST_LAYOUT_FILE = '_host-layout.fud';
+/** The name the host layout is cached under, before its hash. */
+export const HOST_LAYOUT_NAME = '_host-layout';
 
 /**
  * The layout every host page links (SDD-88): the smallest document there is, so the body of a
- * host page paints exactly what the page puts in it. Fixed: written once per project.
+ * host page paints exactly what the page puts in it. Its `<html>` carries the project's
+ * language, as the layouts `fudic g` writes do (SDD-71).
  */
-export const HOST_LAYOUT =
-  '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n<script type="module" src="fudic:runtime"></script>\n@RenderHead()\n</head>\n<body>\n@RenderBody()\n</body>\n</html>\n';
+export function hostLayout(lang: string): string {
+  return `<!DOCTYPE html>\n<html lang="${lang}">\n<head>\n<meta charset="utf-8">\n<script type="module" src="fudic:runtime"></script>\n@RenderHead()\n</head>\n<body>\n@RenderBody()\n</body>\n</html>\n`;
+}
 
 /**
- * The source of the host page: a route that links the host layout, which lies beside it, so the
- * compiler emits it as a page — head, body and the hydration maps — and not as a component.
- * Every page links a layout (SDD-88), the harness's own too.
+ * The source of the host page: a route that links the host layout `layout` — a file name beside
+ * it in the cache — so the compiler emits it as a page — head, body and the hydration maps — and
+ * not as a component. Every page links a layout (SDD-88), the harness's own too.
  */
-export function hostPage(input: HostInput): string {
+export function hostPage(input: HostInput, layout: string): string {
   const links = input.links.map((link) => `<link rel="${link.rel}" href="${hrefOf(link.href)}">\n`);
   const code = input.code === undefined ? '' : `@code {\n${input.code}\n}\n`;
-  return `<link rel="layout" href="./${HOST_LAYOUT_FILE}">\n${links.join('')}${code}${input.body}\n`;
+  return `<link rel="layout" href="./${layout}">\n${links.join('')}${code}${input.body}\n`;
 }
