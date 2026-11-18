@@ -30,6 +30,7 @@ export const GENERATE_KINDS = [
   'form',
   'pipe',
   'style',
+  'error-page',
 ] as const;
 
 /** The kinds whose history starts with what the user asked for. */
@@ -131,7 +132,9 @@ export function registerProjectTools(server: McpServer, project: Project, checks
       title: 'fudic generate',
       description:
         'Creates a piece of the fudic project exactly as `fudic g <kind>` does: component, page, layout, snippet, app, lib, ' +
-        'guide, spec, flow, term, api, showcase, service, form, pipe or style. Never write these files from scratch. ' +
+        'guide, spec, flow, term, api, showcase, service, form, pipe, style or error-page. Never write these files from scratch. ' +
+        'error-page takes no name: in an app it writes src/routes/_error.fud, in a library src/_error.fud — the page every app ' +
+        'that depends on the library and has none of its own paints its errors with. ' +
         'A component or a page takes `purpose`: what the user asked for, in one sentence.',
       inputSchema: {
         kind: z.enum(GENERATE_KINDS),

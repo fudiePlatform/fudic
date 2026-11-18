@@ -6,6 +6,8 @@
 
 import { readFileSync } from 'node:fs';
 import { basename, relative } from 'node:path';
+import { ROUTES_DIR } from '@fudic/conventions';
+import { errorPageOf, nodePackageFs } from '@fudic/resolve';
 import type { Checks } from './checks.js';
 import { nextOf, problemsOf, summaryOf } from './check.js';
 import { isLibrary, phasesOf, type Phase, type Unit } from './phases.js';
@@ -27,12 +29,34 @@ function prefixOf(root: string): string | undefined {
   }
 }
 
-/** What the project is: an app, a library or a workspace, and the prefix of its tags. */
+/**
+ * Which error page the project paints with, and where it comes from (SDD-87 §3.7): its own, a
+ * library's of its chain, two libraries' (FUD1570 in the build) or none. A page that arrives
+ * without anybody naming it has to be said where the agent looks. Files relative to the project.
+ */
+function errorPageField(root: string): Readonly<Record<string, unknown>> {
+  const io = nodePackageFs();
+  const real = posix(io.realPath(root));
+  const source = errorPageOf(root, ROUTES_DIR, io);
+  const rel = (file: string): string => posix(relative(real, file));
+  switch (source.kind) {
+    case 'own':
+      return { from: 'own', file: rel(source.file) };
+    case 'library':
+      return { from: source.package, file: rel(source.file) };
+    case 'ambiguous':
+      return { from: 'ambiguous', libraries: source.libraries.map((l) => l.package) };
+    case 'none':
+      return { from: 'none' };
+  }
+}
+
+/** What the project is: an app, a library or a workspace, the prefix of its tags and its error page. */
 function projectOf(project: Project, folders: readonly string[]): Readonly<Record<string, unknown>> {
   const { root } = project;
   if (isWorkspace(root)) return { name: project.name, kind: 'workspace', projects: folders.map((f) => posix(relative(root, f))) };
   const prefix = prefixOf(root);
-  return { name: project.name, kind: isLibrary(root) ? 'lib' : 'app', ...(prefix !== undefined ? { prefix } : {}) };
+  return { name: project.name, kind: isLibrary(root) ? 'lib' : 'app', ...(prefix !== undefined ? { prefix } : {}), errorPage: errorPageField(root) };
 }
 
 /** A piece as the answer lists it. */

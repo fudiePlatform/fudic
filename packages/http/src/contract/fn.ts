@@ -190,6 +190,7 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       args,
       signal: options.signal ?? new AbortController().signal,
       catches: spec.catches ?? [],
+      base,
     };
     const value = await run(steps as never, ctx, async (c: ClientContext) => {
       try {

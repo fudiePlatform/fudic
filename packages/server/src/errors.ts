@@ -121,8 +121,10 @@ export function problemOfStatus(status: number): PageProblem {
 export interface PageOrigin {
   /** The path asked for, without the origin or the `base`: `/usuarios/99`. */
   readonly path: string;
-  /** Where the user came from, when it is of this app: `/usuarios?p=2`. */
+  /** Where the user came from, when it is of this app, ready for an `href`: `/admin/usuarios?p=2`. */
   readonly back?: string;
+  /** The home of the app that paints the page, ready for an `href`: its `base`, `/admin/` (SDD-87 §3.4). */
+  readonly home: string;
 }
 
 /** `pathname` without `base`, or `null` when it is not under it. */
@@ -142,7 +144,8 @@ export function backOf(referer: string | null, origin: string, base: string): st
   const url = new URL(referer);
   if (url.origin !== origin) return undefined;
   const path = withoutBase(url.pathname, base);
-  return path === null || path.startsWith('//') ? undefined : path + url.search;
+  // With the `base`, ready for an `href` (SDD-87 §3.4): a page shared by several apps knows none.
+  return path === null || path.startsWith('//') ? undefined : url.pathname + url.search;
 }
 
 /**
@@ -155,7 +158,7 @@ export function pageOriginOf(request: Request, base: string, fromCall: boolean):
   const back = backOf(request.headers.get('referer'), url.origin, base);
   const asked = fromCall && back !== undefined ? new URL(back, url.origin).pathname : url.pathname;
   const path = withoutBase(asked, base) ?? asked;
-  return back === undefined ? { path } : { path, back };
+  return back === undefined ? { path, home: base } : { path, back, home: base };
 }
 
 const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };

@@ -61,7 +61,7 @@ describe('withoutBase / backOf / pageOriginOf', () => {
 
   it('backOf: a Referer of this origin and base, never another host’s', () => {
     const origin = 'http://app.test';
-    expect(backOf('http://app.test/app/a?b=1', origin, '/app/')).toBe('/a?b=1');
+    expect(backOf('http://app.test/app/a?b=1', origin, '/app/')).toBe('/app/a?b=1');
     expect(backOf(null, origin, '/')).toBeUndefined();
     expect(backOf('not a url', origin, '/')).toBeUndefined();
     expect(backOf('http://evil.test/a', origin, '/')).toBeUndefined();
@@ -71,9 +71,9 @@ describe('withoutBase / backOf / pageOriginOf', () => {
 
   it('pageOriginOf: the path asked, or for a call the page that made it', () => {
     const asked = new Request('http://app.test/app/usuarios/9', { headers: { referer: 'http://app.test/app/usuarios?p=2' } });
-    expect(pageOriginOf(asked, '/app/', false)).toEqual({ path: '/usuarios/9', back: '/usuarios?p=2' });
-    expect(pageOriginOf(asked, '/app/', true)).toEqual({ path: '/usuarios', back: '/usuarios?p=2' });
-    expect(pageOriginOf(new Request('http://app.test/elsewhere'), '/app/', true)).toEqual({ path: '/elsewhere' });
+    expect(pageOriginOf(asked, '/app/', false)).toEqual({ path: '/usuarios/9', back: '/app/usuarios?p=2', home: '/app/' });
+    expect(pageOriginOf(asked, '/app/', true)).toEqual({ path: '/usuarios', back: '/app/usuarios?p=2', home: '/app/' });
+    expect(pageOriginOf(new Request('http://app.test/elsewhere'), '/app/', true)).toEqual({ path: '/elsewhere', home: '/app/' });
   });
 });
 
@@ -85,13 +85,35 @@ describe('minimalErrorPage / renderErrorPage', () => {
   });
 
   it('without _error.fud, the minimal page; with it, its render with the problem and the origin', async () => {
-    expect(await renderErrorPage(null, { status: 404, title: 'Not Found' }, 'n', { path: '/x' })).toContain('<h1>404</h1>');
+    expect(await renderErrorPage(null, { status: 404, title: 'Not Found' }, 'n', { path: '/x', home: '/' })).toContain('<h1>404</h1>');
     const mod = {
       render: (ctx: { url: URL; nonce: string; data?: unknown }) => streamOf(`${ctx.url.pathname} ${ctx.nonce} ${JSON.stringify(ctx.data)}`),
     };
-    expect(await renderErrorPage(mod as never, { status: 404, title: 'Not Found' }, 'n1', { path: '/x', back: '/y' })).toBe(
-      '/_fudic/error/404 n1 {"status":404,"title":"Not Found","path":"/x","back":"/y"}',
+    expect(await renderErrorPage(mod as never, { status: 404, title: 'Not Found' }, 'n1', { path: '/x', back: '/y', home: '/' })).toBe(
+      '/_fudic/error/404 n1 {"status":404,"title":"Not Found","path":"/x","back":"/y","home":"/"}',
     );
     expect(ERROR_PATTERN).toBe('/_fudic/error/:status');
+  });
+});
+
+/** SDD-87 §3.4, §4.4, criteria 9–10: home is the base, and back carries it, ready for an href. */
+describe('home and back under a base', () => {
+  it('an app at /admin/ paints its error page with home /admin/, and back with the base', () => {
+    const call = new Request('http://app.test/admin/_fudic/error/500', { headers: { referer: 'http://app.test/admin/fallos?x=1' } });
+    expect(pageOriginOf(call, '/admin/', true)).toEqual({ path: '/fallos', back: '/admin/fallos?x=1', home: '/admin/' });
+    const page = new Request('http://app.test/admin/no-existe', { headers: { referer: 'http://app.test/admin/fallos?x=1' } });
+    expect(pageOriginOf(page, '/admin/', false)).toEqual({ path: '/no-existe', back: '/admin/fallos?x=1', home: '/admin/' });
+  });
+
+  it('a Referer of another app on the same origin gives no back', () => {
+    const asked = new Request('http://app.test/admin/no-existe', { headers: { referer: 'http://app.test/otra/' } });
+    expect(pageOriginOf(asked, '/admin/', false)).toEqual({ path: '/no-existe', home: '/admin/' });
+    expect(backOf('http://app.test/otra/', 'http://app.test', '/admin/')).toBeUndefined();
+  });
+
+  it('without a base, back, path and home are those of an app at /', () => {
+    const asked = new Request('http://app.test/usuarios/9', { headers: { referer: 'http://app.test/usuarios?p=2' } });
+    expect(pageOriginOf(asked, '/', false)).toEqual({ path: '/usuarios/9', back: '/usuarios?p=2', home: '/' });
+    expect(pageOriginOf(asked, '/', true)).toEqual({ path: '/usuarios', back: '/usuarios?p=2', home: '/' });
   });
 });

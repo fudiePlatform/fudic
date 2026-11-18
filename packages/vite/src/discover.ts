@@ -5,7 +5,8 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { errorPageOf, nodePackageFs, type PackageFs } from '@fudic/resolve';
 import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis, type PageApiOf } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
@@ -13,7 +14,7 @@ import { ERROR_FILE } from '@fudic/conventions';
 import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
 import { localizeRoutes } from './i18n.js';
-import { FUD0364, FUD0434, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
+import { FUD0364, FUD0434, FUD1570, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -49,6 +50,8 @@ export interface DiscoverResult {
    * without `_error.fud`; `[errorPage]` in an app without `locales`.
    */
   readonly errorPages: readonly RouteBuild[];
+  /** The package `errorPage` comes from, when it is a library's: `@acme/ui`. Absent for the app's own. */
+  readonly errorPageFrom?: string;
 }
 
 const NEVER: ModeDecision = { mode: 'excluded', prerender: false, enumerate: false, prerenderedHtml: false };
@@ -71,6 +74,8 @@ export function discoverRoutes(
   locales?: readonly string[],
   /** What the `.fudapi` a route links declare (SDD-60 §4.5), by the route's absolute path. */
   apiOf?: (absPath: string) => PageApiOf,
+  /** How the dependency chain is read, for the error page a library offers (SDD-87 §3.10). */
+  packages: PackageFs = nodePackageFs(),
 ): DiscoverResult {
   const analyze = (absPath: string): PageAnalysis =>
     analyzePage(readFileSync(absPath, 'utf8'), apiOf?.(absPath));
@@ -80,9 +85,18 @@ export function discoverRoutes(
   const diags: FileDiagnostic[] = [...diagnostics];
   const parse: SourceDiagnostic[] = [];
 
+  // The app's own `_error.fud`, else the one library of its chain that offers one (SDD-87 §3.2).
+  // Two libraries and none of its own is FUD1570, on the app's `fudic.json`, and no page.
   let errorPage: RouteBuild | undefined;
-  if (files.includes(ERROR_FILE)) {
-    const absPath = join(routesRoot, ERROR_FILE);
+  const source = errorPageOf(root, options.routesDir, packages);
+  if (source.kind === 'ambiguous') {
+    const named = source.libraries.map((l) => ({ package: l.package, file: relative(root, l.file).split(sep).join('/') }));
+    diags.push(FUD1570({ file: join(root, 'fudic.json'), libraries: named }));
+  }
+  const errorPageFrom = source.kind === 'library' ? source.package : undefined;
+  if (source.kind === 'own' || source.kind === 'library') {
+    // The app's own keeps the path it always had; a library's is the file `errorPageOf` found.
+    const absPath = source.kind === 'own' ? join(routesRoot, ERROR_FILE) : source.file;
     const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
     errorPage = {
@@ -153,5 +167,6 @@ export function discoverRoutes(
     parse,
     errorPages,
     ...(errorPages[0] !== undefined ? { errorPage: errorPages[0] } : {}),
+    ...(errorPageFrom !== undefined ? { errorPageFrom } : {}),
   };
 }

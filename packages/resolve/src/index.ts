@@ -22,6 +22,12 @@
 
 export { nodeResolveFs, nodePackageFs } from './node.js';
 export {
+  errorPageOf,
+  LIBRARY_ERROR_FILE,
+  type ErrorPageLibrary,
+  type ErrorPageSource,
+} from './error-page.js';
+export {
   findLibraries,
   dependencyChain,
   owningPackage,

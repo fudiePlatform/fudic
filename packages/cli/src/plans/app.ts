@@ -98,8 +98,8 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
   const taken = others.find((app) => app.base === base);
   const frame = layoutLibrary(opts.layout, opts.cwd, io);
   const asked = frame.library === undefined || opts.uses.includes(frame.library) ? opts.uses : [...opts.uses, frame.library];
-  // Every style guide of the workspace comes with it: a new app looks like the others.
-  const uses = withGuides(asked, projects);
+  // Every style guide and every error page of the workspace come with it: a new app looks like the others.
+  const uses = withGuides(asked, projects, io);
 
   const errors = [
     ...(frame.error === undefined ? [] : [frame.error]),

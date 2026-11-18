@@ -212,7 +212,7 @@ describe('statusOf, over a project of the test\'s', () => {
     over.states.set('ui-c/ui-c.fud', { approval: 'expired' });
     const git = vi.fn<Project['git']>(() => 'the diff');
     const answer = await statusOf(project(root, git), fakeChecks(root, [piece(root, 'ui-a'), piece(root, 'ui-b'), piece(root, 'ui-c')]), new Session());
-    expect(answer.body['project']).toEqual({ name: 'demo', kind: 'lib', prefix: 'ui' });
+    expect(answer.body['project']).toEqual({ name: 'demo', kind: 'lib', prefix: 'ui', errorPage: { from: 'none' } });
     expect(answer.body['expired']).toEqual([
       { piece: 'src/components/ui-a/ui-a.fud', since: 'abc1234', diff: 'the diff' },
       { piece: 'src/components/ui-b/ui-b.fud', since: 'none', diff: null },
@@ -230,7 +230,7 @@ describe('statusOf, over a project of the test\'s', () => {
     };
     const answer = await statusOf(project(root, gone), fakeChecks(root, [piece(root, 'ui-a')]), new Session());
     // A fudic.json that does not parse: an app, with no prefix.
-    expect(answer.body['project']).toEqual({ name: 'demo', kind: 'app' });
+    expect(answer.body['project']).toEqual({ name: 'demo', kind: 'app', errorPage: { from: 'none' } });
     expect(answer.body['expired']).toEqual([{ piece: 'src/components/ui-a/ui-a.fud', since: 'abc1234', diff: null }]);
   });
 
@@ -301,5 +301,73 @@ describe('the step of each phase', () => {
     const read = new Session();
     if (topic !== undefined) read.read(topic);
     expect(withGuide('Step.', one, read)).toBe('Step.');
+  });
+});
+
+/** SDD-87 §3.7, criterion 25: `project.errorPage`, in its four cases, in an app and in a library. */
+describe('fudic_status: which error page the project paints with', () => {
+  const dirs: { dispose(): void }[] = [];
+  afterAll(() => dirs.forEach((d) => d.dispose()));
+  const PAGE = '<!DOCTYPE html>\n<html><head><title>@data.status</title></head><body></body></html>\n';
+
+  /** A workspace: libraries `ui` and `marketing`, linked under its node_modules, and `apps/admin` on `deps`. */
+  function workspace(deps: readonly string[], files: Readonly<Record<string, string>> = {}): string {
+    const dir = tempDir();
+    dirs.push(dir);
+    const all: Record<string, string> = {
+      'libs/ui/package.json': JSON.stringify({ name: '@acme/ui' }),
+      'libs/ui/fudic.json': '{ "kind": "lib", "prefix": "ui" }',
+      'libs/marketing/package.json': JSON.stringify({ name: '@acme/marketing' }),
+      'libs/marketing/fudic.json': '{ "kind": "lib", "prefix": "mk" }',
+      'apps/admin/package.json': JSON.stringify({ name: '@acme/admin', dependencies: Object.fromEntries(deps.map((d) => [d, 'workspace:*'])) }),
+      'apps/admin/fudic.json': '{ "kind": "app", "prefix": "adm" }',
+      ...files,
+    };
+    for (const [path, text] of Object.entries(all)) {
+      mkdirSync(join(dir.root, path, '..'), { recursive: true });
+      writeFileSync(join(dir.root, path), text);
+    }
+    mkdirSync(join(dir.root, 'node_modules/@acme'), { recursive: true });
+    symlinkSync(join(dir.root, 'libs/ui'), join(dir.root, 'node_modules/@acme/ui'), 'junction');
+    symlinkSync(join(dir.root, 'libs/marketing'), join(dir.root, 'node_modules/@acme/marketing'), 'junction');
+    return dir.root;
+  }
+
+  const errorPageOf = async (root: string): Promise<unknown> =>
+    ((await statusOf(fakeProject(root), fakeChecks(root, []), new Session())).body['project'] as Record<string, unknown>)['errorPage'];
+
+  it('an app with its own: own, and its file', async () => {
+    const ws = workspace(['@acme/ui'], { 'apps/admin/src/routes/_error.fud': PAGE, 'libs/ui/src/_error.fud': PAGE });
+    expect(await errorPageOf(join(ws, 'apps/admin'))).toEqual({ from: 'own', file: 'src/routes/_error.fud' });
+  });
+
+  it('an app without one: the package it comes from, and its file relative to the app', async () => {
+    const ws = workspace(['@acme/ui'], { 'libs/ui/src/_error.fud': PAGE });
+    expect(await errorPageOf(join(ws, 'apps/admin'))).toEqual({ from: '@acme/ui', file: '../../libs/ui/src/_error.fud' });
+  });
+
+  it('an app with two in its chain: ambiguous, and their packages', async () => {
+    const ws = workspace(['@acme/ui', '@acme/marketing'], { 'libs/ui/src/_error.fud': PAGE, 'libs/marketing/src/_error.fud': PAGE });
+    const page = (await errorPageOf(join(ws, 'apps/admin'))) as { from: string; libraries: string[] };
+    expect(page.from).toBe('ambiguous');
+    expect([...page.libraries].sort()).toEqual(['@acme/marketing', '@acme/ui']);
+  });
+
+  it('an app with none: none', async () => {
+    expect(await errorPageOf(join(workspace(['@acme/ui']), 'apps/admin'))).toEqual({ from: 'none' });
+  });
+
+  it('a library: its own src/_error.fud, or none', async () => {
+    const ws = workspace([], { 'libs/ui/src/_error.fud': PAGE });
+    expect(await errorPageOf(join(ws, 'libs/ui'))).toEqual({ from: 'own', file: 'src/_error.fud' });
+    expect(await errorPageOf(join(ws, 'libs/marketing'))).toEqual({ from: 'none' });
+  });
+
+  it('a workspace: no errorPage, it is no app', async () => {
+    const ws = workspace(['@acme/ui'], { 'pnpm-workspace.yaml': '', 'libs/ui/src/_error.fud': PAGE });
+    const checks = fakeChecks(ws, []);
+    (checks as { folders: () => Promise<readonly string[]> }).folders = async () => [join(ws, 'apps/admin'), join(ws, 'libs/ui')];
+    const project = (await statusOf(fakeProject(ws), checks, new Session())).body['project'];
+    expect(project).not.toHaveProperty('errorPage');
   });
 });

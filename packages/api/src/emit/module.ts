@@ -48,6 +48,15 @@ interface ModuleCtx extends EmitCtx {
   readonly wires: Set<'bin' | 'json' | 'frames'>;
   /** `fudic:<id>` → the names imported from it. */
   readonly imports: Map<string, Set<string>>;
+  /** The app's `base`, written in the browser module only when it is not `/` (SDD-87 §3.5). */
+  readonly base?: string;
+}
+
+export interface EmitModuleOptions {
+  /** The locale of the module: each text of the `.fudapi` written translated (SDD-74 §4.5). */
+  readonly i18n?: ApiLocale;
+  /** The app's `base`, as Vite resolved it: `/admin/`. Only the browser side writes it. */
+  readonly base?: string;
 }
 
 /** Declarations in the order their values must exist. */
@@ -55,9 +64,12 @@ const ORDER: readonly Decl['kind'][] = ['type', 'enum', 'pattern', 'rule', 'midd
 
 /**
  * The module `fudic:<id>` of a side. With `i18n`, the module of that locale: each text of the
- * `.fudapi` written translated, or as written when it has no translation (SDD-74 §4.5).
+ * `.fudapi` written translated, or as written when it has no translation (SDD-74 §4.5). With a
+ * `base` other than `/`, each call and each remote rule of the browser module carries it, so it
+ * stays under the app in the browser; without one, the module is the one before SDD-87.
  */
-export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side, i18n?: ApiLocale): string {
+export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side, options: EmitModuleOptions = {}): string {
+  const { i18n, base } = options;
   const imports = new Map<string, Set<string>>();
   const c: ModuleCtx = {
     source,
@@ -65,6 +77,7 @@ export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, 
     api,
     side,
     ...(i18n !== undefined ? { texts: localizedTexts(source.file, i18n) } : {}),
+    ...(side === 'browser' && base !== undefined && base !== '/' ? { base } : {}),
     http: new Set(),
     forms: new Set(),
     wire: new Set(),
@@ -165,10 +178,11 @@ function ruleOf(d: RuleDecl, c: ModuleCtx): string {
     ...(runs === 'server' && c.side === 'browser' ? ['never: true'] : []),
     ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`, 'ask: askRemote'] : []),
     // The question walks the client halves of the rule's chain, as a function's call does (§8.2.28).
-    ...(remote && c.side === 'browser' ? [`send: ruleSend(${str(d.name.text)}, () => ${ruleChain(level(d.uses, d.skips, undefined, c), c)})`] : []),
+    ...(remote && c.side === 'browser' ? [`send: ruleSend(${str(d.name.text)}, () => ${ruleChain(level(d.uses, d.skips, undefined, c), c)}${c.base !== undefined ? `, ${str(c.base)}` : ''})`] : []),
     ...(remote ? [`value: ${ruleValue(d, c)}`, `params: ${descriptors(d.params, c)}`] : []),
     ...(remote ? [`wire: ${json ? 'jsonWire' : 'binWire'}`] : []),
     ...(remote && !json ? [`sig: ${str(fnv1a(ruleCanonical(d, c.index)))}`] : []),
+    ...(remote && c.base !== undefined ? [`base: ${str(c.base)}`] : []),
     ...(onServer && c.side === 'server' && (remote || d.uses.length > 0 || d.skips.length > 0)
       ? [`chain: ${ruleChain(level(d.uses, d.skips, undefined, c), c)}`]
       : []),
@@ -369,6 +383,7 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(c.side === 'server' && d.fails.length > 0
       ? [`codes: { ${d.fails.map((f) => `${str(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(f.detail.text)}`}]`).join(', ')} }`]
       : []),
+    ...(c.base !== undefined ? [`base: ${str(c.base)}`] : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
 }

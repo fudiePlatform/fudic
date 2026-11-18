@@ -477,6 +477,7 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1561: ['error', "A create hook in a file that is never created"],
   FUD1562: ['error', "A declaration hides a lifecycle hook"],
   FUD1563: ['error', "A layout hook reads a prop of the layout"],
+  FUD1570: ['error', "Two error pages in the chain"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */

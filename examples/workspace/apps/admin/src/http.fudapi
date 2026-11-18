@@ -1,0 +1,7 @@
+# The global chain of admin, published under /admin/: error-pages sends an error nobody caught to
+# the error page — the one of `ui`, admin has none of its own — and a 403 to /entrar, both under
+# /admin/. csrf refuses a call another site's page makes with the user's cookies.
+chain
+  use error-pages
+    routes  403 /entrar
+  use csrf

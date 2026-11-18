@@ -1,0 +1,1 @@
+{ "name": "@fixture/admin", "version": "0.0.0", "private": true, "dependencies": { "@fixture/ui": "*" } }

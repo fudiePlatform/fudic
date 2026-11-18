@@ -212,7 +212,7 @@ describe('_error.fud at its own URL (step 7)', () => {
     expect(response!.status).toBe(404);
     expect(response!.headers.get('content-type')).toBe('text/html; charset=utf-8');
     const text = await response!.text();
-    expect(text).toContain('"status":404,"title":"Not Found","path":"/usuarios","back":"/usuarios?p=2"');
+    expect(text).toContain('"status":404,"title":"Not Found","path":"/usuarios","back":"/usuarios?p=2","home":"/"');
     expect(text).not.toContain('<b>');
   });
 
@@ -462,6 +462,23 @@ describe('the 103 (criterion 42)', () => {
     await server.fetch(navigate('/'), { earlyHints: hints });
     expect(hints).not.toHaveBeenCalled();
     expect((await server.fetch(navigate('/h'), {}))!.status).toBe(200);
+  });
+});
+
+/** SDD-87 criterion 9: an app under a base paints its error page with its home and a back that carries the base. */
+describe('_error.fud under a base (SDD-87)', () => {
+  it('a failed call of /admin/ paints home /admin/ and back /admin/fallos?x=1', async () => {
+    const server = createServer(testApp({ base: '/admin/', errorPages: { '': errorModule() } }));
+    const response = await server.fetch(navigate('/admin/_fudic/error/500', { referer: 'http://app.test/admin/fallos?x=1' }));
+    expect(response!.status).toBe(500);
+    expect(await response!.text()).toContain('"status":500,"title":"Internal Server Error","path":"/fallos","back":"/admin/fallos?x=1","home":"/admin/"');
+  });
+
+  it('a Referer of another app gives no back, and a 404 has home too', async () => {
+    const server = createServer(testApp({ base: '/admin/', errorPages: { '': errorModule() } }));
+    const text = await (await server.notFound(navigate('/admin/no-existe', { referer: 'http://app.test/otra/' })))!.text();
+    expect(text).toContain('"path":"/no-existe","home":"/admin/"');
+    expect(text).not.toContain('"back"');
   });
 });
 

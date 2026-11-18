@@ -54,6 +54,7 @@
     "@fudic/diagnostics": "workspace:*",
     "@fudic/history": "workspace:*",
     "@fudic/language-server": "workspace:*",
+    "@fudic/resolve": "workspace:*",
     "@fudic/spec": "workspace:*",
     "@fudic/typecheck": "workspace:*",
     "@modelcontextprotocol/ext-apps": "1.7.5",

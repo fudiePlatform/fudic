@@ -23,6 +23,8 @@ export interface ClientContext<A = unknown> extends BaseContext<A> {
   readonly side: 'client';
   /** The statuses the function keeps for its caller (`catches`); empty when it declares none. */
   readonly catches: readonly number[];
+  /** The `base` of the app that makes the call: `/admin/`, or `/` (SDD-87 §3.5). */
+  readonly base: string;
 }
 
 export interface ServerContext<A = unknown> extends BaseContext<A> {

@@ -13,11 +13,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { dirname, join, relative, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath, sep } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import { createUrlResolver, LINKER_NEEDS, wantsNonce } from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
-import { discoverRoutes, type RouteBuild } from './discover.js';
+import { discoverRoutes, type DiscoverResult, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
@@ -174,9 +174,13 @@ import {
   FUD0801,
   FUD0803,
   FUD0852,
+  FUD1570,
   type FileDiagnostic,
   type FudDiagnostic,
 } from '@fudic/diagnostics';
+
+/** The code of two error pages in the chain, read off its function: no code is written by hand. */
+const AMBIGUOUS_ERROR_PAGE = FUD1570({ file: '', libraries: [] }).code;
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   documentFiles,
@@ -466,7 +470,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * `@(x | p)`.
    */
   const apiModule = (id: string, side: 'server' | 'browser', locale?: string): string | undefined => {
-    const text = api.module(id, side, compileFor(locale));
+    const i18n = compileFor(locale);
+    const text = api.module(id, side, { base, ...(i18n !== undefined ? { i18n } : {}) });
     if (text === undefined || side === 'server' || nothingToImplement(api.source(id)!)) return text;
     return `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
@@ -1087,7 +1092,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Route discovery is cheap and dev adds/removes files: re-read on each request so a new
         // `.fud` is routable without restarting the server.
         routes: () => {
-          ({ routes: builds, errorPages } = discover());
+          const discovered = discover();
+          ({ routes: builds, errorPages } = discovered);
+          // Two libraries offering an error page and none of the app's (SDD-87 §3.8): in the
+          // overlay, for as long as it lasts — the next request after it is fixed shows nothing.
+          const ambiguous = discovered.diagnostics.find((d) => d.code === AMBIGUOUS_ERROR_PAGE);
+          if (ambiguous !== undefined) toOverlay(server, new Error(reportText(ambiguous, root)));
           devBuilds.clear();
           return builds
             .filter((rb) => rb.decision.mode !== 'excluded')
@@ -1243,6 +1253,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
         });
       }
+      // The shared runtime belongs to the ORIGIN (SDD-45 §4.2): its URLs are `/_fudic/<version>/…`,
+      // whatever the app's `base`. A host fuses every app's `_fudic/` at its root; preview serves
+      // one app, so under a `base` it answers them from this build's own copy (SDD-87).
+      if ((server.config?.base ?? '/') !== '/') server.middlewares.use(originRuntime(outDir));
       server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.
@@ -1340,6 +1354,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const discovered = discover();
       builds = discovered.routes;
       errorPages = discovered.errorPages;
+      // A page nobody named in the app is said somewhere (SDD-87 §3.9): the build, and dev's start.
+      const fromLibrary = errorPageLine(discovered, root);
+      if (fromLibrary !== undefined) logger?.info(fromLibrary);
       // With the severity each one has in a build: an error said as a warning is a build that
       // lies (SDD-35 §1.2). And what parsing the routes said, which used to be dropped (§1.1):
       // the typecheck already said it, so the reporter stays quiet about it.
@@ -2682,6 +2699,34 @@ export function missingShellEntries(
     missing.push(entry);
   }
   return missing;
+}
+
+/**
+ * Preview's answer to `/_fudic/<version>/<package>/<piece>.js` at the origin's root, from
+ * `<outDir>/_fudic/`: the runtime a based app asks for where a host would have fused it. Only a
+ * piece's URL, and only a file that is there; anything else goes on.
+ */
+export function originRuntime(outDir: string) {
+  const root = resolvePath(outDir, RUNTIME_DIR);
+  return (req: IncomingMessage, res: ServerResponse, next: () => void): void => {
+    const pathname = (req.url ?? '').split('?')[0]!;
+    if (!pathname.startsWith(`/${RUNTIME_DIR}/`) || !pathname.endsWith('.js')) return next();
+    const file = resolvePath(root, `.${decodeURIComponent(pathname.slice(RUNTIME_DIR.length + 1))}`);
+    // Never a file outside `_fudic/`: a `..` in the URL stays a 404, not a read of the disk.
+    if (!file.startsWith(`${root}${sep}`) || !existsSync(file)) return next();
+    res.setHeader('content-type', 'text/javascript; charset=utf-8');
+    res.end(readFileSync(file));
+  };
+}
+
+/**
+ * The line that says the error page comes from a library (SDD-87 §3.9):
+ * `fudic: error page from @acme/ui (../../libs/ui/src/_error.fud)`, the file relative to the
+ * app. `undefined` with the app's own page or with none.
+ */
+export function errorPageLine(discovered: Pick<DiscoverResult, 'errorPage' | 'errorPageFrom'>, root: string): string | undefined {
+  if (discovered.errorPageFrom === undefined || discovered.errorPage === undefined) return undefined;
+  return `fudic: error page from ${discovered.errorPageFrom} (${slash(relative(root, discovered.errorPage.absPath))})`;
 }
 
 /**

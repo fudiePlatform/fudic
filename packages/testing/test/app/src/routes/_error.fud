@@ -8,3 +8,4 @@
 @if (data.detail !== undefined) {
   <p>@data.detail</p>
 }
+<a href=@data.home>Inicio</a>

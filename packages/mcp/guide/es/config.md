@@ -80,7 +80,7 @@ como su plantilla, que es lo que escribe `fudic new`.
 
 | Fichero | Va en |
 |---|---|
-| `page.headers` | Cada página y cada `_error`, las pinte el servidor o el Service Worker. Su `103` lleva solo la CSP y la `Referrer-Policy`. |
+| `page.headers` | Cada página y cada `_error` (también el de una librería), las pinte el servidor o el Service Worker. Su `103` lleva solo la CSP y la `Referrer-Policy`. |
 | `sw.headers` | `/fudic-sw.js`. Solo con `sw.json`. |
 | `assets.headers` | Los estáticos de la app, por ruta. |
 

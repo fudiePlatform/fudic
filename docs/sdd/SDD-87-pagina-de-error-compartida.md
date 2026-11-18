@@ -1,6 +1,6 @@
 # SDD-87 — Una página de error compartida entre apps, y el `base` en el navegador
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-87-Task.md).
+> **Estado:** `Hecho` (2026-11-18) — [tareas](./SDD-87-Task.md).
 > **Paquetes:** `@fudic/resolve` · `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/server` ·
 > `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` · `@fudic/typecheck` ·
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
@@ -272,7 +272,7 @@ tienen `src/_error.fud`. `fudic g lib` no cambia: una librería no pinta errores
   | Caso | `errorPage` |
   |---|---|
   | La propia | `{ "from": "own", "file": "src/routes/_error.fud" }` |
-  | De una librería | `{ "from": "@acme/ui", "file": "libs/ui/src/_error.fud" }` |
+  | De una librería | `{ "from": "@acme/ui", "file": "../../libs/ui/src/_error.fud" }` |
   | Dos librerías | `{ "from": "ambiguous", "libraries": ["@acme/ui", "@acme/marketing"] }` |
   | Ninguna | `{ "from": "none" }` |
 
@@ -349,7 +349,7 @@ suyo. Las mismas reglas de `FUD1010`: no tiene `load`, ni `paths`, ni funciones.
 
 - El `data` de `src/_error.fud` de una librería ya está tipado (por el nombre). Se fija con un test.
 - Un `src/_error.fudapi` al lado, en una librería, es el `.fudapi` de una página de error:
-  `FUD1010` si declara `load`, `paths` o funciones, igual que en una app. Para eso, el contexto de un
+  `FUD1010` si declara `load` o funciones, y `FUD1091` si declara `paths`, igual que en una app. Para eso, el contexto de un
   `.fudapi` (`apiContextOf` en `@fudic/typecheck` y su gemelo en `@fudic/language-server`) reconoce
   también `src/_error.fud` de una librería, con `route: { params: [], error: true }`.
 
@@ -544,4 +544,14 @@ solo fichero (§8.1, decisión 4).
 
 ### 8.2. Tomadas al implementar
 
-—
+1. **La línea del build nombra el fichero relativo a la app** (`../../libs/ui/src/_error.fud`), no al
+   workspace: el plugin no sabe dónde está la raíz del workspace, y relativo a la app es un camino
+   que se puede abrir desde donde corre el build.
+2. **Dev no añade nada al watcher.** El descubrimiento ya se repite en cada petición, así que el
+   `_error.fud` de una librería, creado o borrado, se nota en la siguiente sin vigilar su carpeta.
+   `FUD1570` va al overlay en cada petición mientras dure.
+3. **`paths` en el `.fudapi` de una página de error es `FUD1091`, no `FUD1010`**, en una app como en
+   una librería: es lo que ya daba antes de esta SDD (§4.3 corregido).
+4. **La regla remota de `admin` va en su propio fichero** (`src/rules/nombres.fudapi`): una regla no
+   cabe en un `.fudapi` de contratos (`FUD1078`). Las funciones van en `src/server/fallos.ts`, como
+   en cualquier app.

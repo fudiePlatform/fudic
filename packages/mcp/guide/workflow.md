@@ -11,6 +11,9 @@ write, check and fix loop.
 - **No project yet** (`phase: "none"`): ask the user only what is missing for `fudic_new` (what
   the app or library is for, its pages or components, its name and tag prefix), then call
   `fudic_new`.
+- **A workspace whose apps share their error page**: create it in the library, with
+  `fudic_generate { kind: "error-page", project: "<library>" }`, before the second app. Every app
+  created after it depends on that library and paints its errors with it (topic pages).
 - **Never move on with errors.** While the project has an error, the next step is to fix it.
 - **Before writing a kind of file for the first time**, call `fudic_guide` for its topic. `next`
   reminds you when you have not read it in this session.

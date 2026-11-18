@@ -1,0 +1,9 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Entrar — Administración</title>
+</head>
+
+@* Adonde lleva `error-pages` con `routes 403 /entrar` en `src/http.fudapi`: dentro de /admin/. *@
+<h1 data-app="tienda-admin" data-page="entrar">Entrar</h1>
+<p>Esta parte de la administración pide entrar.</p>

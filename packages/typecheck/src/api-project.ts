@@ -110,6 +110,10 @@ export function apiContextOf(root: string, source: ApiSource): ApiContext {
   const base = posix(root);
   const routes = `${base}/${ROUTES_DIR}/`;
   const page = `${source.path.slice(0, -API_EXTENSION.length)}.fud`;
+  // The error page a library offers (SDD-87 §4.3): `src/_error.fud`, an error page like an app's.
+  if (source.origin === 'app' && page === `${base}/${SRC_DIR}/${ERROR_FILE}` && configOf(base)['kind'] === 'lib' && existsSync(page)) {
+    return { route: { params: [], error: true } };
+  }
   if (source.origin !== 'app' || !source.path.startsWith(routes) || !existsSync(page)) return {};
   const segments = page.slice(routes.length, -'.fud'.length).split('/');
   const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);

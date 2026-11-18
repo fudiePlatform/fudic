@@ -16,6 +16,7 @@
  */
 
 import { ERROR_PREFIX } from '@fudic/conventions';
+import { join } from './client/url.js';
 import { HttpError, Redirect, ValidationError } from './errors.js';
 import type { ClientStep } from './types.js';
 
@@ -40,8 +41,16 @@ function navigate(url: string): Promise<never> {
  * carries anyone can write in a link, and a `?detail=` painted someone else's sentence with the
  * app's design. Where the user came from travels as the `Referer` the browser sends.
  */
-function errorUrl(error: unknown): string {
-  return `${ERROR_PREFIX}/${error instanceof HttpError ? error.status : 500}`;
+function errorUrl(base: string, error: unknown): string {
+  return join(base, `${ERROR_PREFIX}/${error instanceof HttpError ? error.status : 500}`);
+}
+
+/**
+ * Where a route of `routes` takes the user (SDD-87 §3.5): one that starts with `/` is a route of
+ * this app, under its `base`; a whole URL (`https://login.example.com/`) goes as it is.
+ */
+function routeUrl(base: string, route: string): string {
+  return route.startsWith('/') ? join(base, route) : route;
 }
 
 /** The client half of `error-pages`, for its routes. */
@@ -56,8 +65,8 @@ export function errorPagesStep(routes: ErrorRoutes = {}): ClientStep {
       if (e instanceof ValidationError) throw e;
       if (e instanceof Redirect) return navigate(e.location);
       const route = e instanceof HttpError ? routes[e.status] : undefined;
-      if (route !== undefined) return navigate(route);
-      return navigate(errorUrl(e));
+      if (route !== undefined) return navigate(routeUrl(ctx.base, route));
+      return navigate(errorUrl(ctx.base, e));
     }
   };
 }

@@ -23,15 +23,16 @@ export type RuleSend = (url: URL, init: RequestInit & { readonly headers: Header
 /**
  * The sender of the rule `name`, walking the client halves of `chain`. `chain` is read at the
  * first question, not here: a build may evaluate the module of the rules before the one of
- * `$global`, whose binding is then still empty.
+ * `$global`, whose binding is then still empty. `base` is the app's, for the steps' `ctx`
+ * only: the URL of the question comes already made (SDD-87 §3.5).
  */
-export function ruleSend(name: string, chain: () => readonly Level[]): RuleSend {
+export function ruleSend(name: string, chain: () => readonly Level[], base = '/'): RuleSend {
   return async (url, init) => {
     // The client halves are registered by the browser root, which loads them with dynamic
     // imports: a question asked before that would find them empty.
     await settled();
     const { steps } = compose(chain(), 'client');
-    const ctx: ClientContext = { side: 'client', method: 'POST', name, url, headers: new Headers(init.headers), args: undefined, signal: init.signal, catches: [] };
+    const ctx: ClientContext = { side: 'client', method: 'POST', name, url, headers: new Headers(init.headers), args: undefined, signal: init.signal, catches: [], base };
     return (await run(steps as never, ctx, (c: ClientContext) =>
       fetch(c.url, { ...init, headers: c.headers, signal: c.signal }),
     )) as Response;

@@ -87,6 +87,11 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     sample: { lang: 'en', title: 'Home', code: indent(serverLink('./index.fudapi'), '    ') },
   },
   {
+    file: '_error.fud',
+    role: 'page-document',
+    sample: { lang: 'es' },
+  },
+  {
     file: 'layout.fud',
     role: 'layout-document',
     sample: { lang: 'en', renderHead: '    @RenderHead()', sections: renderSectionBlocks(['nav']) },

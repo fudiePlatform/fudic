@@ -26,7 +26,7 @@ export { layoutPropsType, linkedComponents } from './layout-props.js';
 export { PRIMITIVES } from './types-check.js';
 export { dataShape, framesShape, type DataShape, type DataTy, type FramesShape } from './data-shape.js';
 export { emitDeclarations } from './emit/declarations.js';
-export { emitModule, type Side } from './emit/module.js';
+export { emitModule, type EmitModuleOptions, type Side } from './emit/module.js';
 export { extractApiMessages, type ApiLocale, type ApiMessage } from './messages.js';
 /** The name a declaration of a `.fudapi` is exported by from `fudic:<id>`: `email-taken` → `emailTaken`. */
 export { camel as exportedName } from './emit/shared.js';

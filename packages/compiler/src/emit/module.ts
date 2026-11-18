@@ -18,6 +18,7 @@
  * `page(data, io)` returns the whole HTML string; `io` injects the SSR adapter.
  */
 
+import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import {
   allComponents,
   entryComponent,
@@ -828,6 +829,9 @@ function buildPageModule(
   w.line(`yield '<!DOCTYPE html><html${htmlLang(options.i18n)}><head>' + head + '</head>';`);
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
+  // The `<body>`'s own attributes, as a layout writes them: a page with no layout owns its
+  // shell, and `<body data-theme="@theme">` was dropped whole — built from its tag name alone.
+  writeElementAttrs(source, page.body, '$body', w, linker, NO_SIGNALS);
   if (parted) {
     // In parts (SDD-70 §3.5): the route claims the `<body>` and the parts start before a node
     // is built; each `@await` cuts one, and the last goes out with the rest of the body.

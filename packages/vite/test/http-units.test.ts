@@ -109,9 +109,9 @@ describe('the error page', () => {
   describe('backOf: the way back is the Referer of this origin, resolved (SDD-73 §3.6, criteria 12–13)', () => {
     const ORIGIN = 'https://app.com';
 
-    it('a page of this app: its path and its query, without the base', () => {
+    it('a page of this app: its path and its query, with the base, ready for an href (SDD-87)', () => {
       expect(backOf('https://app.com/usuarios?p=2', ORIGIN, '/')).toBe('/usuarios?p=2');
-      expect(backOf('https://app.com/admin/usuarios', ORIGIN, '/admin/')).toBe('/usuarios');
+      expect(backOf('https://app.com/admin/usuarios', ORIGIN, '/admin/')).toBe('/admin/usuarios');
     });
 
     it('none without a Referer, from another origin, outside the base, or not a URL', () => {
@@ -137,20 +137,22 @@ describe('the error page', () => {
       expect(pageOriginOf(request('https://app.com/usuarios/99', 'https://app.com/usuarios'), '/', false)).toEqual({
         path: '/usuarios/99',
         back: '/usuarios',
+        home: '/',
       });
-      expect(pageOriginOf(request('https://app.com/admin/test'), '/admin/', false)).toEqual({ path: '/test' });
+      expect(pageOriginOf(request('https://app.com/admin/test'), '/admin/', false)).toEqual({ path: '/test', home: '/admin/' });
     });
 
     it('a call that failed: the page that made it is the path and the way back', () => {
       expect(pageOriginOf(request('https://app.com/_fudic/error/401', 'https://app.com/usuarios?p=2'), '/', true)).toEqual({
         path: '/usuarios',
         back: '/usuarios?p=2',
+        home: '/',
       });
-      expect(pageOriginOf(request('https://app.com/_fudic/error/401'), '/', true)).toEqual({ path: '/_fudic/error/401' });
+      expect(pageOriginOf(request('https://app.com/_fudic/error/401'), '/', true)).toEqual({ path: '/_fudic/error/401', home: '/' });
     });
 
     it('a path outside the base stays as it was asked', () => {
-      expect(pageOriginOf(request('https://app.com/fuera'), '/admin/', false)).toEqual({ path: '/fuera' });
+      expect(pageOriginOf(request('https://app.com/fuera'), '/admin/', false)).toEqual({ path: '/fuera', home: '/admin/' });
     });
   });
 
@@ -162,7 +164,7 @@ describe('the error page', () => {
   });
 
   it('renderErrorPage without _error.fud is the minimal page', async () => {
-    expect(await renderErrorPage(null, { status: 410, title: 'Gone' }, 'n', { path: '/x' })).toBe(
+    expect(await renderErrorPage(null, { status: 410, title: 'Gone' }, 'n', { path: '/x', home: '/' })).toBe(
       minimalErrorPage({ status: 410, title: 'Gone' }),
     );
   });
@@ -180,10 +182,10 @@ describe('the error page', () => {
         });
       },
     };
-    const origin = { path: '/usuarios/99', back: '/usuarios' };
+    const origin = { path: '/usuarios/99', back: '/usuarios', home: '/' };
     const html = await renderErrorPage(mod as never, { status: 404, title: 'Not Found', detail: 'x' }, 'nonce1', origin);
     expect(html).toBe('<h1>404</h1>');
-    expect(seen!['data']).toEqual({ status: 404, title: 'Not Found', detail: 'x', path: '/usuarios/99', back: '/usuarios' });
+    expect(seen!['data']).toEqual({ status: 404, title: 'Not Found', detail: 'x', path: '/usuarios/99', back: '/usuarios', home: '/' });
     expect(seen!['nonce']).toBe('nonce1');
     expect(JSON.stringify(seen)).toContain('/_fudic/error/404');
   });

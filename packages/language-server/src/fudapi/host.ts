@@ -250,6 +250,10 @@ export class ApiHost {
   #context(project: string, path: string): ApiContext {
     const routes = `${project}/${ROUTES_DIR}/`;
     const page = `${path.slice(0, -API_EXTENSION.length)}.fud`;
+    // The error page a library offers (SDD-87 §4.3): `src/_error.fud`, an error page like an app's.
+    if (page === `${project}/${SRC_DIR}/${ERROR_FILE}` && this.#config(project)['kind'] === 'lib' && this.read(page) !== undefined) {
+      return { route: { params: [], error: true } };
+    }
     const text = path.startsWith(routes) ? this.read(page) : undefined;
     if (text === undefined) return {};
     const segments = page.slice(routes.length, -'.fud'.length).split('/');

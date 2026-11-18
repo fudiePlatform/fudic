@@ -255,3 +255,45 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
     });
   });
 });
+
+/** SDD-87 §3.5, criteria 6–8: an app under a `base` stays in it. */
+describe.each(IMPLEMENTATIONS)('%s, under a base', (_name, stepOf) => {
+  const admin = { ...clientCtx(), base: '/admin/' };
+  const failWith = (e: unknown, routes?: ErrorRoutes, over: object = {}) =>
+    run(stepOf(routes), { ...admin, ...over }, () => { throw e; });
+
+  it('a 500 goes to /admin/_fudic/error/500', async () => {
+    expect(await pending(failWith(new Error('boom')))).toBe(true);
+    expect(assign).toHaveBeenCalledWith('/admin/_fudic/error/500');
+  });
+
+  it('with base /, to /_fudic/error/500, as before', async () => {
+    expect(await pending(run(stepOf(), clientCtx(), () => { throw new Error('boom'); }))).toBe(true);
+    expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
+  });
+
+  it('a route that starts with / is of the app: 403 /entrar goes to /admin/entrar', async () => {
+    expect(await pending(failWith(forbidden(), { 403: '/entrar' }))).toBe(true);
+    expect(assign).toHaveBeenCalledWith('/admin/entrar');
+  });
+
+  it('a whole URL goes as it is', async () => {
+    expect(await pending(failWith(unauthorized(), { 401: 'https://login.ejemplo.com/' }))).toBe(true);
+    expect(assign).toHaveBeenCalledWith('https://login.ejemplo.com/');
+  });
+
+  it('a Redirect goes to its location untouched', async () => {
+    expect(await pending(failWith(redirect('/login')))).toBe(true);
+    expect(assign).toHaveBeenCalledWith('/login');
+  });
+
+  it('a 422, a status in catches and a cancelled call still do not navigate', async () => {
+    const invalid = new ValidationError({ status: 422, title: 'Unprocessable Content' });
+    await expect(failWith(invalid)).rejects.toBe(invalid);
+    const kept = conflict();
+    await expect(failWith(kept, {}, { catches: [409] })).rejects.toBe(kept);
+    const aborted = new DOMException('aborted', 'AbortError');
+    await expect(failWith(aborted)).rejects.toBe(aborted);
+    expect(assign).not.toHaveBeenCalled();
+  });
+});

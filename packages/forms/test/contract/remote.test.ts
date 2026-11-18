@@ -439,3 +439,23 @@ describe('without `ask`', () => {
     expect(s.asked).toHaveLength(0);
   });
 });
+
+describe('under a base (SDD-87 §3.5, criterion 5)', () => {
+  it('a rule with base /admin/ asks /admin/_fudic/rule/<id>/<name>', async () => {
+    const s = server();
+    const { type } = aliasForm({ base: '/admin/' });
+    const done = type('admin');
+    await wait(300);
+    expect(await done).toBe(false);
+    expect(s.asked[0]!.url).toBe('https://app.test/admin/_fudic/rule/rules/people/alias-taken');
+  });
+
+  it('with base /, the URL of today', async () => {
+    const s = server();
+    const { type } = aliasForm({ base: '/' });
+    const done = type('admin');
+    await wait(300);
+    await done;
+    expect(s.asked[0]!.url).toBe('https://app.test/_fudic/rule/rules/people/alias-taken');
+  });
+});

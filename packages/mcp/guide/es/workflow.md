@@ -11,6 +11,9 @@ bucle de escribir, comprobar y corregir.
 - **Todavía no hay proyecto** (`phase: "none"`): pregunta al usuario solo lo que falta para
   `fudic_new` (para qué es la app o la librería, sus páginas o componentes, su nombre y su prefijo
   de tag) y luego llama a `fudic_new`.
+- **Un workspace cuyas apps comparten la página de error**: créala en la librería, con
+  `fudic_generate { kind: "error-page", project: "<librería>" }`, antes de la segunda app. Toda app
+  creada después depende de esa librería y pinta sus errores con ella (tema pages).
 - **Nunca avances con errores.** Mientras el proyecto tenga un error, el siguiente paso es corregirlo.
 - **Antes de escribir un tipo de fichero por primera vez**, llama a `fudic_guide` con su tema. `next`
   te lo recuerda cuando no lo has leído en esta sesión.

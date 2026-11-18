@@ -29,6 +29,7 @@
 
 import { CONFIG_FILE } from '@fudic/config';
 import { COMPONENTS_DIR } from '@fudic/conventions';
+import { LIBRARY_ERROR_FILE } from '@fudic/resolve';
 import { scaffoldChanges, testingFiles, tsconfigFor, type ScaffoldFile } from './scaffold.js';
 import { absolute, dirname, joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
@@ -145,8 +146,15 @@ export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): reado
   ];
 }
 
-/** `uses` and every style guide of the workspace — a project whose `fudic.json` has `guide`. */
-export function withGuides(uses: readonly string[], projects: readonly Project[]): readonly string[] {
-  const guides = projects.filter((project) => project.config.guide !== undefined).map((project) => project.name);
-  return [...uses, ...guides.filter((guide) => !uses.includes(guide))];
+/**
+ * `uses` and every style guide of the workspace — a project whose `fudic.json` has `guide`.
+ * With `io`, a new app's: every library that offers an error page (`src/_error.fud`) too, so
+ * the app paints its errors as the others do without anybody remembering (SDD-87 §3.6). A
+ * library does not paint errors, so `g lib` passes none.
+ */
+export function withGuides(uses: readonly string[], projects: readonly Project[], io?: ReadIo): readonly string[] {
+  const shared = projects
+    .filter((project) => project.config.guide !== undefined || (io !== undefined && project.config.kind === 'lib' && io.exists(joinPosix(project.path, LIBRARY_ERROR_FILE))))
+    .map((project) => project.name);
+  return [...uses, ...shared.filter((name) => !uses.includes(name))];
 }

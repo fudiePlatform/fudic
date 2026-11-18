@@ -24,6 +24,7 @@ export type Topic =
   | 'generate snippet'
   | 'generate api'
   | 'generate showcase'
+  | 'generate error-page'
   | 'add'
   | 'dev'
   | 'preview'
@@ -100,6 +101,7 @@ libs/guide, and the app and the libraries you name.`,
       ['term', 'a step you can use in .fudspec criteria   (t)'],
       ['api', 'the server of a route or a component: its .fudapi, its handler and its link'],
       ['showcase', 'a page per component that shows each case of its fixture'],
+      ['error-page', "the error page: an app's own, or the one a library offers its apps"],
     ],
     options: [],
     examples: ['fudic g component button --project ui', 'fudic g page about'],
@@ -323,6 +325,15 @@ src/routes/showcase. Run it again whenever a fixture changes: it rewrites its ow
     args: [['<library>', 'in a workspace, the library to show: "ui"']],
     options: [['--app <name>', 'the app that shows it   (default: showcase)'], DRY_RUN],
     examples: ['fudic g showcase ui', 'fudic g showcase'],
+  },
+  'generate error-page': {
+    usage: 'fudic generate error-page',
+    about: `Writes the error page of the project, one whole document. In an app it is
+src/routes/_error.fud; in a library, src/_error.fud: every app that depends on the
+library and has no _error.fud of its own paints its errors with it.`,
+    args: [],
+    options: [IN_PROJECT, DRY_RUN, FORCE],
+    examples: ['fudic g error-page --project ui', 'fudic g error-page'],
   },
   'generate term': {
     usage: 'fudic generate term <kind> <name>',

@@ -22,9 +22,9 @@ import {
   dataShape,
   framesShape,
   emitModule,
+  type EmitModuleOptions,
   formFields,
   type ApiContext,
-  type ApiLocale,
   type ApiSource,
   type Decl,
   type LoadDecl,
@@ -105,12 +105,13 @@ export class ApiProject {
 
   /**
    * The module `fudic:<id>`, or `undefined` when there is no such file. With `i18n`, the one of
-   * its locale: the texts of the `.fudapi` translated (SDD-74 §4.5).
+   * its locale: the texts of the `.fudapi` translated (SDD-74 §4.5). With `base`, the app's: the
+   * browser module writes it in each call and remote rule when it is not `/` (SDD-87 §3.5).
    */
-  module(id: string, side: Side, i18n?: ApiLocale): string | undefined {
+  module(id: string, side: Side, options: EmitModuleOptions = {}): string | undefined {
     const state = this.#read();
     const source = state.byId.get(id);
-    return source === undefined ? undefined : emitModule(source, state.index, this.context(source), side, i18n);
+    return source === undefined ? undefined : emitModule(source, state.index, this.context(source), side, options);
   }
 
   /** What the parser and the validator say about every file of the app, by file. */

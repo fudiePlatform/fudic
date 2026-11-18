@@ -8,5 +8,5 @@
   "include": ["src", "test"],
   // The handlers of the test apps import `fudic:<id>`, typed by the `.fudic/api` the plugin writes
   // when the tests start (SDD-60 §3.11): this `tsc`, which runs before them, has no such types.
-  "exclude": ["test/*/src/server", "test/*/src/browser"]
+  "exclude": ["test/*/src/server", "test/*/src/browser", "test/lib-workspace/apps/*/src/server"]
 }

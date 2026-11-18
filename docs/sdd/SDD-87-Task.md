@@ -6,7 +6,7 @@
 > `@fudic/language-server` · `@fudic/diagnostics` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/basic`
 > **Rama:** `sdd-87-pagina-de-error`, desde `main`.
-> **Progreso:** 0 / 24 — `Listo`.
+> **Progreso:** 24 / 24 — `Hecho`.
 
 **El orden manda en tres puntos.**
 
@@ -21,7 +21,7 @@
 
 ## Fase 1 — El `base` en el navegador
 
-- [ ] **1. `ClientContext.base` y `stub`.**
+- [x] **1. `ClientContext.base` y `stub`.**
   - `base` en `ClientContext` (SDD §3.5). `stub` lo rellena con `spec.base ?? '/'`. Test: una llamada
     con `spec.base = '/admin/'` va a `/admin/_fudic/fn/…`, pide el token a `/admin/_fudic/csrf` y sus
     pasos ven `ctx.base === '/admin/'` (criterio 4).
@@ -30,24 +30,24 @@
   - *Paquete:* `http`.
   - *Ficheros:* `src/types.ts`, `src/contract/fn.ts`, `test/helpers.ts`, `test/built-ins.ts`,
     `test/body/upload.test.ts`, `test/contract/fn-base.test.ts`.
-- [ ] **2. `ruleSend` con `base`.**
+- [x] **2. `ruleSend` con `base`.**
   - Tercer parámetro opcional `base`, por defecto `/`, que va al `ClientContext` (SDD §3.5).
   - *Depende de:* 1.
   - *Paquete:* `http`.
   - *Ficheros:* `src/contract/rule-send.ts`, su test.
-- [ ] **3. `errorPagesStep` con el `base`.**
+- [x] **3. `errorPagesStep` con el `base`.**
   - Sin ruta, `join(ctx.base, '/_fudic/error/<status>')`; ruta con `/`, `join(ctx.base, ruta)`; ruta
     sin `/`, tal cual; `Redirect`, 422, `catches` y cancelada, como hoy (criterios 6, 7, 8).
   - *Depende de:* 1.
   - *Paquete:* `http`.
   - *Ficheros:* `src/error-pages.ts`, `test/error-pages.test.ts`.
-- [ ] **4. El golden sin `base`.**
+- [x] **4. El golden sin `base`.**
   - Un snapshot del módulo de navegador de un `.fudapi` con funciones y una regla remota, emitido
     **antes** de tocar `emitModule`. No cambia en la tarea 5.
   - *Depende de:* —.
   - *Paquete:* `api`.
   - *Ficheros:* `test/emit/base.test.ts`.
-- [ ] **5. `emitModule` con `base`.**
+- [x] **5. `emitModule` con `base`.**
   - `EmitModuleOptions { i18n?, base? }` en lugar del quinto parámetro (SDD §3.5). En `browser` y con
     `base` distinto de `/`: `base: "/admin/"` en cada `stub`, en cada regla remota y en cada
     `ruleSend`. Los llamadores, al día (criterio 3).
@@ -55,19 +55,19 @@
   - *Paquete:* `api`, `vite`.
   - *Ficheros:* `packages/api/src/emit/module.ts`, `packages/api/test/emit/base.test.ts`,
     `packages/vite/src/api-modules.ts`.
-- [ ] **6. Las reglas remotas con `base`.**
+- [x] **6. Las reglas remotas con `base`.**
   - `Question.base`, desde la regla emitida como `sig`; `askRemote` compone
     `join(base ?? '/', '/_fudic/rule/<id>/<name>')` (criterio 5).
   - *Depende de:* 5.
   - *Paquete:* `forms`.
   - *Ficheros:* `src/contract/remote.ts`, `test/contract/remote.test.ts`.
-- [ ] **7. El plugin pasa el `base`.**
+- [x] **7. El plugin pasa el `base`.**
   - `api-modules.ts` recibe el `base` que resolvió Vite y lo pasa a `emitModule`, en build y en dev.
     Test: un build con `base: '/admin/'` tiene `base:"/admin/"` en el chunk de navegador del `.fudapi`.
   - *Depende de:* 5.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/api-modules.ts`, `src/plugin.ts`, `test/api-base.test.ts`.
-- [ ] **8. `home` y `back` con el `base`.**
+- [x] **8. `home` y `back` con el `base`.**
   - `ErrorPage.home` y el comentario nuevo de `back` (`http`); `PageOrigin.home`, `pageOriginOf` y
     `backOf` (`server`); `visit` pasa `home` (`testing`); `ERROR_DATA` del editor (`language-core`)
     (SDD §3.4, §4.4, criterios 9, 10, 11).
@@ -79,37 +79,37 @@
 
 ## Fase 2 — Qué página usa una app
 
-- [ ] **9. `errorPageOf`.**
+- [x] **9. `errorPageOf`.**
   - `ErrorPageSource`, `errorPageOf` y `LIBRARY_ERROR_FILE` (SDD §3.3, §4.1). Los seis casos del
     criterio 12, con un `PackageFs` en memoria. Exportado desde `index.ts`. Al 100 %.
   - *Depende de:* —.
   - *Paquete:* `resolve`.
   - *Ficheros:* `src/error-page.ts`, `src/index.ts`, `test/error-page.test.ts`.
-- [ ] **10. `FUD1570`.**
+- [x] **10. `FUD1570`.**
   - Un fichero, su `.md` en inglés y su línea en `index.ts` (SDD §3.8).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/codes/FUD1570.ts` · `.md`, `src/index.ts`.
-- [ ] **11. `discoverRoutes` con la cadena.**
+- [x] **11. `discoverRoutes` con la cadena.**
   - Parámetro `packages?: PackageFs`; la página sale de `errorPageOf`; `errorPageFrom`; `FUD1570` con
     `ambiguous` (SDD §3.10, criterio 13). Con idiomas, una por idioma (criterio 14).
   - *Depende de:* 9, 10.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/discover.ts`, `test/discover-error-page.test.ts`.
-- [ ] **12. El plugin dice de dónde sale.**
+- [x] **12. El plugin dice de dónde sale.**
   - La línea `fudic: error page from <paquete> (<fichero>)` en build y al arrancar dev; `FUD1570` en
     el build y en el overlay (SDD §3.8, §3.9, criterio 16). Dev: crear el fichero de la librería se
     nota en la siguiente petición (criterio 15); si Vite no vigila esa carpeta, se añade al watcher.
   - *Depende de:* 11.
   - *Paquete:* `vite`.
   - *Ficheros:* `src/plugin.ts`, `test/error-page-library.test.ts`.
-- [ ] **13. `@fudic/testing` con la página de una librería.**
+- [x] **13. `@fudic/testing` con la página de una librería.**
   - `project.ts` pasa por `discoverRoutes`, así que ya la ve: un test con una app sin `_error.fud` y
     una librería con uno, cuyo `visit` de un `load` que lanza pinta la de la librería.
   - *Depende de:* 11, 8.
   - *Paquete:* `testing`.
   - *Ficheros:* `test/error-page-library.test.ts`, su fixture.
-- [ ] **14. El editor y el typecheck.**
+- [x] **14. El editor y el typecheck.**
   - `apiContextOf` (`typecheck`) y `#context` (`language-server`) reconocen `src/_error.fud` de una
     librería como página de error (SDD §4.3). Tests: `FUD1010` con un `load` en `src/_error.fudapi` de
     una librería, en los dos (criterio 18); el tipo de `data` en `src/_error.fud` de una librería
@@ -121,20 +121,20 @@
 
 ## Fase 3 — El CLI
 
-- [ ] **15. `fudic g error-page`.**
+- [x] **15. `fudic g error-page`.**
   - `args.ts` (`error-page`, con `--project` y `--force`), `run.ts`, `plans/error-page.ts`, la
-    plantilla `error-page.fud` y la ayuda (SDD §3.6). En una librería no pasa por `routeRefusal`. El
+    plantilla `_error.fud` y la ayuda (SDD §3.6). En una librería no pasa por `routeRefusal`. El
     informe, con `errorPageOf` (criterios 19, 21, 22).
   - *Depende de:* 9.
   - *Paquete:* `cli`.
   - *Ficheros:* `src/args.ts`, `src/run.ts`, `src/types.ts`, `src/plans/error-page.ts`,
-    `templates/error-page.fud`, `src/help/commands.ts`, `test/error-page.test.ts`.
-- [ ] **16. La plantilla, renderizada.**
+    `templates/_error.fud`, `src/help/commands.ts`, `test/error-page.test.ts`.
+- [x] **16. La plantilla, renderizada.**
   - La plantilla generada compila sin diagnósticos y pinta `home` o `back` según el criterio 20.
   - *Depende de:* 8, 15.
   - *Paquete:* `cli`.
   - *Ficheros:* `test/error-page-render.test.ts`.
-- [ ] **17. `g app` añade las librerías con página de error.**
+- [x] **17. `g app` añade las librerías con página de error.**
   - `withGuides` pasa a añadir también las librerías con `src/_error.fud` (con el `io` para mirarlo);
     solo en `g app`, no en `g lib` (criterio 23).
   - *Depende de:* 9.
@@ -143,18 +143,18 @@
 
 ## Fase 4 — El MCP
 
-- [ ] **18. `fudic_generate` con `error-page`.**
+- [x] **18. `fudic_generate` con `error-page`.**
   - `GENERATE_KINDS` y la descripción de la herramienta (criterio 24).
   - *Depende de:* 15.
   - *Paquete:* `mcp`.
   - *Ficheros:* `src/project-tools.ts`, su test.
-- [ ] **19. `fudic_status` con `errorPage`.**
+- [x] **19. `fudic_status` con `errorPage`.**
   - La dependencia `@fudic/resolve`; `projectOf` añade `errorPage` desde `errorPageOf`, con los
     ficheros relativos a la raíz (SDD §3.7). Los cuatro casos, en app y en librería (criterio 25).
   - *Depende de:* 9.
   - *Paquete:* `mcp`.
   - *Ficheros:* `package.json`, `src/status.ts`, `test/status.test.ts`.
-- [ ] **20. La guía.**
+- [x] **20. La guía.**
   - `pages.md`, `config.md` y `workflow.md`, en inglés y en español (SDD §3.7). El ejemplo de librería
     con `path=src/_error.fud`. `guide-examples.test.ts` en verde (criterio 26).
   - *Depende de:* 8, 15, 19.
@@ -164,12 +164,12 @@
 
 ## Fase 5 — Los ejemplos y el cierre
 
-- [ ] **21. `examples/basic`.**
+- [x] **21. `examples/basic`.**
   - `_error.fud` con `href=@data.home`; sus tests y e2e siguen en verde.
   - *Depende de:* 8.
   - *Paquete:* `examples/basic`.
   - *Ficheros:* `src/routes/_error.fud`.
-- [ ] **22. `examples/workspace`: la librería y las dos apps.**
+- [x] **22. `examples/workspace`: la librería y las dos apps.**
   - `libs/ui/src/_error.fud`; en `admin`, `src/http.fudapi`, la ruta `/fallos` con su `.fudapi` (la
     función que responde, la del 500, la del 403 y el formulario con la regla remota) y `/entrar`; en
     `tienda`, su `src/routes/_error.fud` (SDD §4.5).
@@ -179,14 +179,14 @@
     `apps/admin/src/routes/fallos.fud`, `apps/admin/src/routes/fallos.fudapi`,
     `apps/admin/src/routes/fallos.ts`, `apps/admin/src/routes/entrar.fud`,
     `apps/tienda/src/routes/_error.fud`, `apps/admin/package.json` (si hace falta `@fudic/http`).
-- [ ] **23. Los e2e de errores.**
+- [x] **23. Los e2e de errores.**
   - Dos `webServer` con `vite preview` (admin y tienda, cada una en su puerto) y
     `tests/errores.spec.ts` con el criterio 1. Una prueba del MCP con el criterio 2: `fudic_status`
     en `apps/admin` y en `apps/tienda`.
   - *Depende de:* 19, 22.
   - *Paquete:* `examples/workspace`, `mcp`.
   - *Ficheros:* `playwright.config.ts`, `tests/errores.spec.ts`, `packages/mcp/test/status-workspace.test.ts`.
-- [ ] **24. Cierre.**
+- [x] **24. Cierre.**
   - IDEA-08 §6 y §7 apuntan a esta SDD; `INDEX.md` con el estado y el registro.
   - `pnpm typecheck`, `pnpm build`, la cobertura de SDD §5, y los e2e de `examples/workspace` y
     `examples/basic` en verde (criterio 27).
