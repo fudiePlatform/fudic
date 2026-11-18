@@ -236,6 +236,18 @@ function load(path: string, given: ResolveIo): LoadedFud {
   };
 }
 
+/**
+ * `load`, or `undefined` when the file cannot be read: the io is the host's, and its read throws.
+ * What a broken link says is `FUD0460`, which the link check reports over the `href`.
+ */
+function tryLoad(path: string, io: ResolveIo): LoadedFud | undefined {
+  try {
+    return load(path, io);
+  } catch {
+    return undefined;
+  }
+}
+
 const lowered = new WeakMap<ResolveIo, ResolveIo>();
 
 /**
@@ -417,12 +429,8 @@ function visitComponent(path: string, at: Span, walk: Walk): void {
   {
     // A link to a file that cannot be read is `FUD0460`, which the link check reports over the
     // `href`; the graph simply lacks that component. The io is the host's, and its read throws.
-    let loaded: LoadedFud;
-    try {
-      loaded = load(path, walk.io);
-    } catch {
-      return;
-    }
+    const loaded = tryLoad(path, walk.io);
+    if (loaded === undefined) return;
     const doc = loaded.doc;
     const source = loaded.source;
     for (const file of loaded.snippetFiles) walk.snippetFiles.add(file);
@@ -525,19 +533,24 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   if (entry.type === 'route-document' && entry.layoutHref !== '') {
     const path = io.resolve(entryPath, entry.layoutHref);
     const at = entry.layoutLink.span;
-    const parent = load(path, io);
-    const source = parent.source;
-    const doc = parent.doc;
-    for (const file of parent.snippetFiles) walk.snippetFiles.add(file);
-    if (doc.type === 'layout-document' && !isHollow(doc)) {
-      const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
-      layouts.push({ path, source, doc, deps });
-      // A layout may render snippets of its own, and theirs join the document's graph.
-      visitDragged(parent.dragged, walk);
-    } else {
-      // A shell with no hole at all is `FUD1580` in its own file (SDD-88); from the route that
-      // links it, it was MEANT to be a layout, so name the missing directive rather than the role.
-      diagnostics.push(doc.type === 'layout-document' ? FUD0423({ span: at, path }) : FUD0435({ span: at, path }));
+    // A layout that cannot be read is `FUD0460`, which the link check reports over the `href`,
+    // as for a component: the graph simply has no layout, and the host gets a diagnostic rather
+    // than the exception its io threw. Every page is a route now (SDD-88), so a renamed or
+    // deleted layout is the likeliest broken link there is.
+    const parent = tryLoad(path, io);
+    if (parent !== undefined) {
+      const doc = parent.doc;
+      for (const file of parent.snippetFiles) walk.snippetFiles.add(file);
+      if (doc.type === 'layout-document' && !isHollow(doc)) {
+        const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
+        layouts.push({ path, source: parent.source, doc, deps });
+        // A layout may render snippets of its own, and theirs join the document's graph.
+        visitDragged(parent.dragged, walk);
+      } else {
+        // A shell with no hole at all is `FUD1580` in its own file (SDD-88); from the route that
+        // links it, it was MEANT to be a layout, so name the missing directive rather than the role.
+        diagnostics.push(doc.type === 'layout-document' ? FUD0423({ span: at, path }) : FUD0435({ span: at, path }));
+      }
     }
   }
 
