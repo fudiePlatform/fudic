@@ -659,6 +659,12 @@
     "tag": "app-pieza",
     "hydrates": true
   },
+  "examples/vista-errores/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "examples/vista-errores/vista-errores.fud": {
     "kind": "route",
     "reactive": true,
@@ -671,12 +677,6 @@
     "kind": "component",
     "tag": "admin-panel",
     "hydrates": false
-  },
-  "examples/workspace/apps/admin/src/layouts/_layout.fud": {
-    "kind": "route",
-    "reactive": false,
-    "hydration": "gesture",
-    "hydrates": []
   },
   "examples/workspace/apps/admin/src/routes/entrar.fud": {
     "kind": "route",
@@ -742,6 +742,12 @@
     "tag": "ui-card",
     "hydrates": false
   },
+  "examples/workspace/libs/ui/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "packages/cli/templates/_error.fud": {
     "kind": "route",
     "reactive": false,
@@ -754,13 +760,13 @@
     "hydration": "gesture",
     "hydrates": []
   },
-  "packages/cli/templates/page.fud": {
+  "packages/cli/templates/route.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
     "hydrates": []
   },
-  "packages/cli/templates/route.fud": {
+  "packages/compiler/fixtures/_layout.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
@@ -813,6 +819,12 @@
     ]
   },
   "packages/compiler/test/fixtures/_layout-admin.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/compiler/test/fixtures/_layout-monolithic.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
@@ -901,6 +913,12 @@
     "kind": "component",
     "tag": "app-x",
     "hydrates": false
+  },
+  "packages/formatter/fixtures/canonical/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
   },
   "packages/formatter/fixtures/canonical/app-badge.fud": {
     "kind": "component",
@@ -1473,6 +1491,12 @@
     "hydrates": []
   },
   "packages/testing/test/lib-workspace/libs/ui/src/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/lib-workspace/libs/ui/src/layouts/_layout.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
