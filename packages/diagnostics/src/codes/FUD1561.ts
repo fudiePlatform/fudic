@@ -6,10 +6,10 @@ export interface FUD1561Params extends SourceInput {
   /** `beforeCreate` or `afterCreate`. */
   readonly hook: string;
   /** The file that is never created in the browser. */
-  readonly role: 'route' | 'page' | 'layout';
+  readonly role: 'route' | 'layout';
 }
 
-/** A create hook in a route, a page or a layout, which always come from the server (SDD-86). */
+/** A create hook in a route or a layout, which always come from the server (SDD-86). */
 export const FUD1561 = (p: FUD1561Params): SourceDiagnostic =>
   source(
     'FUD1561',

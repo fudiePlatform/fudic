@@ -2,7 +2,7 @@
  * SDD-86 §3.2, §3.3, criteria 18–20 — where a lifecycle hook may be written.
  *
  *   `FUD1560`  a hook anywhere but as a statement of its own at the top level of `@code`.
- *   `FUD1561`  `beforeCreate` / `afterCreate` in a route, a page or a layout.
+ *   `FUD1561`  `beforeCreate` / `afterCreate` in a route or a layout.
  *   `FUD1562`  a declaration or an import named like a hook.
  */
 
@@ -20,9 +20,6 @@ const component = (code: string, view = '<p>x</p>'): string =>
 
 const route = (code: string, view = '<p>x</p>'): string =>
   `<link rel="layout" href="./_layout.fud">\n@code {\n${code}\n}\n${view}\n`;
-
-const page = (code: string): string =>
-  `<!DOCTYPE html>\n<html>\n<head>\n@code {\n${code}\n}\n<title>t</title>\n</head>\n<body><p>x</p></body>\n</html>\n`;
 
 const layout = (code: string): string =>
   `<!DOCTYPE html>\n<html>\n<head>\n@code {\n${code}\n}\n@RenderHead()\n</head>\n<body>\n<main>@RenderBody()</main>\n</body>\n</html>\n`;
@@ -65,9 +62,9 @@ describe('valid — a statement at the top level of @code (§3.2)', () => {
     expect(said(component(code))).toEqual([]);
   });
 
-  it('the five that are not create hooks, in a route, a page and a layout', () => {
+  it('the five that are not create hooks, in a route and a layout', () => {
     const code = NOT_CREATE.map((h) => `${h}(() => {});`).join('\n');
-    for (const source of [route(code), page(code), layout(code)]) expect(said(source)).toEqual([]);
+    for (const source of [route(code), layout(code)]) expect(said(source)).toEqual([]);
   });
 
   it('a hook whose argument is a named function, not an inline one', () => {
@@ -164,9 +161,9 @@ describe('FUD1560 — outside the top level (criterion 18)', () => {
 
 describe('FUD1561 — a create hook where nothing is created (criterion 19)', () => {
   for (const hook of ['beforeCreate', 'afterCreate']) {
-    it(`${hook} in a route, a page and a layout, on the call`, () => {
+    it(`${hook} in a route and a layout, on the call`, () => {
       const code = `${hook}(() => {});`;
-      for (const source of [route(code), page(code), layout(code)]) {
+      for (const source of [route(code), layout(code)]) {
         expect(said(source)).toEqual([`FUD1561 ${hook}(() => {})`]);
       }
     });
@@ -178,10 +175,8 @@ describe('FUD1561 — a create hook where nothing is created (criterion 19)', ()
 
   it('the message names the file it is in', () => {
     const routeMsg = viewDiagnostics(route('afterCreate(() => {});')).find((d) => d.code === 'FUD1561')!;
-    const pageMsg = viewDiagnostics(page('afterCreate(() => {});')).find((d) => d.code === 'FUD1561')!;
     const layoutMsg = viewDiagnostics(layout('beforeCreate(() => {});')).find((d) => d.code === 'FUD1561')!;
     expect(routeMsg.message).toContain('in a route');
-    expect(pageMsg.message).toContain('in a page');
     expect(layoutMsg.message).toContain('in a layout');
   });
 });

@@ -24,7 +24,7 @@ export const HOOK_KINDS = [
 
 export type HookKind = (typeof HOOK_KINDS)[number];
 
-/** The hooks of a component created in the browser: a route, a page or a layout never is. */
+/** The hooks of a component created in the browser: a route or a layout never is. */
 export const CREATE_HOOKS: ReadonlySet<HookKind> = new Set<HookKind>(['beforeCreate', 'afterCreate']);
 
 const HOOKS: ReadonlySet<string> = new Set(HOOK_KINDS);

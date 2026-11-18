@@ -221,8 +221,6 @@ describe('snippetsAt — inside @code', () => {
   const componentCode = '@code {\n  |\n}\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n';
   const routeCode = '<link rel="layout" href="./_layout.fud">\n@code {\n  |\n}\n<article>hi</article>\n';
   const layoutCode = LAYOUT_HEAD.replace('    |\n', '    @code {\n      |\n    }\n');
-
-  const pageCode = PAGE_HEAD.replace('    |\n', '    @code {\n      |\n    }\n');
   /** SDD-86 §4.7: the seven lifecycle hooks; the two create hooks only in a component. */
   const ALL_HOOKS = ['beforeHydrate', 'afterHydrate', 'beforeCreate', 'afterCreate', 'onConnect', 'onDisconnect', 'onDispose'];
   const HYDRATE_HOOKS = ALL_HOOKS.filter((h) => !h.endsWith('Create'));
@@ -245,12 +243,8 @@ describe('snippetsAt — inside @code', () => {
     expect([...hooksAt(layoutCode)].sort()).toEqual([...HYDRATE_HOOKS].sort());
   });
 
-  it('a page’s @code offers the same five hooks (criterion 22)', () => {
-    expect([...hooksAt(pageCode)].sort()).toEqual([...HYDRATE_HOOKS].sort());
-  });
-
-  it('no hook outside @code: in the template, at top level or in a page body', () => {
-    for (const where of [HOST, HOST_TOP, ROUTE_TOP, LAYOUT_HEAD, PAGE_HEAD, PAGE_BODY]) {
+  it('no hook outside @code: in the template, at top level or in a layout’s head', () => {
+    for (const where of [HOST, HOST_TOP, ROUTE_TOP, LAYOUT_HEAD]) {
       expect(hooksAt(where)).toEqual([]);
     }
   });

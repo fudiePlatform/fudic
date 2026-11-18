@@ -366,7 +366,7 @@ save.handle((ctx) => {
 
 ## Lifecycle of a route
 
-A route, a page and a layout use the hooks of a component (topic `components`, Lifecycle) at the top level of their `@code`, with `host` being the `<body>`. Not `beforeCreate` / `afterCreate`: they always come from the server (`FUD1561`). A layout's hooks, and the imports they read, run in the route's JavaScript, before the route's own. Their moments are the document's:
+A route and its layout use the hooks of a component (topic `components`, Lifecycle) at the top level of their `@code`, with `host` being the `<body>`. Not `beforeCreate` / `afterCreate`: they always come from the server (`FUD1561`). A layout's hooks, and the imports they read, run in the route's JavaScript, before the route's own. Their moments are the document's:
 
 | Hook | When |
 |---|---|

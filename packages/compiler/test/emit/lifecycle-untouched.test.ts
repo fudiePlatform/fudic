@@ -2,7 +2,8 @@
  * SDD-86 task 10, criterion 15 — a file that uses no lifecycle hook emits, byte for byte, what
  * it emitted before SDD-86.
  *
- * Locked BEFORE the emit learned the hooks: every fixture without hooks, components, the page,
+ * Locked BEFORE the emit learned the hooks: every fixture without hooks, components, the fixture
+ * route (a page until SDD-88, which made every page a route),
  * a route with its layout (server and client halves), and a route whose `@code` has a client
  * half — every emitter the hooks touch (`module`, `markup`, `layout`, `client`, `route-client`).
  * The component goldens are the ones `golden.test.ts` already owns; the route ones live under
@@ -18,7 +19,6 @@ import {
   resolveComponents,
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
   emitLayoutModule,
   emitRouteModule,
   emitRouteClientModule,
@@ -46,8 +46,10 @@ describe('components without hooks (criterion 15)', () => {
     });
   }
 
-  it('the page module unchanged', async () => {
-    await expect(emitPageModule(page)).toMatchFileSnapshot(golden('home.mjs'));
+  it('the fixture route and its layout unchanged (a route since SDD-88)', async () => {
+    const home = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
+    await expect(emitRouteModule(home)).toMatchFileSnapshot(golden('home.mjs'));
+    await expect(emitLayoutModule(home, home.layouts[0]!)).toMatchFileSnapshot(golden('home.layout.mjs'));
   });
 });
 

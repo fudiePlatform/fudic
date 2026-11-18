@@ -26,7 +26,7 @@ describe('SDD-86 §3.3 — titles and severity', () => {
   it('all three are errors and keep the span they are given', () => {
     for (const d of [
       FUD1560({ span: S, hook: 'afterHydrate' }),
-      FUD1561({ span: S, hook: 'afterCreate', role: 'page' }),
+      FUD1561({ span: S, hook: 'afterCreate', role: 'layout' }),
       FUD1562({ span: S, name: 'onConnect' }),
     ]) {
       expect(d.severity).toBe('error');
@@ -43,8 +43,8 @@ describe('SDD-86 §3.3 — the message names what the author wrote', () => {
   });
 
   it('FUD1561 names the hook, the file and the hydrate hook to use instead', () => {
-    const { message } = FUD1561({ span: S, hook: 'beforeCreate', role: 'page' });
-    expect(message).toContain('beforeCreate never runs in a page');
+    const { message } = FUD1561({ span: S, hook: 'beforeCreate', role: 'route' });
+    expect(message).toContain('beforeCreate never runs in a route');
     expect(message).toContain('use beforeHydrate');
   });
 

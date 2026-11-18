@@ -367,7 +367,7 @@ save.handle((ctx) => {
 
 ## Ciclo de vida de una ruta
 
-Una ruta, una página y un layout usan los hooks de un componente (tema `components`, Ciclo de vida) en el nivel superior de su `@code`, con `host` como el `<body>`. Menos `beforeCreate` / `afterCreate`: siempre vienen del servidor (`FUD1561`). Los hooks de un layout, y los imports que leen, se ejecutan en el JavaScript de la ruta, antes que los de la propia ruta. Sus momentos son los del documento:
+Una ruta y su layout usan los hooks de un componente (tema `components`, Ciclo de vida) en el nivel superior de su `@code`, con `host` como el `<body>`. Menos `beforeCreate` / `afterCreate`: siempre vienen del servidor (`FUD1561`). Los hooks de un layout, y los imports que leen, se ejecutan en el JavaScript de la ruta, antes que los de la propia ruta. Sus momentos son los del documento:
 
 | Hook | Cuándo |
 |---|---|
