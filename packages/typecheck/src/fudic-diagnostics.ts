@@ -26,6 +26,7 @@ import {
   type SemanticInput,
 } from '@fudic/compiler';
 import { ERROR_FILE } from '@fudic/conventions';
+import { FUD1581 } from '@fudic/diagnostics';
 import { posix } from 'node:path';
 import { holeDiagnostics } from './holes.js';
 import { parseFud } from './parse.js';
@@ -157,6 +158,7 @@ export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex, basel
     ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),
     ...fileInputs(document),
+    ...errorPageDiagnostics(document, index),
   ];
 }
 
@@ -168,4 +170,17 @@ function fileInputs(document: ProjectedFud): readonly Diagnostic[] {
   const forms = (document.registry.servers()).flatMap((s) => (s.fields === undefined ? [] : [s.fields]));
   if (forms.length === 0) return [];
   return fileInputDiagnostics(document.source, document.document, (tag) => document.registry.component(tag) !== undefined, forms);
+}
+
+/**
+ * `FUD1581` (SDD-88 §3.5): the error page of its project that links no layout. Only a file that
+ * is neither a route nor a layout: a doctype has said `FUD1580` already, one fact one voice. Over
+ * its first line, where the `<link rel="layout">` belongs.
+ */
+function errorPageDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
+  const type = document.document.type;
+  if (type === 'route-document' || type === 'layout-document') return [];
+  if (index.errorPage?.(document.path) !== true) return [];
+  const end = document.source.indexOf('\n');
+  return [FUD1581({ span: { start: 0, end: end === -1 ? document.source.length : end } })];
 }

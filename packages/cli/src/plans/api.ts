@@ -45,7 +45,6 @@ export function planApi(written: string, opts: TargetedOptions, io: ReadIo = nod
       role = 'component';
       break;
     case 'route-document':
-    case 'page-document':
       role = 'route';
       break;
     default:

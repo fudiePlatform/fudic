@@ -251,8 +251,11 @@ export class ApiHost {
     const routes = `${project}/${ROUTES_DIR}/`;
     const page = `${path.slice(0, -API_EXTENSION.length)}.fud`;
     // The error page a library offers (SDD-87 §4.3): `src/_error.fud`, an error page like an app's.
-    if (page === `${project}/${SRC_DIR}/${ERROR_FILE}` && this.#config(project)['kind'] === 'lib' && this.read(page) !== undefined) {
-      return { route: { params: [], error: true } };
+    // It links a layout of the library like any page (SDD-88), and its `layout` returns that layout's props.
+    const errorText = page === `${project}/${SRC_DIR}/${ERROR_FILE}` && this.#config(project)['kind'] === 'lib' ? this.read(page) : undefined;
+    if (errorText !== undefined) {
+      const layoutProps = layoutPropsType(page, errorText, `${project}/${API_TYPES_DIR}/${idOf(project, path)}.d.ts`);
+      return { route: { params: [], error: true, ...(layoutProps !== undefined ? { layoutProps } : {}) } };
     }
     const text = path.startsWith(routes) ? this.read(page) : undefined;
     if (text === undefined) return {};

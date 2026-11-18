@@ -111,8 +111,10 @@ export function apiContextOf(root: string, source: ApiSource): ApiContext {
   const routes = `${base}/${ROUTES_DIR}/`;
   const page = `${source.path.slice(0, -API_EXTENSION.length)}.fud`;
   // The error page a library offers (SDD-87 §4.3): `src/_error.fud`, an error page like an app's.
+  // It links a layout of the library like any page (SDD-88), and its `layout` returns that layout's props.
   if (source.origin === 'app' && page === `${base}/${SRC_DIR}/${ERROR_FILE}` && configOf(base)['kind'] === 'lib' && existsSync(page)) {
-    return { route: { params: [], error: true } };
+    const layoutProps = layoutPropsType(page, readFileSync(page, 'utf8'), `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
+    return { route: { params: [], error: true, ...(layoutProps !== undefined ? { layoutProps } : {}) } };
   }
   if (source.origin !== 'app' || !source.path.startsWith(routes) || !existsSync(page)) return {};
   const segments = page.slice(routes.length, -'.fud'.length).split('/');

@@ -51,7 +51,7 @@ export function scopeAt(document: CachedDocument, offset: number): SnippetScope 
  * Where a construct is allowed to sit, for the ones that cannot sit anywhere.
  *
  * A `@code` block and a `@section` are top-level nodes of their document (decisions 53, 83
- * and `FUD0155`/`FUD0153`/"@section must be a top-level node of the route"), and in a page or
+ * and `FUD0155`/`FUD0153`/"@section must be a top-level node of the route"), and in
  * a layout `@code` lives inside `<head>` (decision 59/60). Offering them in the middle of the
  * body would scaffold a file that is red the moment it lands, which is worse than not
  * offering them at all.
@@ -145,7 +145,7 @@ function placedAt(document: CachedDocument, offset: number, placement: SnippetPl
 }
 
 /** The roles whose markup is a template with a client half: every one but the layout. */
-const MARKUP_ROLES: readonly FudRole[] = ['component', 'route', 'page'];
+const MARKUP_ROLES: readonly FudRole[] = ['component', 'route'];
 
 /** The roles that branch and loop in their markup: the layout's body too, since SDD-48. */
 const CONTROL_ROLES: readonly FudRole[] = [...MARKUP_ROLES, 'layout'];
@@ -225,21 +225,6 @@ const ROUTE_SKELETON = `<link rel="layout" href="\${1:../layouts/_layout.fud}">
 <h1>\${2:Untitled}</h1>
 `;
 
-const PAGE_SKELETON = `<!DOCTYPE html>
-<html lang="\${1:en}">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="module" src="fudic:runtime"></script>
-    <title>\${2:Home}</title>
-
-  </head>
-  <body>
-    <h1>\${2:Home}</h1>
-  </body>
-</html>
-`;
-
 const LAYOUT_SKELETON = `<!DOCTYPE html>
 <html lang="\${1:en}">
   <head>
@@ -259,8 +244,8 @@ const LAYOUT_SKELETON = `<!DOCTYPE html>
 
 // ── The `@code` block, by role ────────────────────────────────────────────────
 //
-// Three bodies for one label, over disjoint roles. A component wants its props; a route and a
-// page, an empty block — what feeds them is the `load` of their `.fudapi` (SDD-60 §3.4); a
+// Three bodies for one label, over disjoint roles. A component wants its props; a route, an
+// empty block — what feeds it is the `load` of its `.fudapi` (SDD-60 §3.4); a
 // LAYOUT wants its props and nothing else — declaring them is all its `@code` may do
 // (`FUD0700`), and the route is who resolves them.
 
@@ -296,19 +281,15 @@ const LINK = (rel: string): string => `<link rel="${rel}" href="$0">`;
 
 /**
  * The link snippet of one `rel`, placed where each role keeps its links: top-level in a component
- * and a route, in the `<head>` of the roles in `inHead`.
+ * and a route, and in the `<head>` of a layout when `inLayout` — a layout links components and
+ * snippets, never a server (`FUD1112`).
  */
-function linkSnippets(
-  rel: 'component' | 'snippet' | 'server',
-  detail: string,
-  inHead: readonly FudRole[] = ['page', 'layout'],
-): readonly FudSnippet[] {
+function linkSnippets(rel: 'component' | 'snippet' | 'server', detail: string, inLayout: boolean): readonly FudSnippet[] {
   const label = `link-${rel}`;
   const body = LINK(rel);
-  return [
-    { label, detail, scope: 'markup', body, roles: ['component', 'route'], placement: 'top-level', suggest: true },
-    { label, detail, scope: 'markup', body, roles: inHead, placement: 'in-head', suggest: true },
-  ];
+  const topLevel: FudSnippet = { label, detail, scope: 'markup', body, roles: ['component', 'route'], placement: 'top-level', suggest: true };
+  if (!inLayout) return [topLevel];
+  return [topLevel, { label, detail, scope: 'markup', body, roles: ['layout'], placement: 'in-head', suggest: true }];
 }
 
 /** The catalogue, in the order it is offered. */
@@ -316,7 +297,6 @@ export const SNIPPETS: readonly FudSnippet[] = [
   // Skeletons: only ever in a file with nothing in it.
   { label: 'component', detail: 'fudic component', body: COMPONENT_SKELETON, scope: 'empty-document' },
   { label: 'route', detail: 'fudic route with a layout', body: ROUTE_SKELETON, scope: 'empty-document' },
-  { label: 'page', detail: 'fudic standalone page', body: PAGE_SKELETON, scope: 'empty-document' },
   { label: 'layout', detail: 'fudic layout', body: LAYOUT_SKELETON, scope: 'empty-document' },
 
   // Control flow: markup, never inside a `<head>` — see `outside-head` — and never in a
@@ -377,7 +357,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: CONTROL_ROLES,
     requiresLoopBefore: true,
   },
-  // `@await` (SDD-70): only where a page waits — the body of a route or a page — and only when
+  // `@await` (SDD-70): only where a page waits — the body of a route — and only when
   // its `.fudapi` has something that arrives later. Accepting it leaves `@await data.` with the
   // list of those fields open; the first byte leaves before them.
   {
@@ -385,7 +365,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'paint this part when a `later` field of load arrives',
     scope: 'markup',
     body: '@await data.$1 {\n  $0\n}',
-    roles: ['route', 'page'],
+    roles: ['route'],
     placement: 'outside-head',
     requiresLater: true,
     suggest: true,
@@ -395,7 +375,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'what the @await paints if its field fails',
     scope: 'markup',
     body: '@catch (${1:e}) {\n  $0\n}',
-    roles: ['route', 'page'],
+    roles: ['route'],
     requiresAwaitBefore: true,
   },
   {
@@ -408,7 +388,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
 
   // The `@code` block itself, while there is not one already, and only where one is legal:
-  // top-level in a component and in a route (decisions 53, 83), inside `<head>` in a page and
+  // top-level in a component and in a route (decisions 53, 83), inside `<head>`
   // in a layout (59).
   {
     label: '@code',
@@ -430,15 +410,6 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
   {
     label: '@code',
-    detail: 'the browser code of this page',
-    scope: 'markup',
-    body: CODE,
-    roles: ['page'],
-    requiresNoCodeBlock: true,
-    placement: 'in-head',
-  },
-  {
-    label: '@code',
     detail: 'the props this layout asks its routes for',
     scope: 'markup',
     body: LAYOUT_CODE,
@@ -448,13 +419,13 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
 
   // The four `<link>` fudic reads, each one ending inside its `href` with the list of what it
-  // can link already open. Top-level where a file's links live, in `<head>` in a page or a
+  // can link already open. Top-level where a file's links live, in `<head>` in a
   // layout (decision 59). `link-server` never in a layout: it has no server (`FUD1112`).
   // `link-layout` only where a layout can still be named: a route has its one already — it is
   // how the file became a route — and nothing else takes one.
-  ...linkSnippets('component', 'import a component'),
-  ...linkSnippets('snippet', 'import the snippets of a file'),
-  ...linkSnippets('server', 'the contract of its server, a .fudapi', ['page']),
+  ...linkSnippets('component', 'import a component', true),
+  ...linkSnippets('snippet', 'import the snippets of a file', true),
+  ...linkSnippets('server', 'the contract of its server, a .fudapi', false),
   {
     label: 'link-layout',
     detail: 'the layout this route renders inside',

@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 10 / 26 — `En curso`.
+> **Progreso:** 14 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -115,7 +115,7 @@
 
 ## Fase 4 — El editor, el typecheck y el `.fudapi`
 
-- [ ] **12. `language-core` y `language-server`.**
+- [x] **12. `language-core` y `language-server`.**
   - Fuera la rama de página de `emit-client.ts` y `data.ts`. Fuera el rol `page`, el snippet `page`
     y `PAGE_SKELETON`, y `page` en los roles de `snippets.ts` y en `href.ts`. Los tests de snippets,
     con `component`, `route` y `layout`. `FUD1580` en el editor (criterios 22, 23).
@@ -126,19 +126,19 @@
     `packages/language-server/src/services/href.ts`, `packages/language-server/src/services/template-scope.ts`,
     `packages/language-server/test/**/snippets*.test.ts`, `packages/language-server/test/mode.test.ts`,
     `packages/language-server/test/_support.ts`.
-- [ ] **13. `FUD1581` en el typecheck.**
+- [x] **13. `FUD1581` en el typecheck.**
   - En `fudicDiagnostics`, para el `_error.fud` de su proyecto (`<routesDir>/_error.fud` de una app,
     `src/_error.fud` de una librería) que no es una ruta ni tiene doctype (criterios 8, 9, 10).
   - *Depende de:* 1, 9.
   - *Paquete:* `typecheck`.
   - *Ficheros:* `src/fudic-diagnostics.ts`, su test.
-- [ ] **14. `layout` en `_error.fudapi`.**
+- [x] **14. `layout` en `_error.fudapi`.**
   - Su handler recibe `data: ErrorPage` en el `.d.ts` y en el editor, en una app y en una librería.
     `FUD0702` sin `_error.fudapi` (criterio 11). Si hoy no se tipa así, se arregla aquí.
   - *Depende de:* —.
   - *Paquete:* `api`, `typecheck`, `language-server`, `vite`.
   - *Ficheros:* `packages/api/src/emit/declarations.ts`, sus tests, un test de punta a punta en `vite`.
-- [ ] **15. `layoutPropsType` con un `href` de paquete.**
+- [x] **15. `layoutPropsType` con un `href` de paquete.**
   - Un `href` que no empieza por `.` ni por `/` da `import('<href>').$Props` (criterio 13).
   - *Depende de:* —.
   - *Paquete:* `api`.

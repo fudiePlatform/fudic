@@ -46,7 +46,7 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  *
  * Two sources, and they are the two the projection puts in scope. The `@code` holds the
  * `props<T>()` destructuring, the reactives and the handlers. And `data` is declared by the
- * projection itself — for a route or a page, never for a component, which receives props and
+ * projection itself — for a route, never for a component, which receives props and
  * has no route data to read (SDD-23 §4.2).
  *
  * A LAYOUT is the exception, and a narrow one: it reads its own props and no `data` (BUG-44).
