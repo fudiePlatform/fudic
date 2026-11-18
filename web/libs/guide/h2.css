@@ -1,0 +1,11 @@
+:where(h2) {
+  margin: var(--guide-space-6) 0 var(--guide-space-3);
+  font-size: var(--guide-text-2xl);
+  font-weight: var(--guide-weight-bold);
+  line-height: var(--guide-leading-tight);
+  letter-spacing: -0.01em;
+}
+
+@supports (text-wrap: balance) {
+  :where(h2) { text-wrap: balance; }
+}

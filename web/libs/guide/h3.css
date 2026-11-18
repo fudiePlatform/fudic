@@ -1,0 +1,10 @@
+:where(h3) {
+  margin: var(--guide-space-5) 0 var(--guide-space-2);
+  font-size: var(--guide-text-xl);
+  font-weight: var(--guide-weight-medium);
+  line-height: var(--guide-leading-tight);
+}
+
+@supports (text-wrap: balance) {
+  :where(h3) { text-wrap: balance; }
+}

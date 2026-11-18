@@ -1,0 +1,12 @@
+:where(fieldset) {
+  min-width: 0;
+  margin: 0 0 var(--guide-space-4);
+  padding: var(--guide-space-3) var(--guide-space-4) var(--guide-space-4);
+  border: 1px solid var(--guide-line);
+  border-radius: var(--guide-radius-md);
+}
+
+:where(legend) {
+  padding: 0 var(--guide-space-1);
+  font-weight: var(--guide-weight-medium);
+}

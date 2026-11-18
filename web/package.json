@@ -1,0 +1,15 @@
+{
+  "name": "web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "fudic dev",
+    "preview": "fudic preview"
+  },
+  "devDependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/mcp": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

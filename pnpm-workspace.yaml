@@ -12,6 +12,11 @@ packages:
   # The app `@fudic/testing` tests itself against: a project of its own, whose `package.json`
   # names the libraries whose `fudapi/` it reads (SDD-60 §3.10).
   - 'packages/testing/test/app'
+  # The public website, built with fudic and generated with its own CLI. It lives here, not
+  # on its own, so it always runs on the framework as it is in this repo.
+  - 'web'
+  - 'web/apps/*'
+  - 'web/libs/*'
 
 # Both arrive through `@vscode/vsce` and both are native. Neither is built, on purpose:
 # `keytar` stores Marketplace credentials and `vsce-sign` signs a release — the two things

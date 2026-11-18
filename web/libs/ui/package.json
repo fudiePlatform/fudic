@@ -1,0 +1,40 @@
+{
+  "name": "@web/ui",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "src",
+    "fudic.json"
+  ],
+  "exports": {
+    "./fudic.json": "./fudic.json",
+    "./*.fud": "./src/components/*/*.fud",
+    "./*.fixture": "./src/components/*/*.fixture.ts",
+    "./layouts/*.fud": "./src/layouts/*.fud",
+    "./snippets/*.fud": "./src/snippets/*.fud",
+    "./pipes/*": "./src/pipes/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
+  },
+  "peerDependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@fudic/workbench": "workspace:*",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  },
+  "dependencies": {
+    "@web/guide": "workspace:*"
+  }
+}

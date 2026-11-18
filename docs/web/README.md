@@ -137,42 +137,55 @@ Se hace junto con el capítulo 14, porque comparten contenido.
 
 ## 6. Dónde vive el código
 
-La web es **una app y una librería**, con el mismo patrón de `examples/workspace`: dos proyectos
-reales, cada uno con su `package.json`, que comparten código dependiendo uno del otro.
+La web es un **workspace de fudic** en `web/`, creado con la propia CLI. Todo lo que se le añade
+(páginas, componentes, layouts, librerías, módulos) se crea también con la CLI, nunca escribiendo
+los ficheros a mano: así la web prueba la CLI a la vez que el framework. Si algo no se puede crear
+con ella, es un hallazgo de la CLI (§6.1).
 
-### Propuesta
+```sh
+fudic new web --workspace --app site --uses ui --no-git --no-install
+```
 
 ```
 web/
-├── site/          # la app: páginas de Hero, Documentación, Tutorial y MCP
-│   ├── fudic.json   { "id": "fudic-site", "kind": "app", "prefix": "site", "site": "https://…", "locales": ["es"] }
-│   ├── package.json @fudic/web-site (privado)
-│   └── src/routes/… las páginas; nada compartido
-└── ui/            # la librería: todo lo compartido
-    ├── fudic.json   { "kind": "lib", "prefix": "fd", "globalStyles": {…}, "guide": { "sheet": "…", "icon": "…" } }
-    ├── package.json @fudic/web-ui (privado), exporta el .fud fuente, sin dist
-    └── src/
-        ├── components/  nav de docs, scroll spy, conmutador de tema, bloque de código…
-        ├── layouts/     _layout.fud de la web y el de la documentación
-        ├── _error.fud   la página de error
-        └── styles/      tokens (claro/oscuro), reset, tipografía
+├── package.json   dev y preview de todo el workspace
+├── apps/site/     la app: Hero, Documentación, Tutorial y MCP (prefijo site)
+└── libs/
+    ├── ui/        lo compartido: layouts, página de error, componentes, tokens (prefijo ui)
+    └── guide/     la guía de estilos, que la CLI crea siempre
 ```
 
 - **Por qué en `web/` y no en `examples/`:** no es un ejemplo, es un producto que se publica.
-  Igual que los ejemplos, consume los paquetes por su `dist`, así que si se rompe, el build lo
-  dice.
+- **Por qué dentro del workspace del monorepo:** como `examples/basic`, la web consume los
+  paquetes del repo (`workspace:*`), así que crece al mismo ritmo que el framework y
+  `pnpm build` / `pnpm test` la vigilan.
 - **Por qué una librería aparte:** el layout, la página de error, los estilos y los componentes
   compartidos quedan en un sitio. Si mañana la documentación del MCP, o un playground, es otra
   app, la reutiliza sin copiar nada.
-- **Workspace:** se añaden `web/*` a `pnpm-workspace.yaml`.
+- **Dominio:** `fudic.dev`.
 
-**Pendiente de que Pedro decida:** la carpeta (`web/`), los prefijos (`site`, `fd`) y el dominio
-de `site`.
+### 6.1 Lo que hubo que ajustar a mano al meterlo en el monorepo
+
+La CLI genera un workspace pensado para vivir solo. Para integrarlo en el del repo:
+
+- `web`, `web/apps/*` y `web/libs/*` se añaden al `pnpm-workspace.yaml` de la raíz, y se borra el
+  de `web/`, que pnpm no lee dentro de otro workspace.
+- Las dependencias `@fudic/*` pasan de `0.0.1` a `workspace:*`.
+- La raíz de `web/` se queda solo con `dev` y `preview`. Su `build` (`pnpm -r build`) relanzaría
+  el build de todo el monorepo, y `build`, `test` y `spec` duplicarían lo que ya hace el fan-out
+  de la raíz.
+
+Hallazgos de la CLI:
+
+- `fudic new` dentro de un repo git existente hace su propio `git init` y su commit, y deja un
+  repo incrustado. Se evitó con `--no-git`; debería detectarlo sola.
+- `fudic new --workspace` dentro de un workspace pnpm existente crea uno anidado en vez de
+  sumarse al de fuera.
 
 ## 7. Orden de trabajo
 
-1. Este documento, validado por Pedro.
-2. Decidir la ubicación de la app y la librería (§6).
+1. ~~Este documento, validado por Pedro.~~
+2. ~~Decidir la ubicación de la app y la librería (§6).~~
 3. Escribir los capítulos de la Documentación en Markdown, uno a uno, y validarlos (§5.1).
 4. Montar el esqueleto: app, librería, layouts, nav, scroll spy, temas y la Hero portada a `.fud`.
 5. Pasar a HTML los capítulos validados.
@@ -186,3 +199,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | Fecha | Qué |
 |---|---|
 | 2026-11-18 | Worktree `web-publica` creado. Boceto movido a `docs/web/hero.html`. Este documento. |
+| 2026-11-18 | Plan validado. Workspace `web/` creado con la CLI e integrado en el monorepo (§6). |

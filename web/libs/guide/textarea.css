@@ -1,0 +1,35 @@
+:where(textarea) {
+  display: block;
+  width: 100%;
+  min-height: 6em;
+  margin: 0;
+  padding: var(--guide-space-2) var(--guide-space-3);
+  font: inherit;
+  color: inherit;
+  background: var(--guide-surface);
+  border: 1px solid var(--guide-line);
+  border-radius: var(--guide-radius-md);
+}
+
+@supports (resize: vertical) {
+  :where(textarea) { resize: vertical; }
+}
+
+:where(textarea):focus-visible {
+  outline: var(--guide-focus-width) solid var(--guide-focus);
+  outline-offset: 1px;
+}
+
+:where(textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(textarea[aria-invalid="true"]) {
+  border-color: var(--guide-danger);
+}
+
+:where(textarea)::placeholder {
+  color: var(--guide-muted);
+  opacity: 1;
+}
