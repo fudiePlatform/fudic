@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
-import { resolveComponents, type ComponentGraph } from '../../src/emit/index.js';
-import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { resolveDocument, type DocumentGraph } from '../../src/emit/index.js';
+import { BARE_LAYOUT, drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 interface Payload {
   readonly offsets: readonly number[];
@@ -18,7 +18,7 @@ interface Payload {
 }
 
 /** Render a page and hand back its HTML together with the payload it collected. */
-async function render(graph: ComponentGraph, data: unknown): Promise<{ html: string; payload: Payload }> {
+async function render(graph: DocumentGraph, data: unknown): Promise<{ html: string; payload: Payload }> {
   const page = await pageModuleOf(graph);
   const { io, dom } = ssrIo();
   const html = await drain(page(data, io));
@@ -38,7 +38,7 @@ const HOME_DATA = {
 };
 
 describe('fud-state — the payload of the canonical page', () => {
-  const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+  const graph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
 
   it('offsets are contiguous and complete, and the id is the index (§6.1, §6.2)', async () => {
     const { html, payload } = await render(graph, HOME_DATA);
@@ -86,14 +86,13 @@ describe('fud-state — the state is complete, not the projection', () => {
   // slice is read off the destructured locals, not off what got painted — and that is
   // exactly why it needs a test: a property held by construction is one a refactor can
   // lose in silence.
-  const graph = resolveComponents(
+  const graph = resolveDocument(
     '/app/home.fud',
     memoryIo({
-      '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-contact.fud"></head>
-  <body><x-contact .name="Ada" .phone="555" .byPhone="@false"></x-contact></body>
-</html>
+      '/app/_layout.fud': BARE_LAYOUT,
+      '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-contact.fud">
+<x-contact .name="Ada" .phone="555" .byPhone="@false"></x-contact>
 `,
       '/app/x-contact.fud': `@code {
   import { signal } from '@fudic/core';
@@ -112,7 +111,7 @@ describe('fud-state — the state is complete, not the projection', () => {
 </x-contact>
 `,
     }),
-  );
+  ).value;
 
   it('a component that paints one of two fields still carries both', async () => {
     const { html, payload } = await render(graph, {});
@@ -124,7 +123,7 @@ describe('fud-state — the state is complete, not the projection', () => {
 });
 
 describe('fud-state — determinism (§6.6)', () => {
-  const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+  const graph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
 
   it('the same tree and the same data render byte for byte the same', async () => {
     const first = await render(graph, HOME_DATA);

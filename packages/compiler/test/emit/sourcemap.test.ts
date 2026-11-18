@@ -8,14 +8,14 @@
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import {
-  resolveComponents,
+  resolveDocument,
   emitComponentModuleMapped,
-  emitPageModuleMapped,
-  type ComponentGraph,
+  emitRouteModuleMapped,
+  type DocumentGraph,
 } from '../../src/emit/index.js';
 import { fixturesDir, fixtureIo } from './_support.js';
 
-const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+const graph: DocumentGraph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
 
 describe('emitComponentModuleMapped — precise anchors (app-card)', () => {
   const comp = graph.components.get('app-card')!;
@@ -42,10 +42,10 @@ describe('emitComponentModuleMapped — precise anchors (app-card)', () => {
   });
 });
 
-describe('emitPageModuleMapped — anchors survive the sub-writer splice', () => {
-  const { code, mappings } = emitPageModuleMapped(graph);
+describe('emitRouteModuleMapped — anchors survive the sub-writer splice', () => {
+  const { code, mappings } = emitRouteModuleMapped(graph);
 
-  it('anchors the @foreach header even though the body is spliced into the page writer', () => {
+  it('anchors the @foreach header even though the body is spliced into the route writer', () => {
     const gen = code.indexOf('for (const item of data.items) {') + 'for ('.length;
     const src = mappings.find((m) => m.generatedOffset === gen)?.sourceOffset;
     expect(src).toBeDefined();

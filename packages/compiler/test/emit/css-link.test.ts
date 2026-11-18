@@ -18,7 +18,6 @@ import {
   AssetLinker,
   emitComponentClientModuleMapped,
   emitLayoutModule,
-  emitPageModuleMapped,
   emitRouteModuleMapped,
   resolveComponents,
   resolveDocument,
@@ -28,7 +27,7 @@ import {
 import { planPageSheets } from '../../src/emit/page-sheets.js';
 import { sheetUrlsOf } from '../../src/emit/module.js';
 import type { ElementNode } from '../../src/html/index.js';
-import { memoryIo } from './_support.js';
+import { BARE_LAYOUT, memoryIo } from './_support.js';
 
 /** The HTML a head element expression evaluates to. */
 const html = (expr: string): string => new Function('$nonce', `return ${expr};`)(' nonce="N"') as string;
@@ -150,12 +149,13 @@ describe('the components wear their sheets as files (criteria 7, 9)', () => {
     expect(published.get('theme')).toBe(':host{color:blue}');
   });
 
-  it('a page without a layout, the same; its hints name each file once', () => {
+  it('a route under a layout with no sheet of its own, the same; its hints name each file once', () => {
     const page =
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./ui/x-card.fud"></head>' +
-      '<body><x-card></x-card><x-card></x-card></body></html>\n';
-    const g = resolveDocument('/app/p.fud', memoryIo({ '/app/p.fud': page, '/app/ui/x-card.fud': CARD })).value;
-    const out = emitPageModuleMapped(g, host().options);
+      '<link rel="layout" href="./_bare.fud">\n<link rel="component" href="./ui/x-card.fud">\n' +
+      '<x-card></x-card><x-card></x-card>\n';
+    const files = { '/app/p.fud': page, '/app/_bare.fud': BARE_LAYOUT, '/app/ui/x-card.fud': CARD };
+    const g = resolveDocument('/app/p.fud', memoryIo(files)).value;
+    const out = emitRouteModuleMapped(g, host().options);
     expect(out.code).not.toContain('STYLE_POLYFILL');
     expect(out.code).toContain(`'data-fud-sheets', "/assets/theme.css /assets/x-card.css"`);
     expect(out.hints!.map((h) => h.href)).toEqual(['/assets/theme.css', '/assets/x-card.css']);
@@ -171,7 +171,11 @@ describe('sheetUrlsOf: the files of one tag', () => {
       '<x-c>\n  <template shadowrootmode="open"><b class="a">c</b></template>\n</x-c>\n';
     const doc = resolveDocument(
       '/app/p.fud',
-      memoryIo({ '/app/p.fud': '<!DOCTYPE html>\n<html><head><link rel="component" href="./x-c.fud"></head><body><x-c></x-c></body></html>\n', '/app/x-c.fud': card }),
+      memoryIo({
+        '/app/p.fud': '<link rel="layout" href="./_bare.fud">\n<link rel="component" href="./x-c.fud">\n<x-c></x-c>\n',
+        '/app/_bare.fud': BARE_LAYOUT,
+        '/app/x-c.fud': card,
+      }),
     ).value;
     const { published, options } = host();
     sheetUrlsOf(doc, options, linker(options))!('x-c');

@@ -45,13 +45,12 @@ const ROUTE = [
 /** A sheet with something to compact and a `url(…)` to link, so both passes are visible. */
 const SHEET = ':root {\n  --gap:   1rem;\n}\nbody { background: url("./bg.png"); }';
 
-/** The `<head>` of a standalone page, resolved, so the reporter can be asked directly. */
+/** The `<head>` of a layout, resolved as the entry, so the reporter can be asked directly. */
 function headOf(head: string): ElementNode {
-  const page = `<!DOCTYPE html><html><head>\n${head}\n</head><body><p>x</p></body></html>`;
-  const io = memoryIo({ '/p.fud': page });
-  const entry = resolveDocument('/p.fud', io).value.entry;
-  // A standalone page owns its own head; a route's belongs to the layout it links, which is
-  // the arrangement the layout tests above cover.
+  const layout = `<!DOCTYPE html><html><head>\n${head}\n@RenderHead()</head><body>@RenderBody()</body></html>`;
+  const io = memoryIo({ '/l.fud': layout });
+  const entry = resolveDocument('/l.fud', io).value.entry;
+  // The document is a layout's, and so is its head: a route's head is injected into it.
   return (entry as { readonly head: ElementNode }).head;
 }
 

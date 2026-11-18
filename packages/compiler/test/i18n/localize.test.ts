@@ -316,11 +316,6 @@ describe('the document (§4.7, §4.8)', () => {
     expect(whole(LAYOUT.replace('<html>', '<html lang="x" dir="ltr">'), {}, ar)).toBe(LAYOUT.replace('<html>', '<html lang="x" dir="ltr">'));
   });
 
-  it('a page document too', () => {
-    const page = '<!DOCTYPE html>\n<html><head></head><body><p>x</p></body></html>\n';
-    expect(whole(page)).toContain('<html lang="en">');
-  });
-
   it('with one locale nothing of the document changes', () => {
     const one = i18nOf({}, 'es', ['es']);
     expect(whole(LAYOUT, {}, one)).toBe(LAYOUT);

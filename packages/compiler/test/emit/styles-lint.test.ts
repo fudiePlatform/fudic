@@ -8,10 +8,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   lintProjectStyle,
-  resolveComponents,
+  resolveDocument,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, LINK_LAYOUT, memoryIo, pageModuleOf, ssrIo, withLayout } from './_support.js';
 
 /** The codes of every rule the linter objects to, in source order. */
 const codes = (css: string): readonly string[] => lintProjectStyle(css).map((d) => d.code);
@@ -113,17 +113,15 @@ describe('SDD-42 §4.5 — the selectors a project sheet cannot use', () => {
 
 describe('SDD-42 §4.5 — an advice, not a pruning', () => {
   it('emits the offending rule into the document unchanged', async () => {
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./s-card.fud"><title>t</title></head>' +
-        '<body><s-card></s-card></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./s-card.fud">\n<head><title>t</title></head>\n<s-card></s-card>',
       '/s-card.fud':
         '<head><style>.card { padding: 8px; }</style></head>\n' +
         '<s-card><template shadowrootmode="open"><div class="card"><slot></slot></div></template></s-card>',
-    });
+    }));
     const theme: ProjectStyle = { specifier: '_theme', css: ':root { --gap: 8px; }' };
 
-    const page = await pageModuleOf(resolveComponents('/home.fud', io), {
+    const page = await pageModuleOf(resolveDocument('/home.fud', io).value, {
       projectStyles: [theme],
     });
     const html = await drain(page({}, ssrIo().io));

@@ -59,9 +59,9 @@ function find(nodes: readonly { type: string }[], name: string): ElementNode | u
   return undefined;
 }
 
-/** A page whose body is `body`, and the element named `name` in it. */
+/** A route whose markup is `body`, and the element named `name` in it. */
 const pageElement = (body: string, name: string): ElementNode =>
-  elementOf(`<!DOCTYPE html>\n<html><head></head><body>${body}</body></html>`, name);
+  elementOf(`<link rel="layout" href="./_layout.fud">\n${body}`, name);
 
 // ---------------------------------------------------------------------------
 
@@ -95,16 +95,6 @@ describe('documentSurface (criterion 10)', () => {
     expect(s.tags.has('h1')).toBe(false);
     expect(s.classes.has('title')).toBe(false);
     expect(s.tags.has('slot')).toBe(false);
-  });
-
-  it('a page without a layout', () => {
-    const page = documentSurface(
-      graphOf('/p.fud', {
-        '/p.fud': '<!DOCTYPE html>\n<html lang="en"><head></head><body class="b"><article>a</article></body></html>',
-      }),
-    );
-    expect(sorted(page.tags)).toEqual(['article', 'body', 'html']);
-    expect(sorted(page.classes)).toEqual(['b']);
   });
 
   it('a layout compiled as its own entry', () => {
@@ -380,13 +370,13 @@ describe('pageTokenConsumers (criterion 14)', () => {
     expect(consumers).not.toContain('--no');
   });
 
-  it('a page’s own head, and an entry with no head', () => {
-    const page = pageTokenConsumers(
-      graphOf('/p.fud', {
-        '/p.fud': '<!DOCTYPE html>\n<html><head><style>p { a: var(--p) }</style></head><body></body></html>',
+  it('a layout’s own head as the entry, and a route with no head', () => {
+    const layout = pageTokenConsumers(
+      graphOf('/l.fud', {
+        '/l.fud': '<!DOCTYPE html>\n<html><head><style>p { a: var(--p) }</style>@RenderHead()</head><body>@RenderBody()</body></html>',
       }),
     );
-    expect(page).toEqual(['p{a:var(--p)}']);
+    expect(layout).toEqual(['p{a:var(--p)}']);
     const route = pageTokenConsumers(
       graphOf('/app/r.fud', {
         '/app/r.fud': '<link rel="layout" href="./_layout.fud">\n<p>x</p>\n',

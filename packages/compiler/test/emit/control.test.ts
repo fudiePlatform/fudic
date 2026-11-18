@@ -39,7 +39,7 @@ function emit(
 ): { server: string; client: string; hydratable: ReadonlySet<string> } {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<link rel="component" href="./app-input.fud">\n' +
       `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
@@ -64,7 +64,7 @@ function emit(
 function emitChild(): string {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<link rel="component" href="./app-input.fud">\n' +
       '<m-el>\n  <template shadowrootmode="open"><app-input control="@f.body"></app-input></template>\n</m-el>\n',
@@ -90,7 +90,7 @@ function emitChild(): string {
 function emitDynamicChild(typeValue = '@type'): string {
   const io = memoryIo({
     '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
     '/m.fud':
       '<link rel="component" href="./app-input.fud">\n' +
       '<m-el>\n  <template shadowrootmode="open"><app-input control="@f.body" .type="@k"></app-input></template>\n</m-el>\n',
@@ -531,7 +531,7 @@ describe('BUG-42 — a marker beside a control-component (criterion 22)', () => 
   it('a marker that is itself a component host gets its id, on both branches, and its text in the light DOM', () => {
     const io = memoryIo({
       '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+        '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n',
       '/m.fud':
         '<link rel="component" href="./app-input.fud">\n<link rel="component" href="./app-error.fud">\n' +
         "@code {\n  import { f } from './user.form.js';\n}\n<m-el>\n  <template shadowrootmode=\"open\">" +
@@ -600,7 +600,7 @@ describe('a value handed to a child through a form or a store moves (SDD-82, the
   function handing(template: string, code = ''): { client: string; hydratable: ReadonlySet<string> } {
     const io = memoryIo({
       '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body><m-el></m-el></body></html>',
+        '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./m.fud">\n<m-el></m-el>\n',
       '/m.fud':
         '<link rel="component" href="./x-issues.fud">\n' +
         `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,

@@ -14,13 +14,13 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  resolveComponents,
+  resolveDocument,
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
   type ComponentGraph,
+  type DocumentGraph,
 } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { memoryIo, withLayout } from './_support.js';
 
 /**
  * `$dom.text(...)` calls whose argument is nothing but whitespace — the nodes this BUG is
@@ -56,16 +56,16 @@ function component(tag: string, template: string, css?: string): string {
   return `${head}<${tag}>\n  <template shadowrootmode="open">${template}</template>\n</${tag}>\n`;
 }
 
-/** The graph of a page that uses every component given, keyed by tag. */
-function graphOf(components: Record<string, string>, pageBody = '', pageHead = ''): ComponentGraph {
+/** The graph of a route (with the bare layout) that uses every component given, keyed by tag. */
+function graphOf(components: Record<string, string>, pageBody = '', pageHead = ''): DocumentGraph {
   const links = Object.keys(components)
     .map((tag) => `<link rel="component" href="./${tag}.fud">`)
     .join('');
   const files: Record<string, string> = {
-    '/page.fud': `<!DOCTYPE html>\n<html><head>${links}${pageHead}</head><body>${pageBody}</body></html>\n`,
+    '/page.fud': `<link rel="layout" href="./_layout.fud">\n${links}\n<head>${pageHead}</head>\n${pageBody}\n`,
   };
   for (const [tag, source] of Object.entries(components)) files[`/${tag}.fud`] = source;
-  return resolveComponents('/page.fud', memoryIo(files));
+  return resolveDocument('/page.fud', memoryIo(withLayout(files))).value;
 }
 
 /**
@@ -182,20 +182,6 @@ describe('§4.3.c — a display outside :host poisons the tag table for the whol
       client: 1,
     });
     expect(blanksOf(src, ':host { display: block; }')).toEqual({ server: 0, client: 0 });
-  });
-
-  it('reads the page’s own <head> styles for the same question', () => {
-    // The `<app-x>` in the middle is there to be ASKED: on a page too, the display of a
-    // component tag comes from the graph and not from any table (§4.3.b).
-    const body = '\n    <div>\n      <p>a</p> <app-x></app-x>\n      <p>b</p>\n    </div>\n  ';
-    const page = (head: string): ComponentGraph =>
-      graphOf({ 'app-x': component('app-x', '<b>x</b>', ':host { display: block; }') }, body, head);
-    // A `<body>` is a block container and a `<div>` is a block box, so the page's six runs
-    // are all provable — until the page's own sheet declares a display, and then the four
-    // that depend on the tag table are not. The `<body>` keeps its two: the module fabricates
-    // it itself, which is the same standing the `:host` of a component has.
-    expect(blanks(emitPageModule(page('')))).toBe(0);
-    expect(blanks(emitPageModule(page('<style>.row { display: flex; }</style>')))).toBe(4);
   });
 });
 

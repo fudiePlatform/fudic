@@ -10,15 +10,21 @@
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import {
-  resolveComponents,
+  resolveDocument,
   emitComponentClientModule,
-  type ComponentGraph,
+  type DocumentGraph,
+  type ResolveIo,
 } from '../../src/emit/index.js';
-import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { BARE_LAYOUT, drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+
+/** The graph of a route, its layout included: what `pageModuleOf` renders. */
+function routeGraph(entry: string, io: ResolveIo): DocumentGraph {
+  return resolveDocument(entry, io).value;
+}
 
 /** Render a page and hand back its HTML plus the payload the adapter collected. */
 async function render(
-  graph: ComponentGraph,
+  graph: DocumentGraph,
   data: unknown,
 ): Promise<{ html: string; payload: { offsets: readonly number[]; data: readonly unknown[] } }> {
   const page = await pageModuleOf(graph);
@@ -47,7 +53,7 @@ const HOME_DATA = {
 };
 
 describe('the blocks of the canonical page', () => {
-  const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+  const graph = routeGraph(join(fixturesDir, 'home.fud'), fixtureIo);
 
   it('fud-state carries `[[offsets],[data]]`, and it is the payload of THIS render', async () => {
     const { html, payload } = await render(graph, HOME_DATA);
@@ -75,7 +81,7 @@ describe('what is empty is not published', () => {
   it('a page that claims no instance carries none of the three', async () => {
     // The catalogue HAS a hydratable component and a tree; this render just never reaches
     // one. The maps would describe a hydration with nothing to hydrate.
-    const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+    const graph = routeGraph(join(fixturesDir, 'home.fud'), fixtureIo);
     const { html, payload } = await render(graph, { title: 'x', items: [] });
     expect(payload.offsets).toEqual([0]);
     for (const id of ['fud-state', 'fud-tree', 'fud-bus']) {
@@ -84,14 +90,13 @@ describe('what is empty is not published', () => {
   });
 
   it('a flat page publishes its state and no tree', async () => {
-    const graph = resolveComponents(
+    const graph = routeGraph(
       '/app/home.fud',
       memoryIo({
-        '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-tick.fud"></head>
-  <body><x-tick .label="hola"></x-tick></body>
-</html>
+        '/app/_layout.fud': BARE_LAYOUT,
+        '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-tick.fud">
+<x-tick .label="hola"></x-tick>
 `,
         '/app/x-tick.fud': `@code {
   import { signal } from '@fudic/core';
@@ -118,14 +123,13 @@ describe('a payload cannot break out of its script', () => {
   // block and everything after it would be markup the browser runs.
   const HOSTILE = '</script><img src=x onerror="alert(1)">';
 
-  const graph = resolveComponents(
+  const graph = routeGraph(
     '/app/home.fud',
     memoryIo({
-      '/app/home.fud': `<!DOCTYPE html>
-<html>
-  <head><link rel="component" href="./x-note.fud"></head>
-  <body><x-note .text="@data.text"></x-note></body>
-</html>
+      '/app/_layout.fud': BARE_LAYOUT,
+      '/app/home.fud': `<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./x-note.fud">
+<x-note .text="@data.text"></x-note>
 `,
       '/app/x-note.fud': `@code {
   import { signal } from '@fudic/core';
@@ -160,7 +164,7 @@ describe('a payload cannot break out of its script', () => {
 });
 
 describe('the two branches meet: the slice IS what the client destructures', () => {
-  const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+  const graph = routeGraph(join(fixturesDir, 'home.fud'), fixtureIo);
 
   /**
    * The props a tag's client factory destructures, read off the EMITTED `.client.mjs` and

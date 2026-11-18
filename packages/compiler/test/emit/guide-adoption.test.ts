@@ -17,7 +17,7 @@ import { rebaseUrls } from '../../src/css/index.js';
 import type { GuidePiece } from '../../src/css/index.js';
 import type { ComponentDocument } from '../../src/document/index.js';
 import type { ElementNode } from '../../src/html/index.js';
-import { memoryIo, parse } from './_support.js';
+import { BARE_LAYOUT, memoryIo, parse } from './_support.js';
 
 const PIECES: readonly GuidePiece[] = [
   { name: 'h1', path: './h1.css', css: ':where(h1) { margin: 0; }' },
@@ -106,7 +106,8 @@ describe('the surface of the build: snippets expanded (criterion 22)', () => {
         '<link rel="snippet" href="./parts.fud">\n' +
         '<x-card>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="h1">@render title()</template>\n</x-card>\n',
       '/app/parts.fud': '@snippet title() {\n  <h1>t</h1>\n}\n',
-      '/app/index.fud': '<!DOCTYPE html>\n<html><head><link rel="component" href="./x-card.fud"></head><body><x-card></x-card></body></html>\n',
+      '/app/_layout.fud': BARE_LAYOUT,
+      '/app/index.fud': '<link rel="layout" href="./_layout.fud">\n<link rel="component" href="./x-card.fud">\n<x-card></x-card>\n',
     };
     const graph = resolveDocument('/app/index.fud', memoryIo(files)).value;
     const template = (graph.components.get('x-card')!.doc as ComponentDocument).template;

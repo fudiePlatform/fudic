@@ -9,13 +9,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  resolveComponents,
+  resolveDocument,
   emitComponentModule,
   emitComponentClientModule,
-  emitPageModule,
-  type ComponentGraph,
+  emitRouteModule,
 } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { LINK_LAYOUT, memoryIo, withLayout } from './_support.js';
 
 const BADGE = `@code {
   const { tone = 'neutral' } = props<{ tone?: string }>();
@@ -41,21 +40,19 @@ const CARD = (host: string): string => `<link rel="component" href="./app-badge.
 </app-card>
 `;
 
-const page = (host: string): string =>
-  `<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-card.fud"></head>\n` +
-  `<body>${host}</body>\n</html>\n`;
+const page = (host: string): string => `${LINK_LAYOUT}<link rel="component" href="./app-card.fud">\n${host}\n`;
 
-/** The three outputs a host produces, joined: page module, server module, client chunk. */
+/** The three outputs a host produces, joined: route module, server module, client chunk. */
 function emitted(host: string): string {
-  const io = memoryIo({
+  const io = memoryIo(withLayout({
     '/page.fud': page('<app-card></app-card>'),
     '/app-card.fud': CARD(host),
     '/app-badge.fud': BADGE,
-  });
-  const graph: ComponentGraph = resolveComponents('/page.fud', io);
+  }));
+  const graph = resolveDocument('/page.fud', io).value;
   const card = graph.components.get('app-card')!;
   return [
-    emitPageModule(graph),
+    emitRouteModule(graph),
     emitComponentModule(graph, card),
     emitComponentClientModule(graph, card),
   ].join('\n');

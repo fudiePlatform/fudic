@@ -59,15 +59,6 @@ const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 <h1>Home</h1>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>Standalone</title>
-  </head>
-  <body></body>
-</html>
-`;
-
 const LAYOUT = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -103,11 +94,7 @@ describe('componentLinkAnchor — no link yet', () => {
     ]);
   });
 
-  it('a page takes it inside <head>, indented one level in (decision 59)', () => {
-    expect(around(insert(PAGE))).toEqual(['  <head>', `    ${LINK}`, '    <title>Standalone</title>']);
-  });
-
-  it('a layout takes it inside <head> too', () => {
+  it('a layout takes it inside <head>, indented one level in (decision 59)', () => {
     expect(around(insert(LAYOUT))).toEqual(['  <head>', `    ${LINK}`, '    @RenderHead()']);
   });
 });
@@ -161,11 +148,11 @@ ${COMPONENT}`;
   });
 
   it('inherits the indentation of the link it follows, not that of <head>', () => {
-    const source = PAGE.replace('    <title>Standalone</title>', '\t\t<link rel="component" href="./a.fud">');
+    const source = LAYOUT.replace('    @RenderHead()', '\t\t<link rel="component" href="./a.fud">\n    @RenderHead()');
     expect(around(insert(source))).toEqual([
       '\t\t<link rel="component" href="./a.fud">',
       `\t\t${LINK}`,
-      '  </head>',
+      '    @RenderHead()',
     ]);
   });
 

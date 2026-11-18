@@ -8,8 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { resolveDocument, emitLayoutModule, emitRouteModule, emitPageModule } from '../../src/emit/index.js';
-import { resolveComponents } from '../../src/emit/resolve.js';
+import { resolveDocument, emitLayoutModule, emitRouteModule } from '../../src/emit/index.js';
 import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
 import { drain, memoryIo, minimalSsr, type PageFn } from './_support.js';
 
@@ -168,17 +167,3 @@ describe('what the render module of a route carries (§6.2)', () => {
   });
 });
 
-describe('a standalone page splits its `@code` the same way', () => {
-  it('paints a reactive its `@code` declares', async () => {
-    const io = memoryIo({
-      '/p.fud': [
-        '<!DOCTYPE html><html><head>',
-        '@code { const n = signal(7); }',
-        '</head><body><p>@n()</p></body></html>',
-      ].join('\n'),
-    });
-    const graph = resolveComponents('/p.fud', io);
-    const page = evalModule(emitPageModule(graph), {}, 'page') as PageFn;
-    expect(await drain(page({}, minimalSsr()))).toContain('<p>7</p>');
-  });
-});

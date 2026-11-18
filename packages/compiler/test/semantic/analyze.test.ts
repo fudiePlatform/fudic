@@ -169,10 +169,12 @@ describe('component-declared (§7 crit. #7)', () => {
     expect(codes(component('<svg><my-shape></my-shape></svg>'))).not.toContain('FUD0191');
   });
 
-  it('checks custom elements in a page body too', () => {
-    const page =
-      '<!DOCTYPE html><html><head></head><body><app-card></app-card></body></html>';
-    expect(codes(page)).toContain('FUD0191');
+  it('checks custom elements in a route and in the body of a layout too', () => {
+    const route = '<link rel="layout" href="./_layout.fud">\n<app-card></app-card>\n';
+    expect(codes(route)).toContain('FUD0191');
+    const layout =
+      '<!DOCTYPE html><html><head>@RenderHead()</head><body><app-card></app-card>@RenderBody()</body></html>';
+    expect(codes(layout)).toContain('FUD0191');
   });
 });
 

@@ -10,7 +10,7 @@ import {
   emitComponentClientModule,
   emitComponentModule,
   emitLayoutModule,
-  emitPageModule,
+  type DocumentGraph,
   emitRouteModule,
   hydratableTags,
   isIntrinsicallyHydratable,
@@ -25,18 +25,14 @@ import {
   usesDependencyInjection,
 } from '../../src/emit/di.js';
 import { extractCode } from '../../src/emit/oxc-code.js';
-import { memoryIo, parse } from './_support.js';
+import { BARE_LAYOUT, memoryIo, parse } from './_support.js';
 
-/** A page that links every component of `files` and instantiates `body`. */
+/** A route that links every component of `files` and instantiates `body`. */
 function page(links: readonly string[], body: string): string {
-  const head = links.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n    ');
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    ${head}
-  </head>
-  <body>${body}</body>
-</html>
+  const head = links.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n');
+  return `<link rel="layout" href="./_layout.fud">
+${head}
+${body}
 `;
 }
 
@@ -51,8 +47,12 @@ ${markup}
 `;
 }
 
-const graphOf = (files: Record<string, string>): ReturnType<typeof resolveComponents> =>
-  resolveComponents('/app/home.fud', memoryIo(files));
+/** The graph of the route `/app/home.fud`, with the bare layout it links beside it. */
+const graphOf = (files: Record<string, string>): DocumentGraph =>
+  resolveDocument('/app/home.fud', memoryIo({ '/app/_layout.fud': BARE_LAYOUT, ...files })).value;
+
+/** The route module of a graph from {@link graphOf}: where the page's container opens. */
+const routeModuleOf = (graph: DocumentGraph): string => emitRouteModule(graph);
 
 const codeOfSource = (source: string): ReturnType<typeof extractCode> => {
   const doc = parse(source);
@@ -362,13 +362,13 @@ describe('the server module', () => {
     expect(mjs).not.toContain('injectFrom');
   });
 
-  it('opens the route container in the page module, and only when the page has DI', () => {
+  it('opens the route container in the route module, and only when the page has DI', () => {
     const withDi = graphOf({
       '/app/home.fud': page(['x-user'], '<x-user></x-user>'),
       '/app/x-user.fud': component('x-user', CONSUMER, '<p>@(cart.total)</p>'),
     });
-    const page1 = emitPageModule(withDi);
-    expect(page1).toContain('export function* page(data, io, $ioc) {');
+    const page1 = routeModuleOf(withDi);
+    expect(page1).toContain('export async function* page(data, io, $ioc, $props) {');
     expect(page1).toContain('const $root = $ioc ?? iocRoot();');
     expect(page1).toMatch(/renderXUser\(\$dom, \$n\d+, \{ {2}\}, \$root\);/u);
 
@@ -376,7 +376,7 @@ describe('the server module', () => {
       '/app/home.fud': page(['x-plain'], '<x-plain></x-plain>'),
       '/app/x-plain.fud': component('x-plain', '', '<p>plain</p>'),
     });
-    const page2 = emitPageModule(without);
+    const page2 = routeModuleOf(without);
     expect(page2).not.toContain('iocRoot');
     expect(page2).not.toContain('$root');
   });
@@ -418,19 +418,19 @@ describe('the published blocks', () => {
       '/app/home.fud': page(['x-user'], '<x-user></x-user>'),
       '/app/x-user.fud': component('x-user', CONSUMER, '<p>@(cart.total)</p>'),
     });
-    const code = emitPageModule(withDi);
+    const code = routeModuleOf(withDi);
 
     // Guarded in the EMITTED code and not here: whether anything owns a container is a fact
     // about the render, not about the compilation — a `@foreach` decides how many owners
     // there are, and the compiler cannot know.
     expect(code).toContain('const $iocMap = $root.map();');
     expect(code).toContain(
-      "if ($iocMap[0].length > 1) jsonBlock($dom, $body, 'fud-ioc', $iocMap);",
+      "if ($iocMap[0].length > 1) jsonBlock($dom, $parent, 'fud-ioc', $iocMap);",
     );
     // Asked of THIS response's container, never of the module: two responses rendered at
     // the same time publish into two containers, and a page must write its own.
     expect(code).toContain('const $seed = publishedSeed($root);');
-    expect(code).toContain("if ($seed !== null) jsonBlock($dom, $body, 'fud-di', $seed);");
+    expect(code).toContain("if ($seed !== null) jsonBlock($dom, $parent, 'fud-di', $seed);");
   });
 
   it('writes neither on a page without a single DI call', () => {
@@ -445,7 +445,7 @@ describe('the published blocks', () => {
         '<p>@(n())</p>',
       ),
     });
-    const code = emitPageModule(without);
+    const code = routeModuleOf(without);
 
     expect(code).not.toContain('fud-ioc');
     expect(code).not.toContain('fud-di');

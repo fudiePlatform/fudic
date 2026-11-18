@@ -2,7 +2,8 @@
  * Module emit (SDD-15 server branch) — the real deliverable: one `.mjs` per component
  * and one for the page, produced from the AST + the resolved dependency graph. The
  * compiler emits TEXT and imports no runtime; these tests assert the generated source
- * structurally AND, where possible, EXECUTE it (a leaf component and the whole page) to
+ * structurally AND, where possible, EXECUTE it (a leaf component and the whole route, with its
+ * layout) to
  * prove the codegen actually runs.
  *
  * Not covered here (browser-only): the style polyfill's runtime behaviour — it uses
@@ -10,19 +11,29 @@
  * effect (adopting sheets so styles apply) still requires opening the page in a browser.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentModule,
-  emitPageModule,
-  type ComponentGraph,
+  emitLayoutModule,
+  emitRouteModule,
+  type DocumentGraph,
 } from '../../src/emit/index.js';
-import { drain, fixturesDir, fixtureIo, memoryIo, recordingDom, evalLeafModule, minimalSsr, type Pieces } from './_support.js';
+import {
+  drain,
+  fixturesDir,
+  fixtureIo,
+  LINK_LAYOUT,
+  memoryIo,
+  pageModuleOf,
+  recordingDom,
+  evalLeafModule,
+  minimalSsr,
+  withLayout,
+} from './_support.js';
 
-const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
+const graph: DocumentGraph = resolveDocument(join(fixturesDir, 'home.fud'), fixtureIo).value;
 const module = (tag: string): string => emitComponentModule(graph, graph.components.get(tag)!);
 
 describe('emitComponentModule — a leaf component (app-badge)', () => {
@@ -141,17 +152,16 @@ describe('the inert stubs of the server branch (SDD-31 §6.16)', () => {
 
 describe('emitComponentModule — attrExpr shapes', () => {
   // A crafted component exercising a MIXED (static + interpolation) attribute, which the
-  // fixtures do not have. Resolved via an in-memory page that links it.
-  const io = memoryIo({
-    '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+  // fixtures do not have. Resolved via an in-memory route that links it.
+  const io = memoryIo(withLayout({
+    '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m.fud">\n',
     '/m.fud':
       // Non-props declarations: `y` is read by the markup, `helper` through it, `unused` by nobody.
       '@code {\n  const helper = 1;\n  const y = helper;\n  const unused = 2;\n}\n' +
       '<m-el>\n  <template shadowrootmode="open">' +
       '<div id="z" title="x-@y"></div><!-- a comment is dropped -->' +
       '</template>\n</m-el>\n',
-  });
+  }));
   const g = resolveComponents('/home.fud', io);
   const src = emitComponentModule(g, g.components.get('m-el')!);
 
@@ -183,8 +193,9 @@ describe('emitComponentModule — attrExpr shapes', () => {
   });
 });
 
-describe('emitPageModule — home.mjs', () => {
-  const src = emitPageModule(graph);
+describe('emitRouteModule — home.mjs, the fixture route, and its layout', () => {
+  const src = emitRouteModule(graph);
+  const layoutSrc = emitLayoutModule(graph, graph.layouts[0]!);
 
   it('imports render/tag/css of every component', () => {
     for (const tag of ['AppCard', 'AppButton', 'AppBadge']) {
@@ -192,15 +203,16 @@ describe('emitPageModule — home.mjs', () => {
     }
   });
 
-  it('builds a COMPONENTS array and a page(data, io) that destructures io', () => {
+  it('builds a COMPONENTS array and a page(data, io) that hands its pieces to the layout', () => {
     expect(src).toContain('const COMPONENTS = [');
-    expect(src).toContain('export function* page(data, io, $ioc) {'); // streaming generator (SDD-19 §4.3)
-    expect(src).toContain('const { createDom, serialize, escapeText, jsonBlock } = io;');
+    expect(src).toContain('export async function* page(data, io, $ioc, $props) {'); // streaming generator (SDD-19 §4.3)
+    expect(src).toContain('const { serialize, escapeText, jsonBlock } = io;');
+    expect(src).toContain('yield* layout(data, io, {');
   });
 
-  it('interpolates the title via escapeText and passes <meta> through', () => {
+  it('interpolates the title via escapeText, and the layout passes its <meta> through', () => {
     expect(src).toContain("escapeText(String((data.title) ?? ''))");
-    expect(src).toContain('<meta charset=\\"utf-8\\">');
+    expect(layoutSrc).toContain('<meta charset=\\"utf-8\\">');
   });
 
   it('emits the style polyfill and places its <script> BEFORE the style modules', () => {
@@ -217,35 +229,28 @@ describe('emitPageModule — home.mjs', () => {
 
   it('lowers @foreach to a real for-loop and marks component hosts with data-fud-adopt', () => {
     expect(src).toContain('for (const item of data.items) {');
-    expect(src).toContain('$dom.setAttr($n9, \'data-fud-adopt\', "app-card");');
+    expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, 'data-fud-adopt', "app-card"\);/u);
   });
 });
 
-describe('emitPageModule — executed end to end', () => {
+describe('the fixture route — executed end to end, inside its layout', () => {
   let html = '';
 
   beforeAll(async () => {
-    // Emit every module to a temp dir and import the page, exactly like build.ts does,
+    // Emit every module to a temp dir and import the route, exactly like build.ts does,
     // then run page() with a minimal DOM/serializer to get real HTML out.
-    const dir = mkdtempSync(join(tmpdir(), 'fudic-emit-'));
-    mkdirSync(dir, { recursive: true });
-    for (const comp of graph.components.values()) {
-      writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
-    }
-    writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
-    const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as {
-      page: (data: unknown, io: unknown) => Pieces;
-    };
+    const page = await pageModuleOf(graph);
     const data = {
       title: 'Inicio',
       items: [{ id: '1', title: 'Primero', description: 'Desc', featured: true }],
     };
     // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
-    html = await drain(mod.page(data, minimalSsr()));
+    html = await drain(page(data, minimalSsr()));
   });
 
   it('produces a full HTML document with the interpolated title', () => {
-    expect(html.startsWith('<!DOCTYPE html><html lang="es">')).toBe(true);
+    // The document is the layout's: the fixture's writes a bare `<html>` (SDD-88).
+    expect(html.startsWith('<!DOCTYPE html><html><head>')).toBe(true);
     expect(html).toContain('<title>Inicio</title>');
   });
 
@@ -288,24 +293,21 @@ describe('emitComponentModule — head edge cases', () => {
   // so the raw-text run ends at EOF, not by eating the template): the CSS slice must fall
   // back to the element's span end instead of a missing close span.
   it('slices the CSS to the element end when the <style> has no close tag', () => {
-    const io = memoryIo({
-      '/home.fud':
-        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+    const io = memoryIo(withLayout({
+      '/home.fud': LINK_LAYOUT + '<link rel="component" href="./m.fud">\n',
       '/m.fud':
         '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n<head><style>.x{color:red}',
-    });
+    }));
     const g = resolveComponents('/home.fud', io);
     const src = emitComponentModule(g, g.components.get('m-el')!);
     expect(src).toContain('export const css = `.x{color:red}`;');
   });
 });
 
-describe('emitPageModule — <title> child shapes', () => {
+describe('emitRouteModule — <title> child shapes', () => {
   const pageWithTitle = (title: string): string => {
-    const io = memoryIo({
-      '/home.fud': `<!DOCTYPE html>\n<html><head>${title}</head><body></body></html>`,
-    });
-    return emitPageModule(resolveComponents('/home.fud', io));
+    const io = memoryIo(withLayout({ '/home.fud': `${LINK_LAYOUT}<head>${title}</head>\n` }));
+    return emitRouteModule(resolveDocument('/home.fud', io).value);
   };
 
   it('emits a plain-text title as a JSON string literal', () => {

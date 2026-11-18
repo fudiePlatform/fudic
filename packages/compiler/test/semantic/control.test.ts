@@ -346,11 +346,11 @@ describe('FUD0593 — `formassociated` placement (§6.6)', () => {
     expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('formassociated');
   });
 
-  it('rejects it in page mode', () => {
-    const page =
-      '<!DOCTYPE html><html><head></head><body>' +
-      '<template shadowrootmode="open" formassociated></template></body></html>';
-    expect(codes(page)).toEqual(['FUD0593']);
+  it('rejects it in a route', () => {
+    const route =
+      '<link rel="layout" href="./_layout.fud">\n' +
+      '<template shadowrootmode="open" formassociated></template>\n';
+    expect(codes(route)).toEqual(['FUD0593']);
   });
 
   it('ignores the word on an element that is not a template', () => {

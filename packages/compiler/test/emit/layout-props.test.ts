@@ -21,15 +21,15 @@ import {
   emitRouteModuleMapped,
 } from '../../src/emit/index.js';
 import type { LinkedApi } from '../../src/types/io.js';
-import { drain, memoryIo, minimalSsr, renderPageHtml, type Pieces } from './_support.js';
+import { drain, memoryIo, minimalSsr, type Pieces } from './_support.js';
 
 const ROUTE = '<link rel="layout" href="./_layout.fud"><p>hola</p>';
 
 /**
  * A layout source: its `@code` inside `<head>`, its own `<html>` attributes, its body.
  *
- * A nested layout has the same shape with a `<link rel="layout">` in its head (decision 87):
- * page-shaped either way, which is why its `@code` lives in `<head>` like a page's.
+ * `parent` writes a `<link rel="layout">` in its head, which a layout may not have (`FUD0439`):
+ * a whole document either way, which is why its `@code` lives in `<head>`.
  */
 function layoutSource(parts: {
   code?: string;
@@ -438,16 +438,6 @@ describe('BUG-44 — the head of a route and of a page interpolates its attribut
     const html = await render(chain(layoutSource({}), route), undefined, { summary: 'a & "b"', title: 't' });
     expect(html).toContain('<meta name="description" content="a &amp; &quot;b&quot;">');
     expect(html).toContain('<title>t</title>');
-  });
-
-  it('a standalone page’s head reads its `data`', async () => {
-    const page =
-      '<!DOCTYPE html><html><head><meta name="description" content="@data.summary"></head>' +
-      '<body><p>x</p></body></html>';
-    const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page })).value;
-    expect(await renderPageHtml(graph, { summary: 'resumen' })).toContain(
-      '<meta name="description" content="resumen">',
-    );
   });
 });
 

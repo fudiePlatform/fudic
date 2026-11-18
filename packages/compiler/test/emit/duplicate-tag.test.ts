@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveDocument, resolveComponents } from '../../src/emit/index.js';
-import { memoryIo } from './_support.js';
+import { BARE_LAYOUT, memoryIo as filesIo } from './_support.js';
 
 /** A component `tag` whose shadow uses `uses`, linking `hrefs`. */
 const component = (tag: string, hrefs: readonly string[] = [], uses = ''): string =>
@@ -24,11 +24,15 @@ const component = (tag: string, hrefs: readonly string[] = [], uses = ''): strin
 </${tag}>
 `;
 
-/** A page that links `hrefs` and uses `body`. */
+/** A route of `/app/` that links `hrefs` and uses `body`, under the bare layout {@link memoryIo} adds. */
 const page = (hrefs: readonly string[], body: string): string =>
-  '<!DOCTYPE html><html><head>' +
+  '<link rel="layout" href="./_layout.fud">' +
   hrefs.map((h) => `<link rel="component" href="${h}">`).join('') +
-  `</head><body>${body}</body></html>`;
+  body;
+
+/** `files`, plus the bare layout every route of `/app/` links. */
+const memoryIo = (files: Record<string, string>): ReturnType<typeof filesIo> =>
+  filesIo({ '/app/_layout.fud': BARE_LAYOUT, ...files });
 
 const duplicates = (files: Record<string, string>, entry = '/app/page.fud'): readonly string[] =>
   resolveDocument(entry, memoryIo(files))

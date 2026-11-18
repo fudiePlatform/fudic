@@ -69,9 +69,9 @@ describe('reserved-attributes — what FUD0294 catches', () => {
     ).toEqual(['data-fud-id="0"', 'data-fud-adopt="a"']);
   });
 
-  it('reports it in a page too, not only in a component', () => {
+  it('reports it in a route too, not only in a component', () => {
     const source =
-      '<!DOCTYPE html><html><head><title>t</title></head><body><div data-fud-id="0"></div></body></html>';
+      '<link rel="layout" href="./_layout.fud">\n<head><title>t</title></head>\n<div data-fud-id="0"></div>\n';
     expect(diagnose(source).map((d) => d.code)).toContain('FUD0294');
   });
 });

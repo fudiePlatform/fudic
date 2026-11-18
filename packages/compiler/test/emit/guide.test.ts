@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AssetLinker,
   emitLayoutModule,
-  emitPageModule,
   emitRouteModule,
   resolveDocument,
   type DocumentGraph,
@@ -190,27 +189,6 @@ describe('where the layout writes it', () => {
   });
 });
 
-describe('a page without a layout', () => {
-  const PAGE =
-    '<!DOCTYPE html>\n<html>\n<head>\n<title>t</title>\n<link rel="stylesheet" href="./base.css">\n</head>\n<body><h1>t</h1><p>x</p></body>\n</html>\n';
-
-  it('writes the guide in its own head, before its sheet', () => {
-    const graph = graphOf({ '/app/index.fud': PAGE });
-    const h = host();
-    const code = emitPageModule(graph, h.options);
-    const copy = (spec: string): string => `copy-${h.copies.findIndex((c) => c.spec === spec) + 1}.css`;
-    const guideAt = code.indexOf(copy('./guide/guide.css'));
-    expect(guideAt).toBeGreaterThan(-1);
-    expect(guideAt).toBeLessThan(code.indexOf(copy('./base.css')));
-  });
-
-  it('without pruning too', () => {
-    const graph = graphOf({ '/app/index.fud': PAGE });
-    const { pruneStyles: _, ...whole } = host({}, false).options;
-    expect(emitPageModule(graph, whole)).toContain('button{');
-  });
-});
-
 describe('the favicon (criteria 15, 16)', () => {
   it('the guide\'s icon when no head links one, published as a head asset', () => {
     const h = host({ guides: [], icon: './guide/logo.svg' });
@@ -246,7 +224,7 @@ describe('the favicon (criteria 15, 16)', () => {
 
 describe('hasIcon', () => {
   const head = (inner: string): ElementNode => {
-    const doc = parse(`<!DOCTYPE html>\n<html><head>${inner}</head><body></body></html>`);
+    const doc = parse(`<!DOCTYPE html>\n<html><head>${inner}</head><body>@RenderBody()</body></html>`);
     return (doc as unknown as { head: ElementNode }).head;
   };
 

@@ -14,29 +14,28 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentModule,
   emitComponentModuleMapped,
-  emitPageModule,
+  emitRouteModule,
   type ComponentGraph,
+  type DocumentGraph,
   type EmitOptions,
 } from '../../src/emit/index.js';
-import { memoryIo, renderPageHtml } from './_support.js';
+import { LINK_LAYOUT, memoryIo, renderPageHtml, withLayout } from './_support.js';
 
-/** A page whose body holds `markup`, rendered against the `data` its expressions read. */
-function pageGraph(markup: string): ComponentGraph {
-  return resolveComponents(
+/** A route whose markup is `markup`, rendered against the `data` its expressions read. */
+function pageGraph(markup: string): DocumentGraph {
+  return resolveDocument(
     '/home.fud',
-    memoryIo({
-      '/home.fud':
-        `<!DOCTYPE html>\n<html><head><title>t</title></head><body>${markup}</body></html>`,
-    }),
-  );
+    memoryIo(withLayout({ '/home.fud': `${LINK_LAYOUT}<head><title>t</title></head>\n${markup}` })),
+  ).value;
 }
 
 const pageHtml = (markup: string, data: unknown): Promise<string> =>
   renderPageHtml(pageGraph(markup), data);
 
-const pageCode = (markup: string): string => emitPageModule(pageGraph(markup));
+const pageCode = (markup: string): string => emitRouteModule(pageGraph(markup));
 
 /** A graph from an in-memory page that links every component given. */
 function graphOf(components: Record<string, string>): ComponentGraph {

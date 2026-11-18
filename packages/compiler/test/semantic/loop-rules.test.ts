@@ -43,12 +43,10 @@ describe('FUD0543 — a loop header that declares a variable naming nothing (loo
 
 describe('FUD0621 — `data` read in the @code with no linked `load` (data-without-load)', () => {
   const NO_LOAD = { data: false, names: new Set<string>() };
-  const page = (code: string): string =>
-    `<!DOCTYPE html><html><head>@code {\n${code}\n}</head><body><p>x</p></body></html>`;
   const route = (code: string): string => `<link rel="layout" href="./l.fud">\n@code {\n${code}\n}\n<p>x</p>\n`;
 
-  it('a page and a route that read it, with links known and none declaring `load`: a warning on `data`', () => {
-    for (const source of [page('  function hi() { return data.user; }'), route('  const u = data.user;')]) {
+  it('a route that reads it, with links known and none declaring `load`: a warning on `data`', () => {
+    for (const source of [route('  function hi() { return data.user; }'), route('  const u = data.user;')]) {
       const ds = viewDiagnostics(source, NO_LOAD).filter((d) => d.code === 'FUD0621');
       expect(ds.map((d) => source.slice(d.span.start, d.span.end))).toEqual(['data']);
       expect(ds[0]!.severity).toBe('warning');
@@ -56,13 +54,13 @@ describe('FUD0621 — `data` read in the @code with no linked `load` (data-witho
   });
 
   it('nothing when a link declares `load`, when the links are unknown, or when nobody reads it', () => {
-    expect(found(page('  const u = data.user;'), 'FUD0621', { data: true, names: new Set() })).toEqual([]);
-    expect(found(page('  const u = data.user;'), 'FUD0621')).toEqual([]);
-    expect(found(page('  const u = 1;'), 'FUD0621', NO_LOAD)).toEqual([]);
+    expect(found(route('  const u = data.user;'), 'FUD0621', { data: true, names: new Set() })).toEqual([]);
+    expect(found(route('  const u = data.user;'), 'FUD0621')).toEqual([]);
+    expect(found(route('  const u = 1;'), 'FUD0621', NO_LOAD)).toEqual([]);
   });
 
   it('a local named data is no read of it', () => {
-    expect(found(page('  const data = { user: 1 };\n  const u = data.user;'), 'FUD0621', NO_LOAD)).toEqual([]);
+    expect(found(route('  const data = { user: 1 };\n  const u = data.user;'), 'FUD0621', NO_LOAD)).toEqual([]);
   });
 
   it('nothing in a component or a layout, whose data is not its load', () => {

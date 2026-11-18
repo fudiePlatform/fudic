@@ -102,12 +102,10 @@ describe('role detection (§6.2, §6.3, §6.4 — decisions 81, 82)', () => {
   });
 
   it('leaves the existing roles untouched (§6.3)', () => {
-    expect(structure(canonical('home.fud')).value.type).toBe('page-document');
+    // The canonical page is a route since SDD-88, and its layout a layout.
+    expect(structure(canonical('home.fud')).value.type).toBe('route-document');
+    expect(structure(canonical('_layout.fud')).value.type).toBe('layout-document');
     expect(structure(canonical('app-card.fud')).value.type).toBe('component-document');
-    // A shell WITHOUT @RenderBody() is still a plain page, not a broken layout.
-    const page = structure('<!DOCTYPE html><html><head></head><body><p>x</p></body></html>');
-    expect(page.value.type).toBe('page-document');
-    expect(page.structureCodes).toEqual([]);
   });
 
   it('still demands a host wrapper from a fragment with no layout link (§6.3)', () => {
@@ -212,14 +210,7 @@ describe('layout directive rules (§6.5, §6.6 — decision 86)', () => {
 });
 
 describe('directives in the roles that do not own them (§6.6)', () => {
-  it('rejects a `@section` in a page with FUD0427', () => {
-    const page = '<!DOCTYPE html><html><head></head><body>@section s { <p>x</p> }</body></html>';
-    const { value, structureCodes } = structure(page);
-    expect(value.type).toBe('page-document');
-    expect(structureCodes).toContain('FUD0427');
-  });
-
-  it('makes a shell with ANY hole a layout, and one with none a page (SDD-48 §4.4, criterion 4)', () => {
+  it('makes a shell with ANY hole a layout (SDD-48 §4.4, criterion 4)', () => {
     const shell = (body: string): string =>
       `<!DOCTYPE html><html><head>@RenderHead()</head><body>${body}</body></html>`;
     for (const body of ['', '@RenderSection(nav)']) {
@@ -231,9 +222,6 @@ describe('directives in the roles that do not own them (§6.6)', () => {
       expect(missing).toHaveLength(1);
       expect(shell(body).slice(missing[0]!.span.start, missing[0]!.span.start + 5)).toBe('<body');
     }
-    const page = structure('<!DOCTYPE html><html><head></head><body><p>x</p></body></html>');
-    expect(page.value.type).toBe('page-document');
-    expect(page.structureCodes).toEqual([]);
   });
 
   it('rejects them in a component with FUD0426 / FUD0427', () => {

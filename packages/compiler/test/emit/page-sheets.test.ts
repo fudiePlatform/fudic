@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AssetLinker,
   emitLayoutModule,
-  emitPageModuleMapped,
   emitRouteModule,
   emitRouteModuleMapped,
   resolveDocument,
@@ -20,7 +19,13 @@ import {
 } from '../../src/emit/index.js';
 import { planPageSheets, rebaseSpec, type PageSheets } from '../../src/emit/page-sheets.js';
 import type { ElementNode } from '../../src/html/index.js';
-import { memoryIo } from './_support.js';
+import { BARE_LAYOUT, memoryIo } from './_support.js';
+
+/** A route of `/app` whose own `<head>` holds `links`, under a layout that adds nothing. */
+const ownHead = (links: string, markup: string): Record<string, string> => ({
+  '/app/_layout.fud': BARE_LAYOUT,
+  '/app/p.fud': `<link rel="layout" href="./_layout.fud">\n<head>\n${links}</head>\n${markup}\n`,
+});
 
 const NONCE = ' nonce="N"';
 
@@ -270,13 +275,11 @@ describe('the route’s own head, and a page without a layout', () => {
     expect(code).toContain('/assets/pruned-1.css');
   });
 
-  it('a page prunes its own sheets in its own module', () => {
-    const page =
-      '<!DOCTYPE html>\n<html><head>\n<link rel="stylesheet" href="./own.css">\n<link rel="stylesheet" href="./base.css">\n' +
-      '</head><body><em>e</em></body></html>';
-    const graph = graphOf('/app/p.fud', { '/app/p.fud': page });
+  it('a route prunes the sheets of its own <head> in its own module', () => {
+    const files = ownHead('<link rel="stylesheet" href="./own.css">\n<link rel="stylesheet" href="./base.css">\n', '<em>e</em>');
+    const graph = graphOf('/app/p.fud', files);
     const h = host();
-    const out = emitPageModuleMapped(graph, h.options);
+    const out = emitRouteModuleMapped(graph, h.options);
     expect(out.code).toContain('/assets/pruned-1.css');
     // Nothing of `base.css` matches an `<em>`: its `<link>` is gone.
     expect(h.copies).toHaveLength(1);
@@ -284,7 +287,7 @@ describe('the route’s own head, and a page without a layout', () => {
       { spec: './own.css', css: 'em{font-style:normal}', files: ['./own.css'], contributing: ['./own.css'], diagnostics: [], sites: expect.any(Array) },
       { spec: './base.css', css: '', files: ['./base.css', './parts/inputs.css'], contributing: [], diagnostics: [], sites: expect.any(Array) },
     ]);
-    // The page's own `<link>` is in the page itself.
+    // The route's own `<link>` is in the route itself.
     const own = out.sheets![0]!;
     expect('sites' in own && own.sites[0]!.at).toBe('/app/p.fud');
   });
@@ -429,28 +432,25 @@ describe('the early hints of a page (SDD-70 §3.10, criterion 30)', () => {
     ]);
   });
 
-  it('a page without a layout, and nothing when no host publishes copies', () => {
-    const page = '<!DOCTYPE html>\n<html><head>\n<link rel="stylesheet" href="./own.css">\n</head><body><em>e</em></body></html>';
-    const graph = graphOf('/app/p.fud', { '/app/p.fud': page });
-    expect(emitPageModuleMapped(graph, host().options).hints).toEqual([
+  it('a sheet of the route\'s own <head>, and nothing when no host publishes copies', () => {
+    const graph = graphOf('/app/p.fud', ownHead('<link rel="stylesheet" href="./own.css">\n', '<em>e</em>'));
+    expect(emitRouteModuleMapped(graph, host().options).hints).toEqual([
       { href: '/assets/pruned-1.css', rel: 'preload', as: 'style' },
     ]);
-    expect(emitPageModuleMapped(graph, host({}, false).options).hints).toEqual([]);
-    expect('hints' in emitPageModuleMapped(graph, {})).toBe(false);
+    expect(emitRouteModuleMapped(graph, host({}, false).options).hints).toEqual([]);
+    expect('hints' in emitRouteModuleMapped(graph, {})).toBe(false);
   });
 
   it('no hint for a dynamic `href`, a `?inline` one of `public/`, a relative one nobody reads, nor a link that is no sheet (SDD-73 §3.4)', () => {
-    const page =
-      '<!DOCTYPE html>\n<html><head>\n' +
+    const links =
       '<link rel="stylesheet" href="/@(data.theme).css">\n' +
       '<link rel="stylesheet" href="/x.css?inline">\n' +
       '<link rel="stylesheet" href="./missing.css">\n' +
       '<link rel="stylesheet">\n' +
       '<link rel="icon" href="/favicon.ico">\n' +
-      '<link rel="stylesheet" href="//cdn.example/y.css">\n' +
-      '</head><body><em>e</em></body></html>';
-    const graph = graphOf('/app/p.fud', { '/app/p.fud': page });
-    expect(emitPageModuleMapped(graph, host().options).hints).toEqual([
+      '<link rel="stylesheet" href="//cdn.example/y.css">\n';
+    const graph = graphOf('/app/p.fud', ownHead(links, '<em>e</em>'));
+    expect(emitRouteModuleMapped(graph, host().options).hints).toEqual([
       { href: '//cdn.example/y.css', rel: 'preload', as: 'style' },
     ]);
   });

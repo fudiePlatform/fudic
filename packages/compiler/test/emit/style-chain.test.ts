@@ -16,10 +16,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentClientModule,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { BARE_LAYOUT, drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const TOKENS: ProjectStyle = { specifier: '_tokens', css: ':host { --accent: red; }' };
 const UI: ProjectStyle = { specifier: '_ui', css: ':host { display: block; }' };
@@ -37,11 +38,12 @@ const PANEL =
 
 const files = memoryIo({
   '/ws/apps/tienda/src/routes/index.fud':
-    '<!DOCTYPE html>\n<html><head>' +
-    '<link rel="component" href="../../../../libs/ui/ui-card.fud">' +
-    '<link rel="component" href="../components/app-panel.fud">' +
-    '<title>t</title></head>' +
-    '<body><ui-card>x</ui-card><app-panel>y</app-panel></body></html>',
+    '<link rel="layout" href="../layouts/_layout.fud">\n' +
+    '<link rel="component" href="../../../../libs/ui/ui-card.fud">\n' +
+    '<link rel="component" href="../components/app-panel.fud">\n' +
+    '<head><title>t</title></head>\n' +
+    '<ui-card>x</ui-card><app-panel>y</app-panel>',
+  '/ws/apps/tienda/src/layouts/_layout.fud': BARE_LAYOUT,
   '/ws/libs/ui/ui-card.fud': CARD,
   '/ws/apps/tienda/src/components/app-panel.fud': PANEL,
 });
@@ -53,7 +55,7 @@ const CHAINS = new Map<string, readonly string[]>([
 ]);
 
 async function html(): Promise<string> {
-  const page = await pageModuleOf(resolveComponents('/ws/apps/tienda/src/routes/index.fud', files), {
+  const page = await pageModuleOf(resolveDocument('/ws/apps/tienda/src/routes/index.fud', files).value, {
     projectStyles: [TOKENS, UI, TIENDA],
     styleChains: CHAINS,
   });
@@ -96,7 +98,7 @@ describe('the chain of the package that defines the component', () => {
   it('adopts nothing for a tag the host did not place in the chain map', async () => {
     // The map is built from the same graph the emit walks, so a tag missing from it is a tag
     // that is not in the document — and the honest answer is the component's own sheet alone.
-    const page = await pageModuleOf(resolveComponents('/ws/apps/tienda/src/routes/index.fud', files), {
+    const page = await pageModuleOf(resolveDocument('/ws/apps/tienda/src/routes/index.fud', files).value, {
       projectStyles: [TOKENS],
       styleChains: new Map(),
     });
@@ -106,7 +108,7 @@ describe('the chain of the package that defines the component', () => {
   });
 
   it('without a chain map every component adopts every sheet, as SDD-42 left it', async () => {
-    const page = await pageModuleOf(resolveComponents('/ws/apps/tienda/src/routes/index.fud', files), {
+    const page = await pageModuleOf(resolveDocument('/ws/apps/tienda/src/routes/index.fud', files).value, {
       projectStyles: [TOKENS, UI],
     });
     const out = await drain(page({}, ssrIo().io));
