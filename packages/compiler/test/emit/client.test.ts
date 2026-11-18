@@ -48,8 +48,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     // that host fabricated at runtime is one nobody painted: its parent has to raise it.
     // `$written` because that signal is its own: one written before the hookup still repaints.
     // `$owned` because its `@code` runs author code, whose effects and tasks die with it (SDD-68).
+    // `$painted` because it has blocks: they adopt what the server painted, whatever was written since (SDD-86).
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, written as $written, live as $live, owned as $owned } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, written as $written, painted as $painted, live as $live, owned as $owned } from '@fudic/core';",
     );
     expect(src).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(src).toContain('static c($props) {');
@@ -436,10 +437,12 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     // The positional payload arrives whole and `$a()` re-applies all of it, so the filter
     // has to be per WRITE: `$w` holds what was last applied, and a write that would not
     // change a byte is not a write. A component with ten props must not repaint ten nodes
-    // because one signal moved.
+    // because one signal moved. A slot never written yet always writes (SDD-86): after `h`
+    // the cache is empty, and an update to `undefined` must still take off what the server
+    // painted.
     expect(src).toContain('const $w = []; // last applied, per value write');
-    expect(src).toMatch(/if \(\$v !== \$w\[0\]\) \{ \$w\[0\] = \$v; /u);
-    expect(src).toMatch(/if \(\$v !== \$w\[1\]\) \{ \$w\[1\] = \$v; /u);
+    expect(src).toMatch(/if \(\$v !== \$w\[0\] \|\| !\(0 in \$w\)\) \{ \$w\[0\] = \$v; /u);
+    expect(src).toMatch(/if \(\$v !== \$w\[1\] \|\| !\(1 in \$w\)\) \{ \$w\[1\] = \$v; /u);
   });
 
   it('gives a component with nothing to re-apply an empty $a and no cache', () => {

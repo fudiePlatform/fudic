@@ -10,6 +10,7 @@
 >
 > **2026-11-16:** §4 (props reflejadas) pasa a [SDD-86](../SDD-86-ciclo-de-vida-y-props-reflejadas.md), sin
 > sintaxis nueva: ya funcionaba desde BUG-32 como un atributo con expresión en el tag de identidad.
+> **2026-11-17:** SDD-86 `Hecho`: §4 está implementado.
 >
 > **2026-11-16:** §6 (`errorPages` sin `base`) y §7 (página de error compartida) pasan a
 > [SDD-87](../SDD-87-pagina-de-error-compartida.md), con dos cambios: la página llega por la cadena de
@@ -115,6 +116,10 @@ hidratación es idempotente.
 ~10–12 tareas. Unas horas.
 
 ## 4. Reflejar props en atributos del host
+
+> **Resuelto en [SDD-86](../SDD-86-ciclo-de-vida-y-props-reflejadas.md)** (`Hecho`): sin sintaxis
+> nueva, un atributo con expresión en el tag de identidad (`<app-card variant="@variant">`), que el
+> editor acepta con cualquier nombre y valor escalar. Lo de abajo queda como historia.
 
 ### 4.1. El problema
 

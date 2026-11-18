@@ -20,11 +20,14 @@ import {
   FudicElement,
   computed,
   effect,
+  hooks,
   live,
   owned,
+  painted,
   signal,
   subscribe,
   written,
+  writtenIf,
   type Controller,
   type FudicElementCtor,
 } from '@fudic/core';
@@ -112,12 +115,15 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
       'effect',
       '$sub',
       '$written',
+      '$writtenIf',
       '$live',
       '$owned',
+      '$hooks',
+      '$painted',
       'emit',
       'customElements',
       body,
-    )(FudicElement, signal, computed, effect, subscribe, written, live, owned, emit, registry);
+    )(FudicElement, signal, computed, effect, subscribe, written, writtenIf, live, owned, hooks, painted, emit, registry);
     factory = captured!;
     ofGraph.set(tag, factory);
   }

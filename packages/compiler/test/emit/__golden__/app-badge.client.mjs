@@ -13,9 +13,9 @@ customElements.define("app-badge", class extends FudicElement {
     const $a = () => {
       let $v;
       $v = !!((tone === 'success'));
-      if ($v !== $w[0]) { $w[0] = $v; $dom.toggleClass($n0, "success", $v); }
+      if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.toggleClass($n0, "success", $v); }
       $v = !!((tone === 'warning'));
-      if ($v !== $w[1]) { $w[1] = $v; $dom.toggleClass($n0, "warning", $v); }
+      if ($v !== $w[1] || !(1 in $w)) { $w[1] = $v; $dom.toggleClass($n0, "warning", $v); }
     };
 
     return {

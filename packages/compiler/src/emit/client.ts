@@ -46,6 +46,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
+import type { HookKind, HookUse } from '../oxc/index.js';
 import { apiFields, apiForms, apiImports } from './api-links.js';
 
 /**
@@ -203,8 +204,9 @@ function buildComponentClientModule(
     options.assetExists,
     options.assetUrl,
   );
-  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, tasks, diagnostics, di } =
+  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, tasks, diagnostics, di, hooks } =
     codeOf(comp);
+  const used = hooksUsed(hooks);
   // What runs in a browser: the whole `@code` (SDD-60 §4.8). A `provide` is not in the
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
   // the route's IoC module rather than inside it (SDD-38 §4.5).
@@ -393,9 +395,10 @@ function buildComponentClientModule(
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(watched, bodies.hook)) usage.subscribes = true;
     watchTasks(tasks, bodies.hook, usage);
-    // A write that came before these subscriptions — an `effect` that ran with the factory —
-    // reached nobody, and the markup still says what the server painted: one repaint.
-    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
+    // A write that came before these subscriptions — an `effect` that ran with the factory, or
+    // another component writing a store — reached nobody, and the markup still says what the
+    // server painted: one repaint.
+    repaintIfWritten(bodies.hook, reactive, imported);
   }
 
   const owns = ownsCode(neutral, client.body);
@@ -415,11 +418,15 @@ function buildComponentClientModule(
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
+    ...(renews && imported.length > 0 ? ['writtenIf as $writtenIf'] : []),
+    ...(bodies.registries.length > 0 ? ['painted as $painted'] : []),
     // Only a file that creates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.creates ? ['live as $live'] : []),
     // Only a factory that runs code of its author has anything of its own to tear down.
     ...(owns ? ['owned as $owned'] : []),
+    // Only a `@code` that registers a lifecycle hook.
+    ...(used.size > 0 ? ['hooks as $hooks'] : []),
     // Where an instance with no node of the page's tree resolves its services from.
     ...(provides ? ['ownScope as $ownScope'] : injects ? ['scopeOf as $scopeOf'] : []),
   ];
@@ -480,6 +487,7 @@ function buildComponentClientModule(
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(props, cells, injects));
+  openHooks(w, used, '$dom.host($shadow)');
   // Before the neutral zone, because that is where the injections are written and `$ioc` is
   // what they resolve from.
   //
@@ -555,10 +563,13 @@ function buildComponentClientModule(
   w.line('c: () => {');
   w.indent();
   const start = here(comp.doc.template!.openSpan.start);
+  // The hooks around it: the shadow root is open and empty before, hooked up after.
+  runHooks(w, used, 'beforeCreate');
   if (root !== null) w.mappedLine(start, `$dom.append($shadow, ${root}());`);
   w.appendWriter(bodies.create);
   w.mappedLine(start, '$a();');
   w.mappedLine(start, '$s();');
+  runHooks(w, used, 'afterCreate');
   w.dedent();
   w.line('},');
   // Adopt → hook up. No `$a()`: the server already painted those values, so re-applying them would rewrite every text node
@@ -566,8 +577,11 @@ function buildComponentClientModule(
   // to change nothing. `h` adopts positions; the payload stays the authority on state.
   w.line('h: () => {');
   w.indent();
-  w.appendWriter(bodies.adopt);
+  // The server's DOM, nothing adopted yet; then adopted and hooked up.
+  runHooks(w, used, 'beforeHydrate');
+  writeAdopt(w, bodies);
   w.line('$s();');
+  runHooks(w, used, 'afterHydrate');
   w.dedent();
   w.line('},');
   // The update channel: reassign the positional bindings the payload CARRIES and re-apply.
@@ -592,8 +606,10 @@ function buildComponentClientModule(
       : `u: () => { ${pass} },`,
   );
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d());${ownedTeardown(owns)} },`,
+    `r: () => { ${disposeHooks(used)}${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d());${ownedTeardown(owns)} },`,
   );
+  // Connected and disconnected: only for a `@code` that listens to either.
+  connectHooks(w, used, ['onConnect', 'onDisconnect']);
   w.dedent();
   w.line('};');
   closeOwned(w, owns);
@@ -693,6 +709,70 @@ export function closeOwned(w: CodeWriter, owns: boolean): void {
  */
 export function ownedTeardown(owns: boolean): string {
   return owns ? ' $owns.forEach((d) => d());' : '';
+}
+
+/**
+ * The adoption of `h`. With blocks, inside `$painted`: a block walks the rows or the branch of
+ * the values it reads, and the DOM it adopts is the server's, painted with every signal's
+ * initial value — a write that came first (an `effect`, a hook, a store) would have it adopt
+ * nodes that are not there. The hookup's repaint brings the view up to date afterwards.
+ */
+export function writeAdopt(w: CodeWriter, bodies: { readonly adopt: CodeWriter; readonly registries: readonly string[] }): void {
+  if (bodies.registries.length === 0) {
+    w.appendWriter(bodies.adopt);
+    return;
+  }
+  w.line('$painted(() => {');
+  w.indent();
+  w.appendWriter(bodies.adopt);
+  w.dedent();
+  w.line('});');
+}
+
+/**
+ * One repaint at hookup when what the view reads was written before it subscribed: its own
+ * signals (`$written`), or the names it imports (`$writtenIf`, which asks the value).
+ */
+export function repaintIfWritten(hook: CodeWriter, reactive: readonly string[], imported: readonly string[]): void {
+  const asked = [
+    ...(reactive.length > 0 ? [`$written(${reactive.join(', ')})`] : []),
+    ...(imported.length > 0 ? [`$writtenIf(${imported.join(', ')})`] : []),
+  ];
+  if (asked.length > 0) hook.line(`if (${asked.join(' || ')}) $u();`);
+}
+
+/** The hooks a `@code` registers, by kind: what decides which moments the controller runs. */
+export function hooksUsed(hooks: readonly HookUse[]): ReadonlySet<HookKind> {
+  return new Set(hooks.flatMap((h) => (h.topLevel ? [h.kind] : [])));
+}
+
+/**
+ * The hook list of the instance and the host its hooks receive, at the top of the factory and
+ * before the author's code, which registers into it. The host is kept apart because `r` releases
+ * the names the controller reaches it by.
+ */
+export function openHooks(w: CodeWriter, used: ReadonlySet<HookKind>, host: string): void {
+  if (used.size === 0) return;
+  w.line('const $hk = $hooks();');
+  w.line(`const $hh = ${host};`);
+}
+
+/** One moment of hydrating or creating, when the `@code` asked for it. */
+export function runHooks(w: CodeWriter, used: ReadonlySet<HookKind>, kind: HookKind): void {
+  if (used.has(kind)) w.line(`$hk.run(${JSON.stringify(kind)}, $hh);`);
+}
+
+/** What `r` runs FIRST: `onDispose`, then what `afterHydrate` / `afterCreate` returned. */
+export function disposeHooks(used: ReadonlySet<HookKind>): string {
+  const disposes = used.has('onDispose') || used.has('afterHydrate') || used.has('afterCreate');
+  return disposes ? '$hk.dispose($hh); ' : '';
+}
+
+/** `on` / `off`, for a controller whose `@code` listens to `kinds`. */
+export function connectHooks(w: CodeWriter, used: ReadonlySet<HookKind>, kinds: readonly HookKind[]): void {
+  if (!kinds.some((k) => used.has(k))) return;
+  w.line('on: () => $hk.on($hh),');
+  w.line('off: () => $hk.off($hh),');
 }
 
 /** A writer's body as one line: `u` and `r` are single-line closures. */

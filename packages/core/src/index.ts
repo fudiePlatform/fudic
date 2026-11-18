@@ -35,6 +35,7 @@ export { computed, type Computed, type Readable } from './computed.js';
 export { effect, type Cleanup } from './effect.js';
 export { batch } from './batch.js';
 export { owned } from './owner.js';
+export { hooks, type Hooks, type HookKind } from './lifecycle.js';
 export { onStaleData, type DataSource } from './route-data.js';
 export {
   task,
@@ -47,9 +48,9 @@ export {
   type CallSignals,
   type TaskProgress,
 } from './task.js';
-export { untrack } from './tracking.js';
+export { untrack, painted } from './tracking.js';
 export { now } from './now.js';
-export { subscribe, subscribeIf, written } from './subscribe.js';
+export { subscribe, subscribeIf, written, writtenIf } from './subscribe.js';
 // Pipes (SDD-71): the six presets, one module each, and the two names the compiler replaces.
 export type { Pipe } from './pipe.js';
 export { date } from './pipes/date.js';

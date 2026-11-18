@@ -1,4 +1,4 @@
-import { FudicElement, owned as $owned } from '@fudic/core';
+import { FudicElement, painted as $painted, owned as $owned } from '@fudic/core';
 import { emit } from '@fudic/dom';
 import { template as $template } from '@fudic/dom';
 const $T0 = $template` <div class="cell"> <span></span> <button>e</button> </div> <!---->`;
@@ -26,7 +26,7 @@ customElements.define("app-calendar", class extends FudicElement {
         const $a = () => {
           let $v;
           $v = String((day.n) ?? '');
-          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n8, $v); }
+          if ($v !== $w[0] || !(0 in $w)) { $w[0] = $v; $dom.setText($n8, $v); }
         };
         const $s = () => {};
         const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
@@ -135,20 +135,22 @@ customElements.define("app-calendar", class extends FudicElement {
           $s();
         },
         h: () => {
-          let $c0 = $dom.firstElementChild($shadow);
-          $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
-          {
-            let $c1 = $dom.firstElementChild($n0);
-            for (const day of days) {
-              const $i = $b0($n0, null, day);
-              $c1 = $i.h($c1);
-              $i.s();
-              $k0.push($i);
+          $painted(() => {
+            let $c0 = $dom.firstElementChild($shadow);
+            $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
+            {
+              let $c1 = $dom.firstElementChild($n0);
+              for (const day of days) {
+                const $i = $b0($n0, null, day);
+                $c1 = $i.h($c1);
+                $i.s();
+                $k0.push($i);
+              }
+              $n1 = $dom.lastChild($n0);
+              $n9 = $n1;
+              for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n9 = $k0[$j].t($n9);
             }
-            $n1 = $dom.lastChild($n0);
-            $n9 = $n1;
-            for (let $j = $k0.length - 1; $j >= 0; $j -= 1) $n9 = $k0[$j].t($n9);
-          }
+          });
           $s();
         },
         u: ($p) => { if (2 in $p) days = $p[2] ?? ([]); $a(); $u0(); },

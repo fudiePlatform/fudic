@@ -6,7 +6,7 @@
  * attribute or an `@event` written there was checked against nothing at all.
  *
  * What goes out for it is narrower than for any other tag, and each exclusion has a reason:
- * HTML's own vocabulary (`$attrs<{}>`) because that is what the host takes, the gap anchors
+ * any attribute name held to a scalar (`$attrs<$HostOwn>`, SDD-86) because the host reflects what its author picks, the gap anchors
  * (`$gap<{}>`) because that is where completion happens, and the events — but no props,
  * since nobody passes props to the component itself, and no classes, since a `class:` there
  * is FUD0720.
@@ -31,10 +31,10 @@ describe('the identity tag reaches the projection at all', () => {
   it('opens `$tpl` with the host’s literals, before the template content', () => {
     const text = project('');
     const head = hostPart(text);
-    expect(head).toContain('$attrs<{}>(');
+    expect(head).toContain('$attrs<$HostOwn>(');
     expect(head).toContain('$gap<{}>(');
     // Before the content: the host is the first thing inside `$tpl`.
-    expect(head.indexOf('$attrs<{}>(')).toBeLessThan(head.indexOf('}'));
+    expect(head.indexOf('$attrs<$HostOwn>(')).toBeLessThan(head.indexOf('}'));
   });
 
   it('emits the gap literal even on a bare tag, which is what `<app-host |>` needs', () => {
@@ -72,7 +72,7 @@ describe('what it deliberately leaves out', () => {
     // `$props<$C…>` is the CHILD contract. The host is this file, and a contract against
     // itself would be asking the author to satisfy their own declaration twice.
     const head = hostPart(project(''));
-    expect(head.slice(0, head.indexOf('$attrs<{}>(') + 40)).not.toContain('$props<');
+    expect(head.slice(0, head.indexOf('$attrs<$HostOwn>(') + 40)).not.toContain('$props<');
   });
 
   it('a child component inside the shadow still gets its own contract', () => {
@@ -83,7 +83,7 @@ describe('what it deliberately leaves out', () => {
     expect(text).toContain('tone: (t),');
   });
 
-  it('the host’s literal is `{}` — HTML’s vocabulary, not this component’s contract', () => {
-    expect(hostPart(project('role="group"'))).toContain('$attrs<{}>({');
+  it('the host’s literal is `$HostOwn` — any name the author picks, held to a scalar (SDD-86 §3.6), not this component’s props', () => {
+    expect(hostPart(project('role="group"'))).toContain('$attrs<$HostOwn>({');
   });
 });

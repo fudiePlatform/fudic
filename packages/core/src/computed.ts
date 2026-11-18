@@ -15,7 +15,7 @@
  * recomputes to the same value does not move its version.
  */
 
-import { type Consumer, type Dependency, report, runTracked, tagSource } from './tracking.js';
+import { type Consumer, type Dependency, isPainting, report, runTracked, tagSource } from './tracking.js';
 
 /** A derived value is exactly one operation: read it. */
 export interface Computed<T> {
@@ -86,6 +86,8 @@ export function computed<T>(fn: () => T): Computed<T> {
   // something `subscribe` knows how to watch — and an IMPORTED name has to be told apart
   // from a plain helper before anybody subscribes to it (`isSource`).
   return tagSource(() => {
+    // Adopting the server's markup: derived from what was painted, and never cached as current.
+    if (isPainting()) return fn();
     const value = refresh();
     report(self);
     return value;

@@ -20,7 +20,7 @@ import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
 import { FUD0290, FUD0684 } from '@fudic/diagnostics';
-import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { JsBatch, isHookStatement, scanHooks, type HookShadow, type HookUse, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import {
   awaitedReads,
@@ -34,6 +34,7 @@ import { formSendDiagnostics } from './controls.js';
 import { deferredSpans, serverCut } from './server-cut.js';
 import {
   changeableBindings,
+  freeReferenceNodes,
   freeReferences,
   reservedIdentifiers,
   setCalls,
@@ -460,6 +461,15 @@ export interface ExtractedCode {
   /** Every name the `@code` declares at its top level, whatever its zone: what a linked `.fudapi` may not give again (`FUD1113`). */
   readonly declared: readonly string[];
   /**
+   * Every call to a lifecycle hook (`afterHydrate(…)`, `onConnect(…)`…), in source order. The
+   * client registers the top-level ones; the server and the Service Worker drop them.
+   */
+  readonly hooks: readonly HookUse[];
+  /** Every declaration or import of the `@code` named like a hook (`FUD1562`). */
+  readonly hookShadows: readonly HookShadow[];
+  /** Every name the top-level hook calls read from outside them: in a layout, a prop is `FUD1563`. */
+  readonly hookReads: readonly { readonly name: string; readonly span: Span }[];
+  /**
    * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
    *
    * `load` runs on the server and its result lives there; the moment a `@client` handler can
@@ -650,6 +660,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
       const reactives = signals.length;
       const remaining = readDeclarators(stmt, source, map, props, signals, named);
       let zone: CodeZone = cut === undefined || cut.has(stmt) ? 'neutral' : 'client';
+      // A hook is the browser's alone, in every role: the server and the Service Worker never
+      // see it, and a layout's travels in its route's chunk.
+      if (isHookStatement(stmt)) zone = 'client';
       // A reactive the markup reads is still the browser's own declaration: the server renders
       // it inert from what was just read, and the chunk declares it — and hands it to a child
       // as a cell (SDD-60 §4.8).
@@ -683,6 +696,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   if (!('serverLinks' in doc && doc.serverLinks !== undefined)) {
     own.push(...formSendDiagnostics(source, templateRootsOf(doc), new Set()));
   }
+
+  const lifecycle = scanHooks(allStatements, result.value.mapSpan);
+  const hookEdits = lifecycle.uses.flatMap((use) => (use.topLevel ? hookRewrite(use, source) : []));
 
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
@@ -725,7 +741,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     // the chunk: it belongs to the IoC module like every other registration, and `$own` — the container it registers into —
     // does not exist on this side at all.
     if (holdsDi(stmt, map, di, 'client', 'provide')) continue;
-    readClientStatement(stmt, source, map, client, emitCalls, cellReads, diEdits);
+    readClientStatement(stmt, source, map, client, emitCalls, cellReads, [...diEdits, ...hookEdits]);
   }
 
   return {
@@ -744,6 +760,12 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     tasks: topLevelTasks(sliced ? allStatements : clientStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
     declared: topLevelBindings(allStatements),
+    hooks: lifecycle.uses,
+    hookShadows: lifecycle.shadows,
+    hookReads: freeReferenceNodes(allStatements.filter(isHookStatement)).map((node) => ({
+      name: String(node['name']),
+      span: result.value.mapSpan(node.start, node.end),
+    })),
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
@@ -1477,6 +1499,19 @@ interface Edit {
   /** How many characters it replaces. `0` for an insertion, which most of them are. */
   readonly remove: number;
   readonly text: string;
+}
+
+/**
+ * `afterHydrate(fn)` → `$hk.add("afterHydrate", fn)`: the callee replaced, the kind inserted as
+ * the first argument. The instance's hook list, `$hk`, is the emit's.
+ */
+function hookRewrite(use: HookUse, source: string): Edit[] {
+  const open = source.indexOf('(', use.callee.end);
+  const empty = source.slice(open + 1, use.span.end - 1).trim() === '';
+  return [
+    { at: use.callee.start, remove: use.callee.end - use.callee.start, text: '$hk.add' },
+    { at: open + 1, remove: 0, text: empty ? `"${use.kind}"` : `"${use.kind}", ` },
+  ];
 }
 
 /** `emit('x', d)` → `emit.call($host, 'x', d)`, as two insertions per call. */

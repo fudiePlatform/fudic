@@ -98,6 +98,30 @@ export function runTracked<T>(consumer: Consumer, fn: () => T): T {
   }
 }
 
+let painting = 0;
+
+/** Whether a read is answering for what the server painted (`painted`). */
+export function isPainting(): boolean {
+  return painting > 0;
+}
+
+/**
+ * Run `fn` reading every signal as it was CREATED — which is what the server painted, since it
+ * renders every signal with its initial value — and every derived value from those, untracked.
+ *
+ * It is what hydration adopts by: the markup is the server's, so the rows and the branch it walks
+ * have to be the ones the server saw. A write that came first — an `effect` of the factory, a
+ * hook, another component writing a store — is the hookup's to repaint, after adopting.
+ */
+export function painted<T>(fn: () => T): T {
+  painting += 1;
+  try {
+    return untrack(fn);
+  } finally {
+    painting -= 1;
+  }
+}
+
 /**
  * Run `fn` without tracking any read. Restores in `finally`: if `fn` throws, the
  * tracking context cannot be left disarmed.

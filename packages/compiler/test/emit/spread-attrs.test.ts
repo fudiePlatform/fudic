@@ -59,7 +59,7 @@ describe('the emitted text', () => {
 
   it('the client keeps what it wrote last and hands it over as the previous', () => {
     expect(client).toMatch(
-      /if \(\$v !== \$w\[(\d+)\]\) \{ const \$o = \$w\[\1\]; \$w\[\1\] = \$v; \$dom\.setAttrs\(\$n\d+, \$v, \$o, \["class"\]\); \}/u,
+      /if \(\$v !== \$w\[(\d+)\] \|\| !\(\1 in \$w\)\) \{ const \$o = \$w\[\1\]; \$w\[\1\] = \$v; \$dom\.setAttrs\(\$n\d+, \$v, \$o, \["class"\]\); \}/u,
     );
   });
 

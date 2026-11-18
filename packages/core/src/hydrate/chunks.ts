@@ -53,8 +53,15 @@ export interface RouteController {
   h(): void;
   /** The value channel, for whoever holds a cell of this route. */
   u(): void;
-  /** Release. The hook SDD-20 will need the day a navigation stops reloading. */
+  /** Release: the page is leaving and will not come back. */
   r(): void;
+  /**
+   * The page is showing. Present, with `off`, only when the route's `@code` uses `onConnect`,
+   * `onDisconnect` or `onDispose`: it is what makes the page listen to `pagehide` / `pageshow`.
+   */
+  on?(): void;
+  /** The page is hidden: navigated away, or into the back-forward cache. */
+  off?(): void;
 }
 
 export interface ChunkLoader {

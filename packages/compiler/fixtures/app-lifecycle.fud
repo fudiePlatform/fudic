@@ -1,0 +1,60 @@
+<link rel="component" href="./app-lifecycle-row.fud">
+
+@code {
+  type Row = { id: string; label: string };
+
+  const { variant = 'default', rows = [] } = props<{ variant?: 'default' | 'highlight'; rows?: Row[] }>();
+
+  let box: HTMLElement | null = null;
+  const log: string[] = [];
+
+  beforeHydrate(() => {
+    log.push('beforeHydrate');
+  });
+
+  afterHydrate((host) => {
+    log.push('afterHydrate');
+    host.dataset.box = String(box !== null);
+  });
+
+  beforeCreate(() => {
+    log.push('beforeCreate');
+  });
+
+  afterCreate(() => {
+    log.push('afterCreate');
+    return () => log.push('afterCreate cleanup');
+  });
+
+  onConnect((host) => {
+    const ro = new ResizeObserver(() => {});
+    ro.observe(host);
+    return () => ro.disconnect();
+  });
+
+  onDisconnect(() => {
+    log.push('onDisconnect');
+  });
+
+  onDispose(() => {
+    log.push('onDispose');
+  });
+}
+
+<head>
+  <style>
+    :host { display: block; }
+    :host([variant="highlight"]) .box { border-color: gold; }
+    .box { border: 1px solid #ddd; }
+  </style>
+</head>
+
+<app-lifecycle role="group" variant="@variant">
+  <template shadowrootmode="open">
+    <div class="box" ref="@box">
+      @foreach (const row of rows) key (row.id) {
+        <app-lifecycle-row .label=@row.label></app-lifecycle-row>
+      }
+    </div>
+  </template>
+</app-lifecycle>

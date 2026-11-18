@@ -22,7 +22,9 @@ import type { Diagnostic, Span } from '../types/index.js';
 import { span } from '../types/index.js';
 import { FUD0700, FUD0701, FUD0702 } from '@fudic/diagnostics';
 import { codeOfDocument, type Prop } from './oxc-code.js';
+import type { HookKind } from '../oxc/index.js';
 import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
+import { codeHookDiagnostics } from '../semantic/analyzers/lifecycle.js';
 import { EXPORTED_LOAD } from '../semantic/analyzers/layout-load.js';
 
 /**
@@ -76,8 +78,12 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // `neutral` is already the `@code` minus what the emit writes in its own shape, so the
   // `props<T>()` destructuring is not in it — everything that IS, is left over. An exported
   // `load` is `FUD0430`'s, which says more about it than «a statement».
+  // Its lifecycle hooks are the exception, and the imports they read: both travel in the route's
+  // chunk, which hydrates the page the layout is part of, and run there (`layoutHooksOf`).
+  const hooked = code.client.body.length > 0;
   for (const statement of code.neutral) {
     if (LOAD_STATEMENT.test(statement.text)) continue;
+    if (hooked && statement.hoisted) continue;
     diagnostics.push(
       FUD0700({ span: span(statement.at, statement.at + statement.text.length), kind: 'statement' }),
     );
@@ -94,7 +100,63 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // are the semantic pass's; the build reads a layout's diagnostics off its emit, so they are
   // asked here too. (`FUD0706` is retired: Razor in any `<style>` is `FUD0132`, decision 136.)
   diagnostics.push(...layoutBodyDiagnostics(doc.body));
+  // Its hooks, for the same reason: where they are written, and that they read no prop.
+  diagnostics.push(
+    ...codeHookDiagnostics({
+      type: doc.type,
+      uses: code.hooks,
+      shadows: code.hookShadows,
+      reads: code.hookReads,
+      declared: code.declared,
+    }),
+  );
   return { props, diagnostics };
+}
+
+/**
+ * What a layout's `@code` hands its route's chunk: the hooks it registers, already rewritten to
+ * `$hk.add(…)`, and the imports they read. Empty for a layout with no hooks, which is every
+ * layout that has nothing to run in the browser.
+ */
+export function layoutHooksOf(
+  layouts: readonly { readonly path: string; readonly source: string; readonly doc: LayoutDocument }[],
+  routePath: string,
+): { readonly imports: readonly string[]; readonly body: readonly string[]; readonly kinds: readonly HookKind[] } {
+  const imports: string[] = [];
+  const body: string[] = [];
+  const kinds: HookKind[] = [];
+  for (const layout of layouts) {
+    const code = codeOfDocument(layout.source, layout.doc);
+    if (code.client.body.length === 0) continue;
+    kinds.push(...code.hooks.flatMap((h) => (h.topLevel ? [h.kind] : [])));
+    // A relative import is the layout's, and the chunk it lands in is the route's.
+    const rebase = (text: string): string =>
+      text.replace(RELATIVE_SPECIFIER, (_, open: string, spec: string) => `${open}${rebased(spec, layout.path, routePath)}`);
+    imports.push(...code.neutral.flatMap((s) => (s.hoisted ? [rebase(s.text)] : [])));
+    body.push(...code.client.body.map((s) => s.text));
+  }
+  return { imports, body, kinds };
+}
+
+/** The quoted specifier of an `import`, when it is relative: `from "./x"`, `import '../y'`. */
+const RELATIVE_SPECIFIER = /((?:\bfrom|\bimport)\s*['"])(\.{1,2}\/[^'"]*)/gu;
+
+/** The directory segments of a path, either separator. */
+const dirOf = (path: string): string[] => path.replace(/\\/gu, '/').split('/').slice(0, -1);
+
+/** `spec`, relative to the file at `from`, written relative to the file at `to`. */
+export function rebased(spec: string, from: string, to: string): string {
+  const source = dirOf(from);
+  const target = dirOf(to);
+  let common = 0;
+  while (common < source.length && common < target.length && source[common] === target[common]) common++;
+  const out: string[] = [];
+  for (const part of [...target.slice(common).map(() => '..'), ...source.slice(common), ...spec.split('/')]) {
+    if (part === '.') continue;
+    if (part === '..' && out.length > 0 && out[out.length - 1] !== '..') out.pop();
+    else out.push(part);
+  }
+  return out[0] === '..' ? out.join('/') : `./${out.join('/')}`;
 }
 
 /**

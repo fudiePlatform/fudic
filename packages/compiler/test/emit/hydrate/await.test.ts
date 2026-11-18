@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { browserDom, emit, type DomClient } from '@fudic/dom';
-import { signal, computed, effect, live, owned, subscribe, written } from '@fudic/core';
+import { signal, computed, effect, live, owned, painted, subscribe, written, writtenIf } from '@fudic/core';
 import { PageParts } from '@fudic/ssr';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteModule, emitRouteClientModule } from '../../../src/emit/index.js';
@@ -70,7 +70,7 @@ function routeFactory(code: string, refresh: Refresh): RouteFactory {
   };
   return evalModule(
     code.replace(/^export default /mu, 'const $route = '),
-    { signal, computed, effect, $sub: subscribe, $written: written, $live: live, $owned: owned, emit, $stale: stale, $load: null },
+    { signal, computed, effect, $sub: subscribe, $written: written, $live: live, $owned: owned, $painted: painted, $writtenIf: writtenIf, emit, $stale: stale, $load: null },
     '$route',
   ) as RouteFactory;
 }

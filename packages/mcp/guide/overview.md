@@ -12,8 +12,9 @@ and which guide topics exist.
   server on request, or by the Service Worker during navigation. A page that has nothing
   interactive ships no JavaScript of its own; the hydration runtime is only added to a page
   that has something to hydrate.
-- **JavaScript only where it is needed.** A component hydrates when it has state, events or
-  reactive props. Everything else stays plain HTML and CSS.
+- **JavaScript only where it is needed.** A component hydrates when it has state, events,
+  reactive props or lifecycle hooks (`afterHydrate`, `onConnect`…); a route with hooks ships
+  JavaScript too. Everything else stays plain HTML and CSS.
 - **fudic is a BFF, never the backend.** A `.fudapi` declares what a view needs from the
   server. Each function has a handler in `src/server` that **translates** between that
   contract and the real backend: call it, convert its answer to the `.fudapi` type, turn its

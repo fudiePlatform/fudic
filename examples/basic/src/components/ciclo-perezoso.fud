@@ -1,0 +1,25 @@
+@code {
+  /**
+   * Nadie le pasa nada y solo usa los hooks de irse: se hidrata con el primer gesto sobre él, y
+   * hasta entonces no ha registrado ninguno. Uno con `afterHydrate` u `onConnect` se hidrataría
+   * al cargar.
+   */
+  import { signal } from "@fudic/core";
+  import { note } from "../store/ciclo.js";
+
+  const pulsado = signal(0);
+
+  onDisconnect(() => note("perezoso", "onDisconnect"));
+  onDispose(() => note("perezoso", "onDispose"));
+
+  function pulsar() {
+    if (pulsado() === 0) note("perezoso", "despierto");
+    pulsado.set(pulsado() + 1);
+  }
+}
+
+<ciclo-perezoso>
+  <template shadowrootmode="open">
+    <button type="button" class="perezoso" @click=@pulsar>Despiértame (@pulsado())</button>
+  </template>
+</ciclo-perezoso>

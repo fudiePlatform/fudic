@@ -1,0 +1,24 @@
+@code {
+  const { label = '' } = props<{ label?: string }>();
+
+  afterHydrate((host) => {
+    host.dataset.ready = 'hydrated';
+  });
+
+  afterCreate((host) => {
+    host.dataset.ready = 'created';
+  });
+
+  onConnect((host) => {
+    host.dataset.connected = 'yes';
+    return () => {
+      host.dataset.connected = 'no';
+    };
+  });
+}
+
+<app-lifecycle-row>
+  <template shadowrootmode="open">
+    <span>@label</span>
+  </template>
+</app-lifecycle-row>

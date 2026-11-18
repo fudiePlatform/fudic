@@ -450,9 +450,12 @@ export function refreshesData(graph: ComponentGraph): boolean {
 export function isReactiveRoute(graph: ComponentGraph): boolean {
   const entry = entryHalf(graph);
   if (entry === undefined) return false;
+  // A layout's hooks run in its route's chunk, so they are a reason to have one.
+  const layouts = 'layouts' in graph ? (graph as DocumentGraph).layouts : [];
   return (
     entry.code.signals.length > 0 ||
     entry.code.clientRuns ||
+    layouts.some((l) => codeOfDocument(l.source, l.doc).client.body.length > 0) ||
     hasHookupIn(graph.entrySource, entry.roots) ||
     passesFunctionIn(graph.entrySource, entry.roots, entry.code.clientFunctions)
   );
@@ -471,8 +474,26 @@ export function isReactiveRoute(graph: ComponentGraph): boolean {
 export function routeHydration(graph: ComponentGraph): 'gesture' | 'eager' {
   const entry = entryHalf(graph);
   if (entry === undefined) return 'gesture';
-  const eager = entry.code.clientEffects || hasControlIn(graph.entrySource, entry.roots);
+  // Its layout's hooks run in its chunk: one that runs on load brings the route up on load.
+  const layouts = 'layouts' in graph ? (graph as DocumentGraph).layouts : [];
+  const eager =
+    runsOnLoad(entry.code) ||
+    layouts.some((l) => runsOnLoad(codeOfDocument(l.source, l.doc))) ||
+    hasControlIn(graph.entrySource, entry.roots);
   return eager ? 'eager' : 'gesture';
+}
+
+/** The hooks whose moment is the page loading: they cannot wait for a gesture. */
+const LOAD_HOOKS: ReadonlySet<string> = new Set(['beforeHydrate', 'afterHydrate', 'onConnect']);
+
+/**
+ * Whether a `@code` has something to do on load, with nobody touching anything: an `effect`, or a
+ * lifecycle hook of hydrating or connecting. Either makes a component or a route hydrate at
+ * install instead of on its first gesture — a `ResizeObserver` started in `onConnect` that waits
+ * for a click is not observing. `onDisconnect` and `onDispose` wait: nothing leaves before it is up.
+ */
+export function runsOnLoad(code: ExtractedCode): boolean {
+  return code.clientEffects || code.hooks.some((h) => h.topLevel && LOAD_HOOKS.has(h.kind));
 }
 
 /**

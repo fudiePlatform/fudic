@@ -53,8 +53,8 @@ A whole document with holes, in `src/layouts`. `fudic_generate { kind: "layout" 
   must be filled (`FUD0890`). A `@section` the layout does not render is `FUD0429`.
 - Keep the `fudic:runtime` script: without it a page never reacts to a click. A layout never
   links another layout (`FUD0439`) nor a `.fudapi` (`FUD1112`).
-- Props: declared in a `@code` inside `<head>` holding only `props<…>()` (`FUD0700`), read only
-  in the head, never in `<body>` (`FUD0704`). A route resolves them in `layout` of its `.fudapi`;
+- Props: declared in a `@code` inside `<head>` holding only `props<…>()` and lifecycle hooks
+  (`FUD0700`; see Lifecycle of a route), read only in the head, never in `<body>` (`FUD0704`). A route resolves them in `layout` of its `.fudapi`;
   a prop with no default that the route leaves out is `FUD0702`.
 
 ## `load`: the data of a page
@@ -315,6 +315,94 @@ save.handle((ctx) => {
 - A status in the function's `catches`, or a 422, reaches the caller (`error()`, `ok: false`).
   With `error-pages` in the chain any other failure navigates away (`_error.fud`, or its
   `routes`) and the task stays `pending`. A `fails` text is the `.fudapi`'s, in the page's locale.
+
+## Lifecycle of a route
+
+A route, a page and a layout use the hooks of a component (topic `components`, Lifecycle) at the top level of their `@code`, with `host` being the `<body>`. Not `beforeCreate` / `afterCreate`: they always come from the server (`FUD1561`). A layout's hooks, and the imports they read, run in the route's JavaScript, before the route's own. Their moments are the document's:
+
+| Hook | When |
+|---|---|
+| `beforeHydrate` | before the route adopts the `<body>` |
+| `afterHydrate` | after adopting and hooking up |
+| `onConnect` | right after `afterHydrate`, and again on each `pageshow` that brings the page back from the back-forward cache |
+| `onDisconnect` | on each `pagehide` |
+| `onDispose` | on a `pagehide` after which the page will not come back, after `onDisconnect` |
+
+The back-forward cache is to a page what a keyed move is to a component: it leaves and comes back without being destroyed, signals intact. fudic listens to `pagehide` and `pageshow` only, never `unload` (which takes the page out of that cache), and only in a route that uses `onConnect`, `onDisconnect` or `onDispose`. A route (or its layout) with `beforeHydrate`, `afterHydrate` or `onConnect` hydrates at load, as one with a top-level `effect` does; otherwise it hydrates on its first gesture.
+
+The browser waits for no promise on `pagehide`: an IndexedDB transaction or a `fetch` started in `onDisconnect` may never finish, on a phone above all. Save what must not be lost when it changes (an `effect`), and keep `onDisconnect` as the last try:
+
+```ts path=src/stores/cart.ts
+import { signal } from "@fudic/core";
+
+/** The items of the cart, shared by every page that imports them. */
+export const items = signal<readonly string[]>([]);
+
+function store(mode: IDBTransactionMode): Promise<IDBObjectStore> {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open("shop", 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("kv");
+    open.onsuccess = () => resolve(open.result.transaction("kv", mode).objectStore("kv"));
+    open.onerror = () => reject(open.error);
+  });
+}
+
+/** What was saved under `key`, or an empty list. */
+export async function readList(key: string): Promise<readonly string[]> {
+  const kv = await store("readonly");
+  return new Promise((resolve) => {
+    const get = kv.get(key);
+    get.onsuccess = () => resolve((get.result as readonly string[] | undefined) ?? []);
+    get.onerror = () => resolve([]);
+  });
+}
+
+/** Save `list` under `key`. */
+export async function saveList(key: string, list: readonly string[]): Promise<void> {
+  (await store("readwrite")).put(list, key);
+}
+```
+
+```fud path=src/routes/cart.fud
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import { effect } from "@fudic/core";
+  import { items, readList, saveList } from "../stores/cart";
+
+  let loaded = false;
+
+  // Saved on every change, once read back.
+  effect(() => {
+    const now = items();
+    if (loaded) void saveList("cart", now);
+  });
+
+  afterHydrate(async () => {
+    items.set(await readList("cart"));
+    loaded = true;
+  });
+
+  onDisconnect(() => {
+    void saveList("cart", items());
+  });
+}
+
+<head><title>Cart</title></head>
+<p>Your cart is kept in this browser.</p>
+```
+
+```fud broken=FUD1561 path=src/routes/welcome.fud
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  afterCreate(() => {
+    console.log("created");
+  });
+}
+
+<p>Welcome</p>
+```
 
 ## Repaint after a mutation
 

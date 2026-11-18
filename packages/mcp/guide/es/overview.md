@@ -12,8 +12,9 @@ workspace, y qué temas de la guía existen.
   renderizada por el servidor bajo petición, o por el Service Worker durante la navegación. Una
   página que no tiene nada interactivo no envía JavaScript propio; el runtime de hidratación solo
   se añade a una página que tiene algo que hidratar.
-- **JavaScript solo donde hace falta.** Un componente se hidrata cuando tiene estado, eventos o
-  props reactivas. Todo lo demás se queda en HTML y CSS planos.
+- **JavaScript solo donde hace falta.** Un componente se hidrata cuando tiene estado, eventos,
+  props reactivas o hooks del ciclo de vida (`afterHydrate`, `onConnect`…); una ruta con hooks
+  también lleva JavaScript. Todo lo demás se queda en HTML y CSS planos.
 - **fudic es un BFF, nunca el backend.** Un `.fudapi` declara lo que una vista necesita del
   servidor. Cada función tiene un handler en `src/server` que **traduce** entre ese contrato y
   el backend real: lo llama, convierte su respuesta al tipo del `.fudapi`, transforma sus errores

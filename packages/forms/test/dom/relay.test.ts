@@ -221,3 +221,72 @@ describe('FudicControlElement relays', () => {
     expect(() => document.body.append(document.createElement('relay-field'))).not.toThrow();
   });
 });
+
+/**
+ * SDD-86 §4.6, criterion 12 — the control's `connectedCallback` overrides the base's and calls it
+ * first: the controller's `on` / `off` reach a form-associated component exactly as they reach
+ * any other, and the relay still runs after them.
+ */
+describe('FudicControlElement connects like FudicElement (SDD-86)', () => {
+  const log: string[] = [];
+
+  class Live extends FudicControlElement {
+    static override readonly referenceTarget: string | null = 'campo';
+    static c([, root]: readonly unknown[]): Controller {
+      const shadow = root as ShadowRoot;
+      let connected = false;
+      return {
+        c: () => {
+          shadow.innerHTML = '<input id="campo">';
+          log.push('c');
+        },
+        h: () => log.push('h'),
+        u: () => {},
+        r: () => log.push('r'),
+        on: () => {
+          log.push(connected ? 'on (again!)' : 'on');
+          connected = true;
+        },
+        off: () => {
+          log.push(connected ? 'off' : 'off (again!)');
+          connected = false;
+        },
+      };
+    }
+  }
+  customElements.define('relay-live', Live);
+
+  beforeEach(() => {
+    log.length = 0;
+  });
+
+  it('created, inserted, moved and removed: c, on, off, on, off, r — and the relay still carries the labels', async () => {
+    document.body.innerHTML = '<label id="lab">Alias</label><div id="a"></div><div id="b"></div>';
+    const el = document.createElement('relay-live') as Probe;
+    labelsOf.set(el, [document.getElementById('lab')!]);
+    el.c([form({ a: control('') }).a]);
+    expect(log).toEqual(['c']);
+
+    document.getElementById('a')!.append(el);
+    expect(log).toEqual(['c', 'on']);
+    const field = el.shadowRoot!.getElementById('campo')!;
+    expect(reflected(field).ariaLabelledByElements).toEqual([document.getElementById('lab')]);
+
+    document.getElementById('b')!.append(el); // a keyed move
+    await tick();
+    expect(log).toEqual(['c', 'on', 'off', 'on']);
+
+    el.remove();
+    await tick();
+    expect(log).toEqual(['c', 'on', 'off', 'on', 'off', 'r']);
+  });
+
+  it('hydrated already in the document: h, then on — once', () => {
+    const el = document.createElement('relay-live') as Probe;
+    document.body.append(el);
+    el.attachShadow({ mode: 'open', delegatesFocus: true }).innerHTML = '<input id="campo">';
+    el.h([form({ a: control('') }).a]);
+    expect(log).toEqual(['h', 'on']);
+    el.remove();
+  });
+});

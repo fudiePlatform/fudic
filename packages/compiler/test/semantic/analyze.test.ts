@@ -96,7 +96,8 @@ describe('analyze — runner', () => {
     //   FUD1143 and FUD0835 say those facts)
     // + loop-bindings (SDD-62: FUD0543 for every loop), data-without-load (SDD-62: FUD0621)
     // + baseline-html and baseline-css, before jsx-text (SDD-83: FUD1524 of the markup and the <style>)
-    expect(ANALYZERS).toHaveLength(35);
+    // + lifecycle, after layout-body (SDD-86: FUD1560–FUD1563, where a hook may be written)
+    expect(ANALYZERS).toHaveLength(36);
     expect(ANALYZERS[0]?.name).toBe('attribute-bindings');
     expect(ANALYZERS.at(-1)?.name).toBe('jsx-text');
     const names = ANALYZERS.map((a) => a.name);

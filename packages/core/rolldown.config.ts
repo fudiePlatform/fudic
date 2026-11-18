@@ -77,6 +77,8 @@ const PIECES: Readonly<Record<string, string>> = {
   computed: 'src/computed.ts',
   effect: 'src/effect.ts',
   owner: 'src/owner.ts',
+  // The hook list of a component or a route that uses `afterHydrate`, `onConnect`… (SDD-86).
+  lifecycle: 'src/lifecycle.ts',
   task: 'src/task.ts',
   'route-data': 'src/route-data.ts',
   subscribe: 'src/subscribe.ts',

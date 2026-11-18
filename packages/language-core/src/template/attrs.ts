@@ -129,9 +129,10 @@ interface SpreadEntry {
  *
  * What it emits is deliberately NOT what a child host gets:
  *
- * - `$attrs<{}>` and `$gap<{}>`, both against `$GlobalAttrs` alone. **No props**: nobody
- *   passes props to this tag, it IS the component, so offering its own contract here would
- *   answer a question nobody asked.
+ * - `$attrs<$HostOwn>` and `$gap<{}>`. **No props**: nobody passes props to this tag, it IS the
+ *   component, so offering its own contract here would answer a question nobody asked. But any
+ *   attribute name: the component reflects its state on its own host under names its author
+ *   chooses (`variant="@variant"`), and only the value is checked, as a scalar.
  * - The events, through the same `$on` as anywhere else, so the `@` list is TypeScript's
  *   `HTMLElementEventMap` and the handler is checked.
  * - **No classes.** A `class:` here is `FUD0720`: the classes this file knows live inside its
@@ -149,7 +150,7 @@ export function emitHostBindings(ctx: TemplateContext, el: ElementNode): void {
     globals.push({ attr, binding });
   }
 
-  ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+  ctx.w.scaffold('$attrs<$HostOwn>({', el.openSpan);
   emitEntries(ctx, globals);
   ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
 

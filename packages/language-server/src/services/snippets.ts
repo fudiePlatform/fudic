@@ -150,6 +150,14 @@ const MARKUP_ROLES: readonly FudRole[] = ['component', 'route', 'page'];
 /** The roles that branch and loop in their markup: the layout's body too, since SDD-48. */
 const CONTROL_ROLES: readonly FudRole[] = [...MARKUP_ROLES, 'layout'];
 
+/** The roles whose `@code` has a life in the browser: all four. */
+const LIFE_ROLES: readonly FudRole[] = CONTROL_ROLES;
+
+/** A lifecycle hook of `@code`, with the host it receives and the body it runs. */
+function hook(label: string, detail: string, roles: readonly FudRole[]): FudSnippet {
+  return { label, detail, scope: 'code-block', roles, body: `${label}((host) => {\n  $0\n});` };
+}
+
 /** One entry of the catalogue. */
 export interface FudSnippet {
   /** What is typed and what is shown. */
@@ -521,6 +529,21 @@ export const SNIPPETS: readonly FudSnippet[] = [
   // is declared in a `.fudapi`.
   { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS },
   { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS },
+  // The lifecycle hooks. A route, a page and a layout always come from the server, so they are
+  // never created: the two create hooks are a component's alone.
+  hook('beforeHydrate', 'before adopting what the server painted', LIFE_ROLES),
+  hook('afterHydrate', 'after adopting what the server painted', LIFE_ROLES),
+  hook('beforeCreate', 'before creating it in the browser', ['component']),
+  hook('afterCreate', 'after creating it in the browser', ['component']),
+  {
+    label: 'onConnect',
+    detail: 'each time it enters the document; return the cleanup',
+    scope: 'code-block',
+    roles: LIFE_ROLES,
+    body: 'onConnect((host) => {\n  $1\n  return () => {\n    $0\n  };\n});',
+  },
+  hook('onDisconnect', 'each time it leaves the document', LIFE_ROLES),
+  hook('onDispose', 'once, when it is destroyed', LIFE_ROLES),
 ];
 
 /**

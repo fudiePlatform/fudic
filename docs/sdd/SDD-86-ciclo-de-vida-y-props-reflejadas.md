@@ -1,13 +1,14 @@
 # SDD-86 — El ciclo de vida de un componente, y las props reflejadas en el host
 
-> **Estado:** `Listo` (2026-11-16) — [tareas](./SDD-86-Task.md).
+> **Estado:** `Hecho` (2026-11-17) — [tareas](./SDD-86-Task.md). Las decisiones tomadas al
+> implementar están en §8.1, 14–25.
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/mcp` · `examples/basic`
 > **Depende de:** 15 (`c` / `h` / `u` / `r` y `FudicElement`), 17 (la cascada de hidratación en
 > postorden), 20 (navegar sustituye el documento), 28 (los snippets), 34 (`FudicControlElement`), 39
 > (la mitad de cliente de una ruta), 68 (`owned` y la limpieza de `r`), 85 (crear clonando). SDD-85
 > tiene que estar en `main` antes de empezar.
-> **Rango de diagnósticos:** `FUD1560`–`FUD1569` (nuevo). Usados: `FUD1560`–`FUD1562`.
+> **Rango de diagnósticos:** `FUD1560`–`FUD1569` (nuevo). Usados: `FUD1560`–`FUD1563`.
 > **Decisiones de gramática:** ninguna. Los hooks son funciones intrínsecas de `@code`, como `props`.
 > **Origen:** [IDEA-08](./ideas/IDEA-08-adelgazar-el-cliente.md) §4, y lo hablado con Pedro el
 > 2026-11-16. Con esta SDD la IDEA-08 queda cerrada.
@@ -91,10 +92,10 @@ nombre y el editor las declara como globales.
 
 ```ts
 beforeHydrate(fn: (host: HTMLElement) => void): void;
-afterHydrate(fn: (host: HTMLElement) => void | (() => void)): void;
+afterHydrate(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
 beforeCreate(fn: (host: HTMLElement) => void): void;
-afterCreate(fn: (host: HTMLElement) => void | (() => void)): void;
-onConnect(fn: (host: HTMLElement) => void | (() => void)): void;
+afterCreate(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
+onConnect(fn: (host: HTMLElement) => void | (() => void) | Promise<void>): void;
 onDisconnect(fn: (host: HTMLElement) => void): void;
 onDispose(fn: (host: HTMLElement) => void): void;
 ```
@@ -147,6 +148,7 @@ en que se escribieron.
 | `FUD1560` | error | Lifecycle hook outside the top level of `@code` | La llamada no es una sentencia de nivel superior del `@code` |
 | `FUD1561` | error | A create hook in a file that is never created | `beforeCreate` o `afterCreate` en una ruta, una página o un layout: siempre vienen del servidor |
 | `FUD1562` | error | A declaration hides a lifecycle hook | El `@code` declara o importa un nombre que es el de un hook |
+| `FUD1563` | error | A layout hook reads a prop of the layout | Un hook del `@code` de un layout lee una de sus props, que solo tienen valor en el servidor (§8.1, 22) |
 
 Cada uno es un fichero en `packages/diagnostics/src/codes/`, con su `.md` y su línea en `index.ts`,
 como manda `CLAUDE.md`. `FUD1563`–`FUD1569` quedan libres.
@@ -262,8 +264,10 @@ que hidrata el documento compuesto. Sus momentos son los del documento:
 | `onDispose` | En `pagehide` con `persisted === false`, después de `onDisconnect`: la página no va a volver |
 
 La bfcache es a una página lo que un movimiento de `@foreach` a un componente: se va y vuelve sin
-destruirse. Una ruta que se hidrata con el primer gesto (SDD-39) ejecuta sus hooks en ese momento; si
-el usuario se va antes del gesto, ninguno se ha registrado y no se ejecuta ninguno.
+destruirse. Una ruta (o su layout) con `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al
+cargar, como una con un `effect` (§4.3). Una que solo usa `onDisconnect` u `onDispose` se hidrata con
+el primer gesto (SDD-39); si el usuario se va antes del gesto, ninguno se ha registrado y no se
+ejecuta ninguno.
 
 El arranque de la ruta en `@fudic/core` ([install.ts](../../packages/core/src/hydrate/install.ts))
 llama a `on()` del controlador justo después de `h()` y registra en `window` un listener de `pagehide`
@@ -290,8 +294,13 @@ dos órdenes posibles sin disparar dos veces:
 ### 4.3. Padres e hijos
 
 Al hidratar, la cascada va en postorden (SDD-17): el `afterHydrate` de un hijo se ejecuta antes que el
-del padre. Un componente que se hidrata por interacción o al entrar en el viewport ejecuta sus hooks
-cuando se hidrata, no al cargar la página.
+del padre.
+
+**Cuándo se hidrata.** Un componente con `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al
+cargar la página, como uno con un `effect` de nivel superior: esos momentos son los de la página
+cargando, y un `ResizeObserver` que espera a un clic no observa nada. Uno que solo usa `onDisconnect`
+u `onDispose` (o los de crear) se hidrata cuando le tocaba, por interacción, y no ejecuta ningún hook
+hasta entonces.
 
 Al crear, cada hijo se levanta con `live()`, que espera a la definición de su tag. El `afterCreate` del
 padre no espera a sus hijos: si un hijo ya estaba definido se crea en el paso 4 del padre, y si no,
@@ -494,7 +503,9 @@ salen del `.md` del catálogo de `@fudic/diagnostics`.
    ejecuta, y el componente responde a sus eventos.
 9. `fn` recibe el host del componente en los siete hooks.
 10. Un hijo hidratado ejecuta su `afterHydrate` antes que su padre.
-11. Un componente que se hidrata por interacción no ejecuta ningún hook hasta la interacción.
+11. Un componente con `afterHydrate` u `onConnect` y sin eventos ni estado se hidrata al cargar y
+    los ejecuta sin ninguna interacción. Uno que solo usa `onDisconnect` / `onDispose` y se hidrata
+    por interacción no ejecuta ningún hook hasta la interacción (Pedro, §8.1 25).
 12. Un componente `formassociated` ejecuta los siete hooks en el mismo orden, y su relay de
     atributos sigue funcionando.
 13. `mount` de `@fudic/testing` ejecuta los hooks de hidratar (`via: 'ssr'`) y los de crear
@@ -514,7 +525,7 @@ salen del `.md` del catálogo de `@fudic/diagnostics`.
 
 **El editor**
 
-21. `afterHydrate((host) => host.dataset.x = '1')` no da errores de tipos; `afterHydrate(42)` sí;
+21. `afterHydrate((host) => { host.dataset.x = '1'; })` no da errores de tipos; `afterHydrate(42)` sí;
     `onConnect(() => 42)` sí.
 22. Dentro del `@code` de un componente se ofrecen los siete snippets; en el de una ruta, una página o
     un layout, los cinco que no son de crear; fuera de `@code`, ninguno.
@@ -594,3 +605,60 @@ Nada.
     lo que conoce de otros frameworks.
 13. **Lo asíncrono al irse no se promete.** El navegador no espera a nadie en `pagehide`. El framework
     no intenta alargar la vida de la página: la guía enseña a guardar cuando el dato cambia.
+14. **Una ruta lleva `on` / `off` también si solo usa `onDispose`** (al implementar). El arranque no
+    tiene otra forma de saber que la ruta quiere enterarse de `pagehide`: escucha la página si y solo
+    si el controlador de la ruta trae `off`. En un componente no hace falta (su `r` lo llama el
+    elemento), así que allí sigue la regla de §4.5. Los listeners van en `window`.
+15. **Los hooks se buscan en todo el `@code`** (al implementar). `FUD1562` cuenta cualquier nombre que
+    declare el `@code`, a cualquier profundidad: `const`, `let`, `function`, sus parámetros, `class`,
+    el parámetro de un `catch` y los imports. `FUD1561` solo se da a una llamada de nivel superior:
+    una que no lo es ya es `FUD1560`. Las llamadas en el JS de la vista (handlers, interpolaciones,
+    `@{ }`, cabeceras de bloques) también son `FUD1560`: no son el nivel superior de `@code`.
+16. **El `@code` de un layout admite sus hooks y los imports que usan** (al implementar). Hasta ahora
+    solo admitía props (`FUD0700` para lo demás) porque un layout no tiene mitad de cliente. Sus
+    llamadas a hooks, reescritas, y sus imports viajan al chunk de la ruta, delante de los de la
+    ruta; un import relativo se reescribe relativo a la ruta, y uno idéntico al de la ruta no se
+    repite. Un layout con hooks hace que su ruta lleve chunk (`isReactiveRoute`). Dentro de un hook
+    de layout no hay props del layout: son del servidor.
+17. **Toda sentencia de hook va a la zona de cliente** (al implementar), sea cual sea el corte del
+    servidor. Eso es lo que la quita de la salida de servidor y de Service Worker, que solo
+    escriben la zona neutral.
+18. **Un hook que limpia también puede ser `async`** (al implementar). `afterHydrate`,
+    `afterCreate` y `onConnect` aceptan una `fn` que devuelve `void`, su limpieza o una
+    `Promise<void>`: el ejemplo del store de §4.9 es `async`. Nadie espera la promesa. Y el criterio
+    21 se escribe con llaves: `(host) => host.dataset.x = '1'` devuelve un `string`, que con la firma
+    de §3.1 es el mismo error que `onConnect(() => 42)`; el criterio pedía las dos cosas a la vez.
+19. **El tag de identidad acepta cualquier nombre de atributo** (al implementar). El editor lo
+    comprobaba contra los atributos globales de HTML, así que `variant="@variant"` era `TS2353`.
+    Ahora va contra `$HostOwn`: cualquier nombre, con valor `$Scalar`.
+20. **«Se pinta igual que sin ellos» se lee sin contar la hidratación** (al implementar). Un hijo
+    que solo tiene hooks pasa a hidratar (criterio 14), así que el padre lo reclama en su módulo de
+    servidor (`$dom.claim(…)`), como a cualquier hijo hidratable. Es la única diferencia de salida
+    de servidor que traen los hooks; el HTML pintado es el mismo.
+21. **El `@code` de un layout va en su `<head>`**, como siempre (`FUD0153` fuera de él). Los hooks
+    de un `@code` mal colocado no viajan, igual que sus props.
+22. **Un hook de layout no lee las props del layout: `FUD1563`** (al implementar). Las resuelve el
+    `layout` del `.fudapi` de la ruta, en el servidor, y no viajan al navegador, donde corre el
+    hook. Leer una sería un `ReferenceError` silencioso (el hook lo captura y lo reporta). El
+    diagnóstico sale en el editor y en el build (que lee los de un layout de su emit). El «código
+    de nivel superior del layout» del criterio 26 es, por tanto, sus hooks y sus imports: nada más
+    cabe en el `@code` de un layout (`FUD0700`).
+23. **Un `ref` vale `null` en `beforeHydrate` si se declara como dice la guía**
+    (`let box: HTMLElement | null = null;`). Declarado sin valor, vale `undefined` hasta el
+    enganche: el compilador no inicializa las variables del autor.
+24. **Dos bugs del framework arreglados por el camino** (al implementar). Uno: tras hidratar, una
+    actualización a `undefined` no quitaba lo que pintó el servidor (el caché de escrituras leía
+    «nunca escrito» como `undefined`); la guarda de cada escritura aplica ahora también un hueco
+    que nadie llenó. Dos: una vista que lee un store importado no se repintaba al engancharse si
+    otro componente había escrito el store antes (`writtenIf`). Los dos cambian la salida de
+    cliente de ficheros sin hooks, a propósito: el criterio 15 se lee como «los hooks no añaden
+    nada», no como «nada cambia». Y un tercero: un bloque adoptaba recorriendo el valor actual de lo
+    que lee, no el que pintó el servidor, y un `effect`, un hook o un store escritos antes de `h`
+    hacían que un `@foreach` adoptara filas que no existían (`TypeError`) o un `@if` la rama
+    equivocada. Ahora la adopción de una vista con bloques va dentro de `painted` (`@fudic/core`):
+    cada signal se lee con su valor inicial, que es el que pintó el servidor, y el repintado del
+    enganche la pone al día.
+25. **Los hooks de cargar hidratan al cargar** (Pedro). Un componente o una ruta (o su layout) con
+    `beforeHydrate`, `afterHydrate` u `onConnect` se hidrata al instalar, como uno con un `effect`
+    (`runsOnLoad` en `level.ts`). `onDisconnect` y `onDispose` no: nada se va antes de estar. El
+    criterio 11 se reescribe con eso.

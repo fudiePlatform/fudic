@@ -1,0 +1,13 @@
+@code {
+  function start() {
+    onConnect(() => {
+      console.log("connected");
+    });
+  }
+}
+
+<fix-late>
+  <template shadowrootmode="open">
+    <button type="button" @click=@start>Start</button>
+  </template>
+</fix-late>

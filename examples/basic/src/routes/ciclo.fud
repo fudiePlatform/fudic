@@ -1,0 +1,141 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/ciclo-demo.fud">
+<link rel="component" href="../components/ciclo-perezoso.fud">
+
+@code {
+  // Los hooks de un componente y los de la ruta, vistos desde fuera: cada uno apunta en el
+  // registro qué momento de su vida acaba de pasar.
+  import { effect, signal } from "@fudic/core";
+  import { clearRecord, note, readNumber, record, saveNumber } from "../store/ciclo.js";
+
+  const estado = signal<"activo" | "inactivo">("inactivo");
+  const abierto = signal(false);
+  const filas = signal(["fila A", "fila B"]);
+  const contador = signal(0);
+
+  // El contador se guarda en IndexedDB cada vez que cambia, una vez leído. La ruta se hidrata
+  // al cargar, sin esperar a un gesto: tiene `afterHydrate` y `onConnect`.
+  let leido = false;
+  effect(() => {
+    const ahora = contador();
+    if (leido) void saveNumber("contador", ahora);
+  });
+
+  afterHydrate(async () => {
+    note("ruta", "afterHydrate");
+    contador.set(await readNumber("contador"));
+    leido = true;
+  });
+
+  onConnect(() => {
+    note("ruta", "onConnect");
+  });
+
+  // Último intento al irse: el navegador no espera a nadie en `pagehide`.
+  onDisconnect(() => {
+    note("ruta", "onDisconnect");
+    void saveNumber("contador", contador());
+  });
+
+  onDispose(() => {
+    sessionStorage.setItem("ciclo-dispose", String(Date.now()));
+  });
+
+  function alternar() {
+    estado.set(estado() === "activo" ? "inactivo" : "activo");
+  }
+
+  function abrir() {
+    abierto.set(!abierto());
+  }
+
+  function reordenar() {
+    filas.set([...filas()].reverse());
+  }
+
+  function limpiar() {
+    clearRecord();
+  }
+
+  function sumar() {
+    contador.set(contador() + 1);
+  }
+}
+
+<head>
+  <title>Ciclo de vida — fudic</title>
+  <style>
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: var(--pad-box);
+      background: var(--surface);
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .registro {
+      margin: 0;
+      padding-left: 1.4rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="ciclo"></site-nav>
+}
+
+<h1>El ciclo de vida de un componente</h1>
+<p class="lede">
+  Cada instancia de <code>&lt;ciclo-demo&gt;</code> apunta abajo cada hook que se ejecuta. La
+  primera la pinta el servidor; la del <code>@@if</code> la crea el navegador; las filas se
+  reordenan sin destruirse.
+</p>
+
+<div class="panel">
+  <div class="row">
+    <button type="button" class="alternar" @click=@alternar>Cambiar estado</button>
+    <button type="button" class="abrir" @click=@abrir>Abrir / cerrar</button>
+    <button type="button" class="reordenar" @click=@reordenar>Reordenar filas</button>
+    <button type="button" class="limpiar" @click=@limpiar>Limpiar registro</button>
+  </div>
+
+  <ciclo-demo class="servidor" .nombre="servidor" .estado=@estado()></ciclo-demo>
+
+  @if (abierto()) {
+    <ciclo-demo class="creado" .nombre="creado" .estado=@estado()></ciclo-demo>
+  }
+
+  @foreach (const fila of filas()) key (fila) {
+    <ciclo-demo class="fila" .nombre=@fila .estado=@estado()></ciclo-demo>
+  }
+</div>
+
+<h2>Registro</h2>
+<ol class="registro">
+  @foreach (const linea of record()) key (linea.id) {
+    <li>@linea.text</li>
+  }
+</ol>
+
+<h2>El contador de la ruta</h2>
+<div class="panel">
+  <div class="row">
+    <button type="button" class="sumar" @click=@sumar>+1</button>
+    <output class="contador">@contador()</output>
+  </div>
+  <p>Se lee de IndexedDB al hidratar y se guarda al cambiar: recarga la página y sigue ahí.</p>
+</div>
+
+<h2>Uno que espera a un gesto</h2>
+<ciclo-perezoso></ciclo-perezoso>
+
+<p><a class="fuera" href="/about">Ir a otra página</a> y volver atrás: la página vuelve de la bfcache.</p>

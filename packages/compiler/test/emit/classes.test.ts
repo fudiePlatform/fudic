@@ -107,7 +107,9 @@ describe('the emitted code (criterion 19)', () => {
 
   it('a change of the swap makes the toggles behind it run again (rule 5)', () => {
     // `exp` is the fourth element: its swap and its one toggle hold consecutive slots.
-    const swap = /if \(\$v !== \$w\[(\d+)\]\) \{ const \$o = \$w\[\1\]; \$w\[\1\] = \$v; \$dom\.swapClass\(\$n\d+, \$v, \$o\); \$w\[(\d+)\] = undefined; \}/u.exec(client);
+    // `delete`, not `= undefined` (SDD-86): a slot that is not there always writes, even when
+    // the toggle's value is `undefined`.
+    const swap = /if \(\$v !== \$w\[(\d+)\] \|\| !\(\1 in \$w\)\) \{ const \$o = \$w\[\1\]; \$w\[\1\] = \$v; \$dom\.swapClass\(\$n\d+, \$v, \$o\); delete \$w\[(\d+)\]; \}/u.exec(client);
     expect(swap).not.toBeNull();
     expect(Number(swap![2])).toBe(Number(swap![1]) + 1);
   });

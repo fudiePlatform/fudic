@@ -39,7 +39,8 @@ const hookup = (src: string): string =>
 describe('emitComponentClientModule — a signal imported from a module', () => {
   it('subscribes an imported name through the guarded channel', () => {
     const src = chunk('  import { count } from "../store.js";\n');
-    expect(src).toContain("import { FudicElement, subscribeIf as $subIf } from '@fudic/core';");
+    // `$writtenIf`: a store written before this view hydrated repaints it at hookup (SDD-86).
+    expect(src).toContain("import { FudicElement, subscribeIf as $subIf, writtenIf as $writtenIf } from '@fudic/core';");
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');
     // And the pass it renews is the same one a declared signal renews: one body, so a value
     // that moves by store and one that moves by declaration cannot be applied differently.
@@ -106,12 +107,13 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
       '<span>@count() @(n())</span>',
     );
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf, written as $written, owned as $owned } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf, written as $written, writtenIf as $writtenIf, owned as $owned } from '@fudic/core';",
     );
     expect(hookup(src)).toContain('$d.push($sub(n, $u));');
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');
-    // Its own signal alone: a store is not the component's to have been written in its factory.
-    expect(hookup(src)).toContain('if ($written(n)) $u();');
+    // Its own signal, and the store too (SDD-86): another component may have written it before
+    // this one hydrated, and the markup it adopts still says what the server painted.
+    expect(hookup(src)).toContain('if ($written(n) || $writtenIf(count)) $u();');
   });
 
   it('emits no channel at all when the view has nothing a write could change', () => {
