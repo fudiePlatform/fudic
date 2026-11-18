@@ -113,6 +113,7 @@ describe('criterion 4: a <link rel="layout"> in the head of a whole document', (
 });
 
 describe('FUD1583: the runtime is the layout’s, never a route’s', () => {
+  const MARKER = '<script type="module" src="fudic:runtime"></script>';
   const ROUTE = (head: string, markup = '<h1>x</h1>'): string =>
     `<link rel="layout" href="./_layout.fud">\n<head>${head}<title>t</title></head>\n${markup}\n`;
 
@@ -133,6 +134,23 @@ describe('FUD1583: the runtime is the layout’s, never a route’s', () => {
 
   it('another script in a route’s <head> is no runtime: nothing to say', () => {
     expect(structure(ROUTE('<script type="module" src="./app.js"></script>')).codes).toEqual([]);
+  });
+
+  it('anywhere else is FUD1583 too, over the script: a route’s markup, a component, a layout’s body', () => {
+    const cases = [
+      `<link rel="layout" href="./_layout.fud">\n<h1>x</h1>\n${MARKER}\n`,
+      `<link rel="layout" href="./_layout.fud">\n<div><p>${MARKER}</p></div>\n`,
+      `<link rel="layout" href="./_layout.fud">\n@if (true) {\n  ${MARKER}\n}\n`,
+      `<x-a>\n  <template shadowrootmode="open">${MARKER}</template>\n</x-a>\n`,
+      `<head>${MARKER}</head>\n<x-a>\n  <template shadowrootmode="open"></template>\n</x-a>\n`,
+      `<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>${MARKER}@RenderBody()</body>\n</html>\n`,
+    ];
+    for (const source of cases) {
+      const found = structure(source).diagnostics.filter((d) => d.code === 'FUD1583');
+      expect(found, source).toHaveLength(1);
+      const at = source.indexOf(MARKER);
+      expect(found[0]!.span, source).toEqual({ start: at, end: at + MARKER.length });
+    }
   });
 
   it('in a layout’s <head> it is where it belongs: nothing to say', () => {
