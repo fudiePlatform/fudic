@@ -7,7 +7,7 @@
   </head>
   <body>
     @code {
-      const n = 1;
+      const { n = 1 } = props<{ n?: number }>();
     }
     @RenderBody()
   </body>
