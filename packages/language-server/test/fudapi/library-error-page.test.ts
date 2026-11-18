@@ -21,7 +21,13 @@ const LIB = JSON.stringify({ kind: 'lib', prefix: 'ui' });
 const filesOf = (config: string | undefined, page = true): Readonly<Record<string, string | undefined>> => ({
   ...FILES,
   ...(config !== undefined ? { [`${APP}/fudic.json`]: config } : {}),
-  ...(page ? { [ERROR_PAGE]: '<!DOCTYPE html>\n<html><head><title>@data.status</title></head><body></body></html>\n' } : {}),
+  // Every page links a layout (SDD-88): the library's error page links one of the library's.
+  ...(page
+    ? {
+        [ERROR_PAGE]: '<link rel="layout" href="./layouts/_layout.fud">\n<head><title>@data.status</title></head>\n',
+        [`${SRC}/layouts/_layout.fud`]: '<!DOCTYPE html>\n<html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n',
+      }
+    : {}),
 });
 
 /** What the service says about `text` written in `src/_error.fudapi`. */
@@ -38,7 +44,10 @@ async function diagnostics(files: Readonly<Record<string, string | undefined>>, 
 
 describe('src/_error.fudapi of a library', () => {
   it('its context is an error page’s', () => {
-    expect(world({ files: filesOf(LIB) }).host.load(ERROR_API, '').context).toEqual({ route: { params: [], error: true } });
+    // With the props of the layout it links, which its `layout` resolves (SDD-88 §3.6).
+    expect(world({ files: filesOf(LIB) }).host.load(ERROR_API, '').context).toEqual({
+      route: { params: [], error: true, layoutProps: "import('../../src/layouts/_layout.fud').$Props" },
+    });
   });
 
   it('load and a function are FUD1010 in the editor; paths is FUD1091, as in an app’s error page', async () => {

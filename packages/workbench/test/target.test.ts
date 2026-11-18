@@ -103,8 +103,8 @@ describe('resolveTarget — criterion 2', () => {
   it('rejects a page with FUD0970', () => {
     const fs = memoryFs({
       'C:/proj/fudic.json': '{}',
-      'C:/proj/src/routes/index.fud': '<!DOCTYPE html>\n<html><body></body></html>',
-      'C:/proj/src/routes/blog-post.fud': '<!DOCTYPE html>\n<html><body><app-card></app-card></body></html>',
+      'C:/proj/src/routes/index.fud': '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>',
+      'C:/proj/src/routes/blog-post.fud': '<link rel="layout" href="./_layout.fud">\n<app-card></app-card>',
     });
     expect(codeOf('C:/proj/src/routes/index.fud', fs)).toBe('FUD0970');
     expect(codeOf('C:/proj/src/routes/blog-post.fud', fs)).toBe('FUD0970');
@@ -113,7 +113,7 @@ describe('resolveTarget — criterion 2', () => {
   it('rejects a layout with FUD0970', () => {
     const fs = memoryFs({
       'C:/proj/fudic.json': '{}',
-      'C:/proj/src/routes/_layout.fud': '<!DOCTYPE html>\n<html><body><slot></slot></body></html>',
+      'C:/proj/src/routes/_layout.fud': '<!DOCTYPE html>\n<html><body>@RenderBody()</body></html>',
     });
     expect(codeOf('C:/proj/src/routes/_layout.fud', fs)).toBe('FUD0970');
   });
@@ -167,10 +167,10 @@ describe('resolveTarget — criterion 2', () => {
 describe('resolveTarget — pages and flows (SDD-82 §3.1)', () => {
   const ROUTES = {
     'C:/proj/fudic.json': '{}',
-    'C:/proj/src/routes/usuarios.fud': '<!DOCTYPE html>\n<html><body></body></html>',
+    'C:/proj/src/routes/usuarios.fud': '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>',
     'C:/proj/src/routes/usuarios.fudspec': 'page /usuarios\n',
     'C:/proj/src/routes/usuarios.fixture.ts': 'export default {};\n',
-    'C:/proj/src/routes/index.fud': '<!DOCTYPE html>\n<html><body></body></html>',
+    'C:/proj/src/routes/index.fud': '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>',
     'C:/proj/src/routes/index.fudspec': 'page /\n',
     'C:/proj/src/flows/alta-de-usuario.fudspec': 'flow alta-de-usuario\n',
     'C:/proj/src/flows/sin-nombre.fudspec': 'flow\n',

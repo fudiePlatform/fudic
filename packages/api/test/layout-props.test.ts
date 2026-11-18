@@ -12,11 +12,22 @@ describe('layoutPropsType', () => {
     expect(layoutPropsType(PAGE, page, TYPES)).toBe("import('../../../../src/layouts/_layout.fud').$Props");
   });
 
-  it('a bare href and a ./ are next to the page; single quotes read the same', () => {
-    expect(layoutPropsType(PAGE, "<link rel='layout' href='_l.fud'>", TYPES)).toBe(
+  it('a ./ is next to the page; single quotes read the same', () => {
+    expect(layoutPropsType(PAGE, "<link rel='layout' href='./_l.fud'>", TYPES)).toBe(
       "import('../../../../src/routes/blog/_l.fud').$Props",
     );
     expect(layoutPropsType('/p/a/r.fud', '<link rel="layout" href="./_l.fud">', '/p/a/t.d.ts')).toBe("import('./_l.fud').$Props");
+  });
+
+  // SDD-88 §3.7, criterion 13: an href that starts with neither `.` nor `/` is a package
+  // specifier, as `hrefKind` of @fudic/resolve says, and is imported as written.
+  it('a package specifier is imported as written, with no path composed around it', () => {
+    expect(layoutPropsType(PAGE, '<link rel="layout" href="@acme/ui/layouts/_layout.fud">', TYPES)).toBe(
+      "import('@acme/ui/layouts/_layout.fud').$Props",
+    );
+    expect(layoutPropsType(PAGE, '<link rel="layout" href="ui-kit/_layout.fud">', TYPES)).toBe("import('ui-kit/_layout.fud').$Props");
+    // A bare name is a package too (SDD-43 §4.3): it was never next to the page.
+    expect(layoutPropsType(PAGE, "<link rel='layout' href='_l.fud'>", TYPES)).toBe("import('_l.fud').$Props");
   });
 
   it('nothing without a layout link, with an empty or absolute href, or with none', () => {

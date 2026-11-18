@@ -66,7 +66,7 @@ async function open(file: string, options = {}): Promise<WorkbenchSession> {
 describe('openWorkbench, failing', () => {
   it('answers FUD0970 for a page, before starting anything', async () => {
     project = tempProject('page');
-    project.write('src/index.fud', '<!DOCTYPE html>\n<html><body></body></html>\n');
+    project.write('src/index.fud', '<link rel="layout" href="./_layout.fud">\n<h1>x</h1>\n');
     const answer = await openWorkbench(project.path('src/index.fud'));
     expect(isFailure(answer) && answer.diagnostic.code).toBe('FUD0970');
     // The project has `@fudic/terms` in its node_modules; the workbench folder is what must not be there.

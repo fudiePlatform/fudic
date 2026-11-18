@@ -105,16 +105,15 @@ export const NESTED_LAYOUT = `<!DOCTYPE html>
 </html>
 `;
 
-/** A minimal standalone page `.fud`. */
-export const PAGE = `<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-  </head>
-  <body>
-    <h1>hi</h1>
-  </body>
-</html>
+/**
+ * A minimal page `.fud`. Every page is a route since SDD-88 (decision 183): it links a layout,
+ * here one that need not exist, since nothing that reads it follows the link.
+ */
+export const PAGE = `<link rel="layout" href="./layouts/_layout.fud">
+<head>
+  <meta charset="utf-8">
+</head>
+<h1>hi</h1>
 `;
 
 /**

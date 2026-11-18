@@ -63,22 +63,22 @@ criterion no-pasa
 const FILES: Readonly<Record<string, string>> = {
   'package.json': JSON.stringify({ name: 'bench-record', private: true, type: 'module', dependencies: { '@fudic/http': '0.0.0' } }),
   'vite.config.ts': "import { fudic } from '@fudic/vite';\n\nexport default { plugins: [fudic({ liveCheck: false })] };\n",
+  // Every page links a layout (SDD-88).
+  'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
   'src/http.fudapi': 'chain\n  use json\n',
-  'src/routes/usuarios.fud': `<!DOCTYPE html>
-<html>
-<head><title>Usuarios</title><link rel="server" href="./usuarios.fudapi"></head>
-<body><p>Sesión: @data.who</p><ul>@foreach (const u of data.users) key (u) { <li>@u</li> }</ul></body>
-</html>
+  'src/routes/usuarios.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./usuarios.fudapi">
+<head><title>Usuarios</title></head>
+<p>Sesión: @data.who</p><ul>@foreach (const u of data.users) key (u) { <li>@u</li> }</ul>
 `,
   'src/routes/usuarios.fudapi': 'load\n  users  str[]\n  who    str\n\npost login\n  user  str\n\nget exportar\n  -> file\n',
   'src/server/usuarios.ts': SERVER,
   'src/routes/usuarios.fudspec': SPEC,
   // A `load` that answers what has no literal.
-  'src/routes/raro.fud': `<!DOCTYPE html>
-<html>
-<head><title>Raro</title><link rel="server" href="./raro.fudapi"></head>
-<body><p>n @data.n</p></body>
-</html>
+  'src/routes/raro.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./raro.fudapi">
+<head><title>Raro</title></head>
+<p>n @data.n</p>
 `,
   'src/routes/raro.fudapi': 'load\n  n  i32\n',
   'src/server/raro.ts': `import { load } from 'fudic:routes/raro';

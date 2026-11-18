@@ -8,14 +8,23 @@
 import { describe, expect, it } from 'vitest';
 import { contractOf, roleOf } from '../src/mode.js';
 import { layoutHrefOf, parseFud, tagOf } from '@fudic/typecheck';
-import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from './_support.js';
+import { component, LAYOUT, NESTED_LAYOUT, route } from './_support.js';
+
+/** A whole document without any hole: a layout written wrong, FUD1580 (SDD-88, decision 183). */
+const WHOLE = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"></head>
+<body><h1>hi</h1></body>
+</html>
+`;
 
 const doc = (source: string) => parseFud(source).document;
 
 describe('roleOf', () => {
   it.each([
     ['a component', component('app-badge'), 'component'],
-    ['a standalone page', PAGE, 'page'],
+    // SDD-88 criterion 23: there is no page role; a doctype is always a layout.
+    ['a whole document without a hole', WHOLE, 'layout'],
     ['a route', route('../layouts/_layout.fud'), 'route'],
     ['a layout', LAYOUT, 'layout'],
   ])('reads %s', (_label, source, expected) => {
@@ -29,7 +38,7 @@ describe('tagOf', () => {
   });
 
   it.each([
-    ['a page', PAGE],
+    ['a whole document without a hole', WHOLE],
     ['a route', route('../layouts/_layout.fud')],
     ['a layout', LAYOUT],
   ])('is empty for %s: it is not reached by being written as an element', (_label, source) => {
@@ -44,7 +53,7 @@ describe('layoutHrefOf', () => {
 
   it.each([
     ['a component', component('app-badge')],
-    ['a page', PAGE],
+    ['a whole document without a hole', WHOLE],
     ['a plain layout', LAYOUT],
     // A layout that WROTE one is `FUD0439`, and this answers for the projection: there is no
     // layout above it to import `$Sections` from, so the link is not an href anyone follows.

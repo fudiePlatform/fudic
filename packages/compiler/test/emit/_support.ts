@@ -11,8 +11,10 @@ import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock, packData } 
 import { classDiff, classTokens, type ClassDiff } from '@fudic/dom';
 import {
   emitComponentModule,
-  emitPageModule,
+  emitLayoutModule,
+  emitRouteModule,
   type ComponentGraph,
+  type DocumentGraph,
   type EmitOptions,
 } from '../../src/emit/index.js';
 import {
@@ -272,7 +274,28 @@ export async function drain(pieces: Pieces): Promise<string> {
 }
 
 /**
- * Emit every module of a graph to a temp dir and import the page's `page(data, io)`.
+ * The smallest layout (SDD-88): a document that renders the route's head and body and adds
+ * nothing. A test about something other than the layout links it, so the `<body>` it paints is
+ * the route's markup and nothing else.
+ */
+export const BARE_LAYOUT =
+  '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+/** Where {@link withLayout} puts {@link BARE_LAYOUT}, and the `href` a route at the root links. */
+export const BARE_LAYOUT_PATH = '/_layout.fud';
+
+/** The first line of a route at the root that links {@link BARE_LAYOUT}. */
+export const LINK_LAYOUT = '<link rel="layout" href="./_layout.fud">\n';
+
+/** `files` plus {@link BARE_LAYOUT} at {@link BARE_LAYOUT_PATH}, for `memoryIo`. */
+export function withLayout(files: Record<string, string>, layout: string = BARE_LAYOUT): Record<string, string> {
+  return { [BARE_LAYOUT_PATH]: layout, ...files };
+}
+
+/**
+ * Emit every module of a route's graph (its layout and its components) to a temp dir and import
+ * the route's `page(data, io)`. Every page links a layout since SDD-88: resolve it with
+ * `resolveDocument`, and give it a layout ({@link BARE_LAYOUT} when the test is not about one).
  *
  * `options` go to EVERY module and not just the page, because a component renders its
  * children's hosts and those hosts carry the adopted list too (SDD-42 §4.1). Emitting the
@@ -280,7 +303,7 @@ export async function drain(pieces: Pieces): Promise<string> {
  * two halves disagree, which is a state the build cannot reach.
  */
 export async function pageModuleOf(
-  graph: ComponentGraph,
+  graph: DocumentGraph,
   options: EmitOptions = {},
 ): Promise<PageFn> {
   const dir = mkdtempSync(join(tmpdir(), 'fudic-emit-'));
@@ -288,12 +311,17 @@ export async function pageModuleOf(
   for (const comp of graph.components.values()) {
     writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp, options), 'utf8');
   }
-  writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph, options), 'utf8');
+  if (graph.layouts.length === 0) throw new Error(`${graph.entryPath} links no layout: every page links one (SDD-88)`);
+  for (const layout of graph.layouts) {
+    const stem = (layout.path.split(/[\\/]/u).pop() ?? layout.path).replace(/\.[^.]+$/u, '');
+    writeFileSync(join(dir, `${stem}.mjs`), emitLayoutModule(graph, layout, options), 'utf8');
+  }
+  writeFileSync(join(dir, 'home.mjs'), emitRouteModule(graph, options), 'utf8');
   const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as { page: PageFn };
   return mod.page;
 }
 
-export async function renderPageHtml(graph: ComponentGraph, data: unknown): Promise<string> {
+export async function renderPageHtml(graph: DocumentGraph, data: unknown): Promise<string> {
   const page = await pageModuleOf(graph);
   // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
   return drain(page(data, minimalSsr()));

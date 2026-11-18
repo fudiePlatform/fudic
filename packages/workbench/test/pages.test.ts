@@ -18,14 +18,14 @@ const EXPECTED = new URL('./expected/app-card/', import.meta.url);
 /** The example's component, at a fixed place so the expected pages are the same on every disk. */
 const TARGET: BenchTarget = {
   tag: 'app-card',
-  component: 'C:/proj/src/components/app-card.fud',
-  spec: 'C:/proj/src/components/app-card.fudspec',
-  fixture: 'C:/proj/src/components/app-card.fixture.ts',
-  projectRoot: 'C:/proj',
+  component: '/proj/src/components/app-card.fud',
+  spec: '/proj/src/components/app-card.fudspec',
+  fixture: '/proj/src/components/app-card.fixture.ts',
+  projectRoot: '/proj',
 };
 
 /** The folder of a workbench process, as `benchDir` names it. */
-const DIR = 'C:/proj/node_modules/.fudic-bench/4242';
+const DIR = '/proj/node_modules/.fudic-bench/4242';
 
 /** The component's bare page, which every plan carries first. */
 const MOUNT = 'routes/app-card.fud';
@@ -36,6 +36,11 @@ function spec(source: string): SpecFile {
 
 function expected(name: string): string {
   return readFileSync(fileURLToPath(new URL(`${name}.fud`, EXPECTED)), 'utf8');
+}
+
+/** The bare page one level down, as a criterion page: `routes/<tag>/<id>.fud` links the layout from two folders up. */
+function nested(source: string): string {
+  return source.replace('href="../_bench-layout.fud"', 'href="../../_bench-layout.fud"');
 }
 
 /** A signal as the fixture holds it, without pulling in the runtime. */
@@ -129,7 +134,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
         steps: [{ block: 'then', term: 'visible', args: ['app-card'], offset: 46 }],
       },
     ]);
-    expect(plan.files.get('routes/app-card/bare.fud')).toBe(expected('bare').replace('app-card · app-card', 'app-card · bare'));
+    expect(plan.files.get('routes/app-card/bare.fud')).toBe(nested(expected('bare')).replace('app-card · app-card', 'app-card · bare'));
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
   });
 
@@ -142,7 +147,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
     });
     expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, spec: TARGET.spec, fixture: 'vacia', propsOffset: 48, steps: [] });
     expect(plan.files.get('routes/app-card/empty.fud')).not.toContain('@code');
-    expect(plan.files.get('routes/app-card/empty.fud')).toContain('    <app-card></app-card>\n');
+    expect(plan.files.get('routes/app-card/empty.fud')).toContain('<app-card></app-card>\n');
   });
 
   it('opens one bare card, named after the tag, without a .fudspec (FUD0972)', () => {
@@ -158,7 +163,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
     ]);
     expect([...plan.files]).toEqual([
       [MOUNT, expected('bare')],
-      ['routes/app-card/app-card.fud', expected('bare')],
+      ['routes/app-card/app-card.fud', nested(expected('bare'))],
     ]);
     expect(plan.diagnostics).toMatchObject([{ code: 'FUD0972', severity: 'warning', file: TARGET.component }]);
   });
@@ -223,10 +228,10 @@ describe('planBench — a fixture entry it cannot mount', () => {
 describe('planBench — criterion 5, a Signal prop', () => {
   const TARGET_SIGNAL: BenchTarget = {
     tag: 'signal-display',
-    component: 'C:/proj/src/components/signal-display.fud',
-    spec: 'C:/proj/src/components/signal-display.fudspec',
-    fixture: 'C:/proj/src/components/signal-display.fixture.ts',
-    projectRoot: 'C:/proj',
+    component: '/proj/src/components/signal-display.fud',
+    spec: '/proj/src/components/signal-display.fudspec',
+    fixture: '/proj/src/components/signal-display.fixture.ts',
+    projectRoot: '/proj',
   };
   const source = spec(
     'component signal-display\n\n' +
@@ -243,7 +248,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
   it('writes the host with the literal initial value, and the page mounts the host from the folder', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
     expect(plan.files.get('components/signal-display/bench-host-signal-display-diez.fud')).toBe(
-      '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
+      '<link rel="component" href="/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
         '  import { signal } from "@fudic/core";\n' +
@@ -258,13 +263,10 @@ describe('planBench — criterion 5, a Signal prop', () => {
         '</bench-host-signal-display-diez>\n',
     );
     expect(plan.files.get('routes/signal-display/diez.fud')).toBe(
-      '<!DOCTYPE html>\n<html>\n  <head>\n' +
-        `    <link rel="component" href="${DIR}/components/signal-display/bench-host-signal-display-diez.fud">\n` +
-        '    <script type="module" src="fudic:runtime"></script>\n' +
-        '    <title>signal-display · diez</title>\n' +
-        '  </head>\n  <body>\n' +
-        '    <bench-host-signal-display-diez></bench-host-signal-display-diez>\n' +
-        '  </body>\n</html>\n',
+      '<link rel="layout" href="../../_bench-layout.fud">\n' +
+        `<link rel="component" href="${DIR}/components/signal-display/bench-host-signal-display-diez.fud">\n` +
+        '<head>\n  <title>signal-display · diez</title>\n</head>\n' +
+        '<bench-host-signal-display-diez></bench-host-signal-display-diez>\n',
     );
     expect(plan.criteria[0]).toEqual({
       id: 'diez',
@@ -281,11 +283,11 @@ describe('planBench — criterion 5, a Signal prop', () => {
   it('forwards the other props through the host, in fixture order', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
     expect(plan.files.get('components/signal-display/bench-host-signal-display-mixta.fud')).toBe(
-      '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
+      '<link rel="component" href="/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
         '  import { signal } from "@fudic/core";\n' +
-        '  import fixtures from "C:/proj/src/components/signal-display.fixture";\n' +
+        '  import fixtures from "/proj/src/components/signal-display.fixture";\n' +
         '\n' +
         '  const { label, note } = fixtures.mixta;\n' +
         '\n' +
@@ -305,7 +307,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
   it('gives no host to a criterion of the same component without a Signal', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
     expect(plan.files.has('components/signal-display/bench-host-signal-display-plana.fud')).toBe(false);
-    expect(plan.files.get('routes/signal-display/plana.fud')).toContain('    <signal-display .label=@label></signal-display>\n');
+    expect(plan.files.get('routes/signal-display/plana.fud')).toContain('<signal-display .label=@label></signal-display>\n');
     expect([...plan.files.keys()]).toEqual([
       'routes/signal-display.fud',
       'components/signal-display/bench-host-signal-display-diez.fud',
@@ -319,7 +321,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
 });
 
 describe('planBench — criterion 6, an initial value that is not a JSON literal', () => {
-  const TARGET_SIGNAL: BenchTarget = { ...TARGET, fixture: 'C:/proj/src/components/app-card.fixture.ts' };
+  const TARGET_SIGNAL: BenchTarget = { ...TARGET, fixture: '/proj/src/components/app-card.fixture.ts' };
   const source = spec(
     'component app-card\n\ncriterion fecha\n  given\n    props fecha\n\ncriterion sana\n  given\n    props sana\n',
   );
@@ -394,13 +396,13 @@ describe('planBench — criterion 7, the steps', () => {
 
 describe('benchDir — criterion 4, one folder per process', () => {
   it('is inside the project, under node_modules, named after the process', () => {
-    expect(benchDir('C:/proj', 4242)).toBe(DIR);
-    expect(benchDir('C:/proj/', 4242)).toBe(DIR);
+    expect(benchDir('/proj', 4242)).toBe(DIR);
+    expect(benchDir('/proj/', 4242)).toBe(DIR);
     expect(benchDir('/', 7)).toBe('/node_modules/.fudic-bench/7');
   });
 
   it('is this process\'s by default, and Vite reads its routes relative to the root', () => {
-    expect(benchDir('C:/proj')).toBe(`C:/proj/node_modules/.fudic-bench/${process.pid}`);
+    expect(benchDir('/proj')).toBe(`/proj/node_modules/.fudic-bench/${process.pid}`);
     expect(benchRoutesDir(4242)).toBe('node_modules/.fudic-bench/4242/routes');
     expect(benchRoutesDir()).toBe(`node_modules/.fudic-bench/${process.pid}/routes`);
   });
@@ -417,7 +419,7 @@ describe('planBench — SDD-59 §4.6, the fixture gives the component content', 
 
   it('writes $content inside the host, as its children, and it is not a prop', () => {
     const page = plan({ entrada: { $content: '<span slot="icon" role="img" aria-label="star">★</span>' } }).files.get('routes/app-card/icono.fud');
-    expect(page).toContain('    <app-card><span slot="icon" role="img" aria-label="star">★</span></app-card>\n');
+    expect(page).toContain('<app-card><span slot="icon" role="img" aria-label="star">★</span></app-card>\n');
     // The only key is the content: nothing to import, nothing to bind.
     expect(page).not.toContain('@code');
     expect(page).not.toContain('$content');
@@ -425,23 +427,23 @@ describe('planBench — SDD-59 §4.6, the fixture gives the component content', 
 
   it('keeps the props as attributes beside the content', () => {
     const page = plan({ entrada: { title: 'Hi', $content: '<b>x</b>', variant: 'v' } }).files.get('routes/app-card/icono.fud')!;
-    expect(page).toContain('      const { title, variant } = fixtures.entrada;\n');
-    expect(page).toContain('    <app-card .title=@title .variant=@variant><b>x</b></app-card>\n');
+    expect(page).toContain('  const { title, variant } = fixtures.entrada;\n');
+    expect(page).toContain('<app-card .title=@title .variant=@variant><b>x</b></app-card>\n');
   });
 
   it('leaves the host empty without $content, as before', () => {
-    expect(plan({ entrada: { title: 'Hi' } }).files.get('routes/app-card/icono.fud')).toContain('    <app-card .title=@title></app-card>\n');
+    expect(plan({ entrada: { title: 'Hi' } }).files.get('routes/app-card/icono.fud')).toContain('<app-card .title=@title></app-card>\n');
   });
 
   it('a $content that is not a string is no content, and no prop either', () => {
     const page = plan({ entrada: { $content: 42 } }).files.get('routes/app-card/icono.fud')!;
-    expect(page).toContain('    <app-card></app-card>\n');
+    expect(page).toContain('<app-card></app-card>\n');
     expect(page).not.toContain('$content');
   });
 
   it('with a Signal prop, the content goes inside the component in the host, and the page mounts the host empty', () => {
     const files = planBench({
-      target: { ...TARGET, tag: 'signal-display', component: 'C:/proj/src/components/signal-display.fud', fixture: 'C:/proj/src/components/signal-display.fixture.ts' },
+      target: { ...TARGET, tag: 'signal-display', component: '/proj/src/components/signal-display.fud', fixture: '/proj/src/components/signal-display.fixture.ts' },
       spec: spec('component signal-display\n\ncriterion diez\n  given\n    props diez\n'),
       fixtures: { diez: { value: signal(10), $content: '<i slot="unit">kg</i>' } },
       dir: DIR,
@@ -449,7 +451,7 @@ describe('planBench — SDD-59 §4.6, the fixture gives the component content', 
     expect(files.get('components/signal-display/bench-host-signal-display-diez.fud')).toContain(
       '    <signal-display .value=@value><i slot="unit">kg</i></signal-display>\n',
     );
-    expect(files.get('routes/signal-display/diez.fud')).toContain('    <bench-host-signal-display-diez></bench-host-signal-display-diez>\n');
+    expect(files.get('routes/signal-display/diez.fud')).toContain('<bench-host-signal-display-diez></bench-host-signal-display-diez>\n');
   });
 });
 

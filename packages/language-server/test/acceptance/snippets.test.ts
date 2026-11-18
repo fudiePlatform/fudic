@@ -75,10 +75,10 @@ afterAll(async () => {
 });
 
 describe('criterion 1 — the document skeletons', () => {
-  it('a file with nothing but the word being typed offers the four', async () => {
+  it('a file with nothing but the word being typed offers the three', async () => {
     const items = await completeAt(SLUG, 'rou|');
 
-    expect(labels(ours(items))).toEqual(['component', 'route', 'page', 'layout']);
+    expect(labels(ours(items))).toEqual(['component', 'route', 'layout']);
     const route = items.find((item) => item.label === 'route');
     expect(route?.insertTextFormat).toBe(2);
     expect(route?.textEdit?.newText).toContain('<link rel="layout" href="${1:');

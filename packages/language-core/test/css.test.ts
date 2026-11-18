@@ -60,11 +60,11 @@ describe('emitCssVirtuals', () => {
 });
 
 describe('collectStyles', () => {
-  it('finds a <style> in a page head', () => {
-    const page =
-      '<!DOCTYPE html>\n<html>\n  <head>\n    <style>p { color: red; }</style>\n  </head>\n  <body><p>x</p></body>\n</html>\n';
+  it('finds a <style> in a layout head', () => {
+    const layout =
+      '<!DOCTYPE html>\n<html>\n  <head>\n    <style>p { color: red; }</style>\n    @RenderHead()\n  </head>\n  <body>@RenderBody()</body>\n</html>\n';
 
-    expect(collectStyles(parseFud(page))).toHaveLength(1);
+    expect(collectStyles(parseFud(layout))).toHaveLength(1);
   });
 
   it('finds a <style> in a route head and inside its markup', () => {

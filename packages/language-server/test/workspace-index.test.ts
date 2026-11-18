@@ -117,8 +117,8 @@ describe('byRole', () => {
 
     expect(index.byRole('component').map((entry) => entry.tag)).toEqual(['app-badge', 'site-nav']);
     expect(index.byRole('layout').map((entry) => entry.path)).toEqual(['/p/layouts/_layout.fud']);
-    expect(index.byRole('page').map((entry) => entry.path)).toEqual(['/p/about.fud']);
-    expect(index.byRole('route').map((entry) => entry.path)).toEqual(['/p/blog/[slug].fud']);
+    // A page is a route since SDD-88: `about.fud` links a layout too.
+    expect(index.byRole('route').map((entry) => entry.path)).toEqual(['/p/blog/[slug].fud', '/p/about.fud']);
   });
 });
 
@@ -154,7 +154,7 @@ describe('maintenance', () => {
     index.upsert('/p/about.fud');
 
     expect(index.get('/p/about.fud')?.role).toBe('component');
-    expect(index.byRole('page')).toEqual([]);
+    expect(index.byRole('route').map((entry) => entry.path)).toEqual(['/p/blog/[slug].fud']);
   });
 
   it('drops a file it can no longer read instead of keeping it stale', () => {

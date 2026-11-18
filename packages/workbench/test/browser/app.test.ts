@@ -21,6 +21,8 @@ import { startProject } from '../../src/project.js';
 const FILES: Readonly<Record<string, string>> = {
   'package.json': JSON.stringify({ name: 'bench-app', private: true, type: 'module', dependencies: { '@fudic/http': '0.0.0' } }),
   'vite.config.ts': "import { fudic } from '@fudic/vite';\n\nexport default { plugins: [fudic({ liveCheck: false })] };\n",
+  // Every page links a layout (SDD-88).
+  'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
   'src/http.fudapi': 'chain\n  use json\n',
   'src/users.ts': `import { Service } from '@fudic/di';
 
@@ -31,11 +33,10 @@ export class Users {
 }
 Service(Users);
 `,
-  'src/routes/usuarios.fud': `<!DOCTYPE html>
-<html>
-<head><title>Usuarios</title><link rel="server" href="./usuarios.fudapi"></head>
-<body><ul>@foreach (const u of data.users) key (u) { <li>@u</li> }</ul></body>
-</html>
+  'src/routes/usuarios.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./usuarios.fudapi">
+<head><title>Usuarios</title></head>
+<ul>@foreach (const u of data.users) key (u) { <li>@u</li> }</ul>
 `,
   'src/routes/usuarios.fudapi': 'load\n  users  str[]\n\nput add\n  name  str\n  -> str\n\nget hang\n  -> str\n',
   'src/server/usuarios.ts': `import { inject } from '@fudic/di';
@@ -46,11 +47,10 @@ load.handle(() => ({ users: inject(Users).all() }));
 add.handle((ctx) => { inject(Users).add(ctx.args.name); return ctx.args.name; });
 hang.handle(() => new Promise<string>(() => undefined));
 `,
-  'src/routes/cuenta.fud': `<!DOCTYPE html>
-<html>
-<head><title>Cuenta</title><link rel="server" href="./cuenta.fudapi"></head>
-<body><p>@(data.who === '' ? 'Nadie ha entrado' : 'Sesión: ' + data.who)</p></body>
-</html>
+  'src/routes/cuenta.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./cuenta.fudapi">
+<head><title>Cuenta</title></head>
+<p>@(data.who === '' ? 'Nadie ha entrado' : 'Sesión: ' + data.who)</p>
 `,
   'src/routes/cuenta.fudapi': 'load\n  who  str\n\npost login\n  user  str\n',
   'src/server/cuenta.ts': `import { setCookie } from '@fudic/http';
@@ -203,11 +203,9 @@ criterion una-peticion-que-no-acaba
 
 /** A page that runs one script of `public/` and paints a list. */
 function quietPage(title: string, script: string): string {
-  return `<!DOCTYPE html>
-<html>
+  return `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>${title}</title><script type="module" src="${script}"></script></head>
-<body><ul></ul></body>
-</html>
+<ul></ul>
 `;
 }
 

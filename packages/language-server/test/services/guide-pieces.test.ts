@@ -285,8 +285,8 @@ describe('the two warnings, and their repairs (criteria 20–22)', () => {
     ).toEqual([]);
   });
 
-  it('nothing on a page, or on a component without its template', () => {
-    const page = open('<!DOCTYPE html>\n<html><head><title>t</title></head><body><h1>x</h1></body></html>\n');
+  it('nothing on a route, or on a component without its template', () => {
+    const page = open('<link rel="layout" href="./_layout.fud">\n<head><title>t</title></head>\n<h1>x</h1>\n');
     expect(guidePieceDiagnostics(page.cached, page.configs.guidePiecesFor(CARD))).toEqual([]);
     const broken = open('<ui-card></ui-card>\n');
     expect(guidePieceDiagnostics(broken.cached, broken.configs.guidePiecesFor(CARD))).toEqual([]);
@@ -299,7 +299,7 @@ describe('adoptionEditFor: only where it can add cleanly', () => {
   it('nowhere outside the root template', () => {
     const { cached, offset } = open(card('|<template shadowrootmode="open"></template>'));
     expect(adoptionEditFor(cached, offset, 'button', pieces())).toBeUndefined();
-    const page = open('<!DOCTYPE html>\n<html><head></head><body>|</body></html>\n');
+    const page = open('<link rel="layout" href="./_layout.fud">\n<p>|</p>\n');
     expect(adoptionEditFor(page.cached, page.offset, 'button', pieces())).toBeUndefined();
     const bare = open('<ui-card>|</ui-card>\n');
     expect(adoptionEditFor(bare.cached, bare.offset, 'button', pieces())).toBeUndefined();
