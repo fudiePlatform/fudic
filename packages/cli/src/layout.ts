@@ -38,10 +38,16 @@ export interface LayoutResolution {
   readonly errors: readonly CliError[];
 }
 
+/**
+ * Whether `file` is a layout a page can link: a document with a doctype AND its `@RenderBody()`.
+ * A doctype alone is a layout-document since SDD-88, also a hollow one (`FUD1580`), and linking a
+ * layout with nowhere to put the page is `FUD0423` at build time: the CLI never picks one.
+ */
 export function isLayout(cwd: string, file: string, io: ReadIo): boolean {
   const path = absolute(cwd, file);
   if (!io.exists(path)) return false;
-  return parseFud(io.read(path)).doc.type === 'layout-document';
+  const doc = parseFud(io.read(path)).doc;
+  return doc.type === 'layout-document' && doc.renderBody !== undefined;
 }
 
 /**

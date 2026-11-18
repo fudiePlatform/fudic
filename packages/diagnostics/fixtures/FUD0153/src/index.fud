@@ -3,6 +3,7 @@
   <head>
 
     <title>Fix</title>
+    @RenderHead()
   </head>
   <body>
     @code {
