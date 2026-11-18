@@ -15,15 +15,16 @@ import { REPO } from '../helpers/bench.js';
 import { tempProject, type TempProject } from '../helpers/project.js';
 
 const page = (title: string): string => `<link rel="layout" href="../layouts/_layout.fud">
-<head><title>${title}</title><script type="module" src="fudic:runtime"></script></head>
+<head><title>${title}</title></head>
 <h1>${title}</h1>
 `;
 
 const FILES: Readonly<Record<string, string>> = {
   'package.json': JSON.stringify({ name: 'bench-offline', private: true, type: 'module' }),
   'vite.config.ts': "import { fudic } from '@fudic/vite';\n\nexport default { plugins: [fudic({ liveCheck: false })] };\n",
-  // Every page links a layout (SDD-88).
-  'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
+  // Every page links a layout (SDD-88), and the runtime — the worker with it — is the layout's.
+  'src/layouts/_layout.fud':
+    '<!DOCTYPE html>\n<html>\n<head><script type="module" src="fudic:runtime"></script>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
   // `"dev": "off"`, as the example ships it: the build has its worker all the same.
   'sw.json': JSON.stringify({ shell: [], dev: 'off' }),
   'src/routes/blog.fud': page('Blog'),
