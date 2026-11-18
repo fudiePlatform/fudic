@@ -17,6 +17,7 @@ import type {
   AppOptions,
   BaseOptions,
   ComponentOptions,
+  ErrorPageOptions,
   FmtOptions,
   GuideOptions,
   LayoutOptions,
@@ -67,7 +68,7 @@ export type ParsedCommand =
   | { readonly kind: 'flow'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'api'; readonly piece: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'showcase'; readonly opts: ShowcaseOptions; readonly flags: GlobalFlags }
-  | { readonly kind: 'error-page'; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'error-page'; readonly opts: ErrorPageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'snippet'; readonly name: string; readonly opts: SnippetOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
@@ -392,7 +393,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'no-layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses', 'lib', 'locale'], 'new');
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses', 'lib', 'locale'], 'new');
   if (unknown !== null) return unknown;
 
   const name = rest[0];
@@ -434,7 +435,7 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
   }
   const named = tokens.flags.has('app');
   // What only an app has, asked of a workspace with none.
-  for (const flag of ['uses', 'layout', 'no-layout', 'locale'] as const) {
+  for (const flag of ['uses', 'layout', 'locale'] as const) {
     if (!named && tokens.flags.has(flag)) {
       return fail({ problem: 'unknown-flag', name: flag }, 'new', `--${flag} is about the first app: add --app <name>`);
     }
@@ -443,11 +444,10 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
 }
 
 /**
- * `--layout` and `--no-layout` of a new app. A name is a layout the app gets of its own; an
+ * `--layout` of a new app. A name is a layout the app gets of its own; an
  * href — anything with a `/` — is one it uses without owning, a library's.
  */
 function layoutChoice(tokens: Tokens): AppLayout {
-  if (bool(tokens, 'no-layout')) return null;
   const layout = single(tokens, 'layout', '_layout');
   return layout.includes('/') ? { href: layout } : { own: layout };
 }
@@ -485,9 +485,10 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
   // `g error-page` has no name: a project has one error page, in a place fixed by its kind (SDD-87).
   if (type === 'error-page') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'layout'], topic);
     if (unknown !== null) return unknown;
-    return { kind: 'error-page', opts: { ...base, ...target(tokens) }, flags };
+    const layout = tokens.flags.get('layout')?.at(-1);
+    return { kind: 'error-page', opts: { ...base, ...target(tokens), ...(layout !== undefined ? { layout } : {}) }, flags };
   }
   if (name === undefined) {
     return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g ${type} ${EXAMPLE[type]}`);
@@ -495,7 +496,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
 
   switch (type) {
     case 'app': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base', 'layout', 'no-layout', 'locale'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base', 'layout', 'locale'], topic);
       if (unknown !== null) return unknown;
       const opts: AppOptions = {
         ...base,
@@ -570,14 +571,14 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'page': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'layout', 'no-layout', 'server', 'sections', 'skip-test'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'layout', 'server', 'sections', 'skip-test'], topic);
       if (unknown !== null) return unknown;
       const forced = tokens.flags.get('layout')?.at(-1);
       const opts: PageOptions = {
         ...base,
         ...target(tokens),
         dir: single(tokens, 'dir', ROUTES_DIR),
-        ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
+        ...(forced !== undefined ? { layout: forced } : {}),
         server: bool(tokens, 'server'),
         sections: list(tokens, 'sections'),
         test: !bool(tokens, 'skip-test'),

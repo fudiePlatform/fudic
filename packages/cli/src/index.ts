@@ -72,7 +72,6 @@ export { renderTemplate, templatePath, TEMPLATES, type TemplateSpec, type Templa
 // the editor's document skeletons (SDD-28 §3.2), which must come out byte for byte identical
 // to what `fudic g` writes.
 export {
-  indent,
   renderSectionBlocks,
   sectionBlocks,
   serverLink,

@@ -227,9 +227,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         ] as const)),
     [
       indexFile,
-      frame.href === null
-        ? renderTemplate('page.fud', { lang, title: 'Home', code: '' })
-        : renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
+      renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
     ],
     [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],
     // Where the handlers of the `.fudapi` go, and the halves that run in the browser
@@ -242,11 +240,10 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
 /** What frames an app's pages: the name of its own layout, if any, and the href its home links. */
 interface Frame {
   readonly own: string | null;
-  readonly href: string | null;
+  readonly href: string;
 }
 
 function frameOf(dir: string, layout: AppLayout, indexFile: string): Frame {
-  if (layout === null) return { own: null, href: null };
   if ('href' in layout) return { own: null, href: layout.href };
   return { own: layout.own, href: hrefBetween(indexFile, joinPosix(dir, LAYOUTS_DIR, `${layout.own}.fud`)) };
 }
@@ -264,8 +261,7 @@ function frameLine(frame: Frame): string {
   if (frame.own !== null) {
     return `- \`${LAYOUTS_DIR}/${frame.own}.fud\`: the frame every page is written into, and \`${frame.own}.test.ts\` its unit test.`;
   }
-  if (frame.href !== null) return `- \`${frame.href}\`: the layout every page is written into; it is not this app's.`;
-  return '- No layout: each page is a whole document. `fudic g layout <name>` adds one.';
+  return `- \`${frame.href}\`: the layout every page is written into; it is not this app's.`;
 }
 
 /**

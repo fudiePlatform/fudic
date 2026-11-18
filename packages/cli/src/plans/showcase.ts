@@ -41,8 +41,7 @@ export interface ShowcaseKit {
     readonly routesDir: string;
     readonly hostsDir: string;
     readonly hostsHref: string;
-    readonly layout: string | null;
-    readonly lang: string;
+    readonly layout: string;
     readonly url: string;
     readonly source: string;
     readonly existing: ReadonlyMap<string, string>;
@@ -181,9 +180,10 @@ export async function planShowcase(
   const routesDir = joinPosix(app.path, pages);
   const hostsDir = joinPosix(app.path, COMPONENTS_DIR, HOSTS);
   const index = joinPosix(routesDir, 'index.fud');
-  const found = resolveLayout(index, undefined, { cwd, routesDir, layoutsDir: joinPosix(app.path, LAYOUTS_DIR) }, view);
-  const layout = found.path === null ? null : (found.specifier ?? hrefBetween(index, absolute(cwd, found.path)));
-  const config = findProjects(app.path, view)[0]!.config;
+  // Every page links a layout (SDD-88): an app with none to link gets no showcase (`FUD1582`).
+  const found = resolveLayout(index, undefined, { cwd, routesDir, layoutsDir: joinPosix(app.path, LAYOUTS_DIR), ...(opts.project !== undefined ? { project: opts.project } : {}) }, view);
+  if (found.path === null) return refuse(found.errors);
+  const layout = found.specifier ?? hrefBetween(index, absolute(cwd, found.path));
   const served = servedApps(findProjects(app.path, view), view)[0]!;
   const created = new Set(app.plan.changes.map((change) => change.path));
   const existing = new Map([...filesIn(routesDir, cwd, view), ...filesIn(hostsDir, cwd, view)].filter(([path]) => !created.has(path)));
@@ -197,7 +197,6 @@ export async function planShowcase(
     hostsDir: relativeTo(cwd, hostsDir),
     hostsHref: hrefBetween(joinPosix(routesDir, 'x.fud'), hostsDir),
     layout,
-    lang: config.locales[0]!,
     url: pages === ROUTES_DIR ? served.base : `${served.base}${HOSTS}/`,
     source: relativeTo(cwd, source.path) || '.',
     existing,

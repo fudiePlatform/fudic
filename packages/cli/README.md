@@ -34,9 +34,12 @@ and every app and library it creates depends on it. Every page links the guide, 
 it uses; a component adopts the pieces it names (`shadowrootadoptedstylesheets="button"`), and
 the editor adds a piece when you write its element.
 
-An app's pages render inside a layout of its own (`--layout <name>`, `_layout` by default), a
-library's (`--layout @shop/ui/layouts/main.fud`) or none (`--no-layout`). `fudic g page` puts a
-new page in the nearest layout of the app, or else in the one its home page uses.
+An app's pages render inside a layout of its own (`--layout <name>`, `_layout` by default) or a
+library's (`--layout @shop/ui/layouts/main.fud`): every page links one. `fudic g page` puts a
+new page in the nearest layout of the app, or else in the one its home page uses, and with none
+to link it writes nothing and says how to create one. `fudic g error-page` writes the error page
+linking a layout the same way — in a library, its `src/layouts/_layout.fud` (`--layout` picks
+another).
 
 ## Add to a project
 

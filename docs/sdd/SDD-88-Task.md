@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 15 / 26 — `En curso`.
+> **Progreso:** 19 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -157,7 +157,7 @@
 
 ## Fase 6 — La CLI
 
-- [ ] **17. `resolveLayout` sin `null`, y `g page`.**
+- [x] **17. `resolveLayout` sin `null`, y `g page`.**
   - Sin layout, `FUD1582`. Fuera `explicit === null`. `g page` siempre con `route.fud`; fuera la
     plantilla `page.fud`, `'page-document'` de `TemplateRole` y la rama de `api.ts` (criterios 14,
     21).
@@ -165,7 +165,7 @@
   - *Paquete:* `cli`.
   - *Ficheros:* `src/layout.ts`, `src/plans/page.ts`, `src/plans/api.ts`, `src/templates.ts`,
     `templates/page.fud`, `test/page.test.ts`, `test/templates*.test.ts`.
-- [ ] **18. `g error-page` con layout.**
+- [x] **18. `g error-page` con layout.**
   - La plantilla como ruta con `{{layoutHref}}`; el layout por `resolveLayout` en una app y
     `src/layouts/_layout.fud` en una librería; `--layout`; `FUD1582`; la línea `layout` del informe
     (criterios 16, 17, 18).
@@ -173,7 +173,7 @@
   - *Paquete:* `cli`.
   - *Ficheros:* `src/plans/error-page.ts`, `templates/_error.fud`, `src/args.ts`, `src/types.ts`,
     `test/error-page*.test.ts`.
-- [ ] **19. Fuera `--no-layout`.**
+- [x] **19. Fuera `--no-layout`.**
   - En `new`, `new --workspace --app` y `g app`: `layoutChoice`, `frameOf`, `AppLayout`, la línea del
     README generado y la del informe. `g showcase` sin layout da `FUD1582`. `wire.ts` sin la rama de
     página. Los tests que lo usaban, al día (criterios 15, 19).
@@ -182,7 +182,7 @@
   - *Ficheros:* `src/args.ts`, `src/types.ts`, `src/plans/scaffold.ts`, `src/plans/app.ts`,
     `src/plans/showcase.ts`, `src/wire.ts`, `test/cli.test.ts`, `test/locale.test.ts`,
     `test/showcase.test.ts`, `test/workspace/shapes.test.ts`, `test/wire.test.ts`.
-- [ ] **20. La ayuda y el README.**
+- [x] **20. La ayuda y el README.**
   - Fuera `--no-layout`; `g page` y `g error-page` dicen qué layout enlazan; `--layout` en
     `g error-page` (criterio 20).
   - *Depende de:* 18, 19.
