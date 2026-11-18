@@ -5,6 +5,7 @@
     <title>Fix</title>
   </head>
   <body>
+    @RenderBody()
     <script>console.log(1);</script>
   </body>
 </html>

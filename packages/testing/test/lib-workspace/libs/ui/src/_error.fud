@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <title>ui @data.status</title>
-  </head>
-  <body>
-    <h1>@data.status · @data.title</h1>
-    <a href=@data.home>Inicio</a>
-  </body>
-</html>
+<link rel="layout" href="./layouts/_layout.fud">
+<head>
+  <title>ui @data.status</title>
+</head>
+<h1>@data.status · @data.title</h1>
+<a href=@data.home>Inicio</a>

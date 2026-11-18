@@ -77,12 +77,23 @@ export function snippetHost(input: SnippetHostInput): string {
   );
 }
 
+/** The file name of the host layout, beside the host pages in the cache. */
+export const HOST_LAYOUT_FILE = '_host-layout.fud';
+
 /**
- * The source of the host page: a standalone page document, so the compiler emits it as a
- * page — head, body and the hydration maps — and not as a component.
+ * The layout every host page links (SDD-88): the smallest document there is, so the body of a
+ * host page paints exactly what the page puts in it. Fixed: written once per project.
+ */
+export const HOST_LAYOUT =
+  '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n<script type="module" src="fudic:runtime"></script>\n@RenderHead()\n</head>\n<body>\n@RenderBody()\n</body>\n</html>\n';
+
+/**
+ * The source of the host page: a route that links the host layout, which lies beside it, so the
+ * compiler emits it as a page — head, body and the hydration maps — and not as a component.
+ * Every page links a layout (SDD-88), the harness's own too.
  */
 export function hostPage(input: HostInput): string {
   const links = input.links.map((link) => `<link rel="${link.rel}" href="${hrefOf(link.href)}">\n`);
   const code = input.code === undefined ? '' : `@code {\n${input.code}\n}\n`;
-  return `<!DOCTYPE html>\n<html>\n<head>\n${links.join('')}${code}</head>\n<body>\n${input.body}\n</body>\n</html>\n`;
+  return `<link rel="layout" href="./${HOST_LAYOUT_FILE}">\n${links.join('')}${code}${input.body}\n`;
 }

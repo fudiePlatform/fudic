@@ -8,6 +8,6 @@
     @code {
       const n = 1;
     }
-    <p>a</p>
+    @RenderBody()
   </body>
 </html>

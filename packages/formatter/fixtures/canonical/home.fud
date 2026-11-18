@@ -1,38 +1,33 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="./app-card.fud">
-    <link rel="component" href="./app-button.fud">
-    <link rel="component" href="./app-badge.fud">
-    <link rel="server" href="./home.fudapi">
+<link rel="layout" href="./_layout.fud">
+<link rel="component" href="./app-card.fud">
+<link rel="component" href="./app-button.fud">
+<link rel="component" href="./app-badge.fud">
+<link rel="server" href="./home.fudapi">
 
-    @code {
-      type Item = { id: string; title: string; description: string; featured: boolean };
-      type PageData = { title: string; items: Item[] };
-    }
+@code {
+  type Item = { id: string; title: string; description: string; featured: boolean };
+  type PageData = { title: string; items: Item[] };
+}
 
-    <title>@data.title</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head>
-  <body>
-    <h1>@data.title</h1>
+<head>
+  <title>@data.title</title>
+</head>
 
-    @if (data.items.length === 0) {
-      <p class="empty">No hay elementos todavía.</p>
-    } else {
-      <section class="grid">
-        @foreach (const item of data.items) key (item.id) {
-          <app-card
-            title="@item.title"
-            variant="@(item.featured ? 'highlight' : 'default')">
-            @if (item.featured) {
-              <app-badge tone="success">Destacado</app-badge>
-            }
-            @item.description
-          </app-card>
+<h1>@data.title</h1>
+
+@if (data.items.length === 0) {
+  <p class="empty">No hay elementos todavía.</p>
+} else {
+  <section class="grid">
+    @foreach (const item of data.items) key (item.id) {
+      <app-card
+        title="@item.title"
+        variant="@(item.featured ? 'highlight' : 'default')">
+        @if (item.featured) {
+          <app-badge tone="success">Destacado</app-badge>
         }
-      </section>
+        @item.description
+      </app-card>
     }
-  </body>
-</html>
+  </section>
+}

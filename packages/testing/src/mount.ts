@@ -12,11 +12,11 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import { graphRegistry } from '@fudic/compiler';
-import { cached } from './cache.js';
+import { cached, cachedAs } from './cache.js';
 import { FILE_EXPORT } from './constants.js';
 import { hostAttribute, pageShell, showPage } from './document.js';
 import { graphOf } from './graph.js';
-import { hostPage } from './host.js';
+import { HOST_LAYOUT, HOST_LAYOUT_FILE, hostPage } from './host.js';
 import { chunkMap, hydrate, type ChunkMap } from './hydrate.js';
 import { renderPage } from './page.js';
 import { localized } from './project.js';
@@ -116,6 +116,8 @@ function assertJson(tag: string, name: string, value: unknown): void {
 async function paintHost(component: MountTarget, props: object, url: string): Promise<string> {
   const { tag } = component;
   const attrs = Object.keys(props).map((name) => ` .${name}=@(data[${JSON.stringify(name)}])`);
+  // The layout every host page links, beside it in the cache (SDD-88).
+  cachedAs(HOST_LAYOUT_FILE, HOST_LAYOUT);
   const page = cached(
     'mount',
     'fud',

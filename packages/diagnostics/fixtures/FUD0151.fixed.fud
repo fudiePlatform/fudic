@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-
     <title>Fix</title>
+    @RenderHead()
   </head>
   <body>
-    <p>a</p>
+    @RenderBody()
   </body>
 </html>

@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 2 / 26 — `En curso`.
+> **Progreso:** 7 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -34,7 +34,7 @@
     producción `document`, el ejemplo canónico como ruta más layout, y el índice (SDD §3.2).
   - *Depende de:* —.
   - *Ficheros:* `docs/gramar/gramatica-v1-decisiones.md`.
-- [ ] **3. Los goldens de rutas con layout.**
+- [x] **3. Los goldens de rutas con layout.**
   - Comprobar que los goldens de rutas con layout de `packages/compiler/test/emit/__golden__` cubren
     una ruta con layout de un idioma y otra de dos. Añadir los que falten **antes** de la fase 3. No
     cambian en toda la SDD (criterio 7).
@@ -44,14 +44,14 @@
 
 ## Fase 2 — Nadie escribe páginas sin layout
 
-- [ ] **4. `@fudic/testing`: el layout de host.**
+- [x] **4. `@fudic/testing`: el layout de host.**
   - `hostPage()` escribe una ruta que enlaza `_host-layout.fud`, escrito con `cached` (SDD §3.4).
     Los tests de `mount` y `renderSnippet` pasan sin tocar sus expectativas del cuerpo (criterio 24).
   - `test/lib-workspace/libs/ui` gana un layout, y su `_error.fud` lo enlaza.
   - *Depende de:* —.
   - *Paquete:* `testing`.
   - *Ficheros:* `src/host.ts`, `src/mount.ts`, `test/host.test.ts`, `test/lib-workspace/libs/ui/src/*`.
-- [ ] **5. El workbench: el layout del banco.**
+- [x] **5. El workbench: el layout del banco.**
   - `pageSource()`, `casePage` y `documentOf` escriben rutas que enlazan `_bench-layout.fud`.
     `ShowcaseInput.layout` deja de admitir `null`, e `isShowcaseFile` deja de quitar un doctype. Las
     esperadas de `app-card` se reescriben (criterio 25).
@@ -59,7 +59,7 @@
   - *Paquete:* `workbench`.
   - *Ficheros:* `src/pages.ts`, `src/paint.ts`, `src/showcase.ts`, `test/showcase.test.ts`,
     `test/expected/app-card/*.fud`.
-- [ ] **6. Las fixtures.**
+- [x] **6. Las fixtures.**
   - `fixtures/home.fud` y `test/fixtures/blog-monolithic.fud` del compilador, y
     `fixtures/canonical/home.fud` del formatter, como ruta más layout. `scripts/build.ts` emite
     `home.fud` por el camino de las rutas. El golden `home.mjs` se regenera.
@@ -79,7 +79,7 @@
   - *Depende de:* 4, 6.
   - *Paquete:* los nombrados.
   - *Ficheros:* `packages/*/test/**`.
-- [ ] **8. `examples/vista-errores`.**
+- [x] **8. `examples/vista-errores`.**
   - `src/layouts/_layout.fud`, y `vista-errores.fud` como ruta que lo enlaza. Los tests del corpus,
     a las posiciones nuevas, con los mismos errores (criterio 30).
   - *Depende de:* —.

@@ -11,5 +11,6 @@
     }
 
     <h1>Hello</h1>
+    @RenderBody()
   </body>
 </html>

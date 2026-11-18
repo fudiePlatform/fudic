@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="server" href="./index.fudapi">
-    <title>Email</title>
-    <meta charset="utf-8">
-  </head>
-  <body>
-    <p>@data.email: @(data.valid ? "valid" : "invalid")</p>
-  </body>
-</html>
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>Email</title>
+</head>
+
+<p>@data.email: @(data.valid ? "valid" : "invalid")</p>

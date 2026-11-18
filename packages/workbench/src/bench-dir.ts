@@ -7,10 +7,22 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 
-/** An empty folder, whatever was there before. */
+/** The file name of the bench layout, at the top of the folder, beside `routes/`. */
+export const BENCH_LAYOUT_FILE = '_bench-layout.fud';
+
+/**
+ * The layout every page of the bench links (SDD-88): the smallest document there is, so the body
+ * of a page holds the mounted component and nothing else. Fixed, and not a route: it lies outside
+ * `routes/`.
+ */
+export const BENCH_LAYOUT =
+  '<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset="utf-8">\n    <script type="module" src="fudic:runtime"></script>\n    @RenderHead()\n  </head>\n  <body>\n@RenderBody()\n  </body>\n</html>\n';
+
+/** An empty folder, whatever was there before, with the bench layout in it. */
 export function emptyBenchDir(dir: string): void {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(`${dir}/routes`, { recursive: true });
+  writeFileSync(`${dir}/${BENCH_LAYOUT_FILE}`, BENCH_LAYOUT);
 }
 
 /**

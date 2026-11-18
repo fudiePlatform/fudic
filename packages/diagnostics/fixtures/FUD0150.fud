@@ -5,6 +5,6 @@
     <title>Fix</title>
   </head>
   <body>
-    <p>a</p>
+    @RenderBody()
   </body>
 </html>

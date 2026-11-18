@@ -45,7 +45,7 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD0131: ['error', "Unbalanced CSS braces in `<style>`"],
   FUD0132: ['error', "Razor inside `<style>`"],
   FUD0150: ['error', "Doctype is not `<!DOCTYPE html>`"],
-  FUD0151: ['error', "Page skeleton incomplete"],
+  FUD0151: ['error', "Layout skeleton incomplete"],
   FUD0152: ['error', "Component link outside `<head>`"],
   FUD0153: ['error', "`@code` outside `<head>`"],
   FUD0154: ['error', "More than one `@code` block"],
