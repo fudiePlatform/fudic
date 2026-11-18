@@ -4,13 +4,16 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { FUD1404, FUD1408, FUD1409 } from '@fudic/diagnostics';
+import { FUD1404, FUD1408, FUD1409, FUD1582 } from '@fudic/diagnostics';
 import { nodeIo, record } from '@fudic/history';
 import type { Plan } from '@fudic/cli';
 import type { Checks } from './checks.js';
 import { afterInstall, flagsOf, runPlan, type OptionValue } from './plans.js';
 import { isFudicProject, type Project } from './project.js';
 import { respond } from './respond.js';
+
+/** The code `g page` and `g error-page` refuse with when there is no layout (SDD-88), named by its own house. */
+const NO_LAYOUT = FUD1582({ searched: [], create: '' }).code;
 
 /** What `fudic g` generates, as its help lists them. */
 export const GENERATE_KINDS = [
@@ -134,7 +137,7 @@ export function registerProjectTools(server: McpServer, project: Project, checks
         'error-page takes no name: in an app it writes src/routes/_error.fud, in a library src/_error.fud — the page every app ' +
         'that depends on the library and has none of its own paints its errors with. Every page links a layout: page and ' +
         'error-page link the nearest one (the error page of a library, its src/layouts/_layout.fud), and with none they refuse ' +
-        'with FUD1582 and write nothing. ' +
+        `with ${NO_LAYOUT} and write nothing. ` +
         'A component or a page takes `purpose`: what the user asked for, in one sentence.',
       inputSchema: {
         kind: z.enum(GENERATE_KINDS),

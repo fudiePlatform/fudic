@@ -120,6 +120,15 @@ describe('discoverRoutes and the page of a library (criterion 13)', () => {
     expect(d!.message).toContain('fudic g error-page');
   });
 
+  it('the library itself: its own src/_error.fud, read where it is, with no routes folder', () => {
+    const ws = workspace([], { 'libs/ui/src/_error.fud': errorPage('ui') });
+    const found = discoverRoutes(join(ws, 'libs', 'ui'), resolveOptions({}).options);
+    expect(found).not.toHaveProperty('errorPageFrom');
+    expect(posix(found.errorPage!.absPath)).toMatch(/\/libs\/ui\/src\/_error\.fud$/u);
+    expect(found.diagnostics).toEqual([]);
+    expect(found.parse).toEqual([]);
+  });
+
   it('none: no page, no diagnostic', () => {
     const found = discover(workspace(['@acme/ui']));
     expect(found.errorPage).toBeUndefined();

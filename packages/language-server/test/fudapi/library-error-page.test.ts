@@ -50,6 +50,11 @@ describe('src/_error.fudapi of a library', () => {
     });
   });
 
+  it('an error page that links no layout is still an error page, with no layout props (FUD1581 is its .fud’s)', () => {
+    const files = { ...filesOf(LIB), [ERROR_PAGE]: '<h1>@data.status</h1>\n' };
+    expect(world({ files }).host.load(ERROR_API, '').context).toEqual({ route: { params: [], error: true } });
+  });
+
   it('load and a function are FUD1010 in the editor; paths is FUD1091, as in an app’s error page', async () => {
     expect(await diagnostics(filesOf(LIB), 'load\n  n  i32\n')).toEqual(['FUD1010']);
     expect(await diagnostics(filesOf(LIB), 'get f\n  -> str\n')).toEqual(['FUD1010']);

@@ -139,10 +139,12 @@ describe('vite build — the headers of the app (SDD-84)', () => {
     const page = [
       '<link rel="layout" href="../layouts/_layout.fud">',
       '<link rel="component" href="../components/x-count.fud">',
-      '<head><title>c</title><script src="fudic:runtime"></script></head>',
+      '<head><title>c</title></head>',
       '<x-count></x-count>',
     ].join('\n');
     const failure = buildApp({
+      // The runtime is the layout's, never a route's (FUD1583).
+      'src/layouts/_layout.fud': BARE_LAYOUT.replace('<head>', '<head><script src="fudic:runtime"></script>'),
       'src/routes/count.fud': page,
       'src/components/x-count.fud': counter,
       'page.headers': "Content-Security-Policy:\n  script-src 'self'\n  require-trusted-types-for 'script'\n  trusted-types otra\n",

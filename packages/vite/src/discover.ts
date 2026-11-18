@@ -98,8 +98,9 @@ export function discoverRoutes(
   }
   const errorPageFrom = source.kind === 'library' ? source.package : undefined;
   if (source.kind === 'own' || source.kind === 'library') {
-    // The app's own keeps the path it always had; a library's is the file `errorPageOf` found.
-    const absPath = source.kind === 'own' ? join(routesRoot, ERROR_FILE) : source.file;
+    // An app's own keeps the path it always had, under routesDir. Anything else — a library's own
+    // `src/_error.fud`, or the one its chain offers — is the file `errorPageOf` found.
+    const absPath = source.kind === 'own' && files.includes(ERROR_FILE) ? join(routesRoot, ERROR_FILE) : source.file;
     const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
     // An error page is a page, and every page links a layout (SDD-88): one that is not a route

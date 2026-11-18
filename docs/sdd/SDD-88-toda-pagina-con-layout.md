@@ -1,6 +1,6 @@
 # SDD-88 — Toda página tiene layout
 
-> **Estado:** `Listo` (2026-11-18) — [tareas](./SDD-88-Task.md).
+> **Estado:** `Hecho` (2026-11-18) — [tareas](./SDD-88-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/diagnostics` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/typecheck` · `@fudic/formatter` · `@fudic/api` · `@fudic/vite` ·
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
@@ -571,3 +571,10 @@ Nada.
 7. **`resolveLayout` recibe el `--project`** para que el mensaje de `FUD1582` diga
    `fudic g layout _layout --project <nombre>` cuando se dio, y `libraryLayout` elige el layout de la
    página de error de una librería.
+8. **El descubrimiento lee la página de error de una librería donde está.** Al cerrar, `verify:generated`
+   destapó un fallo de SDD-87 que esta SDD hizo visible: en la propia librería, el descubrimiento
+   buscaba su `_error.fud` en `src/routes/` en vez de en `src/`, y `fudic test` de un workspace con
+   `g error-page --project <lib>` no arrancaba. Ahora una página de error que no es la de las rutas
+   de una app se lee en el fichero que da `errorPageOf`. De paso, `dataShapeOf`, `laterFieldsOf` y
+   `routeBlocksOf` reciben solo un `DocumentGraph`: la rama sin `serverApis` era de la página sin
+   layout.

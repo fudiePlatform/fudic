@@ -99,18 +99,16 @@ export function loadImport(graph: ComponentGraph): string | undefined {
  * page writes `fud-data` with and the chunk reads it back with. Both ends ask this one function,
  * so a link the host could not read — no shape — leaves the block with its keys on both.
  */
-export function dataShapeOf(graph: ComponentGraph): DataShape | undefined {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.find((a) => a.api?.load === true)?.api?.data;
+export function dataShapeOf(graph: DocumentGraph): DataShape | undefined {
+  return graph.serverApis.find((a) => a.api?.load === true)?.api?.data;
 }
 
 /**
  * The fields of `load` marked `later` (SDD-70 §3.1): promises when the page is painted, so they
  * are never part of what `fud-data` carries — they travel in the `fields` of their part.
  */
-export function laterFieldsOf(graph: ComponentGraph): readonly string[] {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.find((a) => a.api?.load === true)?.api?.later ?? [];
+export function laterFieldsOf(graph: DocumentGraph): readonly string[] {
+  return graph.serverApis.find((a) => a.api?.load === true)?.api?.later ?? [];
 }
 
 /**

@@ -42,13 +42,13 @@ const FORM = `<link rel="server" href="./app-person.fudapi">
 </app-person>
 `;
 
-/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
-const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+/** The layout every page links (SDD-88), with the runtime: it is the layout's, never a route's (FUD1583). */
+const BARE_LAYOUT =
+  '<!DOCTYPE html>\n<html>\n<head><script src="fudic:runtime"></script>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
 
 const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-person.fud">
-<head><script src="fudic:runtime"></script>
-    <title>Home</title></head>
+<head><title>Home</title></head>
 <app-person></app-person>
 `;
 

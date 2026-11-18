@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 25 / 26 — `En curso`.
+> **Progreso:** 26 / 26 — `Hecho`.
 
 **El orden manda en tres puntos.**
 
@@ -226,7 +226,7 @@
     decisión 12).
   - *Depende de:* —.
   - *Ficheros:* `docs/sdd/SDD-22-fudic-cli.md`, `docs/sdd/SDD-87-pagina-de-error-compartida.md`.
-- [ ] **26. El cierre.**
+- [x] **26. El cierre.**
   - `pnpm typecheck`, `pnpm build`, `verify:generated`, la cobertura de SDD §5 y los e2e de
     `examples/workspace` y `examples/basic`, en verde. Un grep de `<!DOCTYPE` en los `.fud` del repo
     (fuera de `node_modules` y `dist`) solo encuentra layouts (criterios 28, 31). Estado `Hecho` en
