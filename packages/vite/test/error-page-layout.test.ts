@@ -18,6 +18,7 @@ import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias } from './helpers/http-project.js';
 
 const manifest = (name: string, deps: readonly string[] = []): string =>
   JSON.stringify({ name, version: '1.0.0', type: 'module', dependencies: Object.fromEntries(deps.map((d) => [d, '*'])) }, null, 2);
@@ -201,6 +202,68 @@ describe('the build (criteria 8, 9)', () => {
 
   it('builds a library’s page that links the library’s layout', async () => {
     expect(await buildAdmin(workspace({ 'libs/ui/src/_error.fud': errorRoute('ui', LIB_LAYOUT) }))).toBeUndefined();
+  }, 300000);
+});
+
+/** A layout with a required prop, which a route resolves with `layout` in its `.fudapi`. */
+const AREA_LAYOUT = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  @code {
+    const { area } = props<{ area: string }>();
+  }
+  @RenderHead()
+</head>
+<body><header data-area="@area">@area</header>@RenderBody()</body>
+</html>
+`;
+
+describe('layout in _error.fudapi (criterion 11)', () => {
+  const withArea = (extra: Readonly<Record<string, string>> = {}): string =>
+    workspace({
+      'apps/admin/src/layouts/_layout.fud': AREA_LAYOUT,
+      'apps/admin/src/routes/index.fud': `<link rel="layout" href="${APP_LAYOUT}">\n<link rel="server" href="./index.fudapi">\n<p>inicio</p>\n`,
+      'apps/admin/src/routes/index.fudapi': 'layout\n',
+      'apps/admin/src/server/routes/index.ts': "import { layout } from 'fudic:routes/index';\n\nlayout.handle(() => ({ area: 'Inicio' }));\n",
+      'apps/admin/src/routes/_error.fud': errorRoute('admin', APP_LAYOUT),
+      ...extra,
+    });
+
+  it('an error page whose layout has a required prop, with no _error.fudapi: the build fails with FUD0702', async () => {
+    expect(await buildAdmin(withArea())).toContain('FUD0702');
+  }, 300000);
+
+  it('with an _error.fudapi that declares layout, the build passes and dev paints what its handler returns', async () => {
+    const ws = withArea({
+      'apps/admin/src/routes/_error.fud': errorRoute('admin', APP_LAYOUT).replace(
+        `<link rel="layout" href="${APP_LAYOUT}">\n`,
+        `<link rel="layout" href="${APP_LAYOUT}">\n<link rel="server" href="./_error.fudapi">\n`,
+      ),
+      'apps/admin/src/routes/_error.fudapi': 'layout\n',
+      // `data` is the error the page paints: its status reaches the layout.
+      'apps/admin/src/server/routes/_error.ts': "import { layout } from 'fudic:routes/_error';\n\nlayout.handle((_ctx, data) => ({ area: `Error ${data.status}` }));\n",
+    });
+    expect(await buildAdmin(ws)).toBeUndefined();
+    const server = await createServer({
+      root: admin(ws),
+      logLevel: 'silent',
+      // The `.fudapi` modules import `@fudic/http/contract` and the server chain at runtime.
+      resolve: { alias: httpAlias },
+      plugins: [fudic({ liveCheck: false })],
+      server: { port: 0 },
+    });
+    try {
+      await server.listen();
+      const origin = `http://localhost:${(server.httpServer!.address() as AddressInfo).port}`;
+      await fetch(`${origin}/`, { headers: { accept: 'text/html' } });
+      const res = await fetch(`${origin}/no-existe`, { headers: { accept: 'text/html' } });
+      const html = await res.text();
+      expect(res.status).toBe(404);
+      expect(html).toContain('admin 404');
+      expect(html).toContain('<header data-area="Error 404">Error 404</header>');
+    } finally {
+      await server.close();
+    }
   }, 300000);
 });
 
