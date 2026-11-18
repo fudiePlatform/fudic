@@ -34,15 +34,15 @@ export interface PageApi {
 export type PageApiOf = (href: string) => PageApi | undefined;
 
 /**
- * What a `.fud` under `routesDir` IS (SDD-21 §4.7). Only `page` and `route` are routes: a
+ * What a `.fud` under `routesDir` IS (SDD-21 §4.7). Only a `route` is a page (SDD-88): a
  * `layout` enters through the `rel="layout"` edge and a `component` through `rel="component"`,
  * exactly as a component under `routesDir` has never been a route.
  */
-export type DocumentRole = 'page' | 'route' | 'layout' | 'component';
+export type DocumentRole = 'route' | 'layout' | 'component';
 
 export interface PageAnalysis {
   readonly role: DocumentRole;
-  /** True when the file is a route: a page (doctype) or a route fragment (SDD-21). */
+  /** True when the file is a route: every page links a layout (SDD-21, SDD-88). */
   readonly isPage: boolean;
   /** Its `.fudapi` declares `load`. */
   readonly hasLoad: boolean;
@@ -81,7 +81,7 @@ export function analyzePage(source: string, apiOf?: PageApiOf): PageAnalysis {
   // delete, not a relation — counting it as «this layout is used» would keep a layout alive
   // on the strength of a link the author has to remove anyway.
   const layoutHref = doc.type === 'route-document' ? doc.layoutHref : undefined;
-  const isPage = role === 'page' || role === 'route';
+  const isPage = role === 'route';
   // The page's own `.fudapi`, when it links one: `load`, `paths`, `layout` and the strategy come
   // from it (SDD-60 §4.5).
   const own = !isPage
@@ -110,8 +110,6 @@ export function analyzePage(source: string, apiOf?: PageApiOf): PageAnalysis {
 /** The role of a structured document, in the plugin's vocabulary. */
 function roleOf(doc: StructuredDocument): DocumentRole {
   switch (doc.type) {
-    case 'page-document':
-      return 'page';
     case 'route-document':
       return 'route';
     case 'layout-document':

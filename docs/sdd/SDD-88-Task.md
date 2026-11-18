@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 14 / 26 — `En curso`.
+> **Progreso:** 15 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -146,7 +146,7 @@
 
 ## Fase 5 — Vite
 
-- [ ] **16. `analyze`, `transform` y `discover`.**
+- [x] **16. `analyze`, `transform` y `discover`.**
   - Fuera el rol `page` de `analyze.ts` y la rama `page-document` de `transform.ts`. `discover` emite
     `FUD1581` para un `_error.fud` (propio o de librería) que no es una ruta y no lo compila; la app
     pinta con la página mínima. La página de una librería con su layout (criterios 8, 9, 12). El

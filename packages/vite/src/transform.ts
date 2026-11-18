@@ -29,7 +29,6 @@ import {
   emitComponentModuleMapped,
   emitComponentClientModuleMapped,
   emitComponentIocModule,
-  emitPageModuleMapped,
   emitLayoutModuleMapped,
   emitRouteModuleMapped,
   emitRouteClientModuleMapped,
@@ -298,7 +297,7 @@ function emitOptionsFor(
   assets: LinkedAssets | undefined,
   i18n?: LocaleCompile,
   sourceLabel?: SourceLabel,
-): Parameters<typeof emitPageModuleMapped>[1] {
+): Parameters<typeof emitRouteModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13) —
   // or, for a root-absolute `/logo.svg`, when the project's public directory holds it.
   // Without a registry there is nothing to ask, and a root-absolute URL is waved through
@@ -526,7 +525,7 @@ export function transformFudClient(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const entry = graph.entry;
-  if (entry.type === 'route-document' || entry.type === 'page-document') {
+  if (entry.type === 'route-document') {
     return routeClientResult(id, graph, styles, resolved.diagnostics, assets, sourceLabel);
   }
   if (entry.type !== 'component-document') {
@@ -612,7 +611,7 @@ export interface IocResult {
 function emitFor(
   id: string,
   graph: DocumentGraph,
-  emitOptions: Parameters<typeof emitPageModuleMapped>[1],
+  emitOptions: Parameters<typeof emitRouteModuleMapped>[1],
 ): EmitOutput {
   const entry = graph.entry;
   switch (entry.type) {
@@ -622,8 +621,6 @@ function emitFor(
       // a route directory it was dropped into, an editor save, an explicit import — and the
       // honest answer is an empty module rather than a component with no wrapper.
       return { code: '', mappings: [], missingAssets: [], diagnostics: [], needs: [] };
-    case 'page-document':
-      return emitPageModuleMapped(graph, emitOptions);
     case 'route-document':
       return emitRouteModuleMapped(graph, emitOptions);
     case 'layout-document': {

@@ -14,7 +14,7 @@ import { ERROR_FILE } from '@fudic/conventions';
 import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
 import { localizeRoutes } from './i18n.js';
-import { FUD0364, FUD0434, FUD1570, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
+import { FUD0364, FUD0434, FUD1570, FUD1581, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -99,12 +99,22 @@ export function discoverRoutes(
     const absPath = source.kind === 'own' ? join(routesRoot, ERROR_FILE) : source.file;
     const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
-    errorPage = {
-      route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
-      absPath,
-      analysis,
-      decision: NEVER,
-    };
+    // An error page is a page, and every page links a layout (SDD-88): one that is not a route
+    // is not compiled as the error page, and the app paints its errors with the minimal one. A
+    // whole document has said `FUD1580` in its parse; anything else without a layout is
+    // `FUD1581`, over its first line — the span the typecheck gives it, so the build says it once.
+    if (analysis.isPage) {
+      errorPage = {
+        route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
+        absPath,
+        analysis,
+        decision: NEVER,
+      };
+    } else if (analysis.role === 'component') {
+      const text = readFileSync(absPath, 'utf8');
+      const end = text.indexOf('\n');
+      parse.push({ ...FUD1581({ span: { start: 0, end: end === -1 ? text.length : end } }), file: absPath });
+    }
   }
 
   const builds: RouteBuild[] = [];
@@ -167,6 +177,6 @@ export function discoverRoutes(
     parse,
     errorPages,
     ...(errorPages[0] !== undefined ? { errorPage: errorPages[0] } : {}),
-    ...(errorPageFrom !== undefined ? { errorPageFrom } : {}),
+    ...(errorPage !== undefined && errorPageFrom !== undefined ? { errorPageFrom } : {}),
   };
 }
