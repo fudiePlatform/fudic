@@ -5,8 +5,8 @@
 > `@fudic/language-server` · `@fudic/typecheck` · `@fudic/formatter` · `@fudic/api` · `@fudic/vite` ·
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
-> **Rama:** `sdd-88-toda-pagina-con-layout`, desde `main`.
-> **Progreso:** 0 / 26 — `Listo`.
+> **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
+> **Progreso:** 2 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -22,14 +22,14 @@
 
 ## Fase 1 — Diagnósticos, gramática y los goldens de rutas
 
-- [ ] **1. `FUD1580`, `FUD1581`, `FUD1582`.**
+- [x] **1. `FUD1580`, `FUD1581`, `FUD1582`.**
   - Un fichero por código en `codes/`, con su `.md` de unas cinco líneas y su línea en `index.ts`
     (SDD §3.5).
   - *Depende de:* —.
   - *Paquete:* `diagnostics`.
   - *Ficheros:* `src/codes/FUD1580.ts`, `src/codes/FUD1581.ts`, `src/codes/FUD1582.ts` y sus `.md`,
     `src/index.ts`, sus tests.
-- [ ] **2. La gramática.**
+- [x] **2. La gramática.**
   - Decisión 183. Notas de enmienda en la 51 y la 82, y en la 43.c, 58, 59, 60, 61 y 78. La
     producción `document`, el ejemplo canónico como ruta más layout, y el índice (SDD §3.2).
   - *Depende de:* —.

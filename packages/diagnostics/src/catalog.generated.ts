@@ -474,6 +474,9 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1555: ['warning', "Trusted Types will block this assignment"],
   FUD1556: ['hint', "The policy allows what fudic no longer needs"],
   FUD1570: ['error', "Two error pages in the chain"],
+  FUD1580: ['error', "A whole document is a layout"],
+  FUD1581: ['error', "The error page links no layout"],
+  FUD1582: ['error', "No layout to link"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */
