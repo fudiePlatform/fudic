@@ -127,7 +127,7 @@ describe('fudic_spec_run of a page and a flow (criterion 37)', () => {
 
   it('the flow, by its name', async () => {
     const run = await specRun({ spec: 'visita' });
-    expect(run.body['summary']).toEqual({ pass: 1, fail: 0, error: 0 });
+    expect(run.body['summary'], JSON.stringify(run.body).slice(0, 3000)).toEqual({ pass: 1, fail: 0, error: 0 });
   }, SLOW);
 
   it('record: what the real server answered goes into the fixture, the criterion names it, and it passes with it', async () => {
