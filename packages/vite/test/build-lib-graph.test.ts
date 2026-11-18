@@ -49,18 +49,15 @@ const PANEL = `<link rel="component" href="@acme/ui/ui-card.fud">
 </app-panel>
 `;
 
-const INDEX = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="@acme/ui/ui-card.fud">
-    <link rel="component" href="../components/app-panel.fud">
-    <title>Tienda</title>
-  </head>
-  <body>
-    <ui-card>hola</ui-card>
-    <app-panel></app-panel>
-  </body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const INDEX = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="@acme/ui/ui-card.fud">
+<link rel="component" href="../components/app-panel.fud">
+<head><title>Tienda</title></head>
+<ui-card>hola</ui-card>
+<app-panel></app-panel>
 `;
 
 const manifest = (name: string, extra: Record<string, unknown> = {}): string =>
@@ -132,6 +129,7 @@ async function buildWorkspace(files: Readonly<Record<string, string>> = {}): Pro
       2,
     ),
     'apps/tienda/tienda.css': ':host { margin: 0; }',
+    'apps/tienda/src/layouts/_layout.fud': BARE_LAYOUT,
     'apps/tienda/src/routes/index.fud': INDEX,
     'apps/tienda/src/components/app-panel.fud': PANEL,
     ...files,
@@ -247,10 +245,10 @@ describe('the tag space, now that it is shared (§4.5)', () => {
     // proves is that being in another package changes nothing about it.
     const built = await buildWorkspace({
       'apps/tienda/src/routes/ui/card.fud': [
-        '<!DOCTYPE html><html><head>',
+        '<link rel="layout" href="../../layouts/_layout.fud">',
         '<link rel="component" href="@acme/ui/ui-card.fud">',
         '@code { import { signal } from "@fudic/core"; const n = signal(1); }',
-        '</head><body><ui-card></ui-card><output>@n()</output></body></html>',
+        '<ui-card></ui-card><output>@n()</output>',
       ].join('\n'),
       // The route imports `@fudic/core`, which the typecheck has to find first (SDD-35).
       'apps/tienda/tsconfig.json': TYPECHECK_TSCONFIG,

@@ -271,7 +271,8 @@ describe('an app just created: its guide, and no component yet (§8.4)', () => {
       'src/guide/guide.css': '@import "./base.css";\n@import "./h1.css";',
       'src/guide/base.css': '*, *::before, *::after { box-sizing: border-box; }',
       'src/guide/h1.css': ':where(h1) { margin: 0; }',
-      'src/routes/index.fud': '<!DOCTYPE html>\n<html><head><title>t</title></head><body><h1>Home</h1></body></html>\n',
+      'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n',
+      'src/routes/index.fud': '<link rel="layout" href="../layouts/_layout.fud">\n<head><title>t</title></head>\n<h1>Home</h1>\n',
       ...extra,
     };
     for (const [path, contents] of Object.entries(tree)) {

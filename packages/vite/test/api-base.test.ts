@@ -19,21 +19,18 @@ put guarda
   nombre  str
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-<title>Fallos</title>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./fallos.fudapi">
 @code {
   function saluda() {
     void hola();
   }
 }
-</head>
-<body>
+<head><title>Fallos</title></head>
 <button @click=@saluda()>hola</button>
-</body>
-</html>
 `;
 
 const RULES_API = `rule nombre-ocupado
@@ -53,6 +50,7 @@ function project(): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-api-base-'));
   writeHttpTypecheckConfig(root, { module: 'esnext', moduleResolution: 'bundler', verbatimModuleSyntax: true, strict: true });
   const files: Record<string, string> = {
+    'src/layouts/_layout.fud': BARE_LAYOUT,
     'src/routes/fallos.fudapi': PAGE_API,
     'src/routes/fallos.fud': PAGE,
     'src/rules/nombres.fudapi': RULES_API,

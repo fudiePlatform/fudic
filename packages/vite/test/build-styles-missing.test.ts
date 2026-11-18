@@ -17,19 +17,19 @@ import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { allCode } from './helpers/output.js';
 
-const PAGE = `<!DOCTYPE html>
-<html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
 <head><title>Home</title></head>
-<body><h1>hola</h1></body>
-</html>
+<h1>hola</h1>
 `;
 
 /** The same page, but naming a component so the project defines one. */
-const PAGE_WITH_COMPONENT = `<!DOCTYPE html>
-<html>
-<head><link rel="component" href="../components/s-plain.fud"><title>Home</title></head>
-<body><s-plain></s-plain></body>
-</html>
+const PAGE_WITH_COMPONENT = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/s-plain.fud">
+<head><title>Home</title></head>
+<s-plain></s-plain>
 `;
 
 const PLAIN =
@@ -59,6 +59,8 @@ async function buildWith(
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'styles'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), page);
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test', ...sheets }));
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27 §5.1
@@ -150,15 +152,11 @@ describe('vite build — the project style guide', () => {
 });
 
 /** A page with two components: `s-pick` chooses `panel`, `s-plain` chooses nothing. */
-const PAGE_WITH_TWO = `<!DOCTYPE html>
-<html>
-<head>
+const PAGE_WITH_TWO = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/s-pick.fud">
 <link rel="component" href="../components/s-plain.fud">
-<title>Home</title>
-</head>
-<body><s-pick></s-pick><s-plain></s-plain></body>
-</html>
+<head><title>Home</title></head>
+<s-pick></s-pick><s-plain></s-plain>
 `;
 
 const pick = (chosen: string): string =>

@@ -31,16 +31,13 @@ const BADGE = `@code {
 </app-badge>
 `;
 
-const page = (depth: string): string => `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="${depth}components/app-badge.fud">
-    <title>Deep</title>
-  </head>
-  <body>
-    <app-badge .tone="success">ok</app-badge>
-  </body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const page = (depth: string): string => `<link rel="layout" href="${depth}layouts/_layout.fud">
+<link rel="component" href="${depth}components/app-badge.fud">
+<head><title>Deep</title></head>
+<app-badge .tone="success">ok</app-badge>
 `;
 
 interface OutFile {
@@ -56,6 +53,8 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), page('../'));
   writeFileSync(join(root, 'src', 'routes', 'blog', 'index.fud'), page('../../'));
 

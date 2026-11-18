@@ -87,11 +87,16 @@ save.handle(() => 'guardado de verdad');
 exportar.handle(() => new File(['real'], 'real.csv', { type: 'text/csv' }));
 clock.handle(() => new Date().toISOString());
 `,
-  'src/routes/_error.fud': `<!DOCTYPE html>
+  // The error page links a layout without props (SDD-88): the bench's own needs a culture.
+  'src/layouts/_layout.fud': `<!DOCTYPE html>
 <html>
-<head><title>Error</title></head>
-<body><h1>status @data.status</h1><p>@data.title</p></body>
+<head>@RenderHead()</head>
+<body>@RenderBody()</body>
 </html>
+`,
+  'src/routes/_error.fud': `<link rel="layout" href="../layouts/_layout.fud">
+<head><title>Error</title></head>
+<h1>status @data.status</h1><p>@data.title</p>
 `,
   'fudic.json': JSON.stringify({ id: 'bench' }),
 };

@@ -81,6 +81,14 @@ const LAYOUT = `<!DOCTYPE html>
 </html>
 `;
 
+/** The smallest layout (SDD-88: there is no page without one): what a standalone page painted. */
+const BARE = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">@RenderHead()</head>
+<body>@RenderBody()</body>
+</html>
+`;
+
 const API = `load
   title  str
   users  str[]  later
@@ -109,16 +117,12 @@ const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 ${VIEW}
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-<title>Sola</title>
+const PAGE = `<link rel="layout" href="../layouts/_bare.fud">
 <link rel="server" href="./sola.fudapi">
-</head>
-<body><main>
+<head><title>Sola</title></head>
+<main>
 ${VIEW}
-</main></body>
-</html>
+</main>
 `;
 
 /** A route whose `later` field sits in a branch that does not paint (criterion 15). */
@@ -191,11 +195,9 @@ const ZERO_API = `load ssr buffer 0
   title  str
 `;
 
-const ERROR_PAGE = `<!DOCTYPE html>
-<html>
+const ERROR_PAGE = `<link rel="layout" href="../layouts/_bare.fud">
 <head><title>Error</title></head>
-<body><h1>status @data.status</h1><p>@data.title</p></body>
-</html>
+<h1>status @data.status</h1><p>@data.title</p>
 `;
 
 function writeAll(root: string, files: Readonly<Record<string, string>>): void {
@@ -213,6 +215,7 @@ beforeAll(async () => {
   writeHttpTypecheckConfig(root);
   writeAll(root, {
     'src/layouts/_layout.fud': LAYOUT,
+    'src/layouts/_bare.fud': BARE,
     'src/routes/espera.fud': ROUTE,
     'src/routes/espera.fudapi': API,
     'src/routes/sola.fud': PAGE,
@@ -292,7 +295,7 @@ async function rest(reader: ReturnType<typeof chunks>): Promise<string> {
 
 const SHAPES = [
   ['a route with a layout', '/espera'],
-  ['a standalone page', '/sola'],
+  ['a route with a bare layout (no menu, no footer)', '/sola'],
 ] as const;
 
 // ── criteria ────────────────────────────────────────────────────────────────

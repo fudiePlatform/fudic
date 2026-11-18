@@ -8,17 +8,11 @@ import { describe, it, expect } from 'vitest';
 import { analyzePage } from '../src/analyze.js';
 import { NO_STRATEGY } from '../src/strategy.js';
 
-/** A minimal valid page document with the given `@code` body in its `<head>`. */
+/** A minimal valid page: a route linking its layout (SDD-88), with the given `@code` before its markup. */
 function page(code = ''): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
+  return `<link rel="layout" href="../layouts/_layout.fud">
 ${code}
-</head>
-<body>
 <h1>Hi</h1>
-</body>
-</html>
 `;
 }
 
@@ -29,7 +23,7 @@ ${body}
 }`;
 
 describe('analyzePage — page vs component', () => {
-  it('recognizes a page document', () => {
+  it('recognizes a page (a route)', () => {
     expect(analyzePage(page()).isPage).toBe(true);
   });
 
@@ -53,8 +47,9 @@ describe('analyzePage — page vs component', () => {
 
   it('a page with no @code exports nothing', () => {
     expect(analyzePage(page())).toEqual({
-      role: 'page',
+      role: 'route',
       isPage: true,
+      layoutHref: '../layouts/_layout.fud',
       hasLoad: false,
       hasPaths: false,
       hasLayout: false,

@@ -60,14 +60,13 @@ const PANEL = `@code {
 </x-panel>
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="../components/x-owner.fud">
-    <title>DI</title>
-  </head>
-  <body><x-owner></x-owner></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/x-owner.fud">
+<head><title>DI</title></head>
+<x-owner></x-owner>
 `;
 
 interface OutFile {
@@ -82,6 +81,8 @@ async function buildApp(files: Readonly<Record<string, string>>): Promise<OutFil
   writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
 
   const result = (await build({

@@ -115,22 +115,18 @@ const PAGE_SERVER = `import { load } from 'fudic:routes/index';
 load.handle(() => ({ items: ${JSON.stringify(ITEMS)} }));
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="component" href="../components/x-list.fud">
-  <link rel="component" href="../components/x-toast.fud">
-  <link rel="component" href="../components/x-plain.fud">
-  <link rel="server" href="./index.fudapi">
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
 
-  <title>Maps</title>
-</head>
-<body>
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/x-list.fud">
+<link rel="component" href="../components/x-toast.fud">
+<link rel="component" href="../components/x-plain.fud">
+<link rel="server" href="./index.fudapi">
+<head><title>Maps</title></head>
   <x-list .items="@data.items"></x-list>
   <x-toast></x-toast>
   <x-plain>inerte</x-plain>
-</body>
-</html>
 `;
 
 interface OutFile {
@@ -192,6 +188,8 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'components', 'x-list.fud'), LIST);
   writeFileSync(join(root, 'src', 'components', 'x-toast.fud'), TOAST);
   writeFileSync(join(root, 'src', 'components', 'x-plain.fud'), PLAIN);
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'index.fudapi'), PAGE_API);
   mkdirSync(join(root, 'src', 'server'), { recursive: true });

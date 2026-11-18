@@ -29,11 +29,13 @@ get hello
 get nobody
 `;
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head><title>x</title><link rel="server" href="./home.fudapi"></head>
-<body><p>n = @data.n</p></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./home.fudapi">
+<head><title>x</title></head>
+<p>n = @data.n</p>
 `;
 
 /** The canonical texts of SDD-67 §4.3 of these functions: the signatures a page sends. */
@@ -57,7 +59,7 @@ interface Running {
 async function start(files: Readonly<Record<string, string>>): Promise<Running> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-api-dev-'));
   writeHttpTypecheckConfig(root);
-  for (const [path, text] of Object.entries({ 'src/routes/home.fudapi': API, 'src/routes/home.fud': PAGE, ...files })) {
+  for (const [path, text] of Object.entries({ 'src/layouts/_layout.fud': BARE_LAYOUT, 'src/routes/home.fudapi': API, 'src/routes/home.fud': PAGE, ...files })) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
   }

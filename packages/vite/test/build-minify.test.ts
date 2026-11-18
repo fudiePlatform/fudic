@@ -26,14 +26,13 @@ import { specifiersOf } from './helpers/specifiers.js';
 import { routeTable, manifestFile, emitted } from './helpers/manifest.js';
 
 
-const PAGE = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="component" href="../components/app-badge.fud">
-  <title>Home</title>
-</head>
-<body><h1>Home</h1><app-badge>ok</app-badge></body>
-</html>
+/** The layout every page links (SDD-88): the smallest one, so the body is the page's markup. */
+const BARE_LAYOUT = '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n';
+
+const PAGE = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+<head><title>Home</title></head>
+<h1>Home</h1><app-badge>ok</app-badge>
 `;
 
 const BADGE = `<head>
@@ -73,6 +72,8 @@ function projectRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-minify-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), BARE_LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
