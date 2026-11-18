@@ -98,7 +98,6 @@ export function componentLinkAnchor(source: string, doc: StructuredDocument): Li
       return { offset: 0, indent: '' };
     case 'route-document':
       return { offset: doc.layoutLink.span.end, indent: lineIndent(source, doc.layoutLink.span.start) };
-    case 'page-document':
     case 'layout-document':
       return {
         offset: doc.head.openSpan.end,

@@ -36,13 +36,12 @@ interface Waited {
 
 /**
  * The spans of a document where an `@await` may not go, or `null` when it may go nowhere: only
- * the body of a route or a page has a `data` that waits.
+ * the body of a route has a `data` that waits.
  */
 function forbidden(document: StructuredDocument): readonly Span[] | null {
   if (document.type === 'route-document') {
     return [...(document.head === undefined ? [] : [document.head.span]), ...document.snippets.map((s) => s.span)];
   }
-  if (document.type === 'page-document') return [document.head.span, ...document.snippets.map((s) => s.span)];
   return null;
 }
 

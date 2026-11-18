@@ -21,7 +21,7 @@ import type { ComponentGraph, DocumentGraph } from './resolve.js';
 export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
   const entry = graph.entry;
   const apis = graph.serverApis;
-  if (apis.length === 0 || (entry.type !== 'component-document' && entry.type !== 'route-document' && entry.type !== 'page-document')) {
+  if (apis.length === 0 || (entry.type !== 'component-document' && entry.type !== 'route-document')) {
     return [];
   }
   const out: Diagnostic[] = [];
@@ -60,7 +60,7 @@ export function fileInputDiagnostics(
   isComponent: (tag: string) => boolean,
   forms: readonly Readonly<Record<string, Readonly<Record<string, LinkedField>>>>[],
 ): readonly Diagnostic[] {
-  if (document.type !== 'component-document' && document.type !== 'route-document' && document.type !== 'page-document') return [];
+  if (document.type !== 'component-document' && document.type !== 'route-document') return [];
   return fileFieldDiagnostics(source, templateRootsOf(document), isComponent, formFieldsOf(forms));
 }
 

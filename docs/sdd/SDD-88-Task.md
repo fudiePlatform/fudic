@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 7 / 26 — `En curso`.
+> **Progreso:** 10 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -89,7 +89,7 @@
 
 ## Fase 3 — El compilador
 
-- [ ] **9. `structureShell`: un documento con doctype es un layout.**
+- [x] **9. `structureShell`: un documento con doctype es un layout.**
   - Sin huecos, `layout-document` con `FUD1580` en el span del doctype. Fuera `PageDocument`, su
     miembro de la unión y su exportación. El `<link rel="layout">` del `<head>` de un documento con
     doctype es `FUD0439` (criterios 1, 2, 4, 5).
@@ -97,7 +97,7 @@
   - *Paquete:* `compiler`.
   - *Ficheros:* `src/document/structure.ts`, `src/document/nodes.ts`, `src/document/index.ts`,
     `test/document/structure.test.ts`.
-- [ ] **10. Fuera las ramas `page-document`.**
+- [x] **10. Fuera las ramas `page-document`.**
   - `anchor.ts`, `walk.ts`, `view-scope.ts`, `data-without-load.ts`, `await.ts`, `localize.ts`,
     `oxc-code.ts`, `surface.ts`, `resolve.ts` (la rama de `FUD0423` queda para un layout sin
     `@RenderBody()`), `api-links.ts`, `level.ts`, `markup.ts`, `route-client.ts` y `compose.ts`
@@ -105,7 +105,7 @@
   - *Depende de:* 9.
   - *Paquete:* `compiler`.
   - *Ficheros:* los nombrados y sus tests.
-- [ ] **11. Fuera el emit de la página sin layout.**
+- [x] **11. Fuera el emit de la página sin layout.**
   - `buildPageModule`, `emitPageModule`, `emitPageModuleMapped`, `htmlLang` y `pageBoxes`. El
     comentario de `EmitOptions.i18n`, al día. El `lang` de un layout con uno y dos idiomas (criterios
     5, 6, 7).

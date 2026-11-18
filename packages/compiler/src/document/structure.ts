@@ -39,6 +39,7 @@ import {
   FUD0439,
   FUD1111,
   FUD1112,
+  FUD1580,
   FUD0823,
   FUD0824,
   FUD0834,
@@ -63,7 +64,6 @@ import { checkSnippetBodies, type SnippetDeclNode } from '../snippet/index.js';
 import type {
   StructuredDocument,
   ComponentDocument,
-  PageDocument,
   RouteDocument,
   LayoutDocument,
   SnippetDocument,
@@ -366,7 +366,8 @@ export function structureDocument(
 
 function byRole(source: string, doc: HtmlDocument): ParseResult<StructuredDocument> {
   // The role is decided here, not in the parser (SDD-21 §4.1): `doc.mode` stays the binary
-  // doctype test of decision 51, and the `<link rel="layout">` splits each half in two.
+  // doctype test of decision 51 (its `'page'` is a shell, which since decision 183 is always a
+  // layout), and the `<link rel="layout">` splits the other half in two.
   if (doc.mode === 'page') return structureShell(source, doc);
   const hasLayoutLink = significant(doc.children).some((n) => isElement(n) && isLayoutLink(n));
   return hasLayoutLink ? structureRoute(doc) : structureComponent(doc);
@@ -705,7 +706,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   return diagnostics.length === 0 ? ok(node) : withDiagnostics(node, diagnostics);
 }
 
-// --- Page / layout mode (decisions 57–60, 82) --------------------------------------
+// --- Layout mode (decisions 57–60, 82, 183) ----------------------------------------
 
 function structureShell(source: string, doc: HtmlDocument): ParseResult<StructuredDocument> {
   const diagnostics: Diagnostic[] = [];
@@ -728,14 +729,14 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
       serverLinks.push(child);
     } else if (isSnippetDecl(child)) {
       // A shell's top level is its `<head>`, the same place its links and its `@code` live
-      // (decisions 59, 60): a page declares its snippets where it declares everything else.
+      // (decisions 59, 60): a layout declares its snippets where it declares everything else.
       snippets.push(child);
     } else if (isElement(child) && isSnippetLink(child)) {
       snippetLinks.push(child);
     } else if (isElement(child) && isComponentLink(child)) {
       links.push(child);
     } else if (isElement(child) && isLayoutLink(child)) {
-      // A shell that declares a layout is a NESTED layout (decision 87).
+      // Only a route names a layout: kept so the layout can say so (`FUD0439`, in `buildLayout`).
       if (layoutLink !== undefined) {
         diagnostics.push(FUD0420({ span: child.span, role: 'document' }));
       } else {
@@ -752,38 +753,25 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
   collectOutOfPlace(doc.children, head, diagnostics);
   rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
 
-  // Decision 82: a shell holding a `@RenderBody()` is a layout; without any hole at all, it is
-  // the standalone page of decision 51. SDD-48 widens the first half to ANY hole: a layout whose
-  // `@RenderBody()` is being rewritten is still a layout — one missing its body (`FUD0423`) —
-  // and not a page that suddenly offers `data` and no holes in the editor.
+  // Decision 183 (SDD-88): a shell is ALWAYS a layout. One without any hole at all is a layout
+  // written wrong — almost always someone who wanted a page — and says so once, over its
+  // doctype (`FUD1580`): not `FUD0423`, `FUD0425` or `FUD1112` besides, which would each tell
+  // a layout author how to finish a layout this author never meant to write.
   const found = collectDirectives([html]);
-  const holes = found.renderBody.length + found.renderHead.length + found.renderSections.length;
-  if (holes === 0) {
-    rejectDirectives(found, { render: false, section: false }, diagnostics);
-    const page: PageDocument = {
-      type: 'page-document',
-      span: doc.span,
-      doctype,
-      html,
-      head,
-      body,
-      links,
-      snippets,
-      snippetLinks,
-      ...(serverLinks.length > 0 ? { serverLinks } : {}),
-      ...(code !== undefined ? { code } : {}),
-    };
-    return diagnostics.length === 0 ? ok(page) : withDiagnostics(page, diagnostics);
+  const hollow = found.renderBody.length + found.renderHead.length + found.renderSections.length === 0;
+  if (hollow) {
+    diagnostics.push(FUD1580({ span: doctype.span }));
+  } else {
+    // A layout receives its props from the route (`layout` in the route's `.fudapi`): it links
+    // no server of its own (FUD1112).
+    for (const link of serverLinks) diagnostics.push(FUD1112({ span: link.span, kind: 'layout' }));
   }
-
-  // A layout receives its props from the route (`layout` in the route's `.fudapi`): it links
-  // no server of its own (FUD1112).
-  for (const link of serverLinks) diagnostics.push(FUD1112({ span: link.span, kind: 'layout' }));
 
   const layout = buildLayout(
     doc,
     { doctype, html, head, body, links, code, layoutLink, snippets, snippetLinks },
     found,
+    hollow,
     diagnostics,
   );
   return diagnostics.length === 0 ? ok(layout) : withDiagnostics(layout, diagnostics);
@@ -805,6 +793,7 @@ function buildLayout(
   doc: HtmlDocument,
   parts: ShellParts,
   found: DirectiveSet,
+  hollow: boolean,
   diagnostics: Diagnostic[],
 ): LayoutDocument {
   // A layout owns the shell, renders holes — `@RenderBody()`, `@RenderHead()`,
@@ -814,15 +803,16 @@ function buildLayout(
   // `FUD0700`. Nothing here rejects the block any more.
   const renderBody = single(found.renderBody, '@RenderBody()', diagnostics);
   // A shell is a layout by any hole it holds (SDD-48), so it can lack the one that makes it
-  // useful. Said in the file itself, over its `<body>`, where the hole is missing.
-  if (renderBody === undefined) {
+  // useful. Said in the file itself, over its `<body>`, where the hole is missing. A shell with
+  // no hole at all has already said `FUD1580`, over its doctype.
+  if (renderBody === undefined && !hollow) {
     diagnostics.push(FUD0423({ span: parts.body.openSpan }));
   }
   const renderHead = single(found.renderHead, '@RenderHead()', diagnostics);
   if (renderHead !== undefined && !containsNode(parts.head, renderHead)) {
     diagnostics.push(FUD0431({ span: renderHead.span }));
   }
-  if (renderHead === undefined) diagnostics.push(FUD0425({ span: parts.head.openSpan }));
+  if (renderHead === undefined && !hollow) diagnostics.push(FUD0425({ span: parts.head.openSpan }));
   rejectDuplicateNames(found.renderSections, 'rendered section', diagnostics);
   rejectDirectives(found, { render: true, section: false }, diagnostics);
 
@@ -909,7 +899,7 @@ function validateSkeleton(
  *
  * It is called with the CHILDREN of each top-level node, so what it sees is by construction
  * everything the phase machine did not accept — the `<head>` fragment included, which is
- * where the mistake is actually made: it reads like a page's head, and in a page that is
+ * where the mistake is actually made: it reads like a layout's head, and in a layout that is
  * exactly where the link belongs (decision 59).
  */
 function collectNestedFrameworkLinks(

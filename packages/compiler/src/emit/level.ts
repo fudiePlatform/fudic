@@ -100,9 +100,6 @@ export function entryHalf(graph: ComponentGraph): EntryHalf | undefined {
       roots: [...entry.markup, ...entry.sections.flatMap((s) => s.children)],
     };
   }
-  if (entry.type === 'page-document') {
-    return { code: codeOfDocument(graph.entrySource, entry), roots: entry.body.children };
-  }
   return undefined;
 }
 

@@ -202,7 +202,7 @@ function documentRuns(graph: DocumentGraph): {
     plain.push([...layout.doc.body.children]);
   }
   const entry = graph.entry;
-  if (entry.type === 'page-document' || entry.type === 'layout-document') {
+  if (entry.type === 'layout-document') {
     shells.push(entry.html, entry.body);
     plain.push([...entry.body.children]);
   } else if (entry.type === 'route-document') {

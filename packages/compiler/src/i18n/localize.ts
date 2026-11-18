@@ -302,7 +302,7 @@ class Rewriter {
 
   document(document: StructuredDocument): void {
     if (this.i18n.locales.length < 2) return;
-    if (document.type === 'layout-document' || document.type === 'page-document') this.#html(document.html);
+    if (document.type === 'layout-document') this.#html(document.html);
     walk(documentRoots(document), { element: (el) => this.#link(el) });
   }
 

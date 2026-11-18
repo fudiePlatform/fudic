@@ -501,6 +501,11 @@ export interface ResolvedApi {
  * anchored on the link element, which may live in a layout rather than in the entry — the
  * message names the file, and the host (SDD-19) maps it back when it reports.
  */
+/** A layout with no hole at all: a whole document that never meant to be one (`FUD1580`). */
+function isHollow(doc: LayoutDocument): boolean {
+  return doc.renderBody === undefined && doc.renderHead === undefined && doc.renderSections.length === 0;
+}
+
 export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<DocumentGraph> {
   const loaded = load(entryPath, io);
   // The entry's OWN syntax errors, first because they come first in the file. Only the
@@ -524,19 +529,15 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
     const source = parent.source;
     const doc = parent.doc;
     for (const file of parent.snippetFiles) walk.snippetFiles.add(file);
-    if (doc.type === 'layout-document') {
+    if (doc.type === 'layout-document' && !isHollow(doc)) {
       const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
       layouts.push({ path, source, doc, deps });
       // A layout may render snippets of its own, and theirs join the document's graph.
       visitDragged(parent.dragged, walk);
     } else {
-      // A shell with no `@RenderBody()` structures as a page: it was MEANT to be a layout
-      // (something points at it), so name the missing directive rather than the role.
-      diagnostics.push(
-        doc.type === 'page-document'
-          ? FUD0423({ span: at, path })
-          : FUD0435({ span: at, path }),
-      );
+      // A shell with no hole at all is `FUD1580` in its own file (SDD-88); from the route that
+      // links it, it was MEANT to be a layout, so name the missing directive rather than the role.
+      diagnostics.push(doc.type === 'layout-document' ? FUD0423({ span: at, path }) : FUD0435({ span: at, path }));
     }
   }
 
@@ -578,7 +579,7 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
  * links another route's `load` (`FUD1115`). The `href` shape was checked by structure.
  */
 function serverApis(entry: StructuredDocument, entryPath: string, io: Io, diagnostics: Diagnostic[]): ResolvedApi[] {
-  if (entry.type !== 'component-document' && entry.type !== 'route-document' && entry.type !== 'page-document') return [];
+  if (entry.type !== 'component-document' && entry.type !== 'route-document') return [];
   const out: ResolvedApi[] = [];
   for (const link of entry.serverLinks ?? []) {
     const href = linkHref(link) ?? '';

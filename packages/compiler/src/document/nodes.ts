@@ -18,7 +18,7 @@ import type { SnippetDeclNode } from '../snippet/index.js';
 
 /**
  * What every role of document carries about SDD-29, because every role may declare and
- * import snippets — a component, a route, a page, a layout and a snippet file alike.
+ * import snippets — a component, a route, a layout and a snippet file alike.
  *
  * Both lists are COLLECTED and not validated here: whether a name collides, whether the
  * `href` resolves and whether a call is satisfiable are questions about several files, and
@@ -32,12 +32,11 @@ export interface SnippetHost {
 }
 
 /**
- * The top-level roles a `.fud` file can take. Two of them come from decision 51 (doctype ⇒
- * page, else component); SDD-21 splits each by whether the file declares a layout:
+ * The top-level roles a `.fud` file can take. Decision 51 splits them by doctype, and since
+ * decision 183 (SDD-88) a doctype always means a layout — there is no page without one:
  *
- *   doctype + `@RenderBody()`   ⇒ LayoutDocument   (owns the shell)
- *   doctype, no `@RenderBody()` ⇒ PageDocument     (a standalone route, as before)
- *   no doctype + `rel="layout"` ⇒ RouteDocument    (a body fragment)
+ *   doctype                     ⇒ LayoutDocument   (owns the shell; no hole at all is FUD1580)
+ *   no doctype + `rel="layout"` ⇒ RouteDocument    (a body fragment: every page)
  *   no doctype, no layout link  ⇒ ComponentDocument
  *
  * SDD-29 adds the fifth: a file with no host wrapper and at least one `@snippet` is a
@@ -46,7 +45,6 @@ export interface SnippetHost {
  * for a file that is not trying to be a component at all.
  */
 export type StructuredDocument =
-  | PageDocument
   | ComponentDocument
   | RouteDocument
   | LayoutDocument
@@ -73,21 +71,6 @@ export interface ComponentDocument extends Node, SnippetHost {
   readonly template?: ElementNode;
   /** Component tag name, read from `host.name`. Empty string on degradation. */
   readonly name: string;
-}
-
-/** Page file: `<!DOCTYPE html>` + `<html><head>…</head><body>…</body></html>` (decisions 57, 58). */
-export interface PageDocument extends Node, SnippetHost {
-  readonly type: 'page-document';
-  readonly doctype: DoctypeNode;
-  readonly html: ElementNode;
-  readonly head: ElementNode;
-  readonly body: ElementNode;
-  /** `<link rel="component">` found inside `<head>` (decision 59). */
-  readonly links: readonly ElementNode[];
-  /** `<link rel="server">` found inside `<head>` (SDD-60 §3.14). Absent when none. */
-  readonly serverLinks?: readonly ElementNode[];
-  /** `@code` found inside `<head>` (decision 60). */
-  readonly code?: CodeBlockNode;
 }
 
 /**
@@ -117,9 +100,8 @@ export interface RouteDocument extends Node, SnippetHost {
 }
 
 /**
- * Layout file (SDD-21, decision 82): a page-shaped document that owns the shell and
- * renders a route into it. Identified by its FORM — doctype plus exactly one
- * `@RenderBody()` — never by its file name.
+ * Layout file (SDD-21, decisions 82, 183): the document that owns the shell and renders a
+ * route into it. Identified by its FORM — a doctype — never by its file name.
  */
 export interface LayoutDocument extends Node, SnippetHost {
   readonly type: 'layout-document';

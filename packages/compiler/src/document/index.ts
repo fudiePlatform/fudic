@@ -5,7 +5,6 @@
 
 export type {
   StructuredDocument,
-  PageDocument,
   ComponentDocument,
   RouteDocument,
   LayoutDocument,

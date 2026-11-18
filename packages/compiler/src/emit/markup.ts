@@ -313,12 +313,11 @@ export function hasAwait(children: readonly HtmlContent[]): boolean {
 }
 
 /**
- * Whether a route or a page goes out in parts (SDD-70 §4.2): an `@await` in its body or in one
+ * Whether a route goes out in parts (SDD-70 §4.2): an `@await` in its body or in one
  * of its sections. The one predicate the emit and the build ask — the build to give the page
  * the reader of its parts.
  */
 export function inParts(entry: StructuredDocument): boolean {
-  if (entry.type === 'page-document') return hasAwait(entry.body.children);
   if (entry.type !== 'route-document') return false;
   return hasAwait([...entry.markup, ...entry.sections.flatMap((s) => s.children)]);
 }

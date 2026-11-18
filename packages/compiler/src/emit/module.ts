@@ -1,7 +1,7 @@
 /**
  * Module emit (SDD-15 server branch): turn the AST + the resolved dependency graph
- * (SDD-10 links, see resolve.ts) into ES modules — ONE `.mjs` per component and one for
- * the page. Text only; the compiler imports no runtime. This file only ORCHESTRATES:
+ * (SDD-10 links, see resolve.ts) into ES modules — ONE `.mjs` per component (a route and its layout are
+ * emitted by `layout.ts`). Text only; the compiler imports no runtime. This file only ORCHESTRATES:
  * the markup codegen lives in `markup.ts`, the `@code` extraction in `oxc-code.ts`, and
  * the inline style-adoption polyfill in `polyfill.ts`.
  *
@@ -10,31 +10,23 @@
  * injected `Dom<N>` adapter. Composition is real ES imports between modules
  * (`app-card.mjs` imports `app-button.mjs`). Signals are emitted INERT in SSR — an
  * un-hydrated `signal` contributes only its initial value.
- *
- * Page module (`home.mjs`): imports the component modules, hoists every component's
- * `<head>` into the page `<head>` (each `<style>` as `<style type="module" specifier>`),
- * composes the body, and emits the inline, blocking style-adoption `<script>` (SDD-18 §5)
- * in `<head>` BEFORE the body streams, so the page shows with styles applied.
- * `page(data, io)` returns the whole HTML string; `io` injects the SSR adapter.
  */
 
-import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import {
   allComponents,
   entryComponent,
   type ComponentGraph,
-  type DocumentGraph,
   type ResolvedComponent,
 } from './resolve.js';
-import type { ElementNode, HtmlContent } from '../html/index.js';
+import type { ElementNode } from '../html/index.js';
 import type { FlatSheet, StyleNode } from '../css/index.js';
-import type { PageDocument, ComponentDocument } from '../document/index.js';
+import type { ComponentDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
 import type { CspNeed } from '@fudic/config';
 import { spaceModeOf } from './space.js';
-import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
+import { hasForeignDisplay, hostDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
-import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';
+import { MarkupEmitter, renderName } from './markup.js';
 import { stampOption, type SourceLocator } from './source-locations.js';
 import {
   AssetLinker,
@@ -43,37 +35,25 @@ import {
   type AssetText,
   type AssetUrl,
 } from './assets.js';
-import { guideOf, planPageSheets, rebaseSpec, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
+import { rebaseSpec, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
-import { isRtl, type LocaleCompile } from '../i18n/localize.js';
-import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
+import type { LocaleCompile } from '../i18n/localize.js';
+import { codeOf, diHelpers } from './oxc-code.js';
 import { propDefaults, restGroups } from './rest.js';
-import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
-import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks, writePartsOpen } from './maps.js';
 import { planControls } from './controls.js';
 import { apiFields, apiImports } from './api-links.js';
-import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
   type LayoutSpecifier,
   specifierResolver,
-  writeEntryCode,
-  writeEntryImports,
-  writeHeadElements,
   writeInert,
-  writeNonceBinding,
-  writeRuntimeTags,
-  writeSharedHead,
-  runtimeNeeds,
-  uniqueNeeds,
 } from './parts.js';
 import {
   compactProjectCss,
   projectAdoptOf,
   projectCss,
-  renderProjectStyles,
   type ProjectStyle,
 } from './project-styles.js';
 
@@ -182,8 +162,9 @@ export interface EmitOptions {
   /**
    * The locale this module is compiled for (SDD-58 §3.3). The text of the graph arrives already
    * translated — the host reads it through `localizedIo` — so what is left for the emit is what
-   * no file says: the `lang` of a page without a layout. Absent, the output is byte for byte
-   * what it was before translations existed.
+   * no file says: whether the page carries the language alternates, which it does with two or
+   * more locales. The `lang` of the document is its layout's (SDD-88). Absent, the
+   * output is byte for byte what it was before translations existed.
    */
   readonly i18n?: LocaleCompile;
   /**
@@ -398,29 +379,6 @@ export function componentBoxes(graph: ComponentGraph, comp: ResolvedComponent): 
 /** The box a component's own template starts in: its `:host`, or nothing provable (§4.3.a). */
 export function componentContainer(comp: ResolvedComponent): Display {
   return hostDisplay(componentStyleNode(comp.doc));
-}
-
-/**
- * The same two facts for a PAGE. The page has no `:host`; what governs its tags is whatever
- * `<style>` it wrote in its own `<head>`, and a `display` in any of them poisons the table
- * exactly as a component's does.
- *
- * What it still cannot see is a stylesheet the page LINKS — `<link rel="stylesheet">` is a
- * file this compilation never reads. That is the same open edge `data-fud-space` answers for
- * `white-space` (BUG-07 §4.4), and the reason nothing here is deduced from a class.
- */
-function pageBoxes(graph: ComponentGraph, page: PageDocument): Boxes {
-  const styles = page.head.children
-    .filter((c): c is ElementNode => c.type === 'element' && c.name === 'style')
-    .map((el) => el.children[0])
-    .filter((body): body is StyleNode => body !== undefined && body.type === 'style-content');
-  return {
-    of: (tag: string): Display => {
-      const child = graph.components.get(tag);
-      return child === undefined ? 'unknown' : hostDisplay(componentStyleNode(child.doc));
-    },
-    poisoned: styles.some((style) => hasForeignDisplay(style)),
-  };
 }
 
 function buildComponentModule(
@@ -648,221 +606,3 @@ export function emitComponentModuleMapped(
   };
 }
 
-/**
- * The attributes of the `<html>` of a page with no layout: `lang="es"` as it always was, the
- * locale of the graph when it is compiled for one, and `dir="rtl"` when that locale is (§4.7).
- */
-function htmlLang(i18n: LocaleCompile | undefined): string {
-  if (i18n === undefined) return ' lang="es"';
-  return ` lang="${i18n.locale}"${isRtl(i18n.locale) ? ' dir="rtl"' : ''}`;
-}
-
-function buildPageModule(
-  graph: ComponentGraph,
-  options: EmitOptions,
-): {
-  writer: CodeWriter;
-  linker: AssetLinker;
-  diagnostics: readonly Diagnostic[];
-  sheets: PageSheets | null;
-  needs: readonly CspNeed[];
-} {
-  const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(
-    options.linkAssets ?? false,
-    options.assetExists,
-    options.assetUrl,
-    options.assetText,
-    options.assetSheet,
-  );
-  const page = graph.entry as PageDocument;
-  const source = graph.entrySource;
-  const comps = [...graph.components.values()];
-  // A standalone page is a route that owns its own shell, so its `@code` is split exactly
-  // the same way (SDD-39 §4.1).
-  const code = codeOfDocument(source, page);
-  // Only the components that HAVE a sheet reach the head: the rest carry no `COMPONENTS`
-  // entry, no `<style type="module">` and no adopt marker anywhere (BUG-31 §T4). It is a
-  // SECOND list and not a filter of the first, because `comps` also drives the `render`
-  // imports, and every component of the graph is rendered whether or not it is styled.
-  const styled = styledTags(graph);
-  // With `css: "link"` (SDD-73 §3.5) no sheet travels in the page: each host names its files.
-  const linkCss = options.componentSheet !== undefined;
-  const styledComps = linkCss ? [] : comps.filter((c) => styled.has(c.tag));
-  // The page's sheets, pruned (SDD-49). A page owns its whole shell, so it does alone what a
-  // route and its layout share: prune, and write the result into its own head.
-  const pageGraph = 'layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] };
-  const sheets = planPageSheets(pageGraph, options, linker);
-  // The style guides and the icon, before the linker flushes, like the project's sheets.
-  const guide = guideOf(pageGraph, options, linker, sheets);
-  const guideExpr = guide.expr;
-  // The project's guide (SDD-42), built here — before the body codegen and long before the
-  // linker's imports are flushed — because compacting it can register an asset import.
-  const projectStylesLine = linkCss
-    ? null
-    : renderProjectStyles(sheets === null ? options.projectStyles : sheets.projectStyles, linker);
-
-  // Body codegen.
-  const hydratable = hydratableTags(graph);
-  // Whether ANY component of this page injects or provides. It is what decides that the page
-  // opens a container tree at all: a page without a single DI call carries no root, no map
-  // and no import of `@fudic/di` (SDD-38 §5).
-  const hasDi = hasDependencyInjection(graph);
-  // A page with `@await` goes out in parts (SDD-70 §4.2); the `<head>` cannot hold one.
-  const parted = inParts(page);
-  const bodyW = new CodeWriter();
-  const em = new MarkupEmitter({
-    source,
-    ...stampOption(options, graph.entryPath, graph.entryMap),
-    w: bodyW,
-    isComponent: (t) => graph.components.has(t),
-    linker,
-    // What the compiler adds to a bound element, painted by the server as a route paints it.
-    controls: planControls(source, page.body.children, {
-      isComponent: (t) => graph.components.has(t),
-      isFormAssociated: (t) => formAssociatedTags(graph).has(t),
-      field: apiFields(graph),
-    }),
-    // The page's markup hangs from the `<body>` the module fabricates, and a `<body>` is a
-    // block container: its leading and trailing whitespace is trimmed by every browser.
-    container: tagDisplay('body'),
-    boxes: pageBoxes(graph, page),
-    hydratable,
-    ioc: hasDi ? '$root' : '$ioc',
-    formAssociated: formAssociatedTags(graph),
-    bridges: bridgeIds(graph),
-    shadowOptions: shadowOptions(graph),
-    styled,
-    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
-    ...withSheets(graph, options, linker),
-    ...(parted ? { parts: '$parts' } : {}),
-  });
-  em.emitChildren(page.body.children, '$body');
-
-  // Head codegen (page's own head elements + hoisted style modules at runtime). `<title>`
-  // interpolates its text (`@data.title`) and any element interpolates the attributes that
-  // carry a `@` (`<meta content="@data.summary">`, BUG-44); everything else the author wrote
-  // — `meta`, `link`, `script`, `base`, `style` — passes through VERBATIM, so a page keeps
-  // its favicon, its stylesheet and its `<script src>`. The `<link rel="component">`
-  // elements are the component graph, not output, and are skipped.
-  const componentLinks = new Set<HtmlContent>(page.links);
-  // A standalone page is a route that owns its shell, and it publishes the same three things
-  // about its own client half (SDD-39 §4.2, §4.7). Asked HERE, above the head, because the
-  // runtime tag below depends on the answer: the same condition that makes the `<body>` claim
-  // an id is what makes the page carry the runtime that reads it.
-  const routeDiagnostics: Diagnostic[] = [];
-  const blocks = routeBlocksOf(graph, options.routeName);
-  const headW = new CodeWriter();
-  // A standalone page owns its whole `<head>`, so it answers the `fudic:runtime` marker
-  // itself (BUG-31 §T1) — there is no layout to ask and no route slot to go through. The
-  // maps are written further down, so the question is deferred to a callback that runs at
-  // that point: `writeHeadElements` only decides WHERE, exactly as it does for a layout.
-  // What this page puts in itself that its CSP has to let in (SDD-84 §3.4), as each writer says.
-  const needs: CspNeed[] = [...guide.needs, ...(sheets?.needs ?? [])];
-  const headNeeds = writeHeadElements(
-    source,
-    page.head,
-    {
-      skip: componentLinks,
-      linker,
-      // The form travels no further here: a standalone page writes the marker and the tags,
-      // so what the author asked for is decided and emitted in one place (SDD-45 §3.6).
-      onRuntime: (form) => {
-        const hydrates = needsRuntime(hydratable, hasDi, blocks !== undefined);
-        writeRuntimeTags(headW, hydrates, form, (options.i18n?.locales.length ?? 0) >= 2, parted);
-        needs.push(...runtimeNeeds(hydrates, form));
-      },
-      ...(sheets === null ? {} : { sheet: sheets.own }),
-      ...(guideExpr === null ? {} : { onGuide: () => headW.line(`head += ${guideExpr};`) }),
-    },
-    headW,
-  );
-  needs.push(...headNeeds);
-
-  const w = new CodeWriter();
-  const specifier = specifierResolver(graph, options.componentSpecifier, ext);
-  // `tag` and `css` are imported only by the styled ones: a component with no sheet has
-  // nothing to name in the head, so importing its two constants would be dead weight the
-  // bundler carries into every page that composes it (BUG-31 §T4).
-  for (const c of comps) {
-    const style = styledComps.includes(c)
-      ? `, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css`
-      : '';
-    w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
-  }
-  for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
-  writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
-  for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
-  w.line('');
-  w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
-  // The project's guide (SDD-42), hoisted once per document like a component's sheet.
-  if (projectStylesLine !== null) w.line(projectStylesLine);
-  // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  if (styledComps.length > 0 || projectStylesLine !== null) {
-    w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
-  }
-  const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
-  w.line('');
-  // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
-  // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
-  // generator; joining the pieces is byte-identical to the previous whole-string return.
-  // The third parameter is the route's container, created once per request by the wrapper.
-  // A page rendered on its own — the standalone emit, a golden — is handed none and opens
-  // its own, so a component that owns a container always has one to hang it from.
-  // `async` only with `@await`: a page without one writes the bytes it always wrote.
-  w.line(`export ${parted ? 'async ' : ''}function* page(data, io, $ioc) {`);
-  w.indent();
-  w.line(
-    `const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`,
-  );
-  if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
-  writeNonceBinding(w);
-  // The author's own `@code`, before anything that could read it: the head interpolates it
-  // (`<title>@titulo()</title>`) as readily as the body does.
-  writeEntryCode(w, code);
-  w.line("let head = '';");
-  w.appendWriter(headW);
-  needs.push(...writeSharedHead(w, styledComps.length > 0, projectStylesLine !== null));
-  // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
-  // and its elements there is no context where a newline or an indent renders: the HTML
-  // parser drops it before the tree is built. It is the free half of this BUG.
-  w.line(`yield '<!DOCTYPE html><html${htmlLang(options.i18n)}><head>' + head + '</head>';`);
-  w.line('const $dom = createDom();');
-  w.line('const $body = $dom.element(\'body\');');
-  // The `<body>`'s own attributes, as a layout writes them: a page with no layout owns its
-  // shell, and `<body data-theme="@theme">` was dropped whole — built from its tag name alone.
-  writeElementAttrs(source, page.body, '$body', w, linker, NO_SIGNALS);
-  if (parted) {
-    // In parts (SDD-70 §3.5): the route claims the `<body>` and the parts start before a node
-    // is built; each `@await` cuts one, and the last goes out with the rest of the body.
-    w.line('let $parts;');
-    writePartsOpen(w, maps, '$parts', '$dom', '$body', hasDi ? '$root' : undefined, blocks);
-    w.appendWriter(bodyW);
-    w.line('yield* $parts.end();');
-  } else {
-    w.appendWriter(bodyW);
-    writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined, blocks);
-    w.line('yield* serialize($body);');
-  }
-  w.line("yield '</html>';");
-  w.dedent();
-  w.line('}');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets, needs };
-}
-
-export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
-  return buildPageModule(graph, options).writer.toString();
-}
-
-/** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
-export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker, diagnostics, sheets, needs } = buildPageModule(graph, options);
-  return {
-    code: writer.toString(),
-    mappings: writer.mappings(),
-    missingAssets: linker.missing(),
-    needs: uniqueNeeds(needs),
-    diagnostics,
-    ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
-  };
-}
