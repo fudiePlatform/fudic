@@ -137,13 +137,35 @@ describe('g page', () => {
     expect(contentsOf(far.changes[0])).toContain('href="../layouts/_layout.fud"');
   });
 
-  it('falls back to a standalone page when the project has no layout', async () => {
+  // SDD-88 criterion 14: every page links a layout, so with none to link it writes nothing.
+  it('refuses with FUD1582 when the project has no layout, saying where it looked and what to run', async () => {
     const fs = projectFs();
     const plan = await planPage('/', options(), fs);
+    expect(plan.changes).toEqual([]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD1582']);
+    const message = plan.errors[0]!.message;
+    for (const looked of ['src/routes/_layout.fud', 'src/layouts/_layout.fud', 'the layout of src/routes/index.fud']) {
+      expect(message).toContain(looked);
+    }
+    expect(message).toContain('`fudic g layout _layout`');
+    expect(message).toContain('--layout <href>');
+  });
+
+  it('a whole document is the layout of no page: FUD1582, not a route linking it', async () => {
+    const fs = projectFs({ 'src/layouts/_layout.fud': '<!DOCTYPE html>\n<html><head></head><body><p>x</p></body></html>\n' });
+    const plan = await planPage('about', options(), fs);
+    expect(plan.changes).toEqual([]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD1582']);
+  });
+
+  it('the layout the home page links, when there is no _layout.fud, is the one it writes into', async () => {
+    const fs = projectFs({
+      'src/frame/main.fud': LAYOUT,
+      'src/routes/index.fud': '<link rel="layout" href="../frame/main.fud">\n<h1>x</h1>\n',
+    });
+    const plan = await planPage('about', options(), fs);
     expect(plan.errors).toEqual([]);
-    const doc = parseFud(contentsOf(plan.changes[0])).doc;
-    expect(doc.type).toBe('page-document');
-    expect(plan.changes[0]!.path).toBe('src/routes/index.fud');
+    expect(contentsOf(plan.changes[0])).toContain('<link rel="layout" href="../frame/main.fud">');
   });
 
   it('--dir outside src/ writes where it is told (§6.6)', async () => {
@@ -155,12 +177,6 @@ describe('g page', () => {
     expect(plan.changes[0]!.path).toBe('routes/perfil.fud');
     // The walk-up cuts at `--dir`, so the layout next to the page is found there too.
     expect(contentsOf(plan.changes[0])).toContain('<link rel="layout" href="./_layout.fud">');
-  });
-
-  it('--no-layout forces a standalone page even when a layout exists', async () => {
-    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
-    const plan = await planPage('solo', options({ layout: null }), fs);
-    expect(parseFud(contentsOf(plan.changes[0])).doc.type).toBe('page-document');
   });
 
   it('rejects a --layout that is not a layout (FUD0449)', async () => {
@@ -197,13 +213,11 @@ describe('g page', () => {
       "import { load } from 'fudic:routes/blog/[slug]';\n\nload.handle(() => ({ title: 'Untitled' }));\n",
     );
 
+    // Without a layout it writes nothing, not even the `.fudapi` (SDD-88).
     const bare = projectFs(MANIFEST);
     const page = await planPage('blog', options({ server: true }), bare);
-    const pageDoc = parseFud(contentsOf(page.changes[0]));
-    expect(pageDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expect(pageDoc.doc.type).toBe('page-document');
-    // Decision 60: inside <head>, with the other links.
-    expect(contentsOf(page.changes[0])).toContain('    <link rel="server" href="./blog.fudapi">\n  </head>');
+    expect(page.changes).toEqual([]);
+    expect(page.errors.map((e) => e.code)).toEqual(['FUD1582']);
   });
 });
 
