@@ -505,3 +505,4 @@ export * from './codes/FUD1570.js';
 export * from './codes/FUD1580.js';
 export * from './codes/FUD1581.js';
 export * from './codes/FUD1582.js';
+export * from './codes/FUD1583.js';

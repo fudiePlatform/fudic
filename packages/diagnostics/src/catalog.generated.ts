@@ -477,6 +477,7 @@ export const LIVE: Readonly<Record<string, readonly [Severity, string]>> = {
   FUD1580: ['error', "A whole document is a layout"],
   FUD1581: ['error', "The error page links no layout"],
   FUD1582: ['error', "No layout to link"],
+  FUD1583: ['error', "The runtime is the layout's"],
 };
 
 /** Every retired code: its title and the codes that replaced it. */

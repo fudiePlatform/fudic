@@ -46,8 +46,8 @@ export function compileFud(
   assets: LinkedAssets | undefined,
   /**
    * The locale it is compiled for (SDD-58). Its text arrives already translated through `io`;
-   * this is what the emit adds on its own: the `lang` of a page without a layout and the
-   * alternates. Remembered apart because `io` is that locale's, with a memory of its own.
+   * this is what the emit adds on its own: the language alternates. Remembered apart because
+   * `io` is that locale's, with a memory of its own.
    */
   i18n?: LocaleCompile,
   /** With it, every element is stamped with where it was written: `vite dev` asked for it. */

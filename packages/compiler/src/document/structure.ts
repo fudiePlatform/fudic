@@ -40,6 +40,7 @@ import {
   FUD1111,
   FUD1112,
   FUD1580,
+  FUD1583,
   FUD0823,
   FUD0824,
   FUD0834,
@@ -164,6 +165,17 @@ export function isSnippetLink(el: ElementNode): boolean {
   if (el.name !== 'link') return false;
   const rel = findAttr(el, 'rel');
   return rel !== undefined && staticValue(rel) === 'snippet';
+}
+
+/**
+ * True if `el` is the runtime marker, `<script src="fudic:runtime">` with or without its
+ * `?inline` (SDD-45): what only a layout writes, since it owns the document (SDD-88).
+ */
+function isRuntimeMarker(el: ElementNode): boolean {
+  if (el.name !== 'script') return false;
+  const src = findAttr(el, 'src');
+  const value = src === undefined ? undefined : staticValue(src);
+  return value === 'fudic:runtime' || value === 'fudic:runtime?inline';
 }
 
 /** True if `el` is `<link>` with a static `rel="server"`: a `.fudapi` linked (SDD-60 §3.14). */
@@ -675,6 +687,11 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
     if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
   }
   rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
+  // The runtime is the layout's: its marker is where every page that links it gets its scripts,
+  // and one in a route's `<head>` goes nowhere (FUD1583).
+  for (const child of head?.children ?? []) {
+    if (isElement(child) && isRuntimeMarker(child)) diagnostics.push(FUD1583({ span: child.span }));
+  }
 
   // `structureDocument` only routes here when a layout link exists, so the non-optional
   // field is always filled; the placeholder keeps the type total without a cast.

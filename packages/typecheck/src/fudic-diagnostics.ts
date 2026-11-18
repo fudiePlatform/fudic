@@ -21,6 +21,7 @@ import {
   SnippetRegistry,
   type ComponentRegistry,
   type Diagnostic,
+  type LayoutDocument,
   type BaselineContext,
   type ResolveIo,
   type SemanticInput,
@@ -173,14 +174,19 @@ function fileInputs(document: ProjectedFud): readonly Diagnostic[] {
 }
 
 /**
- * `FUD1581` (SDD-88 §3.5): the error page of its project that links no layout. Only a file that
- * is neither a route nor a layout: a doctype has said `FUD1580` already, one fact one voice. Over
- * its first line, where the `<link rel="layout">` belongs.
+ * `FUD1581` (SDD-88 §3.5): the error page of its project that is not a route — a component, or a
+ * layout with its holes. A whole document with no hole has said `FUD1580` already, one fact one
+ * voice. Over its first line, where the `<link rel="layout">` belongs.
  */
 function errorPageDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
-  const type = document.document.type;
-  if (type === 'route-document' || type === 'layout-document') return [];
+  const doc = document.document;
+  if (doc.type === 'route-document' || (doc.type === 'layout-document' && isHollow(doc))) return [];
   if (index.errorPage?.(document.path) !== true) return [];
   const end = document.source.indexOf('\n');
   return [FUD1581({ span: { start: 0, end: end === -1 ? document.source.length : end } })];
+}
+
+/** A layout with no hole at all: the whole document `FUD1580` speaks for. */
+function isHollow(doc: LayoutDocument): boolean {
+  return doc.renderBody === undefined && doc.renderHead === undefined && doc.renderSections.length === 0;
 }
