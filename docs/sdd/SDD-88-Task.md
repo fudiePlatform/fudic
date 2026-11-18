@@ -6,7 +6,7 @@
 > `@fudic/testing` · `@fudic/workbench` · `@fudic/cli` · `@fudic/mcp` · `examples/workspace` ·
 > `examples/vista-errores`
 > **Rama:** `sdd-88-toda-pagina-con-layout`, desde `sdd-87-pagina-de-error`.
-> **Progreso:** 19 / 26 — `En curso`.
+> **Progreso:** 21 / 26 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -191,13 +191,13 @@
 
 ## Fase 7 — El MCP
 
-- [ ] **21. Las herramientas.**
+- [x] **21. Las herramientas.**
   - Fuera `noLayout` de `GENERATE_OPTIONS` y `fudic_new`; `layout` con descripción; la descripción
     de `fudic_generate` (criterio 26).
   - *Depende de:* 19.
   - *Paquete:* `mcp`.
   - *Ficheros:* `src/project-tools.ts`, `test/plans.test.ts`, `test/status.test.ts`.
-- [ ] **22. La guía.**
+- [x] **22. La guía.**
   - `pages.md` y `html-css.md`, en inglés y en español, como dice SDD §3.8. `guide-examples.test.ts`
     en verde (criterio 27).
   - *Depende de:* 14, 18.

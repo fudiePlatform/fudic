@@ -91,7 +91,7 @@ A component `.fud` has a fixed top level, in this order (`FUD0155`):
 4. the host: one element named with the component's tag (`FUD0156`), whose only child is
    `<template shadowrootmode="open">` (`FUD0157`; `closed` is `FUD0158`).
 
-A file that starts with `<!DOCTYPE html>` is a page or a layout, not a component: a full
+A file that starts with `<!DOCTYPE html>` is a layout, not a component: a full
 document with `<html>`, `<head>` and `<body>` (`FUD0150`, `FUD0151`). See `pages`.
 
 ## The component's `<style>`

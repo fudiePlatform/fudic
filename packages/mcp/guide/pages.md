@@ -15,12 +15,13 @@ Routes, layouts, a page's data (`load`), calling the server from a page, error p
 - A **route** starts with `<link rel="layout" href="…">` and writes no `<!DOCTYPE>`, `<html>` or
   `<body>`: an optional `<head>` fragment (its `<title>`), `@section`s and markup, in this order:
   `<link rel="layout">`, `<link rel="component">` and `<link rel="server">`, `@code`, `<head>`,
-  the rest (`FUD0421`). A **page document** has no layout: a whole `<!DOCTYPE html>` document
-  shaped like the layout below, its `<title>` in `<head>`, its markup in `<body>`.
+  the rest (`FUD0421`). Every page links a layout: a file that starts with `<!DOCTYPE html>` is a
+  layout, never a page, and one with no hole (`@RenderBody()`…) is `FUD1580`.
 - `fudic_generate { kind: "page" }`, given the URL (`/products`, `blog/:slug`), writes the
   route linked to the nearest `_layout.fud` (up from the page, then `src/layouts/_layout.fud`),
-  one empty `@section` per section of that layout and a unit test; with no layout, a page
-  document. `fudic_generate { kind: "api" }` then adds the `.fudapi` with a `load` and its handler.
+  one empty `@section` per section of that layout and a unit test; with no layout to link it
+  refuses (`FUD1582`): create one with `fudic_generate { kind: "layout", name: "_layout" }`.
+  `fudic_generate { kind: "api" }` then adds the `.fudapi` with a `load` and its handler.
 
 ## Layouts
 
@@ -177,7 +178,7 @@ load.handle(() => ({
 
 - Inside `@await` the field is the value; read elsewhere (`<p>@data.summary.total</p>` outside
   the block) it is `FUD1321`. `@await` on anything but a `later` field of `data` is `FUD1320`.
-- Only in the body of a route or page document, or a `@section`; never in `<head>`, a component
+- Only in the body of a route, or a `@section`; never in `<head>`, a component
   or a layout (`FUD1322`): pass the resolved value to a component as a prop.
 - `@catch (e)` is optional, right after the brace (`FUD1323`); `e` has `status` and `title`. No
   loading branch. Each `@await` waits for the one before it: put slow ones last.
@@ -216,21 +217,38 @@ in the app is `FUD1570`: write the app's. Create it with `fudic_generate { kind:
 (in an app or a library), and `fudic_status` says which one each app uses (`project.errorPage`).
 
 ```fud path=src/_error.fud
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>@data.status · @data.title</title>
-  </head>
-  <body>
-    <h1>@data.status · @data.title</h1>
-    @if (data.back !== undefined) {
-      <p><a href=@data.back>Back</a></p>
-    } @else {
-      <p><a href=@data.home>Home</a></p>
-    }
-  </body>
-</html>
+<link rel="layout" href="./layouts/_layout.fud">
+
+<head>
+  <title>@data.status · @data.title</title>
+</head>
+
+<h1>@data.status · @data.title</h1>
+@if (data.back !== undefined) {
+  <p><a href=@data.back>Back</a></p>
+} @else {
+  <p><a href=@data.home>Home</a></p>
+}
+```
+
+The error page is a page: it links the same layout as the other pages of the app, so an error
+keeps the app's header, footer and styles. A library's links a layout of the library
+(`./layouts/_layout.fud`), the only one it reaches from its folder in every app; an app that
+wants its errors to look like its pages uses that layout in its routes too, or writes its own
+`_error.fud`. An `_error.fud` that links no layout is `FUD1581`, and the app paints its errors
+with a minimal built-in page until it does. A layout with props the error page must give
+resolves them in `layout` of `_error.fudapi`, whose handler gets the error as `data` (a prop with
+no default left out is `FUD0702`):
+
+```fudapi path=src/routes/_error.fudapi
+# The props of the layout, from the error being painted.
+layout
+```
+
+```ts path=src/server/routes/_error.ts
+import { layout } from 'fudic:routes/_error';
+
+layout.handle((ctx, data) => ({ area: `Error ${data.status}` }));
 ```
 
 ## Calling the server: `task`
