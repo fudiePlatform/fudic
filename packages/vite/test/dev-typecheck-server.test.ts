@@ -70,6 +70,8 @@ beforeAll(async () => {
     'src/routes/broken.fud': page(['app-badge'], '    <app-badge .tone="@(42)">hi</app-badge>'),
     'src/routes/fine.fud': page(['app-badge'], `    <app-badge .tone="@('info')">hi</app-badge>`),
     'src/routes/scripted.fud': page(['x-bad'], '    <x-bad></x-bad>'),
+    // Its layout does not exist (SDD-88: every page is a route, a deleted layout is likely).
+    'src/routes/orphan.fud': '<link rel="layout" href="./_gone.fud">\n<h1>orphan</h1>\n',
   };
   for (const [relative, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, relative)), { recursive: true });
@@ -128,6 +130,24 @@ describe('vite dev — a page whose graph has a type error (criterion 18)', () =
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('<app-badge');
   }, 60_000);
+});
+
+describe('vite dev — a route whose layout does not exist (SDD-88)', () => {
+  it('is refused with the overlay naming FUD0460, not a bare 500', async () => {
+    const res = await vi.waitFor(
+      async () => {
+        const answer = await fetch(`${origin}/orphan`, { headers: { accept: 'text/html' } });
+        expect(answer.status).toBe(500);
+        const body = await answer.text();
+        expect(body).toContain('const error = ');
+        return body;
+      },
+      { timeout: 60_000, interval: 250 },
+    );
+    const error = overlayError(res);
+    expect(error.message).toContain('FUD0460');
+    expect(error.loc?.file.replace(/\\/gu, '/')).toMatch(/src\/routes\/orphan\.fud$/u);
+  });
 });
 
 describe('vite dev — fudic’s scripts (criterion 20)', () => {
