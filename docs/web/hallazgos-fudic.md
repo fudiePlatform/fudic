@@ -176,3 +176,23 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 - **Qué debería hacer.** Para un atributo `aria-*`, serializar el booleano como `"true"` o
   `"false"`, y quitar el atributo solo con `null` o `undefined`. Mientras tanto, un aviso con código
   al pasar un `boolean` a un `aria-*`, con la bombilla que escribe el ternario.
+
+## 10. Un `@evento` en el tag de un hijo recibe el `CustomEvent` de `emit`, y los tipos no lo ven
+
+- **Qué pasó.** Comprobado con un build real. El hijo hace `emit("picked", option)` y el padre
+  escucha en su tag: `<site-choice @picked=@onPicked>`, con `function onPicked(option: string)`.
+  Compila sin errores, pero el chunk registra `$dom.event(host, "picked", onPicked)`: `onPicked`
+  recibe el `CustomEvent` entero, y `answer.set(e)` guarda un objeto `Event` en un signal de
+  `string`. Es lo que dice SDD-72 (el dato llega solo a `bus:`, `@fudic:result` y `@fudic:error`;
+  `@mi-evento`, «sin cambios»), pero la proyección no tipa el parámetro: un handler que pide un
+  `string` acepta un evento sin que el editor diga nada.
+- **Cómo se resolvió en la web.** Pendiente de Pedro. El capítulo 2 no documenta escuchar un
+  `emit` con `@evento` en el tag del hijo; enseña `bus:` y la prop función.
+- **Qué debería hacer.** Dos piezas, y la segunda no depende de la primera:
+  1. Extender la decisión 173 a un `@evento` en el tag de un componente cuyo nombre emite ese
+     componente (el contrato de SDD-63 ya sabe qué nombres emite y con qué `detail`): la
+     referencia y la lambda reciben el dato, y la llamada sigue con `$event` como vía de escape.
+     Así `emit` se escucha igual con `bus:` que en el tag, sin `detail`.
+  2. Tipar el handler en la proyección: hoy un `@picked=@f` con `f(option: string)` no da error
+     aunque reciba un `CustomEvent`. Con la pieza 1, el tipo es el `detail` del contrato; sin
+     ella, `CustomEvent<detail>`.
