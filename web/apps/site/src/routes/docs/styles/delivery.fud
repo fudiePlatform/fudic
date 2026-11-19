@@ -1,0 +1,136 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Cómo llega el CSS · Fudic</title>
+  <meta name="description" content="Cómo llega el CSS a una página de Fudic: solo las reglas y los tokens que la página pinta, &#64;import aplanado, url() resuelto desde su fichero, y la elección entre css inline y link.">
+  <link rel="canonical" href="https://fudic.dev/docs/styles/delivery">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Cómo llega el CSS · Fudic">
+  <meta property="og:description" content="Solo el CSS que la página pinta, y la elección entre css inline y link.">
+  <meta property="og:url" content="https://fudic.dev/docs/styles/delivery">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("styles-delivery")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#pruning">Solo el CSS que se pinta</a></li>
+        <li><a href="#exact">Por qué aquí es exacto</a></li>
+        <li><a href="#import-url">@@import y url()</a></li>
+        <li><a href="#inline-or-link">inline o link</a></li>
+        <li><a href="#baseline">Baseline</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Cómo llega el CSS</h1>
+
+<h2 id="pruning">Solo el CSS que se pinta</h2>
+
+<p>Una guía de estilos cubre todos los elementos, y una página usa unos pocos. Fudic no envía la guía entera: en el build, cada página recibe <strong>solo las reglas que casan con algo que pinta</strong> y <strong>solo los tokens que algo nombra</strong>.</p>
+
+<ul>
+  <li><strong>Las reglas se podan por ámbito.</strong> La hoja del documento se compara con el light DOM de la página, y cada hoja adoptada, con el interior de los componentes que la adoptan. Un <code>&lt;h1&gt;</code> dentro de un componente no salva el <code>h1</code> de la hoja del documento, porque ese CSS nunca le llegaría.</li>
+  <li><strong>Los tokens se podan por página.</strong> Una custom property se hereda a través de los shadow roots, así que un token sigue vivo si lo nombra cualquier hoja de la página, el <code>&lt;style&gt;</code> de cualquier componente o un <code>style="…"</code> del markup. Y si un token vivo usa otro (<code>--btn-bg: var(--blue-500)</code>), el otro también llega.</li>
+  <li><strong>Lo mismo pasa con <code>@@keyframes</code> y <code>@@font-face</code>:</strong> una animación o una fuente que nadie nombra no viaja.</li>
+</ul>
+
+<p>En <code>examples/basic</code>, la guía aplanada pesa unos 9,5 KB y tiene 133 tokens. Cada página recibe entre el 20 % y el 30 %, y de los 133 tokens le llegan entre 21 y 25. Una página cuyos campos de formulario viven dentro de componentes no recibe nada de <code>forms.css</code>, porque el CSS del documento no los alcanza.</p>
+
+<p>Dos páginas que se quedan con lo mismo comparten el fichero, porque su nombre lleva el hash de su contenido.</p>
+
+<h2 id="exact">Por qué aquí es exacto</h2>
+
+<p>Podar CSS en una app cualquiera es adivinar. Cualquier script puede poner cualquier clase en cualquier sitio, y las herramientas que lo intentan se equivocan en los dos sentidos: dejan reglas de más o quitan alguna que hacía falta. En Fudic no hay que adivinar, por cuatro razones:</p>
+
+<ol>
+  <li><strong>El markup es conocido.</strong> Todo elemento que una página puede llegar a tener está en algún <code>.fud</code> que el compilador ya lee, con todas las ramas de <code>@@if</code>, <code>@@switch</code> y <code>@@foreach</code>, se pinten o no en el servidor.</li>
+  <li><strong>Las clases son conocidas.</strong> <code>class:activo=@@on</code> escribe el nombre <code>activo</code> en el código aunque la condición sea falsa.</li>
+  <li><strong>Los ámbitos están cerrados.</strong> Una hoja adoptada solo alcanza los shadow roots que la adoptan, y la del documento, solo el light DOM. Es el aislamiento del shadow DOM, que es del estándar.</li>
+  <li><strong>Los tokens tienen nombre fijo.</strong> El <code>&lt;style&gt;</code> no admite expresiones (<a href="/docs/styles#plain-css">El <code>&lt;style&gt;</code> es CSS</a>), así que todo <code>var(--x)</code> está escrito con su nombre en algún fichero.</li>
+</ol>
+
+<p>Cuando la duda existe, Fudic conserva. Un selector con combinadores (<code>ul &gt; li</code>) se queda si hay algún <code>ul</code> y algún <code>li</code>; las pseudoclases (<code>:hover</code>, <code>:has()</code>…) no quitan nada, y un selector que no entiende deja la regla entera. Puede enviar una regla de más, nunca una de menos.</p>
+
+<ui-note>
+  <p>Lo que un script hace a mano, como <code>classList.add()</code> o <code>innerHTML</code>, no lo ve el compilador. Si un script pone una clase que ningún <code>.fud</code> escribe, su regla puede no llegar a la página. Lo que cambia con el estado se escribe en la plantilla, con <code>class:</code>.</p>
+</ui-note>
+
+<h2 id="import-url"><code>@@import</code> y <code>url()</code></h2>
+
+<p>En una hoja del documento, un <code>@@import</code> relativo se <strong>aplana</strong>: el build mete el fichero importado en su sitio, y después poda el resultado. Es lo que permite escribir la guía como un fichero de imports sin pagar una petición por cada uno.</p>
+
+<ul>
+  <li><strong>Un <code>@@import</code> que el build no puede leer</strong> (una URL externa o absoluta) se conserva como está, y lo que importa llega entero, sin podar (<code>FUD0850</code>, un aviso).</li>
+  <li><strong>Cada <code>url()</code> se resuelve desde el fichero que lo escribe</strong>, no desde la página: una fuente o una imagen que una hoja de una librería nombra por ruta relativa funciona igual en la app que la usa.</li>
+  <li><strong>En una hoja adoptada, <code>@@import</code> es un error</strong> (<code>FUD0854</code>): el estándar no lo carga en una hoja construida (<a href="/docs/styles/shared#styles">Hojas compartidas</a>).</li>
+</ul>
+
+<h2 id="inline-or-link"><code>inline</code> o <code>link</code></h2>
+
+<p>El campo <code>css</code> de <code>fudic.json</code> decide cómo viaja el CSS de los componentes y de los <code>&lt;style&gt;</code> de las páginas. Tiene dos valores.</p>
+
+<h3 id="inline"><code>"inline"</code>, por defecto</h3>
+
+<p>Cada hoja de componente va dentro del HTML, una vez por página, como <code>&lt;style type="module" specifier&gt;</code> en el <code>&lt;head&gt;</code>, y el polyfill la adopta en cada shadow root (<a href="/docs/styles#one-copy">Una copia por documento</a>). El <code>&lt;style&gt;</code> de la página o del layout también va dentro, ya podado.</p>
+
+<ul>
+  <li><strong>La página llega completa en la primera respuesta.</strong> Para pintar con su estilo no espera a ninguna petición más.</li>
+  <li><strong>El CSS se repite en cada página</strong>, y no se guarda en la caché entre una y otra.</li>
+</ul>
+
+<h3 id="link"><code>"link"</code></h3>
+
+<ui-code .path="fudic.json">
+<pre><code>{
+  "css": "link"
+}</code></pre>
+</ui-code>
+
+<p>Cada hoja se publica como un fichero con el hash de su contenido. Un <code>&lt;style&gt;</code> de la página se convierte en un <code>&lt;link rel="stylesheet"&gt;</code>, y la plantilla de cada componente empieza con un <code>&lt;link&gt;</code> por cada hoja que adopta:</p>
+
+<ui-code>
+<pre><code>&lt;app-counter&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;link rel="stylesheet" href="/assets/theme-Ab12.css"&gt;
+    &lt;link rel="stylesheet" href="/assets/app-counter-Cd34.css"&gt;
+    &lt;div class="panel"&gt;…&lt;/div&gt;
+  &lt;/template&gt;
+&lt;/app-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Sin polyfill y sin <code>&lt;style type="module"&gt;</code>.</strong> Un <code>&lt;link rel="stylesheet"&gt;</code> dentro de un shadow root es HTML estándar, y funciona hoy en todos los navegadores.</li>
+  <li><strong>Los ficheros se guardan en la caché</strong> y se reutilizan de una página a otra: la segunda página ya no descarga la hoja del contador.</li>
+  <li><strong>Viajan en los Early Hints.</strong> Las hojas de los componentes de la página entran en su <code>103 Early Hints</code> y en su cabecera <code>Link</code>, así que el navegador empieza a pedirlas antes de recibir el HTML.</li>
+  <li><strong>La primera visita hace más peticiones</strong>: una por hoja que la página aún no tiene.</li>
+</ul>
+
+<p>Esta forma se parece a lo que se discute en el estándar: un <code>&lt;link&gt;</code> dentro del shadow root (<a href="https://github.com/whatwg/html/pull/12860">whatwg/html#12860</a>).</p>
+
+<p>Las hojas que escribes tú con <code>&lt;link rel="stylesheet"&gt;</code> son ficheros en los dos casos. Esta web, que usa <code>inline</code>, enlaza así su guía y la hoja de su layout.</p>
+
+<h2 id="baseline">Baseline</h2>
+
+<p>Fudic comprueba que el CSS que escribes funcione en los navegadores que quieres cubrir. El campo <code>baseline</code> de <code>fudic.json</code> fija hasta dónde (<code>"widely"</code> por defecto), y una propiedad más nueva, como <code>field-sizing</code>, da el aviso <code>FUD1524</code>, con una acción rápida que la mueve dentro de un <code>@@supports</code>. Lo explica el capítulo de herramientas.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import"><code>@@import</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/url_function"><code>url()</code></a>: lo que el build aplana y resuelve.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja como fichero, también dentro de un shadow root.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103">103 Early Hints</a>: las hojas que se piden antes del HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility">Baseline</a>: qué funciona en todos los navegadores principales.</li>
+</ul>

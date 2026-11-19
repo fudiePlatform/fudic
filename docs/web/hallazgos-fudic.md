@@ -140,6 +140,13 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   forma limpia de pasar un dato al CSS. Mientras no se emita, `style:` debería ser un error con
   código, no un silencio, y `FUD0915` no debería proponerlo.
 
+- **Vuelto a comprobar (capítulo 4, Estilos).** Sigue igual: `style:color=@c()` no deja nada en
+  el HTML ni en el chunk. Y el mensaje de `FUD0132` (Razor dentro de `<style>`) también propone
+  `style:` como salida (`Write what changes in the markup (style=, style:, class:)`), igual que
+  `FUD0915`: dos errores que mandan al autor a una sintaxis que se pierde en silencio. El
+  `style="…"` **estático** sí funciona, en el light DOM y dentro de un componente, y es lo que
+  documenta el capítulo 4, con su nota sobre `style-src-attr`.
+
 ## 7. Un handler delegado que llama directamente a una prop función no compila
 
 - **Qué pasó.** En un componente que recibe `onPick: (option: string) => void`, el handler
@@ -196,3 +203,23 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   2. Tipar el handler en la proyección: hoy un `@picked=@f` con `f(option: string)` no da error
      aunque reciba un `CustomEvent`. Con la pieza 1, el tipo es el `detail` del contrato; sin
      ella, `CustomEvent<detail>`.
+
+## 11. Una `@` en un atributo del `<head>` de una página: ni se escapa ni se diagnostica
+
+- **Qué pasó.** Al escribir las metas del capítulo 4, comprobado con un build real de la web:
+  - `<meta name="description" content="… @import aplanado …">` en el `<head>` de una ruta tumba
+    el build con un `PARSE_ERROR` de Oxc sobre el `.fud.ts` sintético (`Unexpected token`): el
+    compilador toma `@import` por una expresión implícita y genera `(import)`. No sale ningún
+    `FUD`, y el error apunta a una línea del TypeScript generado, no al `.fud`.
+  - Con un nombre que no es palabra reservada el diagnóstico sí es bueno: `@sheet` en el mismo
+    sitio da `FUD0907` (el nombre no está disponible en la vista), con su línea en el `.fud`.
+  - Y el escape no funciona ahí: `content="… @@import …"` llega al navegador como `@@import`, con
+    las dos arrobas. En el cuerpo de la página, `href="…/At-rules/@@font-face"` sí sale como
+    `@font-face`. En el `<head>` no hay forma de escribir una `@` literal con la sintaxis del
+    lenguaje.
+- **Cómo se resolvió en la web.** Con la entidad HTML: `&#64;import`, `&#64;sheet`.
+- **Qué debería hacer.** Que `@@` sea `@` en cualquier atributo, también en el `<head>`. Que una
+  palabra reservada tras `@` (`@import`, `@class`, `@new`…) sea un diagnóstico con código y span
+  en el `.fud`, como ya lo es `@sheet` con `FUD0907`, en vez de un error de Oxc sobre el código
+  generado.
+

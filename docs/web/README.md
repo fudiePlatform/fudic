@@ -84,20 +84,21 @@ diga otro.
 |---|---|---|---|
 | 1 | **Empezar** | Qué es fudic. Crear un proyecto (`npx @fudic/cli new`). Estructura de carpetas. Tu primer componente. | **Hecho** |
 | 2 | **El lenguaje `.fud`** | Nueve páginas bajo `/docs/template-syntax`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, `@await`, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. | **Hecho** |
-| 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. | — |
-| 4 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. | — |
-| 5 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. | — |
-| 6 | **Formularios** | Modelo, grupos y validación. Controles form-associated. | — |
-| 7 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. | — |
-| 8 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. | — |
-| 9 | **Estilos y rendimiento** | CSS con scope, hojas globales y adoptadas, guía de estilo. Solo el CSS que se pinta. Baseline. Caché del runtime. | — |
-| 10 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. | — |
-| 11 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. | — |
-| 12 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). | — |
-| 13 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. | — |
-| 14 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). | — |
-| 15 | **Herramientas** | CLI, formateador y typecheck en build y en dev. | — |
-| 16 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. | — |
+| 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. | En revisión |
+| 4 | **Estilos** | Cuatro páginas bajo `/docs/styles`: El CSS de un componente (shadow DOM, lo que cruza su frontera, una copia por documento, `style` en el markup), Hojas compartidas (documento, `globalStyles`, `styles`, tokens en `:root`), La guía de estilos (un trozo por elemento, `:where()`, `@sheet`) y Cómo llega el CSS (poda, `css: inline \| link`; Baseline, citado). | En revisión |
+| 5 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. | — |
+| 6 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. | — |
+| 7 | **Formularios** | Modelo, grupos y validación. Controles form-associated. | — |
+| 8 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. | — |
+| 9 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. | — |
+| 10 | **Rendimiento** | Caché del runtime. Lighthouse 100/100/100/100: cómo se mide y qué lo sostiene. | — |
+| 11 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. | — |
+| 12 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. | — |
+| 13 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). | — |
+| 14 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. | — |
+| 15 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). | — |
+| 16 | **Herramientas** | CLI, formateador y typecheck en build y en dev. Baseline (`FUD1524`, «Mover a `@supports`»). | — |
+| 17 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. | — |
 
 ### 5.3 Seguridad: lo que cubre
 
@@ -143,7 +144,7 @@ Lo que hay que hacer:
 - capturas o GIF de la extensión funcionando;
 - un README que venda: titular, escenas visuales y lo que hace, sin muros de texto.
 
-Se hace junto con el capítulo 14, porque comparten contenido.
+Se hace junto con el capítulo 15, porque comparten contenido.
 
 ## 6. Dónde vive el código
 
@@ -215,3 +216,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-19 | Capítulo 2 en HTML: `@while` con `@empty` en Expresiones, y `@await` como página propia (`/docs/template-syntax/await`), con `<template for>` del HTML Living Standard como lo que emitirá en el futuro. Pedro pidió estos cambios directamente en el HTML: el Markdown ya no se mantiene al día. |
 | 2026-11-19 | Capítulos 1 y 2, **hechos**. Desde el capítulo 3, notas en el chat y HTML directo, sin Markdown. |
 | 2026-11-19 | Capítulo 3, **Reactividad y ciclo de vida**, en HTML para revisión: Signals (`/docs/reactivity`, con el patrón store y lo que admite un `computed`), Ciclo de vida (hooks de componente y de página) e Hidratación. `task` va al capítulo 5; el Service Worker y el render isomórfico, a un capítulo propio. |
+| 2026-11-19 | Capítulo 4, **Estilos**, adelantado y en HTML para revisión: cuatro páginas bajo `/docs/styles`, creadas con `fudic g page`. El índice se renumera: Estilos es el 4 y el antiguo 9 queda en Rendimiento; Baseline se desarrolla en Herramientas. Hallazgos: el 6 del framework, vuelto a comprobar; el 11 nuevo (una `@` en un atributo del `<head>`); y el 10 de la CLI (sin generador para `styles`). Lighthouse en las cuatro páginas: móvil 99/100/100/100, escritorio 100/100/100/91 (el 91, por el enlace «Empezar» del nav, que ya pasaba en el capítulo 3). |

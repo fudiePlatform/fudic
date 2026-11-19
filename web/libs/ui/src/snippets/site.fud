@@ -46,6 +46,15 @@
           <li><a href="/docs/reactivity/hydration" aria-current=@(current === "hydration" ? "page" : false)>Hidratación</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Estilos</span>
+        <ol>
+          <li><a href="/docs/styles" aria-current=@(current === "styles" ? "page" : false)>El CSS de un componente</a></li>
+          <li><a href="/docs/styles/shared" aria-current=@(current === "styles-shared" ? "page" : false)>Hojas compartidas</a></li>
+          <li><a href="/docs/styles/guide" aria-current=@(current === "styles-guide" ? "page" : false)>La guía de estilos</a></li>
+          <li><a href="/docs/styles/delivery" aria-current=@(current === "styles-delivery" ? "page" : false)>Cómo llega el CSS</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

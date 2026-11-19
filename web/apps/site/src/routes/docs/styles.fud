@@ -1,0 +1,202 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El CSS de un componente · Fudic</title>
+  <meta name="description" content="El CSS de un componente de Fudic: un único style con el aislamiento del shadow DOM, lo que cruza su frontera (herencia, custom properties, :host, ::slotted, ::part), una sola copia por documento y style en el markup.">
+  <link rel="canonical" href="https://fudic.dev/docs/styles">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El CSS de un componente · Fudic">
+  <meta property="og:description" content="Un único style aislado por el shadow DOM, lo que cruza su frontera y una sola copia por documento.">
+  <meta property="og:url" content="https://fudic.dev/docs/styles">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("styles")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#style">El &lt;style&gt; del componente</a></li>
+        <li><a href="#boundary">Lo que cruza la frontera</a></li>
+        <li><a href="#one-copy">Una copia por documento</a></li>
+        <li><a href="#plain-css">El &lt;style&gt; es CSS</a></li>
+        <li><a href="#style-attribute">style en el markup</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El CSS de un componente</h1>
+
+<h2 id="style">El <code>&lt;style&gt;</code> del componente</h2>
+
+<p>Un componente lleva su CSS en un único <code>&lt;style&gt;</code>, dentro del <code>&lt;head&gt;</code> de su <code>.fud</code>. Es CSS estándar, sin preprocesador ni sintaxis propia:</p>
+
+<ui-code .path="src/components/miapp-card/miapp-card.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    :host {
+      display: block;
+    }
+    .title {
+      margin: 0;
+      font-weight: 600;
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-card&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;p class="title"&gt;&lt;slot name="title"&gt;&lt;/slot&gt;&lt;/p&gt;
+    &lt;slot&gt;&lt;/slot&gt;
+  &lt;/template&gt;
+&lt;/miapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Ese <code>.title</code> no afecta a ningún <code>.title</code> de la página, y un <code>.title</code> de la página no entra en el componente. No hay clases con hash ni convenciones de nombres para conseguirlo: lo hace el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">shadow DOM</a>, que es del estándar. El <code>&lt;template shadowrootmode&gt;</code> crea un shadow root, y el CSS que vive dentro de un shadow root solo se aplica dentro, y el de fuera no entra.</p>
+
+<p>Por eso los selectores de un componente pueden ser cortos: <code>.title</code>, <code>button</code> o <code>p</code> solo casan con lo que el componente pinta.</p>
+
+<h2 id="boundary">Lo que cruza la frontera</h2>
+
+<p>El aislamiento no es total, y no debe serlo: un componente tiene que poder parecerse a la página donde vive, y la página tiene que poder ajustarlo. El estándar deja pasar cinco cosas, y ninguna es de Fudic.</p>
+
+<h3 id="inheritance">La herencia</h3>
+
+<p>Las propiedades que se heredan (<code>color</code>, <code>font-family</code>, <code>line-height</code>…) pasan del host a su interior como pasan de un <code>&lt;div&gt;</code> a sus hijos. Un componente dentro de un párrafo escribe con la letra y el color del párrafo, salvo que su <code>&lt;style&gt;</code> diga otra cosa.</p>
+
+<h3 id="custom-properties">Las custom properties</h3>
+
+<p>Las <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties">custom properties</a> (<code>--nombre</code>) también se heredan, y son la forma de pasarle valores de diseño a un componente: un color, un espacio, un tamaño. Son lo único que el CSS de la página puede cambiar dentro de un componente sin que el componente lo haya previsto pieza a pieza. Sobre esto se construyen los tokens de la guía de estilos (<a href="/docs/styles/shared#tokens">Hojas compartidas</a>).</p>
+
+<h3 id="host"><code>:host</code></h3>
+
+<p>Desde dentro, <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host</code></a> es el propio tag del componente, y <code>:host(…)</code> lo selecciona según sus atributos: <code>:host([kind="tip"])</code>. Lo explica <a href="/docs/template-syntax/components">Componentes</a>, con el estilo del host a partir de su estado.</p>
+
+<h3 id="slotted"><code>::slotted()</code></h3>
+
+<p>Lo que la página coloca en un <code>&lt;slot&gt;</code> sigue siendo de la página, y lo estiliza el CSS de la página. Desde dentro, <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a> le da estilo al elemento colocado, pero solo a él, no a lo que tenga dentro.</p>
+
+<h3 id="part"><code>::part()</code></h3>
+
+<p>Desde fuera, un componente puede abrir piezas concretas. Marca un elemento con el atributo <code>part</code>, y quien lo usa lo estiliza con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part"><code>::part()</code></a>:</p>
+
+<ui-code .path="src/components/miapp-progress/miapp-progress.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .bar {
+      inline-size: var(--progress, 0%);
+      background: var(--guide-accent);
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-progress&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div class="track" part="track"&gt;
+      &lt;div class="bar" part="bar"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/miapp-progress&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    miapp-progress::part(bar) {
+      block-size: 4px;
+      border-radius: 2px;
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-progress style="--progress: 40%"&gt;&lt;/miapp-progress&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Las piezas son contrato.</strong> El componente decide qué se puede tocar desde fuera; el resto de su markup puede cambiar sin romper a nadie.</li>
+  <li><strong>Un componente dentro de otro</strong> no expone sus piezas más allá de su padre. El padre las reexporta con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/exportparts"><code>exportparts</code></a>, y puede renombrarlas: <code>&lt;miapp-progress exportparts="bar: progress-bar"&gt;</code>.</li>
+  <li><strong><code>--progress</code></strong> llega dentro porque es una custom property. Es un valor por instancia escrito en un <code>style</code> estático (<a href="#style-attribute"><code>style</code> en el markup</a>).</li>
+</ul>
+
+<h2 id="one-copy">Una copia por documento</h2>
+
+<p>Si el CSS fuera dentro de cada instancia, una página con cien tarjetas llevaría cien copias del mismo <code>&lt;style&gt;</code>. Fudic lo escribe <strong>una sola vez por página</strong>, y cada instancia lo adopta. Esto es lo que llega al navegador para el componente <code>&lt;ui-note&gt;</code> de esta web:</p>
+
+<ui-code>
+<pre><code>&lt;head&gt;
+  &lt;style type="module" specifier="base"&gt;*, *::before, *::after{box-sizing:border-box;}&lt;/style&gt;
+  &lt;style type="module" specifier="p"&gt;:where(p){margin:0 0 var(--guide-space-4);…}&lt;/style&gt;
+  &lt;style type="module" specifier="ui-note"&gt;:host{display:block;…}&lt;/style&gt;
+&lt;/head&gt;
+
+&lt;ui-note&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base p ui-note"&gt;…&lt;/template&gt;
+&lt;/ui-note&gt;
+&lt;ui-note&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base p ui-note"&gt;…&lt;/template&gt;
+&lt;/ui-note&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Cada hoja tiene un nombre</strong>, el <code>specifier</code>: la del componente se llama como su tag, y las compartidas, como las declara <code>fudic.json</code> (<a href="/docs/styles/shared">Hojas compartidas</a>).</li>
+  <li><strong>Cada shadow root dice qué hojas adopta</strong>, en orden: primero las de todo el proyecto (<code>base</code>), después las que el componente elige (<code>p</code>) y la suya la última, para que gane en la cascada.</li>
+  <li><strong>Todas las instancias comparten el mismo objeto</strong> <a href="https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleSheet"><code>CSSStyleSheet</code></a>: se parsea una vez, no una por tarjeta.</li>
+</ul>
+
+<p>El CSS va dentro del HTML y un script pequeño en el <code>&lt;head&gt;</code> construye las hojas y las adopta antes de pintar. Por eso el componente sale del servidor ya con su estilo: no hay ni un fotograma sin CSS ni una petición de red que esperar.</p>
+
+<ui-note>
+  <p>Ese script es un polyfill, y conviene decir de qué. <code>&lt;style type="module" specifier&gt;</code> y <code>shadowrootadoptedstylesheets</code> salieron de una <a href="https://github.com/whatwg/html/issues/10673">propuesta en el WHATWG</a> para compartir hojas en Declarative Shadow DOM sin JavaScript. Las discusiones posteriores han apartado el atributo en favor de un <code>&lt;link&gt;</code> dentro del shadow root (<a href="https://github.com/whatwg/html/pull/12860">whatwg/html#12860</a>), cuya sintaxis aún no está cerrada, y la definición de la hoja dentro de la página se trata por separado (<a href="https://github.com/whatwg/html/pull/11687">whatwg/html#11687</a>).</p>
+  <p>Para Fudic, <code>shadowrootadoptedstylesheets</code> es la sintaxis con la que el autor dice qué hojas usa un componente. El compilador la traduce a lo que el navegador entiende hoy, y la traducirá al estándar cuando se cierre. Otra propuesta, <code>@@sheet</code>, encaja aún mejor con lo que hace Fudic: la cuenta <a href="/docs/styles/guide#sheet">La guía de estilos</a>.</p>
+</ui-note>
+
+<p>Si prefieres no usar el polyfill, hay otra forma de entregar el CSS: cada hoja como un fichero, enlazado con un <code>&lt;link rel="stylesheet"&gt;</code> estándar dentro de cada shadow root. Es la opción <code>css: "link"</code> de <code>fudic.json</code>, y la explica <a href="/docs/styles/delivery#inline-or-link">Cómo llega el CSS</a>.</p>
+
+<h2 id="plain-css">El <code>&lt;style&gt;</code> es CSS</h2>
+
+<p>En el markup de un <code>.fud</code>, la <code>@@</code> abre una expresión. En el <code>&lt;style&gt;</code>, no: allí la <code>@@</code> solo puede empezar una at-rule de CSS (<code>@@media</code>, <code>@@container</code>, <code>@@keyframes</code>…). Escribir una expresión es un error:</p>
+
+<ui-code>
+<pre><code>error FUD0132: Razor is not allowed inside &lt;style&gt;: its body is plain CSS. Write what changes in the
+markup (style=, style:, class:)</code></pre>
+</ui-code>
+
+<p>No es una limitación por comodidad del compilador. Que el CSS sea estático es lo que permite saber, al compilar, qué reglas y qué tokens usa cada página y enviar solo esos (<a href="/docs/styles/delivery#pruning">Solo el CSS que se pinta</a>). Y una hoja que no cambia es una hoja que se comparte entre todas las instancias.</p>
+
+<p>Lo que cambia con el estado se escribe en el markup, eligiendo entre reglas que el <code>&lt;style&gt;</code> ya tiene: con <code>class:</code>, <code>class=@@expr</code> o el spread, que explica <a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a>.</p>
+
+<h2 id="style-attribute"><code>style</code> en el markup</h2>
+
+<p>El atributo <code>style</code> estándar se escribe donde quieras, en la página o dentro de un componente, y llega al navegador tal cual:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-progress style="--progress: 40%"&gt;&lt;/miapp-progress&gt;
+&lt;p style="margin: 0"&gt;Sin margen.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Su mejor uso es dar un valor a una custom property</strong> para una instancia concreta, como <code>--progress</code> en el ejemplo de <a href="#part"><code>::part()</code></a>. El CSS sigue en el <code>&lt;style&gt;</code>, y el <code>style</code> solo pone el dato.</li>
+  <li><strong>Cuenta para la poda.</strong> Un token que se nombra en un <code>style</code> llega a la página, y uno que se define ahí no se quita nunca.</li>
+</ul>
+
+<p><strong>Conviene saber lo que implica con la CSP.</strong> Un estilo en línea depende de la directiva <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/style-src-attr"><code>style-src-attr</code></a> de la <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP">Content Security Policy</a> (o de <code>style-src</code>, si no hay una más concreta). El <code>page.headers</code> que crea <code>fudic new</code> lleva <code>style-src 'self' 'unsafe-inline'</code>, así que funciona. Si endureces la política y quitas <code>'unsafe-inline'</code> de los atributos, el navegador ignora todo <code>style="…"</code>, en tus páginas y en las de las librerías que uses. El capítulo de seguridad explica la CSP de Fudic.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">Usar shadow DOM</a>: por qué el CSS de un componente no sale y el de la página no entra.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties">Custom properties</a>: los valores que se heredan a través del shadow root.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part"><code>::part()</code></a>, con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/exportparts"><code>exportparts</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets"><code>ShadowRoot.adoptedStyleSheets</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleSheet"><code>CSSStyleSheet</code></a>: una hoja compartida por muchos shadow roots.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/style-src-attr"><code>style-src-attr</code></a>: la directiva de la CSP que gobierna el atributo <code>style</code>.</li>
+</ul>

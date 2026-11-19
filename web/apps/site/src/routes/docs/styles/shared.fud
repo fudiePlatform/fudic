@@ -1,0 +1,188 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Hojas compartidas · Fudic</title>
+  <meta name="description" content="Las hojas de estilo que comparten la página y los componentes de Fudic: la hoja del documento, globalStyles para todos los componentes, styles para quien las elige, y los tokens en el :root del documento.">
+  <link rel="canonical" href="https://fudic.dev/docs/styles/shared">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Hojas compartidas · Fudic">
+  <meta property="og:description" content="La hoja del documento, globalStyles, styles y los tokens en el :root.">
+  <meta property="og:url" content="https://fudic.dev/docs/styles/shared">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("styles-shared")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#two-scopes">Dos ámbitos, dos hojas</a></li>
+        <li><a href="#document">La hoja del documento</a></li>
+        <li><a href="#global-styles">globalStyles: para todos</a></li>
+        <li><a href="#styles">styles: para quien la elige</a></li>
+        <li><a href="#tokens">Los tokens, en el :root</a></li>
+        <li><a href="#zones">Un tema por zonas</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Hojas compartidas</h1>
+
+<h2 id="two-scopes">Dos ámbitos, dos hojas</h2>
+
+<p>Una página de Fudic tiene dos clases de sitios donde se aplica CSS: el <strong>documento</strong> (el light DOM: la cabecera, el texto, los encabezados) y el interior de cada <strong>componente</strong> (su shadow root). Como el shadow DOM separa los dos (<a href="/docs/styles">El CSS de un componente</a>), cada uno necesita su hoja:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Hoja</th><th scope="col">Dónde se declara</th><th scope="col">Dónde se aplica</th><th scope="col">Para qué</th></tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row">Hoja del documento</th><td><code>&lt;link rel="stylesheet"&gt;</code> en el layout o la página</td><td>El light DOM. No entra en ningún componente.</td><td>Los tokens en <code>:root</code>, <code>body</code>, el reset y la tipografía del documento</td></tr>
+    <tr><th scope="row"><code>globalStyles</code></th><td><code>fudic.json</code></td><td>Dentro de <strong>todos</strong> los componentes del proyecto</td><td>Lo que comparten todos: el <code>box-sizing</code>, un sistema de espaciado</td></tr>
+    <tr><th scope="row"><code>styles</code></th><td><code>fudic.json</code>, y el componente la elige</td><td>Dentro de los componentes que la nombran</td><td>Lo que comparten algunos: paneles, formularios</td></tr>
+  </tbody>
+</table>
+
+<p>Las dos se necesitan, y la confusión entre ellas tiene una consecuencia concreta: un <code>.card { padding: 1rem }</code> en la hoja del documento <strong>nunca</strong> llega a un componente, y un <code>:root { --gap: 1rem }</code> en la misma hoja, <strong>sí</strong>, porque las custom properties se heredan.</p>
+
+<h2 id="document">La hoja del documento</h2>
+
+<p>Es un <code>&lt;link rel="stylesheet"&gt;</code> estándar en el <code>&lt;head&gt;</code> de un layout, y estiliza todas las páginas que lo usan. Este es el de las páginas de esta documentación:</p>
+
+<ui-code .path="libs/ui/src/layouts/docs.fud">
+<pre><code>&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;link rel="stylesheet" href="../styles/docs.css"&gt;
+  …
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La ruta es relativa al <code>.fud</code></strong>, y el build publica el fichero con el hash de su contenido. Si la app se sirve bajo otra base (<code>/admin/</code>), el enlace la respeta.</li>
+  <li><strong>Con <code>?inline</code></strong> (<code>href="./site.css?inline"</code>), la hoja va dentro de la página, en un <code>&lt;style&gt;</code>, en lugar de como fichero aparte.</li>
+  <li><strong>El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code> de una página o de un layout</strong> también es CSS del documento: estiliza su light DOM, no a sus componentes.</li>
+  <li><strong>Un <code>@@import</code> relativo se aplana</strong> en el build, y cada <code>url()</code> se resuelve desde el fichero que lo escribe (<a href="/docs/styles/delivery#import-url">Cómo llega el CSS</a>).</li>
+</ul>
+
+<h2 id="global-styles"><code>globalStyles</code>: para todos los componentes</h2>
+
+<p>Para que algo llegue al interior de los componentes, se declara en <code>fudic.json</code>. Una hoja de <code>globalStyles</code> la adoptan <strong>todos</strong> los componentes del proyecto, sin escribir nada en ellos:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>{
+  "globalStyles": { "theme": "src/styles/theme.css" }
+}</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La clave es su nombre</strong>, el que verás en el HTML (<code>specifier="theme"</code>), y el valor, el fichero, relativo a <code>fudic.json</code>.</li>
+  <li><strong><code>fudic g style theme</code></strong> crea el fichero y lo añade a <code>globalStyles</code>.</li>
+  <li><strong>Las de las librerías van antes.</strong> Un componente adopta las <code>globalStyles</code> de las librerías de las que depende su proyecto, y después las de su proyecto.</li>
+</ul>
+
+<p>Úsala para muy poco. Lo que va en <code>globalStyles</code> viaja a cada componente de cada página, lo use o no. En la guía que genera Fudic, la única es <code>base</code>, con el <code>box-sizing</code>.</p>
+
+<h2 id="styles"><code>styles</code>: para quien la elige</h2>
+
+<p>Una hoja que solo usan algunos componentes se declara en <code>styles</code>, y cada componente que la quiere la nombra en el <code>shadowrootadoptedstylesheets</code> de su template. En <code>examples/basic</code>, los paneles de demostración:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>{
+  "globalStyles": { "theme": "src/styles/theme.css" },
+  "styles": { "panel": "src/styles/panel.css" }
+}</code></pre>
+</ui-code>
+
+<ui-code .path="src/styles/panel.css">
+<pre><code>.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  padding: var(--pad-box);
+  background: var(--surface);
+}</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/app-counter/app-counter.fud">
+<pre><code>&lt;app-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="panel"&gt;
+    &lt;div class="panel"&gt;…&lt;/div&gt;
+  &lt;/template&gt;
+&lt;/app-counter&gt;</code></pre>
+</ui-code>
+
+<p>El compilador completa la lista en el orden de la cascada: las <code>globalStyles</code>, las que el componente elige, en el orden en que las escribe, y su propio <code>&lt;style&gt;</code> el último, para que gane:</p>
+
+<ui-code>
+<pre><code>&lt;app-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="theme panel app-counter"&gt;…&lt;/template&gt;
+&lt;/app-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Solo viaja a las páginas que la usan.</strong> Si ningún componente de una página elige <code>panel</code>, esa página no la lleva.</li>
+  <li><strong>Un nombre que no existe es un error</strong> (<code>FUD0744</code>), y el editor te ofrece los que sí existen al escribir el atributo.</li>
+  <li><strong>Un nombre es una hoja.</strong> Dos hojas con el mismo nombre, en <code>globalStyles</code> y <code>styles</code> o en dos librerías, son un error (<code>FUD0741</code>): una sustituiría a la otra sin avisar.</li>
+</ul>
+
+<ui-note .kind="important">
+  <p>Una hoja adoptada no carga sus <code>@@import</code>: es una regla del estándar para las hojas construidas. Por eso un <code>@@import</code> en una hoja de <code>globalStyles</code> o <code>styles</code> es un error (<code>FUD0854</code>). Declara en <code>fudic.json</code> el fichero importado, o impórtalo desde una hoja del documento.</p>
+</ui-note>
+
+<h2 id="tokens">Los tokens, en el <code>:root</code> del documento</h2>
+
+<p>Los valores de diseño (colores, espacios, tamaños de letra) son custom properties, y se declaran en el <code>:root</code> de la <strong>hoja del documento</strong>. Desde ahí, por herencia, llegan a todos los componentes de la página. Las reglas que los usan van en las hojas de los componentes:</p>
+
+<ui-code .path="src/styles/tokens.css">
+<pre><code>:root {
+  --gap: 0.75rem;
+  --line: light-dark(#dedcd1, #34332f);
+}</code></pre>
+</ui-code>
+
+<ui-code .path="src/styles/panel.css">
+<pre><code>.panel {
+  padding: var(--gap);
+  border: 1px solid var(--line);
+}</code></pre>
+</ui-code>
+
+<p>Esta es la forma canónica, y tiene una razón: dentro de un shadow root, <code>:root</code>, <code>html</code> y <code>body</code> no casan con nada. Un <code>:root</code> en una hoja de <code>globalStyles</code> o <code>styles</code> es una regla muerta, y Fudic avisa:</p>
+
+<ui-code>
+<pre><code>warning FUD0743: a ":root" rule in a project stylesheet matches nothing inside a shadow root — move it
+to the document stylesheet, the &lt;link rel="stylesheet"&gt; of the layout</code></pre>
+</ui-code>
+
+<p>Declararlos en el <code>:host</code> de cada componente sí funcionaría, pero cada componente fijaría sus propios valores, y la página ya no podría cambiarlos.</p>
+
+<h2 id="zones">Un tema por zonas</h2>
+
+<p>Como los tokens se heredan, una zona de la página puede redefinirlos y todo lo que hay dentro, componentes incluidos, los usa:</p>
+
+<ui-code>
+<pre><code>.promo {
+  --guide-accent: #2e6b3a;
+}</code></pre>
+</ui-code>
+
+<p>Con los colores escritos con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a>, como los de la guía de estilos, basta un <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a> para poner una zona en oscuro, con sus componentes: <code>.promo { color-scheme: dark; }</code>.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja del documento.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets"><code>ShadowRoot.adoptedStyleSheets</code></a>: las hojas que adopta un shadow root, y por qué no cargan <code>@@import</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties">Custom properties</a>: por qué un token del documento llega a un componente.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a>: los colores de los dos temas.</li>
+</ul>

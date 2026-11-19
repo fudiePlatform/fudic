@@ -88,6 +88,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   nombre del paquete aunque se le haya dado por ruta.
 - **Se repitió** con las ocho páginas del capítulo 2 (`docs/template-syntax/…`): mismo rodeo y
   mismo `href` corregido a mano.
+- **Y otra vez** con las cuatro páginas del capítulo 4 (`docs/styles/…`), el 2026-11-19.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -119,3 +120,17 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** Tres bloques a mano en `web/apps/site/assets.headers`.
 - **Qué debería hacer.** Que la app nazca con esos tres patrones en la plantilla, o que Fudic se
   encargue de la caché de sus propios ficheros y la plantilla no tenga que nombrarlos.
+
+## 10. No hay generador para una hoja que los componentes eligen (`styles`)
+
+- **Qué pasó.** Al documentar las hojas compartidas (capítulo 4). `fudic g style <n>` crea la hoja
+  y la añade a `globalStyles`, que adoptan **todos** los componentes. Para una hoja de `styles`,
+  la que cada componente elige en `shadowrootadoptedstylesheets` (como `panel` en
+  `examples/basic`), no hay comando: hay que crear el fichero y escribir la entrada de
+  `fudic.json` a mano.
+- **Cómo se resolvió.** La documentación enseña `fudic g style` solo para `globalStyles`; `styles`,
+  editando `fudic.json`.
+- **Qué debería hacer.** Una opción de `fudic g style` (`--chosen`, o similar) que la declare en
+  `styles`. Junto con el nº 7 (la hoja de un layout), que un solo comando cubra los tres sitios
+  donde puede ir una hoja.
+
