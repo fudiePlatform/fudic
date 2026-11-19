@@ -10,8 +10,13 @@ primer cliente real: si algo no se puede hacer bien con fudic, la web lo descubr
 usuario.
 
 El aspecto lo marca el boceto [hero.html](hero.html): fondo marfil, texto pizarra y un único
-acento arcilla. Los titulares van en Newsreader, el texto en Inter Tight y el código en JetBrains
-Mono, sobre fondo pizarra.
+acento arcilla. Una sola fuente web, Inter Tight, para titulares y texto; el código va en la mono
+del sistema, sobre fondo pizarra. (El boceto aún usa Newsreader y JetBrains Mono: se quitaron por
+rendimiento, ver [notas-lanzamiento.md](notas-lanzamiento.md) §4.)
+
+Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
+[notas-lanzamiento.md](notas-lanzamiento.md). Lo que la web descubre del framework y de la CLI:
+[hallazgos-fudic.md](hallazgos-fudic.md) y [hallazgos-cli.md](hallazgos-cli.md).
 
 ## 2. Secciones
 
@@ -199,3 +204,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-18 | Fuera el Service Worker. Notas de la CLI en `hallazgos-cli.md`. |
 | 2026-11-18 | Capítulo 1, **Empezar**, validado en Markdown (`docs/01-empezar.md`). |
 | 2026-11-18 | Guía con los colores del boceto. Layout `docs`, snippets `site`, `ui-code`, `ui-note`, `ui-toc` y la página `/docs/getting-started`. Lighthouse: escritorio 100/100/100/100, móvil 92/100/100/100. Hallazgos del framework en `hallazgos-fudic.md`. |
+| 2026-11-19 | Lighthouse en móvil, de 92 a 99 (100 con compresión): una sola fuente recortada y precargada. Notas de lanzamiento en `notas-lanzamiento.md`. |
