@@ -64,6 +64,10 @@ Hasta el paso 2 no se mete inglés ni i18n en ninguna página.
 
 ### 5.1 Cómo se trabaja
 
+**Desde el capítulo 3** (Pedro, 2026-11-19): Claude propone el contenido en notas breves en el
+chat, Pedro añade lo que falta, y Claude escribe directamente el HTML (la página `.fud`), que Pedro
+revisa. Ya no se escribe Markdown. Los capítulos 1 y 2 siguieron el flujo anterior:
+
 Cada tema pasa por tres pasos, en orden:
 
 1. **Se escribe en Markdown**, en `docs/web/docs/NN-tema.md`, uno por capítulo; un capítulo con
@@ -76,24 +80,24 @@ diga otro.
 
 ### 5.2 Índice
 
-| # | Capítulo | Contenido |
-|---|---|---|
-| 1 | **Empezar** | Qué es fudic. Crear un proyecto (`npx @fudic/cli new`). Estructura de carpetas. Tu primer componente. |
-| 2 | **El lenguaje `.fud`** | Ocho páginas en `docs/02-lenguaje-fud/`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. |
-| 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. |
-| 4 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. |
-| 5 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. |
-| 6 | **Formularios** | Modelo, grupos y validación. Controles form-associated. |
-| 7 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. |
-| 8 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. |
-| 9 | **Estilos y rendimiento** | CSS con scope, hojas globales y adoptadas, guía de estilo. Solo el CSS que se pinta. Baseline. Caché del runtime. |
-| 10 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. |
-| 11 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. |
-| 12 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). |
-| 13 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. |
-| 14 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). |
-| 15 | **Herramientas** | CLI, formateador y typecheck en build y en dev. |
-| 16 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. |
+| # | Capítulo | Contenido | Estado |
+|---|---|---|---|
+| 1 | **Empezar** | Qué es fudic. Crear un proyecto (`npx @fudic/cli new`). Estructura de carpetas. Tu primer componente. | **Hecho** |
+| 2 | **El lenguaje `.fud`** | Nueve páginas bajo `/docs/template-syntax`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, `@await`, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. | **Hecho** |
+| 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. | — |
+| 4 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. | — |
+| 5 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. | — |
+| 6 | **Formularios** | Modelo, grupos y validación. Controles form-associated. | — |
+| 7 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. | — |
+| 8 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. | — |
+| 9 | **Estilos y rendimiento** | CSS con scope, hojas globales y adoptadas, guía de estilo. Solo el CSS que se pinta. Baseline. Caché del runtime. | — |
+| 10 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. | — |
+| 11 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. | — |
+| 12 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). | — |
+| 13 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. | — |
+| 14 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). | — |
+| 15 | **Herramientas** | CLI, formateador y typecheck en build y en dev. | — |
+| 16 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. | — |
 
 ### 5.3 Seguridad: lo que cubre
 
@@ -209,3 +213,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-19 | Capítulo 2, **El lenguaje `.fud`**, escrito en Markdown (ocho páginas en `docs/02-lenguaje-fud/`), pendiente de revisión. Sus ejemplos, compilados en la web: tres hallazgos del framework (6–8). |
 | 2026-11-19 | Capítulo 2 ampliado (desestructuración, spread y resto, con React al lado; el host con sus atributos y eventos, con Angular al lado) y pasado a HTML a petición de Pedro, antes de su revisión: ocho páginas bajo `/docs/template-syntax`, creadas con `fudic g page` y rellenadas desde el Markdown. El nav de capítulos las lista. Hallazgo 9 del framework (booleanos en `aria-*`). |
 | 2026-11-19 | Capítulo 2 en HTML: `@while` con `@empty` en Expresiones, y `@await` como página propia (`/docs/template-syntax/await`), con `<template for>` del HTML Living Standard como lo que emitirá en el futuro. Pedro pidió estos cambios directamente en el HTML: el Markdown ya no se mantiene al día. |
+| 2026-11-19 | Capítulos 1 y 2, **hechos**. Desde el capítulo 3, notas en el chat y HTML directo, sin Markdown. |
