@@ -68,3 +68,49 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   `<link rel="preload" as="font" type="font/woff2" crossorigin>` y su Early Hint en cada página
   que enlaza la guía. Si la CLI llega a instalar fuentes (algo como `fudic add font`), que
   automatice el recorte: el usuario no debería tocar Python.
+
+## 5. `assets.headers` no cubre los ficheros que Fudic emite, y no deja agrupar rutas
+
+- **Qué pasó.** Lighthouse marcaba caché corta en `/docs/getting-started`. La plantilla de
+  `assets.headers` solo da caché larga a `/assets/**`, pero la build escribe otros dos tipos de
+  fichero con hash **fuera** de `/assets/`, que caen en `/**` (`no-cache`):
+  - el runtime compartido, `/_fudic/<versión>-<hash>/core/…`, `/dom/…`, `/transport/…`;
+  - el coordinador de cada ruta, `/fudic-main-<hash>-<build>.js`, en la raíz (con Service Worker
+    también `/fudic-boot-<build>.js`).
+
+  Al intentar darles la misma caché que a `/assets/**` sin repetir el bloque, aparecieron tres
+  problemas, medidos con `parseHeaders` y `assetDecisionsFor` y con `vite preview`:
+
+  1. **Un bloque admite una sola ruta, y equivocarse es silencioso.**
+     - `/assets/**,/_fudic/**` se lee como **una** ruta literal con coma: no casa con nada y todo
+       sigue en `no-cache`. Solo deja un `FUD1553` de nivel *hint*, que la build no imprime.
+     - Dos rutas seguidas en columna 0 (`/assets/**` y debajo `/_fudic/**`) cierran la primera
+       como un bloque **vacío**, sin aviso: `/_fudic/**` se lleva la cabecera y `/assets/**` se
+       queda sin ella. Es la peor de las dos: rompe lo que ya funcionaba.
+  2. **El patrón del main no es evidente.** `/fudic-main-*.js` funciona (`*` no cruza `/`, el main
+     está en la raíz), y también `/fudic-main-*`, pero nada en la plantilla ni en la
+     documentación dice que ese fichero existe ni dónde vive.
+  3. **`FUD1552` da un falso positivo con `/_fudic/**`.** La build avisa «immutable on /_fudic/**
+     keeps the old /_fudic/0.0.1-689426ec/core/effect.js in the browser: its name has no hash» y
+     propone quitar `immutable`. Es falso: el hash está en el **directorio** (`0.0.1-689426ec`),
+     y `isHashedName` (`packages/vite/src/headers.ts`) solo mira el nombre del fichero. El consejo
+     del diagnóstico llevaría a servir el runtime sin caché.
+- **Cómo se resolvió.** En `web/apps/site/assets.headers`, un bloque por ruta, la misma cabecera
+  repetida tres veces: `/assets/**`, `/_fudic/**` y `/fudic-main-*.js`. Medido con `vite preview`:
+  los tres salen con `public, max-age=31536000, immutable`; las páginas y `fudic-routes.json`,
+  con `no-cache`. El `FUD1552` sigue saliendo en la build y se ignora.
+- **Qué debería hacer.**
+  - **La plantilla** (`HEADERS_TEMPLATES.assets` en `packages/config/src/headers/templates.ts`,
+    que es a la vez lo que escribe `fudic new` y lo que vale un fichero ausente) debe nacer con
+    caché larga para todo lo que la build emite con hash, no solo para `assetsDir`. Una app
+    recién creada debería sacar el 100 en caché sin que su autor sepa qué es `_fudic`.
+    Mejor aún: que esos ficheros sean **de Fudic**, como ya lo son `/fudic-sw.js` y
+    `/fudic-routes.json` (`FUDIC_PATHS`): sus nombres los elige Fudic y siempre llevan hash, así
+    que Fudic puede darles `immutable` por su cuenta y dejar `assets.headers` para lo del autor.
+  - **Varias rutas por bloque**: varias líneas de ruta seguidas en columna 0 comparten las
+    cabeceras de debajo. Es la lectura natural y no choca con nada de la sintaxis actual.
+  - **Un bloque sin cabeceras es un error** con su span (`FUD1540` u otro código), nunca un
+    bloque vacío en silencio. Y una ruta con `,` merece una pista que diga que la coma no separa
+    rutas.
+  - **`isHashedName`** debe contar como con hash un fichero bajo un directorio con hash
+    (`/_fudic/<versión>-<hash>/…`), o `checkAssets` debe saber que `_fudic/` es de Fudic.

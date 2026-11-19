@@ -107,3 +107,13 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `site` en todo el repo (ver el nº 5).
 - **Qué debería hacer.** Lo que dice su ayuda: dentro de una app, solo esa app. Es la misma causa
   que el nº 2 y el nº 5.
+
+## 9. `fudic new` escribe un `assets.headers` que deja sin caché lo que emite Fudic
+
+- **Qué pasó.** La plantilla solo da caché larga a `/assets/**`; el runtime (`/_fudic/**`) y el
+  coordinador de cada ruta (`/fudic-main-*.js`) salen con `no-cache`. Detalle completo, con los
+  problemas del formato y un falso `FUD1552`, en el nº 5 de
+  [hallazgos-fudic.md](hallazgos-fudic.md).
+- **Cómo se resolvió.** Tres bloques a mano en `web/apps/site/assets.headers`.
+- **Qué debería hacer.** Que la app nazca con esos tres patrones en la plantilla, o que Fudic se
+  encargue de la caché de sus propios ficheros y la plantilla no tenga que nombrarlos.
