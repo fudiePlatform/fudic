@@ -1,0 +1,231 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Ciclo de vida · Fudic</title>
+  <meta name="description" content="Los hooks del ciclo de vida en Fudic: cuáles son de componente y cuáles de página, en qué orden se ejecutan, qué se limpia solo y cómo vive una ruta en la bfcache.">
+  <link rel="canonical" href="https://fudic.dev/docs/reactivity/lifecycle">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Ciclo de vida · Fudic">
+  <meta property="og:description" content="Los hooks de componente y de página en Fudic, su orden y la bfcache.">
+  <meta property="og:url" content="https://fudic.dev/docs/reactivity/lifecycle">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("lifecycle")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#hooks">Los hooks, de un vistazo</a></li>
+        <li><a href="#how">Cómo se escriben</a></li>
+        <li><a href="#component-hooks">El ciclo de un componente</a>
+          <ul>
+            <li><a href="#component-order">El orden</a></li>
+            <li><a href="#cleanup">Lo que se limpia solo</a></li>
+          </ul>
+        </li>
+        <li><a href="#route-hooks">El ciclo de una página</a>
+          <ul><li><a href="#bfcache">La bfcache</a></li></ul>
+        </li>
+        <li><a href="#instead-of">Si vienes de otro framework</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Ciclo de vida</h1>
+
+<p>Casi todo lo que hace un componente se escribe como estado y plantilla, y Fudic lo mantiene al día. Lo que tiene que pasar en un momento concreto de su vida (al hidratarse, al entrar en la página, al irse) va en un <strong>hook del ciclo de vida</strong>.</p>
+
+<h2 id="hooks">Los hooks, de un vistazo</h2>
+
+<p>Hay siete. Los siete valen en un componente; en una página (una ruta o su layout) valen cinco:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Hook</th><th scope="col">Componente</th><th scope="col">Página</th><th scope="col">Su función puede devolver</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>beforeHydrate(fn)</code></td><td>sí</td><td>sí</td><td>—</td></tr>
+    <tr><td><code>afterHydrate(fn)</code></td><td>sí</td><td>sí</td><td>su limpieza, al destruirse</td></tr>
+    <tr><td><code>beforeCreate(fn)</code></td><td>sí</td><td><strong>no</strong> (<code>FUD1561</code>)</td><td>—</td></tr>
+    <tr><td><code>afterCreate(fn)</code></td><td>sí</td><td><strong>no</strong> (<code>FUD1561</code>)</td><td>su limpieza, al destruirse</td></tr>
+    <tr><td><code>onConnect(fn)</code></td><td>sí</td><td>sí</td><td>su limpieza, en la siguiente desconexión</td></tr>
+    <tr><td><code>onDisconnect(fn)</code></td><td>sí</td><td>sí</td><td>—</td></tr>
+    <tr><td><code>onDispose(fn)</code></td><td>sí</td><td>sí</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<p>La diferencia sale de cómo nace cada uno. Un componente puede venir pintado del servidor (se <em>hidrata</em>) o crearlo el navegador, por ejemplo cuando un <code>@@if</code> lo muestra: por eso tiene las dos parejas, <code>Hydrate</code> y <code>Create</code>. Una página siempre viene del servidor, así que solo tiene la de <code>Hydrate</code>.</p>
+
+<h2 id="how">Cómo se escriben</h2>
+
+<p>Son funciones de <code>@@code</code> que no se importan, como <code>props</code>. Cada una recibe la función que se ejecutará en su momento, y esa función recibe <code>host</code>: el propio tag del componente, o el <code>&lt;body&gt;</code> en una página.</p>
+
+<ui-code .path="src/components/miapp-size/miapp-size.fud">
+<pre><code>@@code {
+  /** Its own width, kept up to date while it is in the page. */
+  import { signal } from "@@fudic/core";
+
+  const width = signal(0);
+
+  onConnect((host) =&gt; {
+    const observer = new ResizeObserver(() =&gt; width.set(host.clientWidth));
+    observer.observe(host);
+    return () =&gt; observer.disconnect();
+  });
+}
+
+&lt;miapp-size&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;output&gt;@@width() px&lt;/output&gt;
+  &lt;/template&gt;
+&lt;/miapp-size&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>En el nivel superior de <code>@@code</code></strong>, como sentencias. Dentro de una función, un handler, un <code>if</code> o un bucle es <code>FUD1560</code>: el hook tiene que registrarse siempre, no a veces.</li>
+  <li><strong>Llamar varias veces al mismo hook suma funciones</strong>, que se ejecutan en el orden en que se escribieron.</li>
+  <li><strong>Sus nombres están reservados</strong>: una variable o un import que se llame <code>onConnect</code> es <code>FUD1562</code>.</li>
+  <li><strong>Un hook que lanza un error</strong> se notifica, y los demás se ejecutan igual.</li>
+  <li><strong>El servidor nunca los ejecuta.</strong></li>
+</ul>
+
+<h2 id="component-hooks">El ciclo de un componente</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Hook</th><th scope="col">Cuándo se ejecuta</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>beforeHydrate</code></td><td>Pintado por el servidor: antes de adoptar ese HTML. Los <code>ref</code> aún valen <code>null</code>.</td></tr>
+    <tr><td><code>afterHydrate</code></td><td>Después de adoptarlo y enganchar sus eventos.</td></tr>
+    <tr><td><code>beforeCreate</code></td><td>Creado por el navegador: el shadow root ya está abierto, y vacío.</td></tr>
+    <tr><td><code>afterCreate</code></td><td>Después de crearlo y enganchar sus eventos.</td></tr>
+    <tr><td><code>onConnect</code></td><td>Cada vez que entra en el documento.</td></tr>
+    <tr><td><code>onDisconnect</code></td><td>Cada vez que sale del documento.</td></tr>
+    <tr><td><code>onDispose</code></td><td>Una vez, al destruirse. Los <code>ref</code> todavía valen.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="component-order">El orden</h3>
+
+<ul>
+  <li><strong>Pintado por el servidor:</strong> <code>@@code</code> → <code>beforeHydrate</code> → <code>afterHydrate</code> → <code>onConnect</code>.</li>
+  <li><strong>Creado por el navegador:</strong> <code>@@code</code> → <code>beforeCreate</code> → <code>afterCreate</code> → <code>onConnect</code> cuando su padre lo inserta.</li>
+  <li><strong>Al quitarlo:</strong> <code>onDisconnect</code> en el acto, y en la microtarea siguiente <code>onDispose</code> y las limpiezas de <code>afterHydrate</code> o <code>afterCreate</code>.</li>
+  <li><strong>Un hijo se hidrata antes que su padre</strong>, así que su <code>afterHydrate</code> va primero: cuando el padre se entera, sus hijos ya están listos.</li>
+  <li><strong>Una fila con <code>key</code> que se reordena</strong> sale y vuelve a entrar: ejecuta <code>onDisconnect</code> y <code>onConnect</code>, nunca <code>onDispose</code>. Por eso lo que depende de estar en la página (un observer, un listener en <code>window</code>) va en <code>onConnect</code>, y lo que dura toda la vida, en <code>afterHydrate</code> y <code>onDispose</code>.</li>
+</ul>
+
+<ui-note>
+  <p><code>beforeHydrate</code>, <code>afterHydrate</code> y <code>onConnect</code> hacen que el componente se hidrate al cargar la página, porque tienen que ejecutarse aunque nadie lo toque. Un componente que solo usa <code>onDisconnect</code> u <code>onDispose</code> sigue hidratándose en su primera interacción (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+</ui-note>
+
+<h3 id="cleanup">Lo que se limpia solo</h3>
+
+<p>Los <code>effect</code> creados mientras se ejecuta <code>@@code</code> pertenecen al componente y se destruyen con él, con sus limpiezas. No hace falta guardarlos ni llamar a nada en <code>onDispose</code>.</p>
+
+<p>Uno creado <strong>dentro de un handler</strong>, en cambio, ya no pertenece al componente: vive tanto como la página. Si un handler necesita algo que deba morir con el componente, que lo cree en <code>@@code</code> y lo active con un signal.</p>
+
+<h2 id="route-hooks">El ciclo de una página</h2>
+
+<p>Una ruta y su layout usan los mismos hooks en el nivel superior de su <code>@@code</code>, salvo <code>beforeCreate</code> y <code>afterCreate</code>. Su <code>host</code> es el <code>&lt;body&gt;</code>, y sus momentos son los del documento:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Hook</th><th scope="col">Cuándo se ejecuta</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>beforeHydrate</code></td><td>Antes de que la ruta adopte el <code>&lt;body&gt;</code>.</td></tr>
+    <tr><td><code>afterHydrate</code></td><td>Después de adoptarlo y enganchar sus eventos.</td></tr>
+    <tr><td><code>onConnect</code></td><td>Justo después de <code>afterHydrate</code>, y otra vez cada vez que la página vuelve desde la bfcache (<code>pageshow</code>).</td></tr>
+    <tr><td><code>onDisconnect</code></td><td>En cada <code>pagehide</code>.</td></tr>
+    <tr><td><code>onDispose</code></td><td>En un <code>pagehide</code> tras el que la página no va a volver, después de <code>onDisconnect</code>.</td></tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><strong>Los hooks del layout</strong> se escriben en el <code>@@code</code> de su <code>&lt;head&gt;</code>, que solo admite sus props y sus hooks (<code>FUD0700</code>). Se ejecutan en el JavaScript de la ruta, antes que los de la propia ruta.</li>
+  <li><strong>Una página con <code>beforeHydrate</code>, <code>afterHydrate</code> u <code>onConnect</code></strong> se hidrata al cargar, igual que una con un <code>effect</code> en su <code>@@code</code>; si no, en su primera interacción.</li>
+</ul>
+
+<p>Un carrito guardado en el navegador: se lee al hidratar, se guarda cada vez que cambia, y se intenta guardar una última vez al salir.</p>
+
+<ui-code .path="src/routes/cart.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code {
+  import { effect } from "@@fudic/core";
+  import { items } from "../stores/cart";
+  import { readList, saveList } from "../stores/saved";
+
+  let loaded = false;
+
+  // Saved on every change, once read back.
+  effect(() =&gt; {
+    const now = items();
+    if (loaded) void saveList("cart", now);
+  });
+
+  afterHydrate(async () =&gt; {
+    items.set(await readList("cart"));
+    loaded = true;
+  });
+
+  onDisconnect(() =&gt; {
+    void saveList("cart", items());
+  });
+}
+
+&lt;head&gt;&lt;title&gt;Carrito&lt;/title&gt;&lt;/head&gt;
+&lt;p&gt;Tu carrito se guarda en este navegador.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p><code>readList</code> y <code>saveList</code> son dos funciones sobre <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">IndexedDB</a>, en un módulo del proyecto. Hay una versión completa en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/ciclo.ts"><code>examples/basic</code></a>.</p>
+
+<ui-note .kind="important">
+  <p><strong>El navegador no espera a ninguna promesa en <code>pagehide</code>.</strong> Una escritura en IndexedDB o un <code>fetch</code> empezados en <code>onDisconnect</code> pueden no terminar nunca, sobre todo en móvil. Guarda lo que no se puede perder cuando cambia, con un <code>effect</code> como arriba, y deja <code>onDisconnect</code> como último intento.</p>
+</ui-note>
+
+<h3 id="bfcache">La bfcache</h3>
+
+<p>Cuando el usuario se va de una página y vuelve con el botón «atrás», el navegador puede devolverla tal como estaba, sin volver a cargarla: es la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a>. La página se va y vuelve sin destruirse, con sus signals intactos, igual que una fila con <code>key</code> que se reordena. Por eso vuelve a ejecutar <code>onConnect</code> al volver, y no <code>afterHydrate</code>.</p>
+
+<p>Fudic escucha <code>pagehide</code> y <code>pageshow</code>, y solo en una página que usa <code>onConnect</code>, <code>onDisconnect</code> u <code>onDispose</code>. Nunca escucha <code>unload</code>, que impide que la página entre en la bfcache.</p>
+
+<h2 id="instead-of">Si vienes de otro framework</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">En lugar de…</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>connectedCallback()</code> / <code>disconnectedCallback()</code> de un custom element</td><td><code>onConnect(fn)</code> / <code>onDisconnect(fn)</code> en <code>@@code</code></td></tr>
+    <tr><td><code>useEffect(fn, [])</code> para algo tras el primer pintado</td><td><code>afterHydrate(fn)</code>, y <code>afterCreate(fn)</code> si también se crea en el navegador</td></tr>
+    <tr><td>la limpieza de <code>useEffect</code> al desmontar</td><td><code>onDispose(fn)</code>, o devolver la limpieza desde <code>afterHydrate</code></td></tr>
+    <tr><td><code>ngOnInit</code> / <code>ngOnDestroy</code> de Angular</td><td><code>afterHydrate</code> / <code>onDispose</code></td></tr>
+    <tr><td><code>onMounted</code> / <code>onUnmounted</code> de Vue</td><td><code>afterHydrate</code> / <code>onDispose</code></td></tr>
+    <tr><td><code>window.addEventListener("unload", …)</code></td><td><code>onDisconnect(fn)</code> en la página</td></tr>
+  </tbody>
+</table>
+
+<p>Los hooks de Fudic se apoyan en los del estándar: <code>onConnect</code> y <code>onDisconnect</code> son los <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks">lifecycle callbacks</a> de un custom element. Lo que añade Fudic es separar si el componente se hidrata o se crea, y la limpieza automática.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks">Custom element lifecycle callbacks</a>: <code>connectedCallback</code>, <code>disconnectedCallback</code> y los demás.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a>, y los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event"><code>pagehide</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event"><code>pageshow</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver"><code>ResizeObserver</code></a>: el observer del ejemplo.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">IndexedDB</a>: guardar datos en el navegador.</li>
+</ul>

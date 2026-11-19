@@ -38,6 +38,14 @@
           <li><a href="/docs/template-syntax/ref-and-raw" aria-current=@(current === "ref-and-raw" ? "page" : false)><code>ref</code> y <code>@@raw</code></a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Reactividad y ciclo de vida</span>
+        <ol>
+          <li><a href="/docs/reactivity" aria-current=@(current === "reactivity" ? "page" : false)>Signals</a></li>
+          <li><a href="/docs/reactivity/lifecycle" aria-current=@(current === "lifecycle" ? "page" : false)>Ciclo de vida</a></li>
+          <li><a href="/docs/reactivity/hydration" aria-current=@(current === "hydration" ? "page" : false)>Hidratación</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }
