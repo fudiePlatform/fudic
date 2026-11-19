@@ -349,12 +349,65 @@
 &lt;/miapp-menu&gt;</code></pre>
 </ui-code>
 
+<p>Un evento no llega a un elemento desde fuera: recorre un camino, del elemento donde nace hacia arriba, hasta el documento. Un listener solo oye los eventos cuyo camino pasa por él. Por eso <strong>el host no oye lo que pasa fuera del componente</strong>, en un hermano o en la página. Oye lo que pasa <strong>en él</strong>: en su propio tag, en su shadow DOM y en el contenido que la página puso en sus slots.</p>
+
+<p>Un clic en un botón de dentro del componente recorre este camino, en este orden:</p>
+
+<ol>
+  <li><strong>El botón</strong>, y los elementos de la plantilla que lo envuelven, con su <code>@@click</code> si lo tienen.</li>
+  <li><strong>El shadow root</strong>: el <code>@@click</code> del <code>&lt;template&gt;</code>.</li>
+  <li><strong>El host</strong>: el <code>@@click</code> del propio tag. Aquí el <code>target</code> del evento ya es el host, no el botón: el estándar esconde el interior del componente a quien escucha desde fuera de su shadow root. El elemento real sigue en <code>event.composedPath()[0]</code>.</li>
+  <li><strong>La página</strong>: los ancestros del componente y el documento.</li>
+</ol>
+
+<p>El host está justo entre el interior del componente y la página, y eso le da el control: <strong>puede anular el evento</strong> antes de que la página lo oiga. <code>stopPropagation()</code> lo corta ahí, y <code>preventDefault()</code> cancela lo que el navegador haría con él, como seguir un enlace:</p>
+
+<ui-code .path="src/components/miapp-card/miapp-card.fud">
+<pre><code>@@code &#123;
+  const &#123; disabled = false &#125; = props&lt;&#123; disabled?: boolean &#125;&gt;();
+
+  function guard(event: MouseEvent) &#123;
+    if (disabled) &#123;
+      event.preventDefault();    // its links do not navigate
+      event.stopPropagation();   // the page never hears the click
+    &#125;
+  &#125;
+&#125;
+
+&lt;miapp-card aria-disabled=@@(disabled ? "true" : "false") @@click=@@guard&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;slot&gt;&lt;/slot&gt;
+    &lt;a href="/plans"&gt;Ver planes&lt;/a&gt;
+  &lt;/template&gt;
+&lt;/miapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Con la tarjeta desactivada, ni el enlace de su plantilla ni lo que la página puso en su slot navegan, y ningún listener de la página se entera del clic.</p>
+
 <ul>
-  <li><strong>En el host</strong> oye lo que llega al componente desde fuera de su shadow DOM: el foco y las teclas cuando el host es el control, y lo que sale de dentro, como lo oiría la página.</li>
-  <li><strong>En el <code>&lt;template&gt;</code></strong> oye todo lo que pasa dentro del shadow root, salga o no de él: es el sitio para un único listener que atienda a varios elementos de la plantilla.</li>
+  <li><strong>Solo salen del shadow root los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed</code></a></strong>, y solo suben los que <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles">burbujean</a>. Los de interacción del usuario (<code>click</code>, <code>keydown</code>, <code>input</code>…) son las dos cosas. Uno lanzado con <code>new CustomEvent("x", &#123; bubbles: true &#125;)</code>, sin <code>composed</code>, lo oye el <code>&lt;template&gt;</code> pero no llega al host. Los de <code>emit</code> salen siempre (<a href="/docs/template-syntax/events#event-bus">el bus de eventos</a>).</li>
+  <li><strong>El <code>&lt;template&gt;</code> es el sitio para un único listener</strong> que atienda a varios elementos de la plantilla, y también oye lo que pasa en el contenido de sus slots, porque el camino de ese contenido pasa por su <code>&lt;slot&gt;</code>.</li>
 </ul>
 
-<p>Lo que separa los dos es el estándar: un evento que nace dentro del shadow root solo sale de él si es <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed</code></a>, y al salir su <code>target</code> pasa a ser el host. Los de interacción del usuario (<code>click</code>, <code>keydown</code>, <code>input</code>…) lo son; uno lanzado con <code>new CustomEvent("x", &#123; bubbles: true &#125;)</code>, sin <code>composed</code>, se queda dentro.</p>
+<h4 id="capture">Adelantarse a los de dentro: la captura</h4>
+
+<p>Un <code>@@evento</code> escucha en la fase de burbuja, así que el host lo oye <strong>después</strong> que los listeners de dentro: para cuando lo anula, los handlers de la plantilla ya se han ejecutado. Si el host tiene que decidir <strong>antes</strong> que nadie, escucha en la fase de <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture">captura</a>, que recorre el camino al revés, del documento al botón. Fudic no tiene modificadores para eso: se hace con el estándar, en un hook del ciclo de vida:</p>
+
+<ui-code>
+<pre><code>@@code &#123;
+  const &#123; disabled = false &#125; = props&lt;&#123; disabled?: boolean &#125;&gt;();
+
+  onConnect((host) =&gt; &#123;
+    const block = (event: Event) =&gt; &#123;
+      if (disabled) event.stopPropagation();   // nothing inside hears it
+    &#125;;
+    host.addEventListener("click", block, &#123; capture: true &#125;);
+    return () =&gt; host.removeEventListener("click", block, &#123; capture: true &#125;);
+  &#125;);
+&#125;</code></pre>
+</ui-code>
+
+<p>Un componente con <code>onConnect</code> se hidrata al cargar la página, no en su primera interacción (capítulo 3). Úsalo solo cuando el orden importa de verdad; para casi todo basta con el <code>@@click</code> del host.</p>
 
 <ui-note>
   <p><strong>Si vienes de Angular</strong>, es la idea de <a href="https://angular.dev/guide/components/host-elements"><code>@@HostBinding</code> y <code>@@HostListener</code></a>, o de su propiedad <code>host</code> en <code>@@Component</code>. Con una diferencia: en Fudic no hay decoradores ni un objeto de metadatos. El host es un tag que ves en la plantilla, y se le escribe como a cualquier otro elemento.</p>

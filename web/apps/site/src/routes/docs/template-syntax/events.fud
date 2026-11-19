@@ -114,7 +114,7 @@
 <p>Un <code>@@evento</code> escucha en el elemento donde está escrito. En un componente hay dos sitios especiales:</p>
 
 <ul>
-  <li><strong>El propio tag del componente</strong>: escucha en el host, como un <code>@@HostListener</code> de Angular.</li>
+  <li><strong>El propio tag del componente</strong>: escucha en el host, como un <code>@@HostListener</code> de Angular. Oye lo que pasa en el componente (en su tag, en su shadow DOM y en el contenido de sus slots), nunca lo que pasa fuera de él, y puede anular un evento antes de que llegue a la página.</li>
   <li><strong>El <code>&lt;template shadowrootmode&gt;</code></strong>: escucha en el shadow root, y oye todo lo que pasa dentro.</li>
 </ul>
 
