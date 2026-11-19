@@ -1,0 +1,381 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Componentes · Fudic</title>
+  <meta name="description" content="Cómo se escribe un componente de Fudic: la forma del fichero, props normales, signal y función, slots y el host con sus atributos y eventos.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/components">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Componentes · Fudic">
+  <meta property="og:description" content="Cómo se escribe un componente de Fudic: la forma del fichero, props normales, signal y función, slots y el host con sus atributos y eventos.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/components">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("components")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#file-shape">La forma del fichero</a></li>
+        <li><a href="#props">Props</a>
+          <ul>
+            <li><a href="#reactive-prop">Una prop que sigue al padre</a></li>
+            <li><a href="#signal-prop">Una prop que es un signal</a></li>
+            <li><a href="#function-prop">Una prop que es una función</a></li>
+          </ul>
+        </li>
+        <li><a href="#slots">Slots: contenido de quien usa el componente</a></li>
+        <li><a href="#host">El host: atributos y eventos del propio tag</a>
+          <ul>
+            <li><a href="#host-or-shadow-root">Escuchar en el host o en el shadow root</a></li>
+          </ul>
+        </li>
+        <li><a href="#use-another-component">Usar otro componente</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Componentes</h1>
+
+<p>Un componente es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">custom element</a>: una etiqueta propia, como <code>&lt;miapp-card&gt;</code>, con su markup, sus estilos y su comportamiento. Se crea con la CLI:</p>
+
+<ui-code>
+<pre><code>npx fudic g component card</code></pre>
+</ui-code>
+
+<h2 id="file-shape">La forma del fichero</h2>
+
+<p>Un componente tiene hasta cinco partes, siempre en este orden:</p>
+
+<ui-code .path="src/components/miapp-card/miapp-card.fud">
+<pre><code>&lt;link rel="component" href="../miapp-badge/miapp-badge.fud"&gt;   ①
+
+@@code &#123;                                                        ②
+  const &#123; tone = "neutral" &#125; = props&lt;&#123; tone?: "neutral" | "new" &#125;&gt;();
+&#125;
+
+&lt;head&gt;                                                         ③
+  &lt;style&gt;
+    .card &#123; border: 1px solid var(--line); padding: 1rem; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-card&gt;                                                   ④
+  &lt;template shadowrootmode="open"&gt;
+    &lt;article class="card"&gt;
+      &lt;slot name="title"&gt;&lt;/slot&gt;
+      @@render tag(@@tone)
+      &lt;slot&gt;&lt;/slot&gt;
+    &lt;/article&gt;
+  &lt;/template&gt;
+&lt;/miapp-card&gt;
+
+@@snippet tag(tone: string) &#123;                                   ⑤
+  &lt;miapp-badge .tone=@@tone&gt;@@tone&lt;/miapp-badge&gt;
+&#125;</code></pre>
+</ui-code>
+
+<ol>
+  <li><strong>Los <code>&lt;link rel="component"&gt;</code></strong> de los componentes que usa.</li>
+  <li><strong>Un bloque <code>@@code</code></strong>, TypeScript estándar. Opcional, y solo uno.</li>
+  <li><strong>El <code>&lt;head&gt;</code> con un <code>&lt;style&gt;</code></strong>: los estilos del componente. Opcional.</li>
+  <li><strong>El propio tag del componente</strong> envolviendo un <code>&lt;template shadowrootmode="open"&gt;</code>. Todo lo que pinta va dentro del template.</li>
+  <li><strong>Los snippets</strong> que solo usa este componente, si los hay (<a href="/docs/template-syntax/snippets">Snippets</a>).</li>
+</ol>
+
+<p>Un componente puede ser solo la parte 4: HTML y CSS, sin una línea de JavaScript.</p>
+
+<ui-note>
+  <p>El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code> es CSS estándar, sin construcciones <code>@@</code>. Lo que cambia con el estado se expresa en la plantilla: el <code>&lt;style&gt;</code> define las variantes y <code>class:</code> elige cuál se aplica (<a href="/docs/template-syntax/attributes-and-properties#classes">Atributos y propiedades</a>).</p>
+</ui-note>
+
+<h2 id="props">Props</h2>
+
+<p>Las props son lo que el componente recibe de quien lo usa. Se declaran con <strong>una sola llamada</strong> a <code>props&lt;T&gt;()</code>, desestructurada:</p>
+
+<ui-code .path="src/components/miapp-alert/miapp-alert.fud">
+<pre><code>@@code &#123;
+  /** A message that stands out from the text around it. */
+  const &#123; text, tone = "info" &#125; = props&lt;&#123;
+    /** What the alert says. */
+    text: string;
+    /** Its colour: "info" blue, "danger" red. */
+    tone?: "info" | "danger";
+  &#125;&gt;();
+&#125;
+
+&lt;miapp-alert&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;p class=@@tone&gt;@@text&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/miapp-alert&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Obligatoria</strong>: una clave sin <code>?</code>, como <code>text</code>. Usar el componente sin pasarla es un error de tipos.</li>
+  <li><strong>Opcional</strong>: una clave con <code>?</code>. Su valor por defecto va en la desestructuración (<code>tone = "info"</code>).</li>
+  <li><strong>Documentada</strong>: el primer <code>/** … */</code> del <code>@@code</code> describe el componente, y el de cada clave describe la prop. El editor los enseña al escribir el tag.</li>
+  <li><strong>Leída por su nombre</strong>: en la plantilla se escribe <code>@@text</code>, nunca <code>props.text</code>.</li>
+</ul>
+
+<p>Quien usa el componente pasa cada prop con un punto delante:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-alert .text="Guardado" .tone="info"&gt;&lt;/miapp-alert&gt;
+&lt;miapp-alert .text=@@message .tone="danger"&gt;&lt;/miapp-alert&gt;</code></pre>
+</ui-code>
+
+<p>El punto es lo que distingue una prop de un atributo HTML estándar. Sin punto, <code>id</code>, <code>class</code>, <code>role</code> o <code>aria-label</code> son atributos del tag, como en cualquier elemento; y un nombre sin punto que no es de HTML, como <code>tone="info"</code>, es un error. Todas las formas de escribir el valor están en <a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a>.</p>
+
+<h3 id="reactive-prop">Una prop que sigue al padre</h3>
+
+<p>Si el padre pasa un valor reactivo, el hijo se repinta cuando cambia:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-alert .text=@@status()&gt;&lt;/miapp-alert&gt;</code></pre>
+</ui-code>
+
+<p>Cada vez que el signal <code>status</code> del padre cambia, el hijo recibe el texto nuevo.</p>
+
+<h3 id="signal-prop">Una prop que es un signal</h3>
+
+<p>A veces el hijo no solo necesita leer el valor: también tiene que cambiarlo. Entonces declara la prop como <code>Signal&lt;T&gt;</code>, y recibe <strong>el propio signal</strong> del padre:</p>
+
+<ui-code .path="src/components/miapp-stepper/miapp-stepper.fud">
+<pre><code>@@code &#123;
+  import type &#123; Signal &#125; from "@@fudic/core";
+
+  const &#123; value &#125; = props&lt;&#123;
+    /** The number the stepper moves. It belongs to whoever uses the stepper. */
+    value: Signal&lt;number&gt;;
+  &#125;&gt;();
+
+  function down() &#123;
+    value.set(value() - 1);
+  &#125;
+
+  function up() &#123;
+    value.set(value() + 1);
+  &#125;
+&#125;
+
+&lt;miapp-stepper&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@down&gt;−&lt;/button&gt;
+    &lt;output&gt;@@value()&lt;/output&gt;
+    &lt;button type="button" @@click=@@up&gt;+&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/miapp-stepper&gt;</code></pre>
+</ui-code>
+
+<p>El padre pasa el nombre del signal, sin llamarlo:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-stepper .value=@@quantity&gt;&lt;/miapp-stepper&gt;
+&lt;p&gt;Total: @@(quantity() * price) €&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Padre e hijo leen el mismo objeto: cuando el stepper lo cambia, el total del padre se repinta.</p>
+
+<h3 id="function-prop">Una prop que es una función</h3>
+
+<p>Para que el hijo avise a su padre, el padre le pasa una función:</p>
+
+<ui-code .path="src/components/miapp-choice/miapp-choice.fud">
+<pre><code>@@code &#123;
+  /** A row of buttons, one per option. */
+  const &#123; options = [], onPick &#125; = props&lt;&#123;
+    /** The texts of the buttons. */
+    options?: readonly string[];
+    /** Called with the option the user picked. */
+    onPick: (option: string) =&gt; void;
+  &#125;&gt;();
+
+  function pick(option: string) &#123;
+    onPick(option);
+  &#125;
+&#125;
+
+&lt;miapp-choice&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div @@click=@@pick(option)&gt;
+      @@foreach (const option of options) key (option) &#123;
+        &lt;button type="button" delegate:option="click"&gt;@@option&lt;/button&gt;
+      &#125;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/miapp-choice&gt;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;miapp-choice .options=@@answers .onPick=@@chosen&gt;&lt;/miapp-choice&gt;</code></pre>
+</ui-code>
+
+<p>El padre escribe el nombre de una función de su <code>@@code</code>, sin llamarla, y el hijo la llama desde un handler. Es el camino de vuelta hacia <strong>un</strong> padre concreto. Para avisar a cualquiera que escuche en la página, está el bus de eventos (<a href="/docs/template-syntax/events">Eventos</a>).</p>
+
+<h2 id="slots">Slots: contenido de quien usa el componente</h2>
+
+<p>Un componente recibe markup de la página con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>, el mecanismo estándar del shadow DOM. Fudic no añade nada: es la plataforma la que coloca cada elemento en su hueco.</p>
+
+<ui-code .path="src/components/miapp-card/miapp-card.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    ::slotted([slot="title"]) &#123; margin: 0; font-size: 1.1rem; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-card&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;article class="card"&gt;
+      &lt;header&gt;&lt;slot name="title"&gt;&lt;/slot&gt;&lt;/header&gt;
+      &lt;slot&gt;&lt;/slot&gt;
+      &lt;footer&gt;
+        &lt;slot name="actions"&gt;&lt;a href="/"&gt;Volver&lt;/a&gt;&lt;/slot&gt;
+      &lt;/footer&gt;
+    &lt;/article&gt;
+  &lt;/template&gt;
+&lt;/miapp-card&gt;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;miapp-card&gt;
+  &lt;h2 slot="title"&gt;Plan básico&lt;/h2&gt;
+  &lt;p&gt;Todo lo que necesitas para empezar.&lt;/p&gt;
+  &lt;button slot="actions"&gt;Elegir&lt;/button&gt;
+&lt;/miapp-card&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>El slot sin nombre</strong> recibe todo lo que no lleva <code>slot="…"</code>: aquí, el párrafo.</li>
+  <li><strong>Un slot con nombre</strong> recibe los elementos con ese <code>slot</code>: el <code>&lt;h2&gt;</code> va a <code>title</code> y el botón a <code>actions</code>.</li>
+  <li><strong>Lo que hay dentro de un <code>&lt;slot&gt;</code></strong> es su contenido por defecto: se ve si nadie lo rellena.</li>
+  <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a></strong> da estilo, desde el componente, a lo que la página colocó en sus slots.</li>
+</ul>
+
+<ui-note .kind="important">
+  <p><strong>Los encabezados (<code>h1</code> a <code>h6</code>) nunca van dentro del shadow DOM de un componente.</strong> Fíjate en que el <code>&lt;h2&gt;</code> lo escribe la página, no la tarjeta: el componente le deja un slot. Así el encabezado sigue en el documento, donde lo encuentran el esquema de la página, los buscadores y la navegación por encabezados de los lectores de pantalla.</p>
+</ui-note>
+
+<h2 id="host">El host: atributos y eventos del propio tag</h2>
+
+<p>El tag que envuelve el <code>&lt;template&gt;</code> es el <strong>host</strong>: el elemento que la página ve. Lo que escribas en él se aplica al propio componente, igual que si quien lo usa lo hubiera escrito en su tag:</p>
+
+<ul>
+  <li><strong>un atributo con una expresión</strong> se refleja en el host, y se actualiza cuando cambia;</li>
+  <li><strong>un <code>@@evento</code></strong> escucha en el host;</li>
+  <li><strong>un atributo fijo</strong>, como <code>role</code> o <code>tabindex</code>, sale tal cual.</li>
+</ul>
+
+<p>Un switch accesible es el caso típico: el propio tag es el control.</p>
+
+<ui-code .path="src/components/miapp-switch/miapp-switch.fud">
+<pre><code>@@code &#123;
+  /** A switch. The whole tag is the control: it takes the focus, the click and the keys. */
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; label, disabled = false &#125; = props&lt;&#123;
+    /** What the switch turns on. */
+    label: string;
+    /** Whether it can be used. */
+    disabled?: boolean;
+  &#125;&gt;();
+
+  const on = signal(false);
+
+  function flip() &#123;
+    if (!disabled) on.set(!on());
+  &#125;
+
+  function key(event: KeyboardEvent) &#123;
+    if (event.key === " " || event.key === "Enter") &#123;
+      event.preventDefault();
+      flip();
+    &#125;
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    :host &#123; display: inline-flex; gap: 0.5rem; cursor: pointer; &#125;
+    :host([data-state="on"]) .track &#123; background: var(--accent); &#125;
+    :host([aria-disabled="true"]) &#123; opacity: 0.5; cursor: not-allowed; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-switch role="switch" tabindex="0"
+  aria-checked=@@(on() ? "true" : "false")
+  aria-disabled=@@(disabled ? "true" : "false")
+  data-state=@@(on() ? "on" : "off")
+  @@click=@@flip @@keydown=@@key&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;span class="track"&gt;&lt;/span&gt;
+    &lt;span&gt;@@label&lt;/span&gt;
+  &lt;/template&gt;
+&lt;/miapp-switch&gt;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;miapp-switch .label="Modo oscuro"&gt;&lt;/miapp-switch&gt;</code></pre>
+</ui-code>
+
+<p>El servidor pinta el host ya con su <code>role</code>, su <code>aria-checked</code> y su <code>data-state</code>, así que el switch se anuncia bien y se ve en su estado antes de cargar ningún script. Al pulsarlo, el componente se hidrata, <code>flip</code> cambia el signal y los tres atributos se reescriben solos.</p>
+
+<ul>
+  <li><strong>Lo que vale un atributo con expresión</strong>: un texto o un número se escribe tal cual; <code>true</code> escribe el atributo vacío; <code>false</code>, <code>null</code> y <code>undefined</code> lo quitan. Es la regla de los atributos booleanos de HTML.</li>
+  <li><strong>ARIA no es booleano.</strong> <code>aria-checked</code> o <code>aria-disabled</code> esperan el texto <code>"true"</code> o <code>"false"</code>, y un <code>false</code> quitaría el atributo: escríbelo con un ternario, como arriba.</li>
+  <li><strong>El estilo del host</strong> sale de sus atributos, con el selector <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host()</code></a>: aquí, <code>:host([data-state="on"])</code>. Para una variante, usa un nombre propio (<code>variant</code>) o un <code>data-*</code>. Un atributo estándar conserva su efecto: <code>hidden</code>, <code>title</code> o <code>lang</code> en el host cambian cómo se comporta todo el componente.</li>
+  <li><strong><code>class:</code> no va en el host</strong>: activa clases del <code>&lt;style&gt;</code> del componente sobre elementos de su template. En el host, un atributo y <code>:host()</code>.</li>
+</ul>
+
+<h3 id="host-or-shadow-root">Escuchar en el host o en el shadow root</h3>
+
+<p>Un <code>@@evento</code> en el host y uno en el <code>&lt;template&gt;</code> no oyen lo mismo:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-menu @@keydown=@@onKey&gt;                           @@* listens on the host *@@
+  &lt;template shadowrootmode="open" @@click=@@onClick&gt;    @@* listens on the shadow root *@@
+    …
+  &lt;/template&gt;
+&lt;/miapp-menu&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>En el host</strong> oye lo que llega al componente desde fuera de su shadow DOM: el foco y las teclas cuando el host es el control, y lo que sale de dentro, como lo oiría la página.</li>
+  <li><strong>En el <code>&lt;template&gt;</code></strong> oye todo lo que pasa dentro del shadow root, salga o no de él: es el sitio para un único listener que atienda a varios elementos de la plantilla.</li>
+</ul>
+
+<p>Lo que separa los dos es el estándar: un evento que nace dentro del shadow root solo sale de él si es <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed</code></a>, y al salir su <code>target</code> pasa a ser el host. Los de interacción del usuario (<code>click</code>, <code>keydown</code>, <code>input</code>…) lo son; uno lanzado con <code>new CustomEvent("x", &#123; bubbles: true &#125;)</code>, sin <code>composed</code>, se queda dentro.</p>
+
+<ui-note>
+  <p><strong>Si vienes de Angular</strong>, es la idea de <a href="https://angular.dev/guide/components/host-elements"><code>@@HostBinding</code> y <code>@@HostListener</code></a>, o de su propiedad <code>host</code> en <code>@@Component</code>. Con una diferencia: en Fudic no hay decoradores ni un objeto de metadatos. El host es un tag que ves en la plantilla, y se le escribe como a cualquier otro elemento.</p>
+</ui-note>
+
+<h2 id="use-another-component">Usar otro componente</h2>
+
+<p>Un componente se importa con <code>&lt;link rel="component"&gt;</code> y se usa escribiendo su tag:</p>
+
+<ui-code>
+<pre><code>&lt;link rel="component" href="../miapp-card/miapp-card.fud"&gt;
+&lt;link rel="component" href="@@shop/ui/ui-button.fud"&gt;</code></pre>
+</ui-code>
+
+<p>El segundo viene de una librería del workspace y se enlaza por el nombre del paquete. Un tag sin su enlace es un error, y un enlace que nada usa, un aviso.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">Using custom elements</a>: qué es un custom element y por qué su nombre lleva guion.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots">Using templates and slots</a>: cómo recibe un componente el contenido de la página.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>: slots con nombre y contenido por defecto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a>: dar estilo al propio componente y a lo que recibe.</li>
+</ul>

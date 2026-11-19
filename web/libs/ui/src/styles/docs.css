@@ -142,6 +142,15 @@
   margin: 0;
 }
 
+.docs-nav .chapter {
+  display: block;
+  padding: var(--guide-space-3) var(--guide-space-3) var(--guide-space-1);
+  font-size: var(--guide-text-sm);
+  font-weight: var(--guide-weight-medium);
+  color: var(--guide-ink);
+}
+
+.docs-nav li li,
 .docs-toc li li {
   padding-inline-start: var(--guide-space-3);
 }

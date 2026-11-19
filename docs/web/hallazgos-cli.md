@@ -86,6 +86,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Ignorar, o como mucho avisar de, las carpetas del workspace que no son
   proyectos, en vez de abortar. Y cuando el layout es de otro paquete, escribir el enlace por el
   nombre del paquete aunque se le haya dado por ruta.
+- **Se repitió** con las ocho páginas del capítulo 2 (`docs/template-syntax/…`): mismo rodeo y
+  mismo `href` corregido a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

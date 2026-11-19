@@ -162,3 +162,17 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 - **Cómo se resolvió en la web.** El capítulo 2 enseña la prop función desde un componente.
 - **Qué debería hacer.** Lo mismo que en un componente: en el servidor una prop función no se
   evalúa (no hay nada que pintar con ella), y en el navegador cruza por referencia.
+
+## 9. Un booleano en un atributo `aria-*` sale como atributo booleano de HTML
+
+- **Qué pasó.** Al documentar el host en el capítulo 2, con un build real. Un atributo con
+  expresión sigue la regla de los atributos booleanos de HTML: `true` escribe el atributo vacío y
+  `false` lo quita. En `aria-*` eso está mal: los estados de ARIA son enumerados, `"true"` o
+  `"false"`. `<site-toggle role="switch" aria-checked=@on()>` sale sin `aria-checked` mientras está
+  apagado (un lector de pantalla no anuncia «desactivado», sino un switch sin estado), y
+  `aria-disabled=@disabled` con `true` sale `aria-disabled=""`, que ARIA lee como ausente.
+- **Cómo se resolvió en la web.** El capítulo 2 escribe el texto a mano:
+  `aria-checked=@(on() ? "true" : "false")`, y lo explica.
+- **Qué debería hacer.** Para un atributo `aria-*`, serializar el booleano como `"true"` o
+  `"false"`, y quitar el atributo solo con `null` o `undefined`. Mientras tanto, un aviso con código
+  al pasar un `boolean` a un `aria-*`, con la bombilla que escribe el ternario.

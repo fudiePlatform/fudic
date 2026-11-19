@@ -65,24 +65,14 @@ Así no hace falta escribir `(event.target as HTMLInputElement).checked` en cada
 
 ## Dónde escucha cada handler
 
-Un `@evento` escucha en el elemento donde está escrito. En un componente hay dos sitios especiales:
+Un `@evento` escucha en el elemento donde está escrito. En un componente hay dos sitios
+especiales:
 
-```fud
-<miapp-menu @keydown=@onHostKey>                       @* listens on the host *@
-  <template shadowrootmode="open" @click=@onClick>    @* listens on the shadow root *@
-    …
-  </template>
-</miapp-menu>
-```
+- **El propio tag del componente**: escucha en el host, como un `@HostListener` de Angular.
+- **El `<template shadowrootmode>`**: escucha en el shadow root, y oye todo lo que pasa dentro.
 
-- **En el tag del componente**, escucha en el host: oye lo que sale del shadow DOM, como lo oiría
-  la página.
-- **En el `<template>`**, escucha en el shadow root: oye todo lo que pasa dentro.
-
-La diferencia la pone el estándar. Un evento que nace dentro de un shadow root solo sale de él si
-es [`composed`](https://developer.mozilla.org/en-US/docs/Web/API/Event/composed) (los de
-interacción del usuario, como `click` o `keydown`, lo son), y al salir su `target` pasa a ser el
-host.
+Qué oye cada uno, y cómo se combina con los atributos del host, está en
+[El host: atributos y eventos del propio tag](02-componentes.md#el-host-atributos-y-eventos-del-propio-tag).
 
 ## Eventos en una lista: delegación
 

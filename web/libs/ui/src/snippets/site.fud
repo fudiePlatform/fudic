@@ -24,6 +24,19 @@
     <summary>Capítulos</summary>
     <ol>
       <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar</a></li>
+      <li>
+        <span class="chapter">El lenguaje <code>.fud</code></span>
+        <ol>
+          <li><a href="/docs/template-syntax" aria-current=@(current === "template-syntax" ? "page" : false)>Sintaxis de plantillas</a></li>
+          <li><a href="/docs/template-syntax/components" aria-current=@(current === "components" ? "page" : false)>Componentes</a></li>
+          <li><a href="/docs/template-syntax/routes-and-layouts" aria-current=@(current === "routes-and-layouts" ? "page" : false)>Rutas y layouts</a></li>
+          <li><a href="/docs/template-syntax/snippets" aria-current=@(current === "snippets" ? "page" : false)>Snippets</a></li>
+          <li><a href="/docs/template-syntax/expressions" aria-current=@(current === "expressions" ? "page" : false)>Expresiones y control de flujo</a></li>
+          <li><a href="/docs/template-syntax/attributes-and-properties" aria-current=@(current === "attributes-and-properties" ? "page" : false)>Atributos y propiedades</a></li>
+          <li><a href="/docs/template-syntax/events" aria-current=@(current === "events" ? "page" : false)>Eventos</a></li>
+          <li><a href="/docs/template-syntax/ref-and-raw" aria-current=@(current === "ref-and-raw" ? "page" : false)><code>ref</code> y <code>@@raw</code></a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

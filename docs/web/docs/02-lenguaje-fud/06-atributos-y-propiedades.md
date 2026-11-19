@@ -74,7 +74,7 @@ código (una librería, una animación): Fudic solo toca las que escribe él.
 > [!NOTE]
 > `class:` activa clases del `<style>` del propio componente, y por eso no se escribe en el tag del
 > componente, sino en un elemento de dentro de su template. Para dar estilo al host según una prop,
-> usa un atributo y [`:host()`](02-componentes.md#el-propio-tag-host).
+> usa un atributo y [`:host()`](02-componentes.md#el-host-atributos-y-eventos-del-propio-tag).
 
 ## Estilos en línea
 
@@ -130,7 +130,20 @@ error de tipos.
 A diferencia de un elemento nativo, una prop **sí** sale del servidor: el componente se pinta con
 ella.
 
-## Pasar un objeto entero: spread
+## Desestructuración, spread y resto
+
+Si vienes de React, esto ya lo conoces: `<Card {...post} />` y
+`const { label, ...rest } = props`. Fudic usa las mismas dos ideas, con la sintaxis de
+JavaScript, y las lleva a la plantilla.
+
+| React | Fudic |
+|---|---|
+| `<Card {...post} />` | `<miapp-card ...post></miapp-card>` |
+| `<Card {...post} title="Otro" />` | `<miapp-card ...post .title="Otro"></miapp-card>` |
+| `function Field({ label, ...rest })` | `const { label, ...rest } = props<…>()` |
+| `<input {...rest} />` | `<input ...rest>` |
+
+### Spread: pasar un objeto entero
 
 Cuando un objeto trae justo lo que un componente necesita, se pasa entero con `...`:
 
@@ -141,21 +154,27 @@ Cuando un objeto trae justo lo que un componente necesita, se pasa entero con `.
 ```
 
 - **Solo cruza lo que el componente declara.** Si `product` trae además `stock` o `sku` y el
-  componente no los pide, se quedan fuera.
+  componente no los pide, se quedan fuera. En React llegarían todas las claves, y habría que
+  filtrarlas a mano.
 - **Una prop opcional que falta** en el objeto toma su valor por defecto.
-- **Una prop escrita en el tag gana** al spread: aquí, `.badge`.
-- Tras los puntos va un nombre o un camino (`...row.data`), nunca una expresión.
+- **Una prop escrita en el tag gana** al spread, esté antes o después: aquí, `.badge`.
+- Detrás de los puntos va un nombre o un camino (`...row.data`), nunca una expresión.
 
-En un elemento nativo, el spread escribe un atributo por cada clave del objeto:
+En un **elemento nativo**, el spread escribe un atributo por cada clave del objeto, con las reglas
+de cualquier atributo (`true` lo escribe vacío, `false` lo quita):
 
 ```fud
 <input ...attrs>
 ```
 
-### Recoger el resto de las props
+El spread no va en el propio tag del componente ni en su `<template>`: esos no son elementos a los
+que la plantilla pase nada (`FUD0992`). Para el host, mira
+[El host](02-componentes.md#el-host-atributos-y-eventos-del-propio-tag).
+
+### Resto: recoger lo que no nombras
 
 Un componente que envuelve un elemento nativo suele usar una o dos props por su nombre y pasar el
-resto tal cual. La desestructuración las reúne con `...`:
+resto tal cual. La desestructuración de `props<T>()` las reúne con `...`:
 
 ```fud path=src/components/miapp-field/miapp-field.fud
 @code {
@@ -184,7 +203,74 @@ resto tal cual. La desestructuración las reúne con `...`:
 ```
 
 `rest` lleva `placeholder`, `required` y `maxlength`, y `<input ...rest>` los escribe como
-atributos, en el servidor y en el navegador. También se puede leer por campo: `@rest.placeholder`.
+atributos, en el servidor y en el navegador:
+
+```html
+<input maxlength="40" placeholder="Ana" required="">
+```
+
+A diferencia de React, el resto no es «todo lo demás que llegue»: son las claves que declara `T` y
+no nombras. Lo que el componente acepta sigue escrito en un sitio, tipado y documentado.
+
+### Reenviar el resto a otro componente
+
+El mismo resto se pasa a un componente. Es como se escribe un componente que envuelve a otro y
+solo añade algo:
+
+```fud path=src/components/miapp-link-card/miapp-link-card.fud
+<link rel="component" href="../miapp-card/miapp-card.fud">
+
+@code {
+  /** A card with a badge. Every other prop goes to miapp-card. */
+  const { badge, ...rest } = props<{
+    /** The text of the badge. */
+    badge: string;
+    title: string;
+    href: string;
+    variant?: "default" | "highlight";
+  }>();
+}
+
+<miapp-link-card>
+  <template shadowrootmode="open">
+    <miapp-card ...rest>
+      <span class="badge">@badge</span>
+    </miapp-card>
+  </template>
+</miapp-link-card>
+```
+
+### Desestructurar en la plantilla
+
+La cabecera de un `@foreach` y un bloque `@{ }` desestructuran igual, con valores por defecto,
+renombres y resto:
+
+```fud
+@foreach (const { id, views, ...card } of posts) key (id) {
+  <miapp-card ...card>
+    <small>@views visitas</small>
+  </miapp-card>
+}
+
+@foreach (const post of posts) key (post.id) {
+  @{ const { draft, ...shown } = post; }
+  <miapp-card ...shown .variant=@(draft ? "default" : "highlight")></miapp-card>
+}
+```
+
+### Lo que se puede hacer con un resto
+
+Un resto se puede usar de tres formas:
+
+- **Leer un campo**: `@rest.placeholder`.
+- **Pasarlo a un tag**: `<input ...rest>`, `<miapp-card ...rest>`.
+- **Desestructurarlo otra vez**: `@{ const { placeholder, ...others } = rest; }`.
+
+Cualquier otro uso, como recorrerlo o pasarlo a una expresión, es un error (`FUD1147`). Y solo
+valen patrones de objeto: `const [a, b] = pair` o `{ [key]: value }` son `FUD1146`. Las dos reglas
+salen de lo mismo: la plantilla tiene que poder traducirse a cualquier lenguaje de servidor
+([Vistas políglotas](01-sintaxis.md#vistas-políglotas)), y en Java o en Go un objeto no se recorre
+como en JavaScript.
 
 ## El estándar, en MDN
 

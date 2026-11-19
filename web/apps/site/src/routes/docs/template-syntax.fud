@@ -1,0 +1,267 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Sintaxis de plantillas · Fudic</title>
+  <meta name="description" content="La sintaxis de plantillas de Fudic: Razor adaptado a TypeScript, las cuatro piezas de un proyecto y las vistas políglotas que se pintan en cualquier servidor.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Sintaxis de plantillas · Fudic">
+  <meta property="og:description" content="La sintaxis de plantillas de Fudic: Razor adaptado a TypeScript, las cuatro piezas de un proyecto y las vistas políglotas que se pintan en cualquier servidor.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("template-syntax")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#why-razor">Por qué Razor</a>
+          <ul>
+            <li><a href="#maturity">Madurez</a></li>
+            <li><a href="#clarity">Claridad</a></li>
+            <li><a href="#adapted-to-typescript">Adaptada a TypeScript</a></li>
+          </ul>
+        </li>
+        <li><a href="#at-a-glance">La <code>@@</code>, de un vistazo</a></li>
+        <li><a href="#pieces">Las piezas</a></li>
+        <li><a href="#view-fills-gaps">La vista rellena huecos, no programa</a></li>
+        <li><a href="#polyglot-views">Vistas políglotas</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Sintaxis de plantillas</h1>
+
+<p>Un fichero <code>.fud</code> es HTML estándar con una sola marca añadida: la <code>@@</code>. Donde aparece una <code>@@</code> entra código; donde no, todo es HTML y CSS tal cual los lee el navegador.</p>
+
+<ui-code>
+<pre><code>&lt;ul&gt;
+  @@foreach (const post of posts) key (post.id) &#123;
+    &lt;li&gt;&lt;a href=@@post.url&gt;@@post.title&lt;/a&gt;&lt;/li&gt;
+  &#125; @@empty &#123;
+    &lt;li&gt;Todavía no hay entradas.&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Esta forma de escribir plantillas se llama <strong>Razor</strong>. Fudic la toma y la adapta a TypeScript.</p>
+
+<h2 id="why-razor">Por qué Razor</h2>
+
+<h3 id="maturity">Madurez</h3>
+
+<p>Razor no es un invento de Fudic. Microsoft lo presentó en 2010 con ASP.NET MVC 3 y desde entonces es la forma de escribir vistas en ASP.NET Core y en Blazor: más de quince años de uso en producción, en millones de páginas. Sus reglas ya están probadas, y sus casos raros, resueltos.</p>
+
+<p>La idea de fondo también se ha extendido: Angular adoptó en 2023 bloques con <code>@@</code> (<code>@@if</code>, <code>@@for</code>) para su control de flujo, en lugar de las directivas en atributos que usaba.</p>
+
+<p>Fudic conserva lo que funciona de Razor con su misma ortografía, para que nadie tenga que aprenderlo dos veces:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Razor</th><th scope="col">Fudic</th><th scope="col">Para qué</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@@nombre</code>, <code>@@(expr)</code></td><td>igual</td><td>escribir un valor</td></tr>
+    <tr><td><code>@@if</code>, <code>@@foreach</code>, <code>@@for</code>, <code>@@while</code>, <code>@@switch</code></td><td>igual</td><td>control de flujo</td></tr>
+    <tr><td><code>@@&#123; … &#125;</code></td><td>igual</td><td>declarar variables en la plantilla</td></tr>
+    <tr><td><code>@@* … *@@</code></td><td>igual</td><td>comentario que no llega al HTML</td></tr>
+    <tr><td><code>@@@@</code></td><td>igual</td><td>una <code>@@</code> literal</td></tr>
+    <tr><td><code>@@code &#123; … &#125;</code></td><td>igual (como en Blazor)</td><td>el código del componente</td></tr>
+    <tr><td><code>@@RenderBody()</code>, <code>@@RenderSection()</code>, <code>@@section</code></td><td>igual</td><td>layouts</td></tr>
+  </tbody>
+</table>
+
+<h3 id="clarity">Claridad</h3>
+
+<p>Con Razor, el HTML sigue siendo HTML. Compáralo con las alternativas:</p>
+
+<ul>
+  <li><strong>Directivas en atributos</strong> (<code>v-if</code>, <code>*ngIf</code>, <code>x-for</code>): el control de flujo se esconde dentro de un atributo y parece una propiedad más del elemento.</li>
+  <li><strong>JSX</strong>: el HTML pasa a ser JavaScript. <code>class</code> se escribe <code>className</code>, <code>for</code> se escribe <code>htmlFor</code>, y un bucle es un <code>.map()</code> que devuelve markup.</li>
+  <li><strong>Razor</strong>: el control de flujo se ve como control de flujo, y el HTML se escribe como se escribe en cualquier página. La <code>@@</code> marca exactamente dónde entra el código, y en ningún sitio más.</li>
+</ul>
+
+<p>El compilador distingue cada caso mirando lo que sigue a la <code>@@</code>. Una dirección como <code>ana@@ejemplo.com</code> sigue siendo texto, porque la <code>@@</code> va pegada a una palabra. Si alguna vez necesitas una <code>@@</code> suelta, escribe <code>@@@@</code>.</p>
+
+<h3 id="adapted-to-typescript">Adaptada a TypeScript</h3>
+
+<p>Razor nació para C#. Fudic cambia C# por <strong>TypeScript</strong> y conserva todo lo demás:</p>
+
+<ul>
+  <li>Las expresiones y las cabeceras de los bucles son TypeScript: <code>@@foreach (const x of xs)</code> es un <code>for…of</code>, y <code>@@for (let i = 0; i &lt; n; i++)</code> es el <code>for</code> de siempre.</li>
+  <li>El bloque <code>@@code &#123; … &#125;</code> es TypeScript estándar, con sus tipos y sus imports.</li>
+  <li>El editor comprueba los tipos de la plantilla igual que los del código: una prop que no existe o un valor del tipo equivocado se subraya mientras escribes.</li>
+</ul>
+
+<p>Y añade lo que un framework de componentes web necesita:</p>
+
+<ul>
+  <li><strong>El componente es su propio tag</strong>, envolviendo un <code>&lt;template shadowrootmode&gt;</code>: el Declarative Shadow DOM del estándar (capítulo 1).</li>
+  <li><strong>Todo bucle lleva su <code>key (…)</code></strong>, para que una lista que se reordena no pegue el estado a la fila equivocada.</li>
+  <li><strong>Prefijos para los bindings</strong>: <code>.prop</code>, <code>@@evento</code>, <code>class:</code>, <code>bus:</code>, <code>delegate:</code>.</li>
+</ul>
+
+<h2 id="at-a-glance">La <code>@@</code>, de un vistazo</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Escribes</th><th scope="col">Qué es</th><th scope="col">Dónde se explica</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@@post.title</code>, <code>@@count()</code></td><td>escribe un valor</td><td><a href="/docs/template-syntax/expressions">Expresiones</a></td></tr>
+    <tr><td><code>@@(a + b)</code></td><td>escribe una expresión</td><td><a href="/docs/template-syntax/expressions">Expresiones</a></td></tr>
+    <tr><td><code>@@if</code>, <code>@@foreach</code>, <code>@@switch</code>…</td><td>control de flujo</td><td><a href="/docs/template-syntax/expressions">Expresiones</a></td></tr>
+    <tr><td><code>title=@@x</code>, <code>class:on=@@x</code></td><td>atributos</td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>.title=@@x</code></td><td>una prop de un componente</td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>...post</code></td><td>pasa un objeto entero</td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>@@click=@@save</code></td><td>escucha un evento</td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td><code>delegate:row</code></td><td>delega el evento de una fila</td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td><code>bus:picked=@@heard</code></td><td>escucha el bus de eventos</td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td><code>ref="@@field"</code></td><td>guarda el elemento en una variable</td><td><a href="/docs/template-syntax/ref-and-raw"><code>ref</code> y <code>@@raw</code></a></td></tr>
+    <tr><td><code>@@raw(html)</code></td><td>escribe HTML en vez de texto</td><td><a href="/docs/template-syntax/ref-and-raw"><code>ref</code> y <code>@@raw</code></a></td></tr>
+    <tr><td><code>@@render card(…)</code></td><td>expande un snippet</td><td><a href="/docs/template-syntax/snippets">Snippets</a></td></tr>
+    <tr><td><code>@@RenderBody()</code></td><td>el hueco de un layout</td><td><a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="pieces">Las piezas</h2>
+
+<p>Todo en Fudic es un fichero <code>.fud</code>, y hay cuatro clases. El compilador sabe cuál es cada uno por su forma, no por su nombre ni por su carpeta:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Pieza</th><th scope="col">Su forma</th><th scope="col">Para qué</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Componente</strong></td><td>Su tag envolviendo un <code>&lt;template shadowrootmode&gt;</code></td><td>Una etiqueta propia, con su markup, sus estilos y su comportamiento.</td></tr>
+    <tr><td><strong>Ruta</strong></td><td>Empieza con <code>&lt;link rel="layout"&gt;</code></td><td>Una página: la URL sale de dónde está el fichero.</td></tr>
+    <tr><td><strong>Layout</strong></td><td>Empieza con <code>&lt;!DOCTYPE html&gt;</code></td><td>El documento completo en el que se pinta cada ruta.</td></tr>
+    <tr><td><strong>Snippet</strong></td><td>Declaraciones <code>@@snippet nombre(…) &#123; … &#125;</code></td><td>Un trozo de markup que se repite, sin JavaScript ni shadow DOM.</td></tr>
+  </tbody>
+</table>
+
+<ui-code .path="src/components/miapp-badge/miapp-badge.fud">
+<pre><code>&lt;miapp-badge&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;span class="badge"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;
+  &lt;/template&gt;
+&lt;/miapp-badge&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;h1&gt;Quiénes somos&lt;/h1&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="es"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;@@RenderBody()&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/snippets/ui.fud">
+<pre><code>@@snippet field(name: string, label: string) &#123;
+  &lt;label&gt;@@label &lt;input name=@@name&gt;&lt;/label&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Cada pieza tiene su página: <a href="/docs/template-syntax/components">Componentes</a>, <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a> y <a href="/docs/template-syntax/snippets">Snippets</a>.</p>
+
+<h2 id="view-fills-gaps">La vista rellena huecos, no programa</h2>
+
+<p>Lo que escribes en la plantilla (las expresiones, las condiciones, los bucles, los valores de los atributos) es una <strong>lista cerrada</strong> de construcciones. Una vista puede leer valores, compararlos, combinarlos y recorrer listas, pero no puede llamar a cualquier función ni usar cualquier método de JavaScript:</p>
+
+<ui-code>
+<pre><code>&lt;p&gt;@@(items().filter(i =&gt; i.done).length) de @@items().length hechas&lt;/p&gt;   ✓
+&lt;p&gt;@@items().find(i =&gt; i.done).title&lt;/p&gt;                                  ✗ FUD1140</code></pre>
+</ui-code>
+
+<p>La lógica vive donde se puede probar: en el <code>@@code</code> del componente, en un <code>computed</code>, en los datos que trae la página del servidor o en un pipe. La vista solo rellena los huecos.</p>
+
+<p>Los handlers de eventos no tienen esta limitación: son TypeScript completo, porque solo se ejecutan en el navegador. La lista entera está en <a href="/docs/template-syntax/expressions">Expresiones</a>.</p>
+
+<p>Hay dos razones para la lista cerrada. La primera es la claridad: una plantilla que no programa se lee de un vistazo. La segunda es la portabilidad.</p>
+
+<h2 id="polyglot-views">Vistas políglotas</h2>
+
+<p>Una página de Fudic se pinta en el servidor. Hoy ese servidor es Node, con TypeScript. Pero muchos equipos ya tienen su backend en otro lenguaje, y no quieren montar un servidor de Node solo para pintar HTML.</p>
+
+<p>Por eso la vista de Fudic está pensada para <strong>traducirse</strong>. Cada construcción de la lista tiene su equivalente exacto en seis lenguajes de servidor:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Lenguaje</th><th scope="col">Estado</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>TypeScript</strong> (Node)</td><td>Implementado.</td></tr>
+    <tr><td><strong>C#</strong></td><td>Diseñado.</td></tr>
+    <tr><td><strong>Java</strong></td><td>Diseñado.</td></tr>
+    <tr><td><strong>Go</strong></td><td>Diseñado.</td></tr>
+    <tr><td><strong>Rust</strong></td><td>Diseñado.</td></tr>
+    <tr><td><strong>Python</strong></td><td>Diseñado.</td></tr>
+  </tbody>
+</table>
+
+<p>El criterio para que algo entre en la vista no es que exista en JavaScript, sino que el compilador pueda traducirlo a los seis lenguajes <strong>con el mismo resultado</strong>. Por eso <code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code> y <code>.length</code> sí están (tienen equivalente directo en todos) y <code>find</code> o <code>toFixed</code> no. Lo que no existe igual en todos (formatear una fecha, un número o una moneda) lo pone el catálogo de Fudic, escrito una vez para cada lenguaje.</p>
+
+<p>Esta vista:</p>
+
+<ui-code>
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const tasks = signal&lt;readonly Task[]&gt;(data.tasks);
+  const done = computed(() =&gt; tasks().filter(t =&gt; t.done).length);
+&#125;
+
+&lt;p&gt;Hechas: @@done() de @@tasks().length&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>se traducirá así en el servidor de cada lenguaje (ilustrativo, del diseño):</p>
+
+<ui-code>
+<pre><code>var done = (double) tasks.Where(t =&gt; t.Done).ToList().Count;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>done := float64(len(fud.Filter(tasks, func(t Task) bool &#123; return t.Done &#125;)))</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>done = float(len([t for t in tasks if t.done]))</code></pre>
+</ui-code>
+
+<p>Los seis tienen que pintar exactamente los mismos bytes de HTML, y una suite de conformidad común lo comprueba fila a fila.</p>
+
+<ui-note .kind="important">
+  <p><strong>Solo se traduce el código de servidor.</strong> Lo que pinta la vista se traduce; lo que reacciona en el navegador no. Los handlers, los signals que cambian y la hidratación son siempre TypeScript, porque se ejecutan en el navegador. Quien escribe la vista no cambia de lenguaje: cambia el servidor que la pinta.</p>
+</ui-note>
+
+<ui-note>
+  <p>La regla vale también para Node: una vista que compila para un backend compila para todos. Si mañana el equipo cambia de servidor, la vista no se toca.</p>
+</ui-note>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template"><code>&lt;template&gt;</code></a>: el elemento que envuelve el shadow DOM de cada componente.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">Using custom elements</a>: por qué el tag de un componente lleva guion.</li>
+</ul>

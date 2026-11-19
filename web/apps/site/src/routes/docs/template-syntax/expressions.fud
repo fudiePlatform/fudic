@@ -1,0 +1,264 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Expresiones y control de flujo · Fudic</title>
+  <meta name="description" content="Expresiones y control de flujo en las plantillas de Fudic: la lista cerrada, condiciones, bucles con key, variables, pipes y comentarios.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/expressions">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Expresiones y control de flujo · Fudic">
+  <meta property="og:description" content="Expresiones y control de flujo en las plantillas de Fudic: la lista cerrada, condiciones, bucles con key, variables, pipes y comentarios.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/expressions">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("expressions")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#write-a-value">Escribir un valor</a></li>
+        <li><a href="#the-closed-list">Lo que puede escribirse en una expresión</a>
+          <ul>
+            <li><a href="#no-truthiness">Sin «truthiness»</a></li>
+            <li><a href="#collections">Colecciones: cinco piezas</a></li>
+          </ul>
+        </li>
+        <li><a href="#conditions">Condiciones</a></li>
+        <li><a href="#loops">Bucles</a></li>
+        <li><a href="#template-variables">Variables en la plantilla: <code>@@&#123; &#125;</code></a></li>
+        <li><a href="#pipes">Pipes: dar formato</a></li>
+        <li><a href="#comments">Comentarios y caracteres especiales</a></li>
+        <li><a href="#instead-of">En lugar de…</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Expresiones y control de flujo</h1>
+
+<h2 id="write-a-value">Escribir un valor</h2>
+
+<p><code>@@</code> seguido de un nombre escribe su valor en el HTML:</p>
+
+<ui-code>
+<pre><code>&lt;p&gt;Hola, @@user.name&lt;/p&gt;
+&lt;p&gt;Llevas @@count() clics&lt;/p&gt;
+&lt;p&gt;Primer elemento: @@items[0].title&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Tras la <code>@@</code> se admite una cadena de accesos: <code>.campo</code>, <code>?.campo</code>, <code>[índice]</code> y la lectura de un signal, <code>()</code>. La cadena termina en el primer carácter que no encaja, así que el punto final de una frase no forma parte de ella: <code>Hola, @@user.name.</code> escribe el nombre y luego el punto.</p>
+
+<p>Para todo lo demás (operadores, ternarios, plantillas de texto) se usan paréntesis:</p>
+
+<ui-code>
+<pre><code>&lt;p&gt;@@(price * quantity) €&lt;/p&gt;
+&lt;p&gt;@@(stock &gt; 0 ? "Disponible" : "Agotado")&lt;/p&gt;
+&lt;p&gt;@@(`$&#123;user.name&#125; ($&#123;user.role&#125;)`)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Lo que se escribe así <strong>siempre se escapa</strong>: un <code>&lt;</code> en el texto llega como texto, nunca como una etiqueta. Para escribir HTML hay una vía aparte, <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw"><code>ref</code> y <code>@@raw</code></a>).</p>
+
+<p>Un valor escribe su texto si es un string o un número, <code>true</code> o <code>false</code> si es un booleano, y nada si es <code>null</code> o <code>undefined</code>. Una fecha se escribe siempre a través de un pipe (abajo).</p>
+
+<h2 id="the-closed-list">Lo que puede escribirse en una expresión</h2>
+
+<p>La vista es una <strong>lista cerrada</strong>: lo que no está aquí es un error, aunque sea JavaScript válido. Es lo que permite traducirla a cualquier lenguaje de servidor (<a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>).</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Puedes escribir</th><th scope="col">Ejemplo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Literales</td><td><code>"activo"</code>, <code>3.5</code>, <code>true</code>, <code>null</code></td></tr>
+    <tr><td>Nombres de la plantilla, de <code>@@code</code> y <code>data</code></td><td><code>post</code>, <code>count()</code>, <code>data.posts</code></td></tr>
+    <tr><td>Acceso a campos y a listas</td><td><code>post.author.name</code>, <code>post?.author</code>, <code>items[0]</code></td></tr>
+    <tr><td>Aritmética</td><td><code>+ - * / %</code></td></tr>
+    <tr><td>Comparación</td><td><code>===</code>, <code>!==</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td></tr>
+    <tr><td>Lógica, sobre booleanos</td><td><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></td></tr>
+    <tr><td>Valor por defecto</td><td><code>title ?? "Sin título"</code></td></tr>
+    <tr><td>Ternario</td><td><code>ok ? "Sí" : "No"</code></td></tr>
+    <tr><td>Plantilla de texto</td><td>`<code> </code>/blog/$&#123;post.slug&#125;<code> </code>`</td></tr>
+    <tr><td>Lectura de un signal o un <code>computed</code></td><td><code>count()</code>, <code>total()</code></td></tr>
+    <tr><td>Cinco operaciones de colección</td><td><code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code>, <code>.length</code></td></tr>
+    <tr><td>Un pipe</td><td><code>price | euros</code></td></tr>
+  </tbody>
+</table>
+
+<p>No hay llamadas a funciones de <code>@@code</code>, ni métodos como <code>find</code>, <code>join</code> o <code>toUpperCase</code>, ni <code>new</code>, ni globales como <code>Math</code> o <code>Date</code>. Casi todo se escribe combinando las cinco operaciones de colección (abajo), y un cálculo largo se nombra en <code>@@code</code> con un <code>computed</code>:</p>
+
+<ui-code>
+<pre><code>@@code &#123;
+  import &#123; computed &#125; from "@@fudic/core";
+
+  const names = computed(() =&gt;
+    authors().reduce((text, a, i) =&gt; i === 0 ? a.name : `$&#123;text&#125;, $&#123;a.name&#125;`, ""));
+&#125;
+
+&lt;p&gt;Por @@names()&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>El cuerpo de un <code>computed</code> que lee la vista sigue la misma lista, porque el servidor también lo evalúa. Lo que necesite JavaScript completo se calcula en el servidor, con los datos de la página (capítulo 5), en un pipe o en un handler.</p>
+
+<h3 id="no-truthiness">Sin «truthiness»</h3>
+
+<p>Una condición es siempre un booleano. <code>""</code>, <code>0</code> o una lista vacía no cuentan como falso, porque cada lenguaje lo decide de una forma distinta:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">En lugar de…</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@@if (name)</code></td><td><code>@@if (name !== "")</code></td></tr>
+    <tr><td><code>title || "Sin título"</code></td><td><code>title ?? "Sin título"</code></td></tr>
+    <tr><td><code>count &amp;&amp; "…"</code></td><td><code>count &gt; 0 ? "…" : ""</code></td></tr>
+    <tr><td><code>@@if (items.length)</code></td><td><code>@@empty</code> (abajo)</td></tr>
+  </tbody>
+</table>
+
+<p><code>null</code> y <code>undefined</code> significan lo mismo: <strong>ausente</strong>. <code>x === null</code> y <code>x === undefined</code> preguntan las dos «¿falta?».</p>
+
+<h3 id="collections">Colecciones: cinco piezas</h3>
+
+<p><code>filter</code>, <code>map</code>, <code>reduce</code> (siempre con su valor inicial), <code>toSorted</code> y <code>.length</code> cubren cualquier cálculo sobre una lista. Ninguna modifica la lista original:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Necesitas</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Contar los que cumplen</td><td><code>tasks().filter(t =&gt; t.done).length</code></td></tr>
+    <tr><td>¿Hay alguno?</td><td><code>tasks().filter(t =&gt; t.urgent).length &gt; 0</code></td></tr>
+    <tr><td>El primero que cumple</td><td><code>tasks().filter(t =&gt; t.id === selected())[0]</code></td></tr>
+    <tr><td>Los tres primeros</td><td><code>tasks().filter((t, i) =&gt; i &lt; 3)</code></td></tr>
+    <tr><td>Sumar</td><td><code>lines.reduce((sum, l) =&gt; sum + l.price * l.qty, 0)</code></td></tr>
+    <tr><td>Ordenar</td><td><code>tasks().toSorted((a, b) =&gt; a.priority - b.priority)</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="conditions">Condiciones</h2>
+
+<ui-code>
+<pre><code>@@if (user === null) &#123;
+  &lt;a href="/login"&gt;Entrar&lt;/a&gt;
+&#125; else if (user.admin) &#123;
+  &lt;a href="/admin"&gt;Panel&lt;/a&gt;
+&#125; else &#123;
+  &lt;span&gt;Hola, @@user.name&lt;/span&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Para elegir entre varios valores, <code>@@switch</code>. Cada <code>case</code> es independiente, sin <code>break</code>:</p>
+
+<ui-code>
+<pre><code>@@switch (order.status) &#123;
+  case "pending":
+    &lt;p&gt;Lo estamos preparando.&lt;/p&gt;
+  case "sent":
+    &lt;p&gt;Va de camino.&lt;/p&gt;
+  default:
+    &lt;p&gt;Entregado.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="loops">Bucles</h2>
+
+<p><code>@@foreach</code> recorre una lista. <strong>Todo bucle lleva su <code>key (…)</code></strong>, que identifica cada fila:</p>
+
+<ui-code>
+<pre><code>&lt;ul&gt;
+  @@foreach (const task of tasks()) key (task.id) &#123;
+    &lt;li&gt;@@task.title&lt;/li&gt;
+  &#125; @@empty &#123;
+    &lt;li&gt;No hay tareas.&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La key</strong> es un string o un número único por fila. Cuando la lista se reordena, cada fila conserva su estado (el foco, lo que había escrito, un componente hidratado), porque Fudic sabe cuál es cuál. Sin key no compila: no hay valor por defecto, porque el índice da un resultado equivocado en cuanto la lista cambia de orden.</li>
+  <li><strong><code>@@empty</code></strong> va justo detrás del bucle y se pinta cuando no da ninguna vuelta.</li>
+  <li><strong>La cabecera admite desestructuración</strong>: <code>@@foreach (const &#123; id, title, done = false &#125; of tasks()) key (id)</code>.</li>
+</ul>
+
+<p><code>@@for</code> es el <code>for</code> con índice de siempre, y <code>@@while</code> repite mientras se cumpla la condición. Los dos llevan su key igual:</p>
+
+<ui-code>
+<pre><code>@@for (let i = 1; i &lt;= pages; i++) key (i) &#123;
+  &lt;a href=@@(`?page=$&#123;i&#125;`)&gt;@@i&lt;/a&gt;
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="template-variables">Variables en la plantilla: <code>@@&#123; &#125;</code></h2>
+
+<p>Un bloque <code>@@&#123; … &#125;</code> declara variables para lo que sigue. Admite <code>const</code>, <code>let</code> y reasignaciones, nada más:</p>
+
+<ui-code>
+<pre><code>@@foreach (const line of lines) key (line.id) &#123;
+  @@&#123; const subtotal = line.price * line.qty; &#125;
+  &lt;tr&gt;
+    &lt;td&gt;@@line.name&lt;/td&gt;
+    &lt;td&gt;@@(subtotal | euros)&lt;/td&gt;
+  &lt;/tr&gt;
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="pipes">Pipes: dar formato</h2>
+
+<p>Un pipe convierte un valor en texto, en el idioma de la página. Se configura una vez en <code>@@code</code> y se aplica en la vista con <code>|</code>:</p>
+
+<ui-code>
+<pre><code>@@code &#123;
+  import &#123; currency, date &#125; from "@@fudic/core";
+
+  const euros = currency("EUR");
+  const longDate = date(&#123; dateStyle: "long", timeZone: "Europe/Madrid" &#125;);
+&#125;
+
+&lt;p&gt;Total: @@(total() | euros)&lt;/p&gt;
+&lt;p&gt;Publicado el @@(post.published | longDate)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Fudic trae <code>date</code>, <code>number</code>, <code>currency</code>, <code>percent</code>, <code>relativeTime</code> y <code>list</code>, y puedes escribir los tuyos. Los pipes formatean igual en el servidor y en el navegador (capítulo 7).</p>
+
+<h2 id="comments">Comentarios y caracteres especiales</h2>
+
+<ui-code>
+<pre><code>@@* Esto no llega al HTML. *@@
+&lt;!-- Esto sí: es un comentario HTML estándar. --&gt;
+
+&lt;p&gt;Escríbenos a hola@@ejemplo.com&lt;/p&gt;   @@* una @@ pegada a una palabra es texto *@@
+&lt;p&gt;Síguenos en @@@@fudic&lt;/p&gt;             @@* @@@@ escribe una @@ *@@</code></pre>
+</ui-code>
+
+<p>Dentro del cuerpo de un <code>@@if</code> o de un bucle, una <code>&#125;</code> cierra el bloque. Para escribir una llave literal, usa su entidad HTML: <code>&amp;#123;</code> y <code>&amp;#125;</code>.</p>
+
+<h2 id="instead-of">En lugar de…</h2>
+
+<p>Las costumbres de JavaScript que más se escriben, y su forma en la vista:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">En lugar de…</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>xs.find(x =&gt; x.id === id)</code></td><td><code>xs.filter(x =&gt; x.id === id)[0]</code></td></tr>
+    <tr><td><code>xs.some(x =&gt; x.ok)</code></td><td><code>xs.filter(x =&gt; x.ok).length &gt; 0</code></td></tr>
+    <tr><td><code>xs.includes(v)</code></td><td><code>xs.filter(x =&gt; x === v).length &gt; 0</code></td></tr>
+    <tr><td><code>xs.slice(0, 3)</code></td><td><code>xs.filter((x, i) =&gt; i &lt; 3)</code></td></tr>
+    <tr><td><code>xs.sort(cmp)</code></td><td><code>xs.toSorted(cmp)</code></td></tr>
+    <tr><td><code>n.toFixed(2)</code>, <code>d.toLocaleDateString()</code></td><td>un pipe <code>number</code> o <code>date</code></td></tr>
+    <tr><td><code>format(x)</code>, una función de <code>@@code</code></td><td>un <code>computed</code> o un pipe</td></tr>
+    <tr><td><code>new Date()</code></td><td><code>const today = signal(now())</code> en <code>@@code</code></td></tr>
+    <tr><td><code>a == b</code></td><td><code>a === b</code></td></tr>
+    <tr><td><code>&#123; a: 1 &#125;</code> o <code>[1, 2]</code> en la plantilla</td><td>una <code>const</code> en <code>@@code</code></td></tr>
+  </tbody>
+</table>
+
+<p>Si escribes una de la columna izquierda, el editor la subraya con su código de error y su explicación.</p>

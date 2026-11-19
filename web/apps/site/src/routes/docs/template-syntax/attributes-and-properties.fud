@@ -1,0 +1,314 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Atributos y propiedades · Fudic</title>
+  <meta name="description" content="Atributos y propiedades en Fudic: atributos con expresión, clases, props de un componente, propiedades del DOM, spread y resto de props.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/attributes-and-properties">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Atributos y propiedades · Fudic">
+  <meta property="og:description" content="Atributos y propiedades en Fudic: atributos con expresión, clases, props de un componente, propiedades del DOM, spread y resto de props.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/attributes-and-properties">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("attributes-and-properties")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#attributes">Atributos</a>
+          <ul>
+            <li><a href="#safe-urls">URLs seguras</a></li>
+          </ul>
+        </li>
+        <li><a href="#classes">Clases</a></li>
+        <li><a href="#inline-styles">Estilos en línea</a></li>
+        <li><a href="#dom-properties">Propiedades del DOM: <code>.prop</code> en un elemento nativo</a></li>
+        <li><a href="#component-props">Props de un componente</a></li>
+        <li><a href="#spread-and-rest">Desestructuración, spread y resto</a>
+          <ul>
+            <li><a href="#spread">Spread: pasar un objeto entero</a></li>
+            <li><a href="#rest">Resto: recoger lo que no nombras</a></li>
+            <li><a href="#forward-rest">Reenviar el resto a otro componente</a></li>
+            <li><a href="#destructuring-in-the-template">Desestructurar en la plantilla</a></li>
+            <li><a href="#rest-rules">Lo que se puede hacer con un resto</a></li>
+          </ul>
+        </li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Atributos y propiedades</h1>
+
+<p>Un elemento recibe valores de dos formas, y el estándar las distingue: el <strong>atributo</strong>, que está en el HTML (<code>&lt;input value="hola"&gt;</code>), y la <strong>propiedad</strong>, que vive en el objeto del DOM (<code>input.value</code>). En Fudic la diferencia se escribe con un punto:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Escribes</th><th scope="col">Qué es</th><th scope="col">Sale del servidor</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>title=@@x</code></td><td>un atributo HTML</td><td>sí, en el HTML</td></tr>
+    <tr><td><code>.value=@@x</code> en un elemento nativo</td><td>una propiedad del DOM</td><td>no: se asigna en el navegador</td></tr>
+    <tr><td><code>.title=@@x</code> en un componente</td><td>una prop del componente</td><td>sí: el componente se pinta con ella</td></tr>
+  </tbody>
+</table>
+
+<h2 id="attributes">Atributos</h2>
+
+<p>Un atributo con <code>@@</code> toma su valor de una expresión. Si el valor es una sola expresión, puede ir sin comillas; si mezcla texto y expresiones, va entre comillas:</p>
+
+<ui-code>
+<pre><code>&lt;img src=@@photo.url alt=@@photo.caption&gt;
+&lt;a href="/blog/@@post.slug" title="Leer «@@post.title»"&gt;@@post.title&lt;/a&gt;</code></pre>
+</ui-code>
+
+<p>El valor decide qué se escribe:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Valor</th><th scope="col">Resultado</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>un string o un número</td><td>el atributo con ese texto</td></tr>
+    <tr><td><code>true</code></td><td>el atributo vacío: <code>&lt;button disabled&gt;</code></td></tr>
+    <tr><td><code>false</code>, <code>null</code> o <code>undefined</code></td><td>ningún atributo</td></tr>
+  </tbody>
+</table>
+
+<p>Es lo que necesitan los <a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML">atributos booleanos</a> del estándar, que significan «sí» por estar presentes, tengan el valor que tengan:</p>
+
+<ui-code>
+<pre><code>&lt;button type="submit" disabled=@@saving()&gt;Guardar&lt;/button&gt;
+&lt;details open=@@expanded()&gt;…&lt;/details&gt;</code></pre>
+</ui-code>
+
+<p>El servidor escribe el atributo en el HTML, y en el navegador se actualiza cada vez que cambia lo que lee.</p>
+
+<h3 id="safe-urls">URLs seguras</h3>
+
+<p>Un <code>href</code> o un <code>src</code> cuyo valor empieza por una expresión pasa por una guarda: si la URL usa un esquema peligroso, como <code>javascript:</code>, se escribe una URL inerte en su lugar. Es la misma función en el servidor y en el navegador.</p>
+
+<ui-code>
+<pre><code>&lt;a href=@@link.url&gt;@@link.text&lt;/a&gt;          @@* guarded: the value decides the scheme *@@
+&lt;a href="/users/@@user.id"&gt;Perfil&lt;/a&gt;     @@* not guarded: it starts with "/" *@@</code></pre>
+</ui-code>
+
+<p>Si una URL viene de una fuente de confianza y la guarda la rechazaría, márcala en <code>@@code</code> con <code>trustedUrl(…)</code>, de <code>@@fudic/dom</code>.</p>
+
+<h2 id="classes">Clases</h2>
+
+<p><code>class</code> admite texto y expresiones, como cualquier atributo:</p>
+
+<ui-code>
+<pre><code>&lt;li class="item @@status"&gt;…&lt;/li&gt;</code></pre>
+</ui-code>
+
+<p>Para encender o apagar <strong>una</strong> clase, <code>class:nombre=@@condición</code>. La condición es un booleano:</p>
+
+<ui-code>
+<pre><code>&lt;li class="item" class:done=@@task.done class:urgent=@@(task.priority === 1)&gt;@@task.title&lt;/li&gt;</code></pre>
+</ui-code>
+
+<p>Las dos formas conviven en el mismo elemento, y ninguna borra las clases que haya puesto otro código (una librería, una animación): Fudic solo toca las que escribe él.</p>
+
+<ui-note>
+  <p><code>class:</code> activa clases del <code>&lt;style&gt;</code> del propio componente, y por eso no se escribe en el tag del componente, sino en un elemento de dentro de su template. Para dar estilo al host según una prop, usa un atributo y <a href="/docs/template-syntax/components#host"><code>:host()</code></a>.</p>
+</ui-note>
+
+<h2 id="inline-styles">Estilos en línea</h2>
+
+<p>Un <code>style</code> escrito tal cual funciona como en cualquier HTML. Lo que no se admite es un <code>style</code> con una expresión: el CSS puede cargar recursos (<code>url(…)</code>), y la guarda de seguridad no puede avalar lo que traiga el valor (<code>FUD0915</code>).</p>
+
+<ui-code>
+<pre><code>&lt;p style="margin: 0"&gt;Fijo: funciona.&lt;/p&gt;
+&lt;p style="color: @@color()"&gt;Dinámico: FUD0915.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Para lo que cambia con el estado, define las variantes en el <code>&lt;style&gt;</code> del componente y elige una con <code>class:</code>. El CSS se queda en la hoja de estilos, y la plantilla solo decide cuál se aplica.</p>
+
+<h2 id="dom-properties">Propiedades del DOM: <code>.prop</code> en un elemento nativo</h2>
+
+<p>En un elemento nativo (<code>&lt;input&gt;</code>, <code>&lt;video&gt;</code>, <code>&lt;dialog&gt;</code>…), un punto delante asigna una <strong>propiedad</strong> del objeto del DOM, no un atributo:</p>
+
+<ui-code>
+<pre><code>&lt;input type="checkbox" .indeterminate=@@partial()&gt;
+&lt;video .muted=@@muted() .playbackRate=@@speed()&gt;&lt;/video&gt;</code></pre>
+</ui-code>
+
+<p>Una propiedad solo existe en el navegador, así que <strong>no sale en el HTML del servidor</strong>: se asigna cuando el componente se hidrata. Úsala para lo que no tiene atributo, como <code>indeterminate</code>, o para lo que el atributo no controla. Para que algo se vea ya en la primera pintura, usa el atributo:</p>
+
+<ui-code>
+<pre><code>&lt;input value=@@name()&gt;       @@* in the server's HTML: the first value the user sees *@@
+&lt;input .value=@@name()&gt;      @@* only in the browser, after hydrating *@@</code></pre>
+</ui-code>
+
+<ui-note .kind="tip">
+  <p>En un formulario no hace falta ninguna de las dos: <code>control=@@form.campo</code> enlaza el campo con su modelo en los dos sentidos, con validación (capítulo 6).</p>
+</ui-note>
+
+<h2 id="component-props">Props de un componente</h2>
+
+<p>En un componente, el punto pasa una <strong>prop</strong>, la que el componente declara en <code>props&lt;T&gt;()</code> (<a href="/docs/template-syntax/components#props">Componentes</a>). El valor puede escribirse de tres formas:</p>
+
+<ui-code>
+<pre><code>&lt;miapp-alert .text="Guardado"&gt;&lt;/miapp-alert&gt;          @@* a string, in quotes *@@
+&lt;miapp-pager .page=3 .loop=true .label=null&gt;&lt;/miapp-pager&gt;   @@* a number, true, false or null, bare *@@
+&lt;miapp-alert .text=@@message&gt;&lt;/miapp-alert&gt;            @@* an expression *@@</code></pre>
+</ui-code>
+
+<p>Las comillas siempre significan texto: <code>.page="3"</code> es el string <code>"3"</code>, y en una prop numérica es un error de tipos.</p>
+
+<p>A diferencia de un elemento nativo, una prop <strong>sí</strong> sale del servidor: el componente se pinta con ella.</p>
+
+<h2 id="spread-and-rest">Desestructuración, spread y resto</h2>
+
+<p>Si vienes de React, esto ya lo conoces: <code>&lt;Card &#123;...post&#125; /&gt;</code> y <code>const &#123; label, ...rest &#125; = props</code>. Fudic usa las mismas dos ideas, con la sintaxis de JavaScript, y las lleva a la plantilla.</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">React</th><th scope="col">Fudic</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;Card &#123;...post&#125; /&gt;</code></td><td><code>&lt;miapp-card ...post&gt;&lt;/miapp-card&gt;</code></td></tr>
+    <tr><td><code>&lt;Card &#123;...post&#125; title="Otro" /&gt;</code></td><td><code>&lt;miapp-card ...post .title="Otro"&gt;&lt;/miapp-card&gt;</code></td></tr>
+    <tr><td><code>function Field(&#123; label, ...rest &#125;)</code></td><td><code>const &#123; label, ...rest &#125; = props&lt;…&gt;()</code></td></tr>
+    <tr><td><code>&lt;input &#123;...rest&#125; /&gt;</code></td><td><code>&lt;input ...rest&gt;</code></td></tr>
+  </tbody>
+</table>
+
+<h3 id="spread">Spread: pasar un objeto entero</h3>
+
+<p>Cuando un objeto trae justo lo que un componente necesita, se pasa entero con <code>...</code>:</p>
+
+<ui-code>
+<pre><code>@@foreach (const product of products()) key (product.id) &#123;
+  &lt;miapp-product ...product .badge="Oferta"&gt;&lt;/miapp-product&gt;
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Solo cruza lo que el componente declara.</strong> Si <code>product</code> trae además <code>stock</code> o <code>sku</code> y el componente no los pide, se quedan fuera. En React llegarían todas las claves, y habría que filtrarlas a mano.</li>
+  <li><strong>Una prop opcional que falta</strong> en el objeto toma su valor por defecto.</li>
+  <li><strong>Una prop escrita en el tag gana</strong> al spread, esté antes o después: aquí, <code>.badge</code>.</li>
+  <li>Detrás de los puntos va un nombre o un camino (<code>...row.data</code>), nunca una expresión.</li>
+</ul>
+
+<p>En un <strong>elemento nativo</strong>, el spread escribe un atributo por cada clave del objeto, con las reglas de cualquier atributo (<code>true</code> lo escribe vacío, <code>false</code> lo quita):</p>
+
+<ui-code>
+<pre><code>&lt;input ...attrs&gt;</code></pre>
+</ui-code>
+
+<p>El spread no va en el propio tag del componente ni en su <code>&lt;template&gt;</code>: esos no son elementos a los que la plantilla pase nada (<code>FUD0992</code>). Para el host, mira <a href="/docs/template-syntax/components#host">El host</a>.</p>
+
+<h3 id="rest">Resto: recoger lo que no nombras</h3>
+
+<p>Un componente que envuelve un elemento nativo suele usar una o dos props por su nombre y pasar el resto tal cual. La desestructuración de <code>props&lt;T&gt;()</code> las reúne con <code>...</code>:</p>
+
+<ui-code .path="src/components/miapp-field/miapp-field.fud">
+<pre><code>@@code &#123;
+  /** A labelled text field. Every other prop goes to the input as an attribute. */
+  const &#123; label, ...rest &#125; = props&lt;&#123;
+    /** The text of the label. */
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    maxlength?: number;
+  &#125;&gt;();
+&#125;
+
+&lt;miapp-field&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;label&gt;
+      &lt;span&gt;@@label&lt;/span&gt;
+      &lt;input ...rest&gt;
+    &lt;/label&gt;
+  &lt;/template&gt;
+&lt;/miapp-field&gt;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;miapp-field .label="Nombre" .placeholder="Ana" .required=true .maxlength=40&gt;&lt;/miapp-field&gt;</code></pre>
+</ui-code>
+
+<p><code>rest</code> lleva <code>placeholder</code>, <code>required</code> y <code>maxlength</code>, y <code>&lt;input ...rest&gt;</code> los escribe como atributos, en el servidor y en el navegador:</p>
+
+<ui-code>
+<pre><code>&lt;input maxlength="40" placeholder="Ana" required=""&gt;</code></pre>
+</ui-code>
+
+<p>A diferencia de React, el resto no es «todo lo demás que llegue»: son las claves que declara <code>T</code> y no nombras. Lo que el componente acepta sigue escrito en un sitio, tipado y documentado.</p>
+
+<h3 id="forward-rest">Reenviar el resto a otro componente</h3>
+
+<p>El mismo resto se pasa a un componente. Es como se escribe un componente que envuelve a otro y solo añade algo:</p>
+
+<ui-code .path="src/components/miapp-link-card/miapp-link-card.fud">
+<pre><code>&lt;link rel="component" href="../miapp-card/miapp-card.fud"&gt;
+
+@@code &#123;
+  /** A card with a badge. Every other prop goes to miapp-card. */
+  const &#123; badge, ...rest &#125; = props&lt;&#123;
+    /** The text of the badge. */
+    badge: string;
+    title: string;
+    href: string;
+    variant?: "default" | "highlight";
+  &#125;&gt;();
+&#125;
+
+&lt;miapp-link-card&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;miapp-card ...rest&gt;
+      &lt;span class="badge"&gt;@@badge&lt;/span&gt;
+    &lt;/miapp-card&gt;
+  &lt;/template&gt;
+&lt;/miapp-link-card&gt;</code></pre>
+</ui-code>
+
+<h3 id="destructuring-in-the-template">Desestructurar en la plantilla</h3>
+
+<p>La cabecera de un <code>@@foreach</code> y un bloque <code>@@&#123; &#125;</code> desestructuran igual, con valores por defecto, renombres y resto:</p>
+
+<ui-code>
+<pre><code>@@foreach (const &#123; id, views, ...card &#125; of posts) key (id) &#123;
+  &lt;miapp-card ...card&gt;
+    &lt;small&gt;@@views visitas&lt;/small&gt;
+  &lt;/miapp-card&gt;
+&#125;
+
+@@foreach (const post of posts) key (post.id) &#123;
+  @@&#123; const &#123; draft, ...shown &#125; = post; &#125;
+  &lt;miapp-card ...shown .variant=@@(draft ? "default" : "highlight")&gt;&lt;/miapp-card&gt;
+&#125;</code></pre>
+</ui-code>
+
+<h3 id="rest-rules">Lo que se puede hacer con un resto</h3>
+
+<p>Un resto se puede usar de tres formas:</p>
+
+<ul>
+  <li><strong>Leer un campo</strong>: <code>@@rest.placeholder</code>.</li>
+  <li><strong>Pasarlo a un tag</strong>: <code>&lt;input ...rest&gt;</code>, <code>&lt;miapp-card ...rest&gt;</code>.</li>
+  <li><strong>Desestructurarlo otra vez</strong>: <code>@@&#123; const &#123; placeholder, ...others &#125; = rest; &#125;</code>.</li>
+</ul>
+
+<p>Cualquier otro uso, como recorrerlo o pasarlo a una expresión, es un error (<code>FUD1147</code>). Y solo valen patrones de objeto: <code>const [a, b] = pair</code> o <code>&#123; [key]: value &#125;</code> son <code>FUD1146</code>. Las dos reglas salen de lo mismo: la plantilla tiene que poder traducirse a cualquier lenguaje de servidor (<a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>), y en Java o en Go un objeto no se recorre como en JavaScript.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes#content_versus_idl_attributes">Atributos de contenido frente a atributos IDL</a>: la diferencia entre atributo y propiedad.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML">Atributos booleanos</a>: por qué basta con que estén presentes.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList"><code>Element.classList</code></a>: la API que enciende y apaga clases sin tocar las demás.</li>
+</ul>

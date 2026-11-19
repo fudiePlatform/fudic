@@ -1,0 +1,131 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>ref y @@raw · Fudic</title>
+  <meta name="description" content="ref y @@raw en Fudic: el elemento en una variable para el foco o un dialog, y HTML avalado con trustedHtml bajo Trusted Types.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/ref-and-raw">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ref y @@raw · Fudic">
+  <meta property="og:description" content="ref y @@raw en Fudic: el elemento en una variable para el foco o un dialog, y HTML avalado con trustedHtml bajo Trusted Types.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/ref-and-raw">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("ref-and-raw")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#ref"><code>ref</code>: el elemento, en una variable</a></li>
+        <li><a href="#raw"><code>@@raw</code>: escribir HTML</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>ref</code> y <code>@@raw</code></h1>
+
+<p>Casi todo en una plantilla es declarativo: escribes qué se pinta y Fudic lo mantiene al día. Para los pocos casos en que hace falta salir de ese modelo hay dos vías, y las dos son explícitas.</p>
+
+<h2 id="ref"><code>ref</code>: el elemento, en una variable</h2>
+
+<p>Algunas cosas solo se hacen con el elemento en la mano: darle el foco, medirlo, abrir un <code>&lt;dialog&gt;</code>, pasárselo a una librería. Para eso, declara una variable en <code>@@code</code> y apúntala con <code>ref</code>:</p>
+
+<ui-code .path="src/components/miapp-search/miapp-search.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  let field: HTMLInputElement | null = null;
+  const text = signal("");
+
+  function typed(value: string) &#123;
+    text.set(value);
+  &#125;
+
+  function clear() &#123;
+    text.set("");
+    field?.focus();
+  &#125;
+&#125;
+
+&lt;miapp-search&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;input type="search" aria-label="Buscar" ref="@@field" value=@@text() @@input=@@typed($value)&gt;
+    &lt;button type="button" @@click=@@clear&gt;Borrar&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/miapp-search&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La variable es tuya</strong>: la declaras tú, con su tipo, y Fudic solo le asigna el elemento.</li>
+  <li><strong>Vale <code>null</code></strong> hasta que el elemento existe, y vuelve a <code>null</code> cuando desaparece. Dentro de un <code>@@if</code> que está oculto, es <code>null</code>.</li>
+  <li><strong>Se usa desde handlers y efectos</strong>, nunca en la plantilla: el servidor no tiene elementos que darle.</li>
+  <li><strong>Un solo nombre</strong>, y nunca dentro de un bucle: serían varios elementos para una sola variable. Para actuar sobre una fila, usa la delegación (<a href="/docs/template-syntax/events#delegation">Eventos</a>).</li>
+</ul>
+
+<ui-code .path="src/components/miapp-confirm/miapp-confirm.fud">
+<pre><code>@@code &#123;
+  let dialog: HTMLDialogElement | null = null;
+&#125;
+
+&lt;miapp-confirm&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@(() =&gt; dialog?.showModal())&gt;Borrar cuenta&lt;/button&gt;
+    &lt;dialog ref="@@dialog"&gt;
+      &lt;slot&gt;&lt;/slot&gt;
+      &lt;form method="dialog"&gt;
+        &lt;button value="cancel"&gt;Cancelar&lt;/button&gt;
+        &lt;button value="ok"&gt;Borrar&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/dialog&gt;
+  &lt;/template&gt;
+&lt;/miapp-confirm&gt;</code></pre>
+</ui-code>
+
+<h2 id="raw"><code>@@raw</code>: escribir HTML</h2>
+
+<p>Todo lo que escribe una expresión se escapa: si el texto trae <code>&lt;em&gt;</code>, el usuario ve <code>&lt;em&gt;</code>. Para escribir un valor <strong>como HTML</strong> (el cuerpo de un artículo que viene de un CMS, por ejemplo) está <code>@@raw</code>, con dos condiciones:</p>
+
+<ui-code .path="src/components/miapp-article/miapp-article.fud">
+<pre><code>@@code &#123;
+  import &#123; trustedHtml, type TrustedHTML &#125; from "@@fudic/dom";
+
+  const &#123; body &#125; = props&lt;&#123; body: TrustedHTML &#125;&gt;();
+  const notice = trustedHtml("&lt;p&gt;Artículo &lt;strong&gt;actualizado&lt;/strong&gt;.&lt;/p&gt;");
+&#125;
+
+&lt;miapp-article&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;aside&gt;@@raw(notice)&lt;/aside&gt;
+    &lt;div class="body"&gt;@@raw(body)&lt;/div&gt;
+  &lt;/template&gt;
+&lt;/miapp-article&gt;</code></pre>
+</ui-code>
+
+<ol>
+  <li><strong>El valor tiene que venir de <code>trustedHtml(…)</code>.</strong> Con esa marca dices «este HTML lo avalo yo». Un string sin marcar se escribe escapado, como cualquier <code>@@expr</code>, y el editor avisa con un error de tipos.</li>
+  <li><strong><code>@@raw</code> es el único contenido de su elemento.</strong> El elemento es dueño de todo lo que hay dentro, y cuando el valor cambia se reescribe ese contenido y nada más.</li>
+</ol>
+
+<ui-note .kind="important">
+  <p><strong><code>trustedHtml</code> no limpia nada.</strong> Marca un valor como seguro; no lo hace seguro. Si el HTML viene de lo que escribe un usuario, límpialo antes en el servidor. Con la política de seguridad que trae una app nueva, <code>@@raw</code> es una de las dos únicas puertas por las que entra HTML en la página.</p>
+</ui-note>
+
+<p>Esa política es estándar: la app nace con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API">Trusted Types</a> activado en su CSP, así que el navegador rechaza cualquier asignación de HTML que no pase por la política <code>fudic</code>. Un <code>innerHTML</code> escrito a mano en un handler falla; <code>@@raw</code> funciona, porque pasa por ella. La seguridad tiene su capítulo (capítulo 10).</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal"><code>HTMLDialogElement.showModal()</code></a>: un caso típico de <code>ref</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML"><code>Element.innerHTML</code></a>: lo que hace <code>@@raw</code> en el navegador, y por qué es peligroso con texto que no controlas.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API">Trusted Types API</a>: cómo el navegador bloquea el HTML que no pasa por una política.</li>
+</ul>

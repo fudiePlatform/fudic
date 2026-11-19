@@ -235,33 +235,112 @@ elemento en su hueco.
 > sigue en el documento, donde lo encuentran el esquema de la página, los buscadores y la
 > navegación por encabezados de los lectores de pantalla.
 
-## El propio tag: `:host`
+## El host: atributos y eventos del propio tag
 
-Dentro del `<style>`, el selector
-[`:host`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host) es el tag del componente. Para
-dar estilo al host según una prop, escribe un atributo con una expresión en el propio tag:
+El tag que envuelve el `<template>` es el **host**: el elemento que la página ve. Lo que escribas
+en él se aplica al propio componente, igual que si quien lo usa lo hubiera escrito en su tag:
 
-```fud path=src/components/miapp-tile/miapp-tile.fud
+- **un atributo con una expresión** se refleja en el host, y se actualiza cuando cambia;
+- **un `@evento`** escucha en el host;
+- **un atributo fijo**, como `role` o `tabindex`, sale tal cual.
+
+Un switch accesible es el caso típico: el propio tag es el control.
+
+```fud path=src/components/miapp-switch/miapp-switch.fud
 @code {
-  const { variant = "default" } = props<{ variant?: "default" | "highlight" }>();
+  /** A switch. The whole tag is the control: it takes the focus, the click and the keys. */
+  import { signal } from "@fudic/core";
+
+  const { label, disabled = false } = props<{
+    /** What the switch turns on. */
+    label: string;
+    /** Whether it can be used. */
+    disabled?: boolean;
+  }>();
+
+  const on = signal(false);
+
+  function flip() {
+    if (!disabled) on.set(!on());
+  }
+
+  function key(event: KeyboardEvent) {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      flip();
+    }
+  }
 }
 
 <head>
   <style>
-    :host { display: block; border: 1px solid var(--line); }
-    :host([variant="highlight"]) { border-color: var(--accent); }
+    :host { display: inline-flex; gap: 0.5rem; cursor: pointer; }
+    :host([data-state="on"]) .track { background: var(--accent); }
+    :host([aria-disabled="true"]) { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 
-<miapp-tile variant=@variant>
+<miapp-switch role="switch" tabindex="0"
+  aria-checked=@(on() ? "true" : "false")
+  aria-disabled=@(disabled ? "true" : "false")
+  data-state=@(on() ? "on" : "off")
+  @click=@flip @keydown=@key>
   <template shadowrootmode="open">
-    <slot></slot>
+    <span class="track"></span>
+    <span>@label</span>
   </template>
-</miapp-tile>
+</miapp-switch>
 ```
 
-El servidor escribe el atributo, y se reescribe cuando la prop cambia. Un texto o un número se
-escribe tal cual; `true` escribe el atributo vacío; `false`, `null` y `undefined` lo quitan.
+```fud
+<miapp-switch .label="Modo oscuro"></miapp-switch>
+```
+
+El servidor pinta el host ya con su `role`, su `aria-checked` y su `data-state`, así que el
+switch se anuncia bien y se ve en su estado antes de cargar ningún script. Al pulsarlo, el
+componente se hidrata, `flip` cambia el signal y los tres atributos se reescriben solos.
+
+- **Lo que vale un atributo con expresión**: un texto o un número se escribe tal cual; `true`
+  escribe el atributo vacío; `false`, `null` y `undefined` lo quitan. Es la regla de los
+  atributos booleanos de HTML.
+- **ARIA no es booleano.** `aria-checked` o `aria-disabled` esperan el texto `"true"` o
+  `"false"`, y un `false` quitaría el atributo: escríbelo con un ternario, como arriba.
+- **El estilo del host** sale de sus atributos, con el selector
+  [`:host()`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host): aquí,
+  `:host([data-state="on"])`. Para una variante, usa un nombre propio (`variant`) o un `data-*`.
+  Un atributo estándar conserva su efecto: `hidden`, `title` o `lang` en el host cambian cómo se
+  comporta todo el componente.
+- **`class:` no va en el host**: activa clases del `<style>` del componente sobre elementos de su
+  template. En el host, un atributo y `:host()`.
+
+### Escuchar en el host o en el shadow root
+
+Un `@evento` en el host y uno en el `<template>` no oyen lo mismo:
+
+```fud
+<miapp-menu @keydown=@onKey>                           @* listens on the host *@
+  <template shadowrootmode="open" @click=@onClick>    @* listens on the shadow root *@
+    …
+  </template>
+</miapp-menu>
+```
+
+- **En el host** oye lo que llega al componente desde fuera de su shadow DOM: el foco y las
+  teclas cuando el host es el control, y lo que sale de dentro, como lo oiría la página.
+- **En el `<template>`** oye todo lo que pasa dentro del shadow root, salga o no de él: es el
+  sitio para un único listener que atienda a varios elementos de la plantilla.
+
+Lo que separa los dos es el estándar: un evento que nace dentro del shadow root solo sale de él si
+es [`composed`](https://developer.mozilla.org/en-US/docs/Web/API/Event/composed), y al salir su
+`target` pasa a ser el host. Los de interacción del usuario (`click`, `keydown`, `input`…) lo son;
+uno lanzado con `new CustomEvent("x", { bubbles: true })`, sin `composed`, se queda dentro.
+
+> [!NOTE]
+> **Si vienes de Angular**, es la idea de
+> [`@HostBinding` y `@HostListener`](https://angular.dev/guide/components/host-elements), o de su
+> propiedad `host` en `@Component`. Con una diferencia: en Fudic no hay decoradores ni un objeto de
+> metadatos. El host es un tag que ves en la plantilla, y se le escribe como a cualquier otro
+> elemento.
 
 ## Usar otro componente
 

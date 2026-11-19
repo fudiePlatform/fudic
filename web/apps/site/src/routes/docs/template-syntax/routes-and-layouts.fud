@@ -1,0 +1,234 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Rutas y layouts · Fudic</title>
+  <meta name="description" content="Rutas y layouts en Fudic: la página, el documento en el que se pinta, sus huecos, las secciones y un layout que envuelve la ruta en un componente.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/routes-and-layouts">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Rutas y layouts · Fudic">
+  <meta property="og:description" content="Rutas y layouts en Fudic: la página, el documento en el que se pinta, sus huecos, las secciones y un layout que envuelve la ruta en un componente.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/routes-and-layouts">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("routes-and-layouts")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#route">La ruta</a></li>
+        <li><a href="#layout">El layout</a></li>
+        <li><a href="#layout-with-component">Un layout que envuelve la ruta en un componente</a></li>
+        <li><a href="#layout-props">Las props de un layout</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Rutas y layouts</h1>
+
+<p>Una <strong>ruta</strong> es una página. Un <strong>layout</strong> es el documento completo en el que se pinta: el <code>&lt;html&gt;</code>, el <code>&lt;head&gt;</code>, la cabecera, el pie. Toda ruta enlaza exactamente un layout.</p>
+
+<p>Aquí está su sintaxis. Las URLs con parámetros, los datos de cada página y el prerender tienen su propio capítulo (capítulo 4).</p>
+
+<h2 id="route">La ruta</h2>
+
+<p>Una ruta es un <code>.fud</code> dentro de <code>src/routes/</code>, y su ruta en disco es su URL:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Fichero</th><th scope="col">URL</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>src/routes/index.fud</code></td><td><code>/</code></td></tr>
+    <tr><td><code>src/routes/about.fud</code></td><td><code>/about</code></td></tr>
+    <tr><td><code>src/routes/blog/index.fud</code></td><td><code>/blog</code></td></tr>
+    <tr><td><code>src/routes/blog/[slug].fud</code></td><td><code>/blog/cualquier-cosa</code></td></tr>
+  </tbody>
+</table>
+
+<p>Se crea con la CLI, que la enlaza al layout más cercano:</p>
+
+<ui-code>
+<pre><code>npx fudic g page blog/:slug</code></pre>
+</ui-code>
+
+<p>Sus partes van en este orden:</p>
+
+<ui-code .path="src/routes/blog/index.fud">
+<pre><code>&lt;link rel="layout" href="../../layouts/_layout.fud"&gt;           ①
+&lt;link rel="component" href="../../components/miapp-card/miapp-card.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;                                                         ②
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const shown = signal(5);
+&#125;
+
+&lt;head&gt;                                                          ③
+  &lt;title&gt;Blog&lt;/title&gt;
+  &lt;meta name="description" content="Lo último que hemos escrito."&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Blog&lt;/h1&gt;                                                   ④
+@@foreach (const post of data.posts.filter((p, i) =&gt; i &lt; shown())) key (post.slug) &#123;
+  &lt;miapp-card&gt;
+    &lt;h2 slot="title"&gt;&lt;a href=@@post.url&gt;@@post.title&lt;/a&gt;&lt;/h2&gt;
+    &lt;p&gt;@@post.summary&lt;/p&gt;
+  &lt;/miapp-card&gt;
+&#125;
+&lt;button type="button" @@click=@@(() =&gt; shown.set(shown() + 5))&gt;Ver más&lt;/button&gt;
+
+@@section aside &#123;                                                ⑤
+  &lt;p&gt;Escribimos cada dos semanas.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<ol>
+  <li><strong>Los enlaces.</strong> Primero el layout; después los componentes que usa y, si carga datos, su contrato con el servidor (<code>&lt;link rel="server"&gt;</code>, capítulo 5).</li>
+  <li><strong><code>@@code</code></strong>, opcional. Como en un componente.</li>
+  <li><strong>El <code>&lt;head&gt;</code> de la ruta</strong>, opcional: su <code>&lt;title&gt;</code>, su descripción, lo que solo necesita esta página. Se suma al <code>&lt;head&gt;</code> del layout.</li>
+  <li><strong>El contenido</strong>, en HTML estándar. <code>data</code> son los datos que el servidor carga para la página.</li>
+  <li><strong>Las secciones</strong> que rellena en el layout (abajo).</li>
+</ol>
+
+<p>Una ruta nunca escribe <code>&lt;!DOCTYPE&gt;</code>, <code>&lt;html&gt;</code> ni <code>&lt;body&gt;</code>: eso es del layout.</p>
+
+<h2 id="layout">El layout</h2>
+
+<p>Un layout es un documento completo con <strong>huecos</strong>, en <code>src/layouts/</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g layout _layout --sections aside</code></pre>
+</ui-code>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="es"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;header&gt;&lt;a href="/"&gt;Mi app&lt;/a&gt;&lt;/header&gt;
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+    &lt;aside&gt;@@RenderSection(aside)&lt;/aside&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p>Los huecos tienen los nombres de Razor:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Hueco</th><th scope="col">Qué entra</th><th scope="col">Cuántos</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@@RenderHead()</code></td><td>el <code>&lt;head&gt;</code> de la ruta</td><td>uno como mucho, dentro de <code>&lt;head&gt;</code></td></tr>
+    <tr><td><code>@@RenderBody()</code></td><td>el contenido de la ruta</td><td>exactamente uno</td></tr>
+    <tr><td><code>@@RenderSection(nombre)</code></td><td>lo que la ruta escribe en <code>@@section nombre &#123; … &#125;</code></td><td>los que quieras</td></tr>
+  </tbody>
+</table>
+
+<p>Una sección que la ruta no rellena se queda vacía. Si el layout no puede pintarse sin ella, la marca como obligatoria, y una ruta que no la rellene es un error:</p>
+
+<ui-code>
+<pre><code>@@RenderSection(hero, required: true)</code></pre>
+</ui-code>
+
+<p>El cuerpo de un layout es markup como cualquier otro: admite componentes, <code>@@if</code>, bucles y snippets. Lo que no puede es meter un hueco dentro de un <code>@@if</code> o de un bucle, porque la ruta saldría cero veces o varias.</p>
+
+<ui-note>
+  <p>Un layout no enlaza otro layout. La composición tiene un solo nivel, ruta y layout, y lo que se repite entre layouts se saca a un componente (abajo).</p>
+</ui-note>
+
+<h2 id="layout-with-component">Un layout que envuelve la ruta en un componente</h2>
+
+<p>Lo más habitual es que la maquetación de un layout (la rejilla, el lateral, el pie) sea un componente, con sus estilos encapsulados. El layout lo escribe como su <code>&lt;body&gt;</code> y le dice a cada hueco en qué slot del componente cae:</p>
+
+<ui-code .path="src/components/miapp-frame/miapp-frame.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .frame &#123; display: grid; grid-template-columns: 14rem 1fr; gap: 2rem; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;miapp-frame&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div class="frame"&gt;
+      &lt;header&gt;&lt;slot name="header"&gt;&lt;/slot&gt;&lt;/header&gt;
+      &lt;nav&gt;&lt;slot name="nav"&gt;&lt;p&gt;Sin menú.&lt;/p&gt;&lt;/slot&gt;&lt;/nav&gt;
+      &lt;main&gt;&lt;slot name="content"&gt;&lt;/slot&gt;&lt;/main&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/miapp-frame&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/layouts/_layout-docs.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="es"&gt;
+  &lt;head&gt;
+    &lt;link rel="component" href="../components/miapp-frame/miapp-frame.fud"&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;miapp-frame&gt;
+      @@RenderSection(header, required: true, slot: "header")
+      @@RenderSection(nav, slot: "nav")
+      @@RenderBody(slot: "content")
+    &lt;/miapp-frame&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/docs/index.fud">
+<pre><code>&lt;link rel="layout" href="../../layouts/_layout-docs.fud"&gt;
+
+@@section header &#123;
+  &lt;h1&gt;Documentación&lt;/h1&gt;
+  &lt;p&gt;Todo lo que hace Fudic, explicado.&lt;/p&gt;
+&#125;
+
+&lt;p&gt;Empieza por el capítulo 1.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p><code>slot: "header"</code> hace que cada elemento que la ruta escribe en esa sección salga con <code>slot="header"</code>. La ruta escribe hermanos sueltos, sin un <code>&lt;div slot&gt;</code> que los envuelva y sin saber qué slots tiene el componente. El <code>&lt;h1&gt;</code> sigue en el documento, como debe, y el componente lo coloca en su sitio.</p>
+
+<h2 id="layout-props">Las props de un layout</h2>
+
+<p>Un layout puede recibir valores de cada ruta, como un componente. Las declara en un <code>@@code</code> dentro de su <code>&lt;head&gt;</code>, y ese <code>@@code</code> solo admite eso:</p>
+
+<ui-code>
+<pre><code>&lt;head&gt;
+  @@code &#123;
+    const &#123; area = "Docs" &#125; = props&lt;&#123; area?: string &#125;&gt;();
+  &#125;
+  &lt;meta property="article:section" content=@@area&gt;
+  …
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<p>La ruta le da sus valores desde el servidor, junto con sus datos (capítulo 4).</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/head"><code>&lt;head&gt;</code></a>: lo que va en la cabecera de un documento.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>: el mecanismo que coloca cada sección en el componente del layout.</li>
+</ul>
