@@ -66,7 +66,8 @@ Hasta el paso 2 no se mete inglés ni i18n en ninguna página.
 
 Cada tema pasa por tres pasos, en orden:
 
-1. **Se escribe en Markdown**, en `docs/web/docs/NN-tema.md`, uno por capítulo.
+1. **Se escribe en Markdown**, en `docs/web/docs/NN-tema.md`, uno por capítulo; un capítulo con
+   varias páginas es una carpeta, `docs/web/docs/NN-tema/`, con un fichero por página.
 2. **Pedro lo revisa** y se corrige hasta que lo da por bueno.
 3. **Se pasa a HTML**: la página `.fud` de la web, con el texto validado.
 
@@ -78,7 +79,7 @@ diga otro.
 | # | Capítulo | Contenido |
 |---|---|---|
 | 1 | **Empezar** | Qué es fudic. Crear un proyecto (`npx @fudic/cli new`). Estructura de carpetas. Tu primer componente. |
-| 2 | **El lenguaje `.fud`** | Anatomía de un componente: el tag, `<template shadowrootmode>` y el `<style>` del `<head>`. Expresiones `@(…)`. Control de flujo (`@if`, `@foreach`…). Bloques `@code` con `@server`/`@client`. Eventos, props y slots. |
+| 2 | **El lenguaje `.fud`** | Ocho páginas en `docs/02-lenguaje-fud/`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. |
 | 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. |
 | 4 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. |
 | 5 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. |
@@ -205,3 +206,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-18 | Capítulo 1, **Empezar**, validado en Markdown (`docs/01-empezar.md`). |
 | 2026-11-18 | Guía con los colores del boceto. Layout `docs`, snippets `site`, `ui-code`, `ui-note`, `ui-toc` y la página `/docs/getting-started`. Lighthouse: escritorio 100/100/100/100, móvil 92/100/100/100. Hallazgos del framework en `hallazgos-fudic.md`. |
 | 2026-11-19 | Lighthouse en móvil, de 92 a 99 (100 con compresión): una sola fuente recortada y precargada. Notas de lanzamiento en `notas-lanzamiento.md`. |
+| 2026-11-19 | Capítulo 2, **El lenguaje `.fud`**, escrito en Markdown (ocho páginas en `docs/02-lenguaje-fud/`), pendiente de revisión. Sus ejemplos, compilados en la web: tres hallazgos del framework (6–8). |

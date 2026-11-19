@@ -114,3 +114,51 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
     rutas.
   - **`isHashedName`** debe contar como con hash un fichero bajo un directorio con hash
     (`/_fudic/<versión>-<hash>/…`), o `checkAssets` debe saber que `_fudic/` es de Fudic.
+
+## 6. No hay forma de escribir un estilo en línea que cambie
+
+- **Qué pasó.** Al documentar el capítulo 2 (atributos y propiedades), comprobado con un build
+  real de la web con componentes de prueba. Las dos vías fallan:
+  - **`style=@expr` es un error** (`FUD0915`): la guarda trata un `style` dinámico como un
+    atributo que carga recursos (un `url()` puede pedir lo que quiera), y el mensaje propone
+    `style:prop`.
+  - **`style:prop=@x` se acepta pero no se emite.** La decisión 22 de la gramática lo define
+    como hermano de `class:`, y el parser, la proyección del editor, el resaltado y la superficie
+    de CSS lo reconocen (`StyleBinding` en `packages/compiler/src/binding/nodes.ts`). Pero
+    compilado `<p style:color=@c() @click=@f>x</p>`, ni el módulo de servidor ni el chunk de
+    cliente contienen `color` ni `style`: el binding desaparece sin diagnóstico. Ningún ejemplo
+    de `examples/basic` lo usa, así que nadie lo había visto.
+
+  El resultado es que una barra de progreso (`width`), un color elegido por el usuario o una
+  propiedad personalizada (`--color`) no se pueden escribir desde la plantilla.
+- **Cómo se resolvió en la web.** El capítulo 2 no documenta `style:` ni `style=@expr`: para lo
+  que cambia con el estado propone `class:`.
+- **Qué debería hacer.** Emitir `style:` como `class:`: en el servidor, sumarlo al atributo
+  `style`; en el cliente, `el.style.setProperty(prop, v)` al cambiar, y `removeProperty` con
+  `null` o `undefined`, conservando lo que otros hayan puesto en `style` (igual que `class:`
+  conserva las clases ajenas). Admitir propiedades personalizadas (`style:--color=@x`), que es la
+  forma limpia de pasar un dato al CSS. Mientras no se emita, `style:` debería ser un error con
+  código, no un silencio, y `FUD0915` no debería proponerlo.
+
+## 7. Un handler delegado que llama directamente a una prop función no compila
+
+- **Qué pasó.** En un componente que recibe `onPick: (option: string) => void`, el handler
+  `<div @click=@onPick(option)>` con las filas marcadas `delegate:option="click"` rompe el chunk
+  de cliente: el emit escribe `return onPick($z0()on);` (sustituye `opti` por la fila y deja
+  `on`), y Oxc falla con `PARSE_ERROR`. Huele a un desfase de offsets al reescribir la llamada
+  cuando su destino es una prop. Con una función intermedia del `@code`
+  (`function pick(option) { onPick(option); }` y `@click=@pick(option)`) compila y funciona.
+- **Cómo se resolvió en la web.** El ejemplo del capítulo 2 usa la función intermedia.
+- **Qué debería hacer.** Compilar `@onPick(option)` delegado igual que `@pick(option)`. Es la
+  forma natural de escribirlo, y `FUD0202` la propone tal cual para un callback.
+
+## 8. Una ruta no puede pasar una prop función a un componente
+
+- **Qué pasó.** Una ruta con `function chosen(option: string) { … }` en su `@code` y
+  `<site-choice .onPick=@chosen>` en su markup falla al prerenderizar:
+  `FUD0620: /probe failed to prerender: chosen is not defined`. El render de servidor nombra la
+  función, pero las funciones del `@code` no están en el corte de servidor. El mismo uso dentro de
+  un componente padre funciona, y una prop `Signal` (`.value=@quantity`) desde una ruta también.
+- **Cómo se resolvió en la web.** El capítulo 2 enseña la prop función desde un componente.
+- **Qué debería hacer.** Lo mismo que en un componente: en el servidor una prop función no se
+  evalúa (no hay nada que pintar con ella), y en el navegador cruza por referencia.
