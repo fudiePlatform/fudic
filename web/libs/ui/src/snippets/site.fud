@@ -32,6 +32,7 @@
           <li><a href="/docs/template-syntax/routes-and-layouts" aria-current=@(current === "routes-and-layouts" ? "page" : false)>Rutas y layouts</a></li>
           <li><a href="/docs/template-syntax/snippets" aria-current=@(current === "snippets" ? "page" : false)>Snippets</a></li>
           <li><a href="/docs/template-syntax/expressions" aria-current=@(current === "expressions" ? "page" : false)>Expresiones y control de flujo</a></li>
+          <li><a href="/docs/template-syntax/await" aria-current=@(current === "await" ? "page" : false)><code>@@await</code></a></li>
           <li><a href="/docs/template-syntax/attributes-and-properties" aria-current=@(current === "attributes-and-properties" ? "page" : false)>Atributos y propiedades</a></li>
           <li><a href="/docs/template-syntax/events" aria-current=@(current === "events" ? "page" : false)>Eventos</a></li>
           <li><a href="/docs/template-syntax/ref-and-raw" aria-current=@(current === "ref-and-raw" ? "page" : false)><code>ref</code> y <code>@@raw</code></a></li>

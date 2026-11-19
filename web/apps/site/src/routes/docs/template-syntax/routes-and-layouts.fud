@@ -98,7 +98,7 @@
   <li><strong>Los enlaces.</strong> Primero el layout; después los componentes que usa y, si carga datos, su contrato con el servidor (<code>&lt;link rel="server"&gt;</code>, capítulo 5).</li>
   <li><strong><code>@@code</code></strong>, opcional. Como en un componente.</li>
   <li><strong>El <code>&lt;head&gt;</code> de la ruta</strong>, opcional: su <code>&lt;title&gt;</code>, su descripción, lo que solo necesita esta página. Se suma al <code>&lt;head&gt;</code> del layout.</li>
-  <li><strong>El contenido</strong>, en HTML estándar. <code>data</code> son los datos que el servidor carga para la página.</li>
+  <li><strong>El contenido</strong>, en HTML estándar. <code>data</code> son los datos que el servidor carga para la página. Los que tardan se esperan con <a href="/docs/template-syntax/await"><code>@@await</code></a>, sin retener el resto.</li>
   <li><strong>Las secciones</strong> que rellena en el layout (abajo).</li>
 </ol>
 

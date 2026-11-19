@@ -187,13 +187,62 @@
   <li><strong>La cabecera admite desestructuración</strong>: <code>@@foreach (const &#123; id, title, done = false &#125; of tasks()) key (id)</code>.</li>
 </ul>
 
-<p><code>@@for</code> es el <code>for</code> con índice de siempre, y <code>@@while</code> repite mientras se cumpla la condición. Los dos llevan su key igual:</p>
+<p><code>@@for</code> es el <code>for</code> con índice de siempre, con su key igual:</p>
 
 <ui-code>
 <pre><code>@@for (let i = 1; i &lt;= pages; i++) key (i) &#123;
   &lt;a href=@@(`?page=$&#123;i&#125;`)&gt;@@i&lt;/a&gt;
 &#125;</code></pre>
 </ui-code>
+
+<p><code>@@while</code> repite mientras se cumpla una condición. Es el bucle para lo que no es una lista: una estructura que se recorre de un elemento al siguiente, como una categoría y la categoría a la que pertenece, hasta la raíz.</p>
+
+<ui-code .path="src/components/miapp-path/miapp-path.fud">
+<pre><code>&lt;link rel="server" href="./miapp-path.fudapi"&gt;
+
+@@code &#123;
+  /** Where a page sits: its category, then the one above, up to the root. */
+  import type &#123; Category &#125; from "fudic:components/miapp-path/miapp-path";
+
+  const &#123; category &#125; = props&lt;&#123;
+    /** The category of the page, or nothing. */
+    category?: Category;
+  &#125;&gt;();
+
+  let current: Category | undefined = category;
+&#125;
+
+&lt;miapp-path&gt;
+  &lt;template shadowrootmode="open"&gt;
+    @@&#123; current = category; &#125;
+    &lt;ol&gt;
+      @@while (current !== undefined) key (current.id) &#123;
+        &lt;li&gt;@@current.name&lt;/li&gt;
+        @@&#123; current = current.parent; &#125;
+      &#125; @@empty &#123;
+        &lt;li&gt;Sin categoría&lt;/li&gt;
+      &#125;
+    &lt;/ol&gt;
+  &lt;/template&gt;
+&lt;/miapp-path&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/miapp-path/miapp-path.fudapi">
+<pre><code># A category and the one it belongs to, up to the root.
+type Category
+  id      str
+  name    str
+  parent  Category?</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La cabecera de un <code>@@while</code> no declara nada</strong>, así que su cursor (<code>current</code>) vive fuera del bucle, en <code>@@code</code>.</li>
+  <li><strong>El cuerpo avanza el cursor</strong> con un <code>@@&#123; &#125;</code>. Si no escribe lo que lee la condición, el bucle no terminaría, y el compilador lo rechaza (<code>FUD0913</code>).</li>
+  <li><strong>La plantilla lo vuelve a poner al principio</strong> antes del bucle (<code>@@&#123; current = category; &#125;</code>): un <code>@@while</code> gasta su cursor, y la siguiente vez que se pinte tiene que empezar de nuevo.</li>
+  <li><strong>La key</strong> es la de cada vuelta, como en los otros bucles: aquí, el id de la categoría.</li>
+</ul>
+
+<p><strong><code>@@empty</code> vale en los tres bucles</strong>, <code>@@foreach</code>, <code>@@for</code> y <code>@@while</code>: se pinta cuando el bucle no da ninguna vuelta. Aquí, cuando la página no tiene categoría. No ve las variables del bucle, porque no ha habido ninguna vuelta que las declare.</p>
 
 <h2 id="template-variables">Variables en la plantilla: <code>@@&#123; &#125;</code></h2>
 

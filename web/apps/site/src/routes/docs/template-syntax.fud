@@ -132,6 +132,7 @@
     <tr><td><code>@@raw(html)</code></td><td>escribe HTML en vez de texto</td><td><a href="/docs/template-syntax/ref-and-raw"><code>ref</code> y <code>@@raw</code></a></td></tr>
     <tr><td><code>@@render card(…)</code></td><td>expande un snippet</td><td><a href="/docs/template-syntax/snippets">Snippets</a></td></tr>
     <tr><td><code>@@RenderBody()</code></td><td>el hueco de un layout</td><td><a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a></td></tr>
+    <tr><td><code>@@await data.x &#123; … &#125;</code></td><td>pinta un bloque cuando llega su dato</td><td><a href="/docs/template-syntax/await"><code>@@await</code></a></td></tr>
   </tbody>
 </table>
 

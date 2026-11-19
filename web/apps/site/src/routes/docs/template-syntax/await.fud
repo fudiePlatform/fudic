@@ -1,0 +1,183 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>@@await · Fudic</title>
+  <meta name="description" content="@@await en Fudic: la página sale en cuanto llega lo rápido, y cada bloque se pinta cuando su dato llega, sin JavaScript para colocarlo. Y el estándar que lo emitirá: template for.">
+  <link rel="canonical" href="https://fudic.dev/docs/template-syntax/await">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="@@await · Fudic">
+  <meta property="og:description" content="La página sale en cuanto llega lo rápido, y cada bloque se pinta cuando su dato llega, sin JavaScript para colocarlo.">
+  <meta property="og:url" content="https://fudic.dev/docs/template-syntax/await">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("await")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#later-fields">Los datos que llegan después</a></li>
+        <li><a href="#await-and-catch"><code>@@await</code> y <code>@@catch</code></a></li>
+        <li><a href="#order">El orden</a></li>
+        <li><a href="#status">Lo que decide el status va antes</a></li>
+        <li><a href="#where">Dónde se puede usar</a></li>
+        <li><a href="#no-loading">Sin «Cargando…»</a></li>
+        <li><a href="#hydration">Cada parte se hidrata al llegar</a></li>
+        <li><a href="#template-for">El estándar: <code>&lt;template for&gt;</code></a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@await</code></h1>
+
+<p>Una página que espera a su backend entero no envía nada hasta que la consulta más lenta termina: ni la cabecera, ni el CSS, ni el menú. Dos segundos en la base de datos son dos segundos de pantalla en blanco.</p>
+
+<p>Con <code>@@await</code>, <strong>el primer byte no espera</strong>. La página sale en cuanto llega lo rápido, y cada bloque de <code>@@await</code> se pinta en su sitio cuando llega su dato, sin una línea de JavaScript para colocarlo.</p>
+
+<h2 id="later-fields">Los datos que llegan después</h2>
+
+<p>Los datos de una página los declara su <code>.fudapi</code> y los devuelve su <code>load</code>, en el servidor (capítulo 5). Un campo que termina en <code>later</code> es uno que llega después:</p>
+
+<ui-code .path="src/routes/dashboard.fudapi">
+<pre><code># The title comes with the first byte; each later field when its promise settles.
+load ssr
+  title    str
+  summary  Summary  later
+  alerts   str      later
+
+type Summary
+  total   i32
+  active  i32</code></pre>
+</ui-code>
+
+<p>El handler devuelve esos campos como promesas, <strong>sin esperarlas</strong>:</p>
+
+<ui-code .path="src/server/routes/dashboard.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/dashboard';
+import &#123; alerts, stats &#125; from '../backend';
+
+load.handle(() =&gt; (&#123;
+  title: 'Panel',              // ready: it goes out with the first byte
+  summary: stats.monthly(),    // a promise: painted when it settles
+  alerts: alerts.latest(),     // another one: both start at once
+&#125;));</code></pre>
+</ui-code>
+
+<p>Y la vista espera cada uno donde lo pinta:</p>
+
+<ui-code .path="src/routes/dashboard.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/miapp-stats/miapp-stats.fud"&gt;
+&lt;link rel="server" href="./dashboard.fudapi"&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+
+@@await data.summary &#123;
+  &lt;miapp-stats .total=@@data.summary.total .active=@@data.summary.active&gt;&lt;/miapp-stats&gt;
+&#125;
+
+@@await data.alerts &#123;
+  &lt;p&gt;@@data.alerts&lt;/p&gt;
+&#125; @@catch (e) &#123;
+  &lt;p role="alert"&gt;No se pudieron cargar los avisos (@@e.status @@e.title).&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>El <code>&lt;head&gt;</code>, el menú del layout y el <code>&lt;h1&gt;</code> llegan en cuanto <code>load</code> devuelve el objeto. Las estadísticas llegan cuando se cumple <code>summary</code>, y los avisos cuando se cumple <code>alerts</code>.</p>
+
+<ui-note .kind="tip">
+  <p>Una ruta que carga datos necesita el módulo de servidor de Fudic: <code>npx fudic add http</code>. Con él llegan <code>notFound()</code>, <code>forbidden()</code> y <code>redirect()</code> para el <code>load</code>.</p>
+</ui-note>
+
+<h2 id="await-and-catch"><code>@@await</code> y <code>@@catch</code></h2>
+
+<ul>
+  <li><strong>Detrás de <code>@@await</code> va un campo <code>later</code> de <code>data</code></strong>, tal cual: <code>data.summary</code>. Cualquier otra cosa, como un campo que ya llega resuelto, un signal o una expresión, es un error (<code>FUD1320</code>).</li>
+  <li><strong>Dentro del bloque, el campo es su valor</strong>, ya resuelto y con su tipo: <code>@@data.summary.total</code>, <code>.total=@@data.summary.total</code>.</li>
+  <li><strong>Fuera de su <code>@@await</code>, el campo no se puede leer</strong> (<code>FUD1321</code>): fuera del bloque todavía es una promesa.</li>
+  <li><strong><code>@@catch (e)</code> es opcional</strong> y va justo detrás de la llave de cierre, como un <code>else</code>. <code>e</code> trae el <code>status</code> y el <code>title</code> del error. Un error de <code>@@fudic/http</code>, como <code>notFound()</code>, conserva los suyos; cualquier otro es un <code>500</code>.</li>
+  <li><strong>Sin <code>@@catch</code></strong>, el bloque que falla no pinta nada, el error se notifica como cualquier error del servidor, y la página sigue con lo que viene detrás.</li>
+</ul>
+
+<h2 id="order">El orden</h2>
+
+<ul>
+  <li><strong>Las promesas no se esperan unas a otras.</strong> Las crea <code>load</code>, así que arrancan todas a la vez.</li>
+  <li><strong>Los bloques se pintan en el orden del documento.</strong> Un <code>@@await</code> espera al anterior: si <code>alerts</code> llega antes que <code>summary</code>, sus avisos esperan a que salgan las estadísticas.</li>
+  <li><strong>Lo lento, abajo.</strong> Un <code>@@await</code> lento frena todo lo que viene detrás de él. Pon los bloques en el orden en que esperas que lleguen, y lo más lento al final.</li>
+</ul>
+
+<p>El orden no es un capricho: es lo que permite colocar cada bloque sin JavaScript. El servidor envía la página en partes, y el navegador escribe cada una a continuación de la anterior, como escribe cualquier HTML que le llega por la red.</p>
+
+<h2 id="status">Lo que decide el status va antes</h2>
+
+<p>En cuanto sale el primer byte, la respuesta ya es un <code>200</code>: después no se puede cambiar a un <code>404</code>, a un <code>500</code> ni a una redirección. Por eso:</p>
+
+<ul>
+  <li><strong>Lo que decide si la página existe</strong> (el producto no está, no hay permiso, hay que redirigir) se resuelve en <code>load</code> <strong>antes</strong> de devolver el objeto, lanzando <code>notFound()</code>, <code>forbidden()</code> o <code>redirect()</code>. Eso sí sale con su status y su página de error, porque <code>load</code> se espera antes del primer byte.</li>
+  <li><strong>Lo que falla dentro de un campo <code>later</code></strong> llega al <code>@@catch</code> de su <code>@@await</code>, y la página sigue siendo un <code>200</code>.</li>
+</ul>
+
+<h2 id="where">Dónde se puede usar</h2>
+
+<ul>
+  <li><strong>En el cuerpo de una ruta y en sus <code>@@section</code></strong>. Se puede anidar, y se puede poner dentro de un <code>@@if</code>, de un <code>@@foreach</code> o entre los hijos de un componente.</li>
+  <li><strong>No en el <code>&lt;head&gt;</code></strong>: es lo primero que sale, y no espera.</li>
+  <li><strong>No en un componente, un layout ni un snippet</strong> (<code>FUD1322</code>). Un componente recibe el valor ya resuelto, como una prop: es lo que hace <code>&lt;miapp-stats&gt;</code> arriba. Así el componente no sabe si sus datos llegaron con el primer byte o después, y se prueba igual en los dos casos.</li>
+</ul>
+
+<h2 id="no-loading">Sin «Cargando…»</h2>
+
+<p><code>@@await</code> no tiene una rama para mientras tanto. Un «Cargando…» habría que quitarlo cuando llega el dato, y hoy eso solo se puede hacer con JavaScript. En Fudic, lo que todavía no ha llegado simplemente no está todavía, y la página que ves está siempre completa hasta donde llega.</p>
+
+<p>Si quieres que el hueco se note, resérvalo con CSS en el elemento que envuelve el bloque (una altura mínima, un fondo), para que lo que viene detrás no salte cuando el bloque llegue.</p>
+
+<h2 id="hydration">Cada parte se hidrata al llegar</h2>
+
+<p>Cada parte de la página trae sus propios datos de hidratación delante. Un componente interactivo que llega en un bloque responde en cuanto ese bloque está en la página, aunque lo de abajo siga sin llegar: el contador de un bloque que llegó a los dos segundos ya cuenta clics mientras el bloque de los cinco segundos sigue en camino.</p>
+
+<h2 id="template-for">El estándar: <code>&lt;template for&gt;</code></h2>
+
+<p>Pintar un bloque en su sitio cuando llega su dato, y no en el orden del documento, es lo que los frameworks llevan años haciendo con JavaScript: envían el bloque al final de la página y un script lo mueve a su hueco. Fudic decidió no hacerlo, y por eso hoy pinta en orden.</p>
+
+<p>El estándar ya tiene la pieza para hacerlo sin JavaScript. El HTML Living Standard añade a <code>&lt;template&gt;</code> el atributo <a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for"><code>for</code></a>, y dos instrucciones de procesamiento que marcan el hueco, <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>. Cuando el parser encuentra un <code>&lt;template for&gt;</code>, sustituye por su contenido lo que hay entre las dos marcas con ese nombre, llegue cuando llegue:</p>
+
+<ui-code>
+<pre><code>&lt;section&gt;
+  &lt;?start name="summary"&gt;
+  Cargando…
+  &lt;?end&gt;
+&lt;/section&gt;
+
+&lt;!-- …the rest of the page… --&gt;
+
+&lt;template for="summary"&gt;
+  &lt;p&gt;87 de 120 personas activas este mes.&lt;/p&gt;
+&lt;/template&gt;</code></pre>
+</ui-code>
+
+<p>Es lo que necesita <code>@@await</code>: cada bloque podría salir en cuanto llega su dato, sin esperar al anterior, y con un contenido provisional que el propio navegador quita al llegar el bloque, sin una línea de JavaScript.</p>
+
+<ui-note .kind="important">
+  <p><strong><code>@@await</code> se queda.</strong> Lo que cambiará es el HTML que emite: cuando <code>&lt;template for&gt;</code> esté en todos los navegadores, eso será lo que Fudic escriba por debajo. Tu vista no cambia; cambia cómo la entrega el estándar.</p>
+</ui-note>
+
+<p>Hoy <code>&lt;template for&gt;</code> está en el estándar y empieza a llegar a los navegadores: Chrome y Edge traen el soporte inicial, y WebKit (Safari) y Mozilla (Firefox) han publicado posiciones favorables. Mientras no esté en todos, Fudic pinta en orden, que funciona en cualquier navegador. Es el mismo compromiso de siempre: el estándar primero, y nada propio donde el estándar ya está llegando.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#using_template_for_for_patching"><code>&lt;template for&gt;</code> en MDN</a>, con ejemplos de un hueco y de un rango entre <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>.</li>
+  <li><a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for">El atributo <code>for</code> de <code>&lt;template&gt;</code></a>, en el HTML Living Standard.</li>
+  <li><a href="https://github.com/WICG/declarative-partial-updates/blob/main/patching-explainer.md">El explicador de la propuesta</a> (Declarative Partial Updates, en el WICG): por qué existe y qué problemas resuelve.</li>
+</ul>
