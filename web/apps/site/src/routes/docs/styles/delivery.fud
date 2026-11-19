@@ -118,8 +118,6 @@
   <li><strong>La primera visita hace más peticiones</strong>: una por hoja que la página aún no tiene.</li>
 </ul>
 
-<p>Esta forma se parece a lo que se discute en el estándar: un <code>&lt;link&gt;</code> dentro del shadow root (<a href="https://github.com/whatwg/html/pull/12860">whatwg/html#12860</a>).</p>
-
 <p>Las hojas que escribes tú con <code>&lt;link rel="stylesheet"&gt;</code> son ficheros en los dos casos. Esta web, que usa <code>inline</code>, enlaza así su guía y la hoja de su layout.</p>
 
 <h2 id="baseline">Baseline</h2>
