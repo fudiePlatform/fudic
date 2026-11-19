@@ -1,65 +1,30 @@
 /* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
-/* Newsreader has no italic face here: the one italic glyph the site uses, the @ of the wordmark,
-   is synthesized from the roman, and that saves a download. */
-@font-face {
-  font-family: "Newsreader";
-  font-style: normal;
-  font-weight: 200 800;
-  font-display: swap;
-  src: url(./fonts/newsreader-latin-wght-normal.woff2) format("woff2");
-}
-
+/* One web font, one download: Inter Tight, cut to what the site uses so it weighs ~23 KB.
+   - The weight axis keeps 400–600, the three weights the tokens name.
+   - The characters are Latin-1 (Spanish included) plus typographic punctuation; anything else
+     falls back to the system font, which unicode-range tells the browser before it downloads.
+   - No italic face: the few italic glyphs (an <em>, the @ of the wordmark) are synthesized.
+   - Code uses the system's monospace: it is good everywhere and not worth a download.
+   The layouts preload this file, so it is fetched with the HTML instead of after the CSS. */
 @font-face {
   font-family: "Inter Tight";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400 600;
   font-display: swap;
-  src: url(./fonts/inter-tight-latin-wght-normal.woff2) format("woff2");
+  src: url(./fonts/inter-tight-wght-400-600.woff2) format("woff2");
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201E, U+2022, U+2026, U+2039-203A,
+    U+20AC, U+2122, U+2190-2193, U+2212;
 }
 
-@font-face {
-  font-family: "Inter Tight";
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url(./fonts/inter-tight-latin-wght-italic.woff2) format("woff2");
-}
-
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 100 800;
-  font-display: swap;
-  src: url(./fonts/jetbrains-mono-latin-wght-normal.woff2) format("woff2");
-}
-
-/* A system font shaped like each web font, so the text does not move when the web font arrives.
-   The overrides come from the fonts' metrics (Capsize): size-adjust matches the average width,
+/* A system font shaped like the web font, so the text does not move when the web font arrives.
+   The overrides come from the font's metrics (Capsize): size-adjust matches the average width,
    the rest the vertical metrics at that size. */
-@font-face {
-  font-family: "Newsreader Fallback";
-  src: local("Georgia");
-  size-adjust: 96.12%;
-  ascent-override: 76.47%;
-  descent-override: 27.57%;
-  line-gap-override: 0%;
-}
-
 @font-face {
   font-family: "Inter Tight Fallback";
   src: local("Arial");
   size-adjust: 96.39%;
   ascent-override: 100.51%;
   descent-override: 25.03%;
-  line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: "JetBrains Mono Fallback";
-  src: local("Courier New");
-  size-adjust: 99.98%;
-  ascent-override: 102.02%;
-  descent-override: 30%;
   line-gap-override: 0%;
 }
 
@@ -101,10 +66,10 @@
   --guide-space-7: 3rem;
   --guide-space-8: 4rem;
 
-  /* Type: a serif for headings, a quiet sans for text, a mono for code. */
-  --guide-font-display: "Newsreader", "Newsreader Fallback", Georgia, serif;
+  /* Type: one sans for headings and text, the system's mono for code. */
   --guide-font-sans: "Inter Tight", "Inter Tight Fallback", Arial, sans-serif;
-  --guide-font-mono: "JetBrains Mono", "JetBrains Mono Fallback", "Courier New", monospace;
+  --guide-font-display: var(--guide-font-sans);
+  --guide-font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --guide-text-xs: 0.75rem;
   --guide-text-sm: 0.875rem;
   --guide-text-base: 1rem;
