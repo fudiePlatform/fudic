@@ -75,7 +75,7 @@
   <li><strong>El HTML llega pintado.</strong> Cada componente sale del servidor como <a href="#declarative-shadow-dom">Declarative Shadow DOM</a>, que el navegador muestra mientras lee la página.</li>
   <li><strong>El JavaScript llega solo donde hace falta.</strong> Un componente sin estado ni eventos se queda en HTML y CSS. El que los tiene descarga su código cuando entra en pantalla y se activa al primer clic.</li>
   <li><strong>100/100/100/100 en <a href="https://developer.chrome.com/docs/lighthouse/overview" target="_blank" rel="noopener">Lighthouse</a>, de serie.</strong> Rendimiento, accesibilidad, buenas prácticas y SEO, sin optimizar nada al final.</li>
-  <li><strong>Tu servidor, en tu lenguaje.</strong> Hoy el servidor de Fudic es Node. Pero las vistas y los contratos con el servidor están pensados para traducirse a C#, Java, Go, Rust y Python, y cuando lleguen podrás desplegar sin Node, en el backend que tu empresa ya tiene.</li>
+  <li><strong>Tu servidor, en tu lenguaje.</strong> Hoy el servidor de Fudic es Node. Pero las vistas y los contratos con el servidor están pensados para traducirse a C#, Java, Go, Rust y Python, y cuando lleguen podrás desplegar sin Node.</li>
 </ul>
 
 <ui-note>
@@ -201,25 +201,43 @@ npx fudic dev</code></pre>
 
 <h2 id="check-it-works">Pruébalo</h2>
 
-<p>La CLI creó un test junto al componente. Añade un caso que pulse el botón:</p>
+<p>Junto al componente, la CLI creó un <code>.fudspec</code>: sus <strong>criterios de aceptación</strong>, escritos en pasos que se leen como frases. Escribe lo que tiene que pasar:</p>
 
-<ui-code .path="src/components/miapp-counter/miapp-counter.test.ts">
-<pre><code>import { expect, test } from 'vitest';
-import { mount } from '@@fudic/testing';
-import * as MiappCounter from './miapp-counter.fud';
+<ui-code .path="src/components/miapp-counter/miapp-counter.fudspec">
+<pre><code>component miapp-counter
 
-test('counts up from where it starts', async () =&gt; {
-  const t = await mount(MiappCounter, { props: { start: 10 } });
-  await t.click(t.getByRole('button', { name: '+1' }));
-  expect(t.query('output')).toHaveTextContent('11');
-});</code></pre>
+criterion empieza-en-diez
+  given
+    props diez
+  then
+    text output "10"
+
+criterion suma-uno-al-pulsar
+  given
+    props diez
+  when
+    click role:button/"+1"
+  then
+    text output "11"</code></pre>
 </ui-code>
 
-<ui-code>
-<pre><code>npx fudic test</code></pre>
+<p><code>props diez</code> son las props con las que se monta, y van en su fixture, al lado:</p>
+
+<ui-code .path="src/components/miapp-counter/miapp-counter.fixture.ts">
+<pre><code>export default &#123;
+  diez: &#123; start: 10 &#125;,
+&#125; satisfies Fixtures&lt;$Props&gt;;</code></pre>
 </ui-code>
 
-<p>También creó un <code>.fudspec</code>, con los criterios de aceptación que se comprueban en un navegador de verdad con <code>npx fudic spec</code>.</p>
+<p>Ahora, con el <code>.fud</code> abierto en VS Code, pulsa <strong>Ctrl+K V</strong>. Al lado del editor se abre el <strong>workbench</strong>:</p>
+
+<ul>
+  <li><strong>Ves el componente.</strong> Cada criterio es una tarjeta con sus pasos, su veredicto y una captura de lo que vio un navegador de verdad, con un recuadro en cada elemento que tocó un paso.</li>
+  <li><strong>Verde o rojo en cada guardado.</strong> Guardas el componente o el criterio, y se vuelven a ejecutar. Los que fallan salen primero, con lo que se esperaba frente a lo que hubo.</li>
+  <li><strong>Lo puedes tocar.</strong> <em>Live</em> abre el componente vivo, para pulsarlo tú.</li>
+</ul>
+
+<p>Los mismos criterios se ejecutan desde la terminal, y en la integración continua: <code>npx fudic spec</code>. Y para probar el código por dentro, la CLI creó también un test unitario, que se ejecuta con <code>npx fudic test</code>.</p>
 
 <h2 id="inside-the-app">Qué hay dentro</h2>
 
@@ -264,7 +282,7 @@ test('counts up from where it starts', async () =&gt; {
   <li><strong>Sin atarte a Node.</strong> Muchas empresas no quieren poner Node en producción, y no deberían tener que hacerlo para pintar HTML.</li>
 </ul>
 
-<h3 id="polyglot">Políglota: el servidor que ya tienes</h3>
+<h3 id="polyglot">Políglota</h3>
 
 <p>Hoy, una app de Fudic se despliega en Node. Pero todo lo que ejecuta el servidor está diseñado para no depender de él:</p>
 
@@ -273,7 +291,7 @@ test('counts up from where it starts', async () =&gt; {
   <li><strong>El contrato con el servidor</strong>, el <code>.fudapi</code>, no es código de ningún lenguaje, y el formato en que viajan las llamadas está documentado. Cualquier backend que lo cumpla sirve a la misma página (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</li>
 </ul>
 
-<p>Cuando esos servidores lleguen, podrás desplegar sin Node, en .NET, en la JVM o donde ya esté tu backend, sin tocar una línea de tus páginas. Lo que corre en el navegador seguirá siendo TypeScript, como en cualquier web.</p>
+<p>Cuando esos servidores lleguen, podrás desplegar sin Node, en .NET o en la JVM, sin tocar una línea de tus páginas. Lo que corre en el navegador seguirá siendo TypeScript, como en cualquier web.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
