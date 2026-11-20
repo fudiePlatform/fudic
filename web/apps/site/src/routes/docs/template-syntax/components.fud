@@ -42,19 +42,19 @@
 <h2 id="file-shape">La forma del fichero</h2>
 
 <ui-code .path="src/components/miapp-card/miapp-card.fud">
-<pre><code>&lt;link rel="component" href="../miapp-badge/miapp-badge.fud"&gt;   ①
+<pre><code>&lt;link rel="component" href="../miapp-badge/miapp-badge.fud"&gt;
 
-@@code &#123;                                                        ②
+@@code &#123;
   const &#123; tone = "neutral" &#125; = props&lt;&#123; tone?: string &#125;&gt;();
 &#125;
 
-&lt;head&gt;                                                         ③
+&lt;head&gt;
   &lt;style&gt;
     .card &#123; padding: 1rem; &#125;
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-card&gt;                                                   ④
+&lt;miapp-card&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;article class="card"&gt;
       &lt;miapp-badge .tone=@@tone&gt;&lt;/miapp-badge&gt;
@@ -64,12 +64,14 @@
 &lt;/miapp-card&gt;</code></pre>
 </ui-code>
 
-<ol>
-  <li>Los componentes que usa.</li>
-  <li>Su código, en TypeScript. Opcional.</li>
-  <li>Sus estilos (<a href="/docs/styles">El CSS de un componente</a>). Opcional.</li>
-  <li>Su tag envolviendo un <code>&lt;template shadowrootmode&gt;</code>. Todo lo que pinta va dentro.</li>
-</ol>
+<p>De arriba abajo:</p>
+
+<ul>
+  <li><code>&lt;link rel="component"&gt;</code>: los componentes que usa.</li>
+  <li><code>@@code</code>: su código, en TypeScript. Opcional.</li>
+  <li><code>&lt;head&gt;</code>: sus estilos (<a href="/docs/styles">El CSS de un componente</a>). Opcional.</li>
+  <li>Su tag, envolviendo un <code>&lt;template shadowrootmode&gt;</code>. Todo lo que pinta va dentro.</li>
+</ul>
 
 <p>Un componente puede ser solo la parte 4: HTML y CSS, sin JavaScript.</p>
 
