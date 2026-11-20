@@ -81,7 +81,7 @@
   <p>Los handlers son <strong>TypeScript completo</strong>: pueden usar cualquier API del navegador, <code>await</code>, imports… La lista cerrada de la vista no se les aplica, porque nunca se ejecutan en el servidor.</p>
 </ui-note>
 
-<p>No hay modificadores como <code>.prevent</code> o <code>.stop</code>: el handler llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault"><code>preventDefault()</code></a> o a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation"><code>stopPropagation()</code></a> cuando lo necesita, como en cualquier código del DOM. Y los atributos <code>onclick="…"</code> de HTML no se admiten: un handler siempre es una función de <code>@@code</code>.</p>
+<p>No hay modificadores como <code>.prevent</code> o <code>.stop</code>: el handler llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener"><code>preventDefault()</code></a> o a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation" target="_blank" rel="noopener"><code>stopPropagation()</code></a> cuando lo necesita, como en cualquier código del DOM. Y los atributos <code>onclick="…"</code> de HTML no se admiten: un handler siempre es una función de <code>@@code</code>.</p>
 
 <h2 id="value"><code>$value</code>: el valor del control</h2>
 
@@ -156,7 +156,7 @@
 <p>La marca no deja rastro en el HTML: no escribe ningún atributo. Y la lista puede crecer o reordenarse sin añadir ni quitar un solo listener.</p>
 
 <ui-note>
-  <p>La delegación es un patrón clásico del DOM, posible porque los eventos <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling">burbujean</a> hasta sus ancestros. Lo que añade Fudic es la marca: sin ella, cada handler tendría que buscar la fila con <code>closest()</code> y reconstruirla desde un <code>data-*</code>.</p>
+  <p>La delegación es un patrón clásico del DOM, posible porque los eventos <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling" target="_blank" rel="noopener">burbujean</a> hasta sus ancestros. Lo que añade Fudic es la marca: sin ella, cada handler tendría que buscar la fila con <code>closest()</code> y reconstruirla desde un <code>data-*</code>.</p>
 </ui-note>
 
 <h3 id="named-handlers">Dos botones con el mismo evento</h3>
@@ -244,14 +244,14 @@
   <li><strong>El receptor se da de baja</strong> cuando su componente sale de la página.</li>
 </ul>
 
-<p>Por debajo es el estándar: <code>emit</code> lanza un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent"><code>CustomEvent</code></a> con <code>bubbles</code> y <code>composed</code>, para que cruce los shadow roots hasta el documento, y <code>bus:</code> lo escucha ahí. Lo que añade Fudic es el tipo, la baja automática y que el primer evento no se pierda.</p>
+<p>Por debajo es el estándar: <code>emit</code> lanza un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> con <code>bubbles</code> y <code>composed</code>, para que cruce los shadow roots hasta el documento, y <code>bus:</code> lo escucha ahí. Lo que añade Fudic es el tipo, la baja automática y que el primer evento no se pierda.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Events">Introducción a los eventos</a>: qué es un evento y cómo se escucha.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling">Burbujeo de eventos</a>, y en concreto la <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling#event_delegation">delegación</a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>Event.composed</code></a>: qué eventos salen de un shadow root.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent"><code>CustomEvent</code></a>: eventos propios con un dato.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault"><code>Event.preventDefault()</code></a>: cancelar lo que el navegador haría por defecto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Events" target="_blank" rel="noopener">Introducción a los eventos</a>: qué es un evento y cómo se escucha.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling" target="_blank" rel="noopener">Burbujeo de eventos</a>, y en concreto la <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling#event_delegation" target="_blank" rel="noopener">delegación</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>Event.composed</code></a>: qué eventos salen de un shadow root.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a>: eventos propios con un dato.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener"><code>Event.preventDefault()</code></a>: cancelar lo que el navegador haría por defecto.</li>
 </ul>

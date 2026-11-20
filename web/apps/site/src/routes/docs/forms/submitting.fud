@@ -200,7 +200,7 @@ form subscribeForm
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Sending_and_retrieving_form_data">Enviar los datos de un formulario</a>: <code>action</code>, <code>method</code> y <code>name</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422"><code>422 Unprocessable Content</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/409"><code>409 Conflict</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/415"><code>415 Unsupported Media Type</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/303"><code>303 See Other</code></a>: la redirección después de enviar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Sending_and_retrieving_form_data" target="_blank" rel="noopener">Enviar los datos de un formulario</a>: <code>action</code>, <code>method</code> y <code>name</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422" target="_blank" rel="noopener"><code>422 Unprocessable Content</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/409" target="_blank" rel="noopener"><code>409 Conflict</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/415" target="_blank" rel="noopener"><code>415 Unsupported Media Type</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/303" target="_blank" rel="noopener"><code>303 See Other</code></a>: la redirección después de enviar.</li>
 </ul>

@@ -7,7 +7,7 @@
     <nav aria-label="Principal">
       <ul>
         <li><a href="/docs/getting-started">Documentación</a></li>
-        <li><a href="https://github.com/fudiePlatform/fudic">GitHub</a></li>
+        <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
       </ul>
     </nav>
   </header>

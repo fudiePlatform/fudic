@@ -85,7 +85,7 @@
   </tbody>
 </table>
 
-<p>Es lo que necesitan los <a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML">atributos booleanos</a> del estándar, que significan «sí» por estar presentes, tengan el valor que tengan:</p>
+<p>Es lo que necesitan los <a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML" target="_blank" rel="noopener">atributos booleanos</a> del estándar, que significan «sí» por estar presentes, tengan el valor que tengan:</p>
 
 <ui-code>
 <pre><code>&lt;button type="submit" disabled=@@saving()&gt;Guardar&lt;/button&gt;
@@ -308,7 +308,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes#content_versus_idl_attributes">Atributos de contenido frente a atributos IDL</a>: la diferencia entre atributo y propiedad.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML">Atributos booleanos</a>: por qué basta con que estén presentes.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList"><code>Element.classList</code></a>: la API que enciende y apaga clases sin tocar las demás.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes#content_versus_idl_attributes" target="_blank" rel="noopener">Atributos de contenido frente a atributos IDL</a>: la diferencia entre atributo y propiedad.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML" target="_blank" rel="noopener">Atributos booleanos</a>: por qué basta con que estén presentes.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList" target="_blank" rel="noopener"><code>Element.classList</code></a>: la API que enciende y apaga clases sin tocar las demás.</li>
 </ul>

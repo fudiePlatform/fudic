@@ -200,6 +200,17 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
+/* A link that opens in another tab says so: an arrow for the eye and, where the browser takes
+   alternative text for generated content, words for a screen reader (WCAG technique G201). The
+   first declaration is the fallback for a browser that does not read the second. */
+
+a[target="_blank"]::after {
+  content: "\2009\2197";
+  content: "\2009\2197" / " (se abre en otra pestaña)";
+  display: inline-block;
+  font-size: 0.85em;
+}
+
 /* A flow: the steps of a round trip as an ordered list, one box per step and the side that runs it
    on top. A list and not a picture, so a screen reader reads it in order and it reflows on a phone. */
 

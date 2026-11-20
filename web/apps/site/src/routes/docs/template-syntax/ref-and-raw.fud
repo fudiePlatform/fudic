@@ -120,12 +120,12 @@
   <p><strong><code>trustedHtml</code> no limpia nada.</strong> Marca un valor como seguro; no lo hace seguro. Si el HTML viene de lo que escribe un usuario, límpialo antes en el servidor. Con la política de seguridad que trae una app nueva, <code>@@raw</code> es una de las dos únicas puertas por las que entra HTML en la página.</p>
 </ui-note>
 
-<p>Esa política es estándar: la app nace con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API">Trusted Types</a> activado en su CSP, así que el navegador rechaza cualquier asignación de HTML que no pase por la política <code>fudic</code>. Un <code>innerHTML</code> escrito a mano en un handler falla; <code>@@raw</code> funciona, porque pasa por ella. La seguridad tiene su capítulo (capítulo 12).</p>
+<p>Esa política es estándar: la app nace con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types</a> activado en su CSP, así que el navegador rechaza cualquier asignación de HTML que no pase por la política <code>fudic</code>. Un <code>innerHTML</code> escrito a mano en un handler falla; <code>@@raw</code> funciona, porque pasa por ella. La seguridad tiene su capítulo (capítulo 12).</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal"><code>HTMLDialogElement.showModal()</code></a>: un caso típico de <code>ref</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML"><code>Element.innerHTML</code></a>: lo que hace <code>@@raw</code> en el navegador, y por qué es peligroso con texto que no controlas.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API">Trusted Types API</a>: cómo el navegador bloquea el HTML que no pasa por una política.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal" target="_blank" rel="noopener"><code>HTMLDialogElement.showModal()</code></a>: un caso típico de <code>ref</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML" target="_blank" rel="noopener"><code>Element.innerHTML</code></a>: lo que hace <code>@@raw</code> en el navegador, y por qué es peligroso con texto que no controlas.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types API</a>: cómo el navegador bloquea el HTML que no pasa por una política.</li>
 </ul>

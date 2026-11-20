@@ -150,7 +150,7 @@ load.handle(() =&gt; (&#123;
 
 <p>Pintar un bloque en su sitio cuando llega su dato, y no en el orden del documento, es lo que los frameworks llevan años haciendo con JavaScript: envían el bloque al final de la página y un script lo mueve a su hueco. Fudic decidió no hacerlo, y por eso hoy pinta en orden.</p>
 
-<p>El estándar ya tiene la pieza para hacerlo sin JavaScript. El HTML Living Standard añade a <code>&lt;template&gt;</code> el atributo <a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for"><code>for</code></a>, y dos instrucciones de procesamiento que marcan el hueco, <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>. Cuando el parser encuentra un <code>&lt;template for&gt;</code>, sustituye por su contenido lo que hay entre las dos marcas con ese nombre, llegue cuando llegue:</p>
+<p>El estándar ya tiene la pieza para hacerlo sin JavaScript. El HTML Living Standard añade a <code>&lt;template&gt;</code> el atributo <a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for" target="_blank" rel="noopener"><code>for</code></a>, y dos instrucciones de procesamiento que marcan el hueco, <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>. Cuando el parser encuentra un <code>&lt;template for&gt;</code>, sustituye por su contenido lo que hay entre las dos marcas con ese nombre, llegue cuando llegue:</p>
 
 <ui-code>
 <pre><code>&lt;section&gt;
@@ -177,7 +177,7 @@ load.handle(() =&gt; (&#123;
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#using_template_for_for_patching"><code>&lt;template for&gt;</code> en MDN</a>, con ejemplos de un hueco y de un rango entre <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>.</li>
-  <li><a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for">El atributo <code>for</code> de <code>&lt;template&gt;</code></a>, en el HTML Living Standard.</li>
-  <li><a href="https://github.com/WICG/declarative-partial-updates/blob/main/patching-explainer.md">El explicador de la propuesta</a> (Declarative Partial Updates, en el WICG): por qué existe y qué problemas resuelve.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#using_template_for_for_patching" target="_blank" rel="noopener"><code>&lt;template for&gt;</code> en MDN</a>, con ejemplos de un hueco y de un rango entre <code>&lt;?start&gt;</code> y <code>&lt;?end&gt;</code>.</li>
+  <li><a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for" target="_blank" rel="noopener">El atributo <code>for</code> de <code>&lt;template&gt;</code></a>, en el HTML Living Standard.</li>
+  <li><a href="https://github.com/WICG/declarative-partial-updates/blob/main/patching-explainer.md" target="_blank" rel="noopener">El explicador de la propuesta</a> (Declarative Partial Updates, en el WICG): por qué existe y qué problemas resuelve.</li>
 </ul>

@@ -79,7 +79,7 @@
 <p>Tiene una razón, y sale de cómo funciona el shadow DOM:</p>
 
 <ol>
-  <li><strong>El CSS del documento no entra en un componente.</strong> La página recibe la guía entera, y con ella se pintan los encabezados, los párrafos y todo lo que vive en el light DOM. Pero un <code>&lt;button&gt;</code> dentro de un componente no ve nada de eso: sin más, se pinta con el estilo por defecto del navegador. Es el aislamiento del <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">shadow DOM</a>, que es del estándar.</li>
+  <li><strong>El CSS del documento no entra en un componente.</strong> La página recibe la guía entera, y con ella se pintan los encabezados, los párrafos y todo lo que vive en el light DOM. Pero un <code>&lt;button&gt;</code> dentro de un componente no ve nada de eso: sin más, se pinta con el estilo por defecto del navegador. Es el aislamiento del <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">shadow DOM</a>, que es del estándar.</li>
   <li><strong>Adoptar la guía entera en cada componente sería tirar bytes.</strong> Cada shadow root cargaría las reglas de las tablas, los diálogos y los formularios para pintar un botón.</li>
   <li><strong>Así que la guía se parte en trozos, uno por elemento</strong>, y cada componente adopta solo los de lo que pinta. Esta web lo hace con sus notas, que solo tienen párrafos:</li>
 </ol>
@@ -126,7 +126,7 @@ adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
 
 <h2 id="where">Por qué <code>:where()</code></h2>
 
-<p>Todas las reglas de la guía están envueltas en <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where"><code>:where()</code></a>:</p>
+<p>Todas las reglas de la guía están envueltas en <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a>:</p>
 
 <ui-code .path="libs/guide/button.css">
 <pre><code>:where(button) {
@@ -143,7 +143,7 @@ adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
 }</code></pre>
 </ui-code>
 
-<p>La guía da valores por defecto, y un valor por defecto tiene que perder siempre. <code>:where()</code> tiene <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity">especificidad</a> cero, así que cualquier regla que escribas le gana:</p>
+<p>La guía da valores por defecto, y un valor por defecto tiene que perder siempre. <code>:where()</code> tiene <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity" target="_blank" rel="noopener">especificidad</a> cero, así que cualquier regla que escribas le gana:</p>
 
 <ui-code .path="src/components/miapp-toolbar/miapp-toolbar.fud">
 <pre><code>&lt;style&gt;
@@ -162,7 +162,7 @@ adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
 
 <h2 id="tokens">Tokens: modo oscuro y contraste</h2>
 
-<p>Los colores de la guía se escriben con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a>: un valor para el modo claro y otro para el oscuro, en el mismo token.</p>
+<p>Los colores de la guía se escriben con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a>: un valor para el modo claro y otro para el oscuro, en el mismo token.</p>
 
 <ui-code .path="libs/guide/tokens.css">
 <pre><code>:root {
@@ -176,20 +176,20 @@ adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>El modo lo decide el sistema</strong>, con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a>. Para fijar uno en una zona, o en toda la página, basta con cambiar <code>color-scheme</code>, sin tocar ningún token.</li>
-  <li><strong>Cada par de colores de texto cumple el contraste 4.5:1</strong> de <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">WCAG 2.2 AA</a> sobre los fondos, en los dos modos.</li>
+  <li><strong>El modo lo decide el sistema</strong>, con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>. Para fijar uno en una zona, o en toda la página, basta con cambiar <code>color-scheme</code>, sin tocar ningún token.</li>
+  <li><strong>Cada par de colores de texto cumple el contraste 4.5:1</strong> de <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" target="_blank" rel="noopener">WCAG 2.2 AA</a> sobre los fondos, en los dos modos.</li>
   <li><strong>Todo trozo usa solo tokens.</strong> Para cambiar el aspecto de la app, se cambian los tokens, no los trozos.</li>
 </ul>
 
 <h2 id="font">La fuente y el favicon</h2>
 
-<p>La guía trae una fuente <strong>autoalojada y de código abierto</strong>, declarada con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face"><code>@@font-face</code></a> en <code>tokens.css</code>. Se sirve desde el mismo origen que la app: sin peticiones a terceros, y con la licencia junto al fichero. Esta web usa Inter Tight, recortada a los pesos y caracteres que usa.</p>
+<p>La guía trae una fuente <strong>autoalojada y de código abierto</strong>, declarada con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a> en <code>tokens.css</code>. Se sirve desde el mismo origen que la app: sin peticiones a terceros, y con la licencia junto al fichero. Esta web usa Inter Tight, recortada a los pesos y caracteres que usa.</p>
 
 <p>El favicon es el <code>guide.icon</code> de <code>fudic.json</code>, y lo llevan todas las páginas que reciben la guía.</p>
 
 <h2 id="sheet">Lo que traerá <code>@@sheet</code></h2>
 
-<p>La guía es un fichero por trozo porque, hoy, el estándar no tiene forma de nombrar varias hojas dentro de un mismo fichero. <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/AtSheet/explainer.md"><code>@@sheet</code></a> es la propuesta que la daría:</p>
+<p>La guía es un fichero por trozo porque, hoy, el estándar no tiene forma de nombrar varias hojas dentro de un mismo fichero. <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/AtSheet/explainer.md" target="_blank" rel="noopener"><code>@@sheet</code></a> es la propuesta que la daría:</p>
 
 <ui-code .path="guide.css">
 <pre><code>@@sheet button {
@@ -212,14 +212,14 @@ adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
 <p>Encaja con lo que hace Fudic: una guía en un solo fichero, de la que cada componente toma sus trozos por nombre, y que se puede escribir dentro de la página o enlazar como fichero cambiando solo el <code>href</code>. Su explainer cita justo este caso: compartir estilos con Declarative Shadow DOM sin JavaScript y sin peticiones de más.</p>
 
 <ui-note>
-  <p><code>@@sheet</code> todavía no es estándar. El CSS Working Group acordó en 2025 incorporarla a la especificación de la cascada (<a href="https://github.com/w3c/csswg-drafts/issues/11509">w3c/csswg-drafts#11509</a>), pero ningún navegador la implementa aún, ni siquiera tras un flag. Mientras tanto, Fudic usa un fichero por trozo.</p>
+  <p><code>@@sheet</code> todavía no es estándar. El CSS Working Group acordó en 2025 incorporarla a la especificación de la cascada (<a href="https://github.com/w3c/csswg-drafts/issues/11509" target="_blank" rel="noopener">w3c/csswg-drafts#11509</a>), pero ningún navegador la implementa aún, ni siquiera tras un flag. Mientras tanto, Fudic usa un fichero por trozo.</p>
 </ui-note>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where"><code>:where()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity">la especificidad</a>: por qué la guía siempre pierde.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a>: los dos temas en un token.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face"><code>@@font-face</code></a>: la fuente autoalojada.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import"><code>@@import</code></a>: cómo <code>guide.css</code> reúne los trozos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity" target="_blank" rel="noopener">la especificidad</a>: por qué la guía siempre pierde.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>: los dos temas en un token.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a>: la fuente autoalojada.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import" target="_blank" rel="noopener"><code>@@import</code></a>: cómo <code>guide.css</code> reúne los trozos.</li>
 </ul>

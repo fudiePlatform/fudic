@@ -191,7 +191,7 @@
 &lt;p&gt;Tu carrito se guarda en este navegador.&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p><code>readList</code> y <code>saveList</code> son dos funciones sobre <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">IndexedDB</a>, en un módulo del proyecto. Hay una versión completa en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/ciclo.ts"><code>examples/basic</code></a>.</p>
+<p><code>readList</code> y <code>saveList</code> son dos funciones sobre <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" target="_blank" rel="noopener">IndexedDB</a>, en un módulo del proyecto. Hay una versión completa en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/ciclo.ts" target="_blank" rel="noopener"><code>examples/basic</code></a>.</p>
 
 <ui-note .kind="important">
   <p><strong>El navegador no espera a ninguna promesa en <code>pagehide</code>.</strong> Una escritura en IndexedDB o un <code>fetch</code> empezados en <code>onDisconnect</code> pueden no terminar nunca, sobre todo en móvil. Guarda lo que no se puede perder cuando cambia, con un <code>effect</code> como arriba, y deja <code>onDisconnect</code> como último intento.</p>
@@ -199,7 +199,7 @@
 
 <h3 id="bfcache">La bfcache</h3>
 
-<p>Cuando el usuario se va de una página y vuelve con el botón «atrás», el navegador puede devolverla tal como estaba, sin volver a cargarla: es la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a>. La página se va y vuelve sin destruirse, con sus signals intactos, igual que una fila con <code>key</code> que se reordena. Por eso vuelve a ejecutar <code>onConnect</code> al volver, y no <code>afterHydrate</code>.</p>
+<p>Cuando el usuario se va de una página y vuelve con el botón «atrás», el navegador puede devolverla tal como estaba, sin volver a cargarla: es la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>. La página se va y vuelve sin destruirse, con sus signals intactos, igual que una fila con <code>key</code> que se reordena. Por eso vuelve a ejecutar <code>onConnect</code> al volver, y no <code>afterHydrate</code>.</p>
 
 <p>Fudic escucha <code>pagehide</code> y <code>pageshow</code>, y solo en una página que usa <code>onConnect</code>, <code>onDisconnect</code> u <code>onDispose</code>. Nunca escucha <code>unload</code>, que impide que la página entre en la bfcache.</p>
 
@@ -219,13 +219,13 @@
   </tbody>
 </table>
 
-<p>Los hooks de Fudic se apoyan en los del estándar: <code>onConnect</code> y <code>onDisconnect</code> son los <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks">lifecycle callbacks</a> de un custom element. Lo que añade Fudic es separar si el componente se hidrata o se crea, y la limpieza automática.</p>
+<p>Los hooks de Fudic se apoyan en los del estándar: <code>onConnect</code> y <code>onDisconnect</code> son los <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks" target="_blank" rel="noopener">lifecycle callbacks</a> de un custom element. Lo que añade Fudic es separar si el componente se hidrata o se crea, y la limpieza automática.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks">Custom element lifecycle callbacks</a>: <code>connectedCallback</code>, <code>disconnectedCallback</code> y los demás.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a>, y los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event"><code>pagehide</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event"><code>pageshow</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver"><code>ResizeObserver</code></a>: el observer del ejemplo.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">IndexedDB</a>: guardar datos en el navegador.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks" target="_blank" rel="noopener">Custom element lifecycle callbacks</a>: <code>connectedCallback</code>, <code>disconnectedCallback</code> y los demás.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>, y los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event" target="_blank" rel="noopener"><code>pagehide</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event" target="_blank" rel="noopener"><code>pageshow</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver" target="_blank" rel="noopener"><code>ResizeObserver</code></a>: el observer del ejemplo.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" target="_blank" rel="noopener">IndexedDB</a>: guardar datos en el navegador.</li>
 </ul>

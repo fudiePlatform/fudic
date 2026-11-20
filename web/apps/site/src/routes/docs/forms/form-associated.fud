@@ -49,11 +49,11 @@
 
 <ul>
   <li><strong>No se puede etiquetar.</strong> Un <code>&lt;label for="ali"&gt;</code> que apunta al tag no llega al <code>&lt;input&gt;</code> de dentro: los <code>id</code> no cruzan la frontera del shadow DOM.</li>
-  <li><strong>No aporta su valor</strong> al <a href="https://developer.mozilla.org/en-US/docs/Web/API/FormData"><code>FormData</code></a> del <code>&lt;form&gt;</code> que lo contiene.</li>
-  <li><strong>No tiene validez.</strong> No hay <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:invalid"><code>:invalid</code></a>, y el <code>&lt;form&gt;</code> no sabe que es el campo que falla.</li>
+  <li><strong>No aporta su valor</strong> al <a href="https://developer.mozilla.org/en-US/docs/Web/API/FormData" target="_blank" rel="noopener"><code>FormData</code></a> del <code>&lt;form&gt;</code> que lo contiene.</li>
+  <li><strong>No tiene validez.</strong> No hay <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:invalid" target="_blank" rel="noopener"><code>:invalid</code></a>, y el <code>&lt;form&gt;</code> no sabe que es el campo que falla.</li>
 </ul>
 
-<p>El estándar tiene la respuesta: los <em>form-associated custom elements</em>. Un elemento cuya clase declara <code>static formAssociated = true</code> y llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals"><code>attachInternals()</code></a> recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals"><code>ElementInternals</code></a>, que es lo que el navegador da a sus propios campos: un valor para el formulario, una validez y unas etiquetas.</p>
+<p>El estándar tiene la respuesta: los <em>form-associated custom elements</em>. Un elemento cuya clase declara <code>static formAssociated = true</code> y llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals" target="_blank" rel="noopener"><code>attachInternals()</code></a> recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noopener"><code>ElementInternals</code></a>, que es lo que el navegador da a sus propios campos: un valor para el formulario, una validez y unas etiquetas.</p>
 
 <h2 id="marker"><code>formassociated</code></h2>
 
@@ -99,9 +99,9 @@
   <tbody>
     <tr><td><code>static formAssociated = true</code></td><td>que el navegador trate el elemento como un campo</td></tr>
     <tr><td><code>attachInternals()</code>, en el constructor</td><td>es el único momento en que se puede llamar</td></tr>
-    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setFormValue"><code>setFormValue</code></a>, siguiendo al valor</td><td>que un <code>&lt;form&gt;</code> que no es de Fudic recoja el valor en su <code>FormData</code>, bajo el <code>name</code> del tag</td></tr>
-    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setValidity"><code>setValidity</code></a>, siguiendo al error</td><td>un <code>:invalid</code> real en el tag, con el texto del error, y que el envío pueda llevar el foco a este campo</td></tr>
-    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus"><code>delegatesFocus</code></a> en su shadow root</td><td>que el clic en el label, o el foco en el tag, llegue al <code>&lt;input&gt;</code> de dentro</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setFormValue" target="_blank" rel="noopener"><code>setFormValue</code></a>, siguiendo al valor</td><td>que un <code>&lt;form&gt;</code> que no es de Fudic recoja el valor en su <code>FormData</code>, bajo el <code>name</code> del tag</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setValidity" target="_blank" rel="noopener"><code>setValidity</code></a>, siguiendo al error</td><td>un <code>:invalid</code> real en el tag, con el texto del error, y que el envío pueda llevar el foco a este campo</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus" target="_blank" rel="noopener"><code>delegatesFocus</code></a> en su shadow root</td><td>que el clic en el label, o el foco en el tag, llegue al <code>&lt;input&gt;</code> de dentro</td></tr>
   </tbody>
 </table>
 
@@ -113,23 +113,23 @@
 
 <h2 id="bridge">El puente: <code>shadowrootreferencetarget</code></h2>
 
-<p><code>delegatesFocus</code> lleva el clic y el foco, pero no el <em>nombre</em> ni la <em>descripción</em>: un lector de pantalla que llega al <code>&lt;input&gt;</code> no sabe que se llama «Alias». Para eso está <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md">Reference Target</a>, una propuesta del estándar que añade un atributo a la plantilla:</p>
+<p><code>delegatesFocus</code> lleva el clic y el foco, pero no el <em>nombre</em> ni la <em>descripción</em>: un lector de pantalla que llega al <code>&lt;input&gt;</code> no sabe que se llama «Alias». Para eso está <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md" target="_blank" rel="noopener">Reference Target</a>, una propuesta del estándar que añade un atributo a la plantilla:</p>
 
 <ui-code>
 <pre><code>&lt;template shadowrootmode="open" shadowrootreferencetarget="campo"&gt;</code></pre>
 </ui-code>
 
-<p>MDN lo documenta en <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget"><code>&lt;template&gt;</code></a>. Lo que apunta al tag (el <code>&lt;label for="ali"&gt;</code>, el <code>aria-labelledby</code> de otro elemento) sigue hasta el elemento con <code>id="campo"</code> de dentro. Lo decide quien escribe el componente: el <code>&lt;input&gt;</code>, o el <code>&lt;fieldset&gt;</code> que rodea unos radios. Tiene que ser un <code>id</code> estático de esa plantilla (<code>FUD0605</code>).</p>
+<p>MDN lo documenta en <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>. Lo que apunta al tag (el <code>&lt;label for="ali"&gt;</code>, el <code>aria-labelledby</code> de otro elemento) sigue hasta el elemento con <code>id="campo"</code> de dentro. Lo decide quien escribe el componente: el <code>&lt;input&gt;</code>, o el <code>&lt;fieldset&gt;</code> que rodea unos radios. Tiene que ser un <code>id</code> estático de esa plantilla (<code>FUD0605</code>).</p>
 
 <p>Es HTML estándar y lo lee el parser, así que funciona con el HTML del servidor y sin JavaScript, en cualquier componente, sea control-componente o no. Fudic lo lleva donde hace falta: a la plantilla que escribe el servidor, y a <code>referenceTarget</code> en el <code>attachShadow</code> del navegador. Hoy solo lo tiene Chrome.</p>
 
 <h2 id="relay">El respaldo</h2>
 
-<p>Donde no hay puente (Safari y Firefox, hoy), y para lo que el puente no lleva, <code>FudicControlElement</code> hace de respaldo con <em>element reflection</em>: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements"><code>ariaDescribedByElements</code></a>, que dejan a un elemento del shadow DOM referenciar elementos del árbol de fuera.</p>
+<p>Donde no hay puente (Safari y Firefox, hoy), y para lo que el puente no lleva, <code>FudicControlElement</code> hace de respaldo con <em>element reflection</em>: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements" target="_blank" rel="noopener"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements" target="_blank" rel="noopener"><code>ariaDescribedByElements</code></a>, que dejan a un elemento del shadow DOM referenciar elementos del árbol de fuera.</p>
 
 <ul>
   <li><strong>Lo que está escrito en el tag</strong>, como el <code>aria-describedby</code> de un mensaje de fuera, un <code>aria-labelledby</code> o un <code>aria-label</code>, el puente no lo lleva en ningún navegador. El respaldo lo pasa al campo de dentro.</li>
-  <li><strong>Los labels que apuntan al tag</strong> (<a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/labels"><code>internals.labels</code></a>), solo donde no hay puente: con puente, el label ya llega y pasarlo otra vez diría el nombre dos veces.</li>
+  <li><strong>Los labels que apuntan al tag</strong> (<a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/labels" target="_blank" rel="noopener"><code>internals.labels</code></a>), solo donde no hay puente: con puente, el label ya llega y pasarlo otra vez diría el nombre dos veces.</li>
 </ul>
 
 <p>El respaldo <em>referencia</em>, no copia: si el texto del label cambia, el nombre cambia con él, y el <code>*</code> en <code>aria-hidden</code> se queda fuera. Y suma, no pisa: lo que el campo ya decía de sí mismo va primero. El día que el puente esté en todos los navegadores, la parte de los labels se va, y el HTML no cambia.</p>
@@ -191,8 +191,8 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals"><code>ElementInternals</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals"><code>attachInternals()</code></a>: los campos de formulario personalizados.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus"><code>delegatesFocus</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements"><code>ariaDescribedByElements</code></a>: <em>element reflection</em>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget"><code>shadowrootreferencetarget</code></a>, en <code>&lt;template&gt;</code>, y <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md">la propuesta de Reference Target</a>, en el WICG.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noopener"><code>ElementInternals</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals" target="_blank" rel="noopener"><code>attachInternals()</code></a>: los campos de formulario personalizados.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus" target="_blank" rel="noopener"><code>delegatesFocus</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements" target="_blank" rel="noopener"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements" target="_blank" rel="noopener"><code>ariaDescribedByElements</code></a>: <em>element reflection</em>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget" target="_blank" rel="noopener"><code>shadowrootreferencetarget</code></a>, en <code>&lt;template&gt;</code>, y <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md" target="_blank" rel="noopener">la propuesta de Reference Target</a>, en el WICG.</li>
 </ul>

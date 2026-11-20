@@ -95,7 +95,7 @@ load ssr
 
 <h2 id="sw"><code>sw</code>: en el navegador</h2>
 
-<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker</a> es un script del estándar que el navegador instala para un sitio y que se coloca entre la página y la red: puede responder a una navegación sin preguntar al servidor. Con modo <code>sw</code>, el de Fudic pinta la página <strong>en el propio navegador</strong>, con el mismo código con el que la pinta el servidor:</p>
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker</a> es un script del estándar que el navegador instala para un sitio y que se coloca entre la página y la red: puede responder a una navegación sin preguntar al servidor. Con modo <code>sw</code>, el de Fudic pinta la página <strong>en el propio navegador</strong>, con el mismo código con el que la pinta el servidor:</p>
 
 <ol>
   <li>La primera visita a la página la responde el servidor, como si fuera <code>ssr</code>. Mientras, el Service Worker se guarda el código de esa página.</li>
@@ -191,6 +191,6 @@ load sw ttl 5m cache-first
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker API</a>: lo que pinta una página <code>sw</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"><code>Cache-Control</code></a>: por qué una respuesta privada no se guarda.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a>: lo que pinta una página <code>sw</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: por qué una respuesta privada no se guarda.</li>
 </ul>

@@ -192,7 +192,7 @@ rule alias-taken
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">Validación de formularios</a>: las reglas que el HTML ya trae, que el catálogo sigue.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">Expresiones regulares</a>: la sintaxis de un patrón.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation" target="_blank" rel="noopener">Validación de formularios</a>: las reglas que el HTML ya trae, que el catálogo sigue.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">Expresiones regulares</a>: la sintaxis de un patrón.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
 </ul>

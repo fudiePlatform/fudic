@@ -127,8 +127,8 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import"><code>@@import</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/url_function"><code>url()</code></a>: lo que el build aplana y resuelve.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja como fichero, también dentro de un shadow root.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103">103 Early Hints</a>: las hojas que se piden antes del HTML.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility">Baseline</a>: qué funciona en todos los navegadores principales.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import" target="_blank" rel="noopener"><code>@@import</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/url_function" target="_blank" rel="noopener"><code>url()</code></a>: lo que el build aplana y resuelve.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet" target="_blank" rel="noopener"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja como fichero, también dentro de un shadow root.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener">103 Early Hints</a>: las hojas que se piden antes del HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility" target="_blank" rel="noopener">Baseline</a>: qué funciona en todos los navegadores principales.</li>
 </ul>

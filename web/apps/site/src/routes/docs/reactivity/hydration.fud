@@ -121,7 +121,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html">Declarative Shadow DOM</a>: por qué el componente se ve antes de hidratarse.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define"><code>customElements.define()</code></a>: registrar un tag actualiza todas sus instancias.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture">La fase de captura</a>: cómo el runtime oye un gesto antes que nadie.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: por qué el componente se ve antes de hidratarse.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define" target="_blank" rel="noopener"><code>customElements.define()</code></a>: registrar un tag actualiza todas sus instancias.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture" target="_blank" rel="noopener">La fase de captura</a>: cómo el runtime oye un gesto antes que nadie.</li>
 </ul>

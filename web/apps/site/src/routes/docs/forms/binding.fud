@@ -103,7 +103,7 @@
 
 <h2 id="error"><code>error</code></h2>
 
-<p><code>error=@@campo</code> marca el elemento que dice el error de ese campo. El compilador le da un <code>id</code> y escribe en el campo el <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby"><code>aria-describedby</code></a> que apunta a él. Así, un lector de pantalla lee el error al llegar al campo, sin que nadie escriba ese atributo a mano. Lo que sale del servidor:</p>
+<p><code>error=@@campo</code> marca el elemento que dice el error de ese campo. El compilador le da un <code>id</code> y escribe en el campo el <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby" target="_blank" rel="noopener"><code>aria-describedby</code></a> que apunta a él. Así, un lector de pantalla lee el error al llegar al campo, sin que nadie escriba ese atributo a mano. Lo que sale del servidor:</p>
 
 <ui-code>
 <pre><code>&lt;input id="nom" type="text" aria-describedby="fud-e-userForm-name"&gt;
@@ -121,14 +121,14 @@
 <p>Un resumen es una lista. Vacío, no tiene hijos, y <code>:empty</code> lo oculta. Con errores, lleva un <code>&lt;ul&gt;</code> con un <code>&lt;li&gt;</code> por error, igual byte a byte desde el servidor que desde el navegador, y un lector de pantalla lo anuncia como una lista de tantos elementos.</p>
 
 <ul>
-  <li>El compilador le pone <code>aria-live="polite"</code>, salvo que la vista ya escriba uno: es una <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions">región viva</a>, y un error que aparece en ella se anuncia sin mover el foco.</li>
+  <li>El compilador le pone <code>aria-live="polite"</code>, salvo que la vista ya escriba uno: es una <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions" target="_blank" rel="noopener">región viva</a>, y un error que aparece en ella se anuncia sin mover el foco.</li>
   <li>Como lleva un <code>&lt;ul&gt;</code>, no puede ir en un elemento que no admite una lista, como <code>&lt;p&gt;</code>, <code>&lt;span&gt;</code>, <code>&lt;small&gt;</code> o <code>&lt;label&gt;</code> (<code>FUD0602</code>).</li>
   <li>En un campo es <code>FUD0601</code>: un campo tiene un error, no una lista.</li>
 </ul>
 
 <h2 id="fields">El resumen con <code>fields</code></h2>
 
-<p>Un formulario largo que falla al enviar tiene un problema: los errores están repartidos por toda la página, y el usuario no sabe cuántos son ni dónde. El patrón <a href="https://design-system.service.gov.uk/components/error-summary/"><em>error summary</em></a> del sistema de diseño del Gobierno británico lo resuelve con una caja al principio que los lista todos, y Fudic lo trae con un atributo:</p>
+<p>Un formulario largo que falla al enviar tiene un problema: los errores están repartidos por toda la página, y el usuario no sabe cuántos son ni dónde. El patrón <a href="https://design-system.service.gov.uk/components/error-summary/" target="_blank" rel="noopener"><em>error summary</em></a> del sistema de diseño del Gobierno británico lo resuelve con una caja al principio que los lista todos, y Fudic lo trae con un atributo:</p>
 
 <ui-code>
 <pre><code>&lt;div class="summary" summary=@@userForm fields&gt;&lt;/div&gt;</code></pre>
@@ -211,7 +211,7 @@
   <li><strong>Si es válido</strong> y el formulario tiene <code>form:=</code>, llama a la función de servidor (<a href="/docs/forms/submitting">Enviar al servidor</a>). Sin <code>form:=</code>, el envío es de la vista: su <code>@@submit</code>, o el envío estándar del <code>&lt;form&gt;</code> a su <code>action</code>.</li>
 </ul>
 
-<p>El compilador pone <code>novalidate</code> en un <code>&lt;form&gt;</code> enlazado. Sin él, la <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">validación del navegador</a> se ejecutaría antes del evento <code>submit</code>, pararía el envío con su burbuja y la validación del formulario no llegaría a ejecutarse. Un solo validador por formulario: el que tú has declarado.</p>
+<p>El compilador pone <code>novalidate</code> en un <code>&lt;form&gt;</code> enlazado. Sin él, la <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation" target="_blank" rel="noopener">validación del navegador</a> se ejecutaría antes del evento <code>submit</code>, pararía el envío con su burbuja y la validación del formulario no llegaría a ejecutarse. Un solo validador por formulario: el que tú has declarado.</p>
 
 <h2 id="required-mark">La marca de obligatorio</h2>
 
@@ -230,8 +230,8 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/label"><code>&lt;label&gt;</code></a> y su atributo <code>for</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby"><code>aria-describedby</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid"><code>aria-invalid</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-hidden"><code>aria-hidden</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions">Regiones vivas</a>: <code>aria-live</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">Validación del HTML</a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form#novalidate"><code>novalidate</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/label" target="_blank" rel="noopener"><code>&lt;label&gt;</code></a> y su atributo <code>for</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby" target="_blank" rel="noopener"><code>aria-describedby</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid" target="_blank" rel="noopener"><code>aria-invalid</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-hidden" target="_blank" rel="noopener"><code>aria-hidden</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions" target="_blank" rel="noopener">Regiones vivas</a>: <code>aria-live</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation" target="_blank" rel="noopener">Validación del HTML</a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form#novalidate" target="_blank" rel="noopener"><code>novalidate</code></a>.</li>
 </ul>

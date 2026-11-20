@@ -52,7 +52,7 @@
 
 <h2 id="what-is-fudic">Qué es Fudic</h2>
 
-<p>Fudic es un framework para construir webs con <strong><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components">componentes web</a> estándar</strong>, pintados desde el servidor. Cada componente se escribe en un fichero <code>.fud</code> con HTML, CSS y, si hace falta, TypeScript, los tres estándar. El compilador lo convierte en lo que el navegador ya sabe leer.</p>
+<p>Fudic es un framework para construir webs con <strong><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noopener">componentes web</a> estándar</strong>, pintados desde el servidor. Cada componente se escribe en un fichero <code>.fud</code> con HTML, CSS y, si hace falta, TypeScript, los tres estándar. El compilador lo convierte en lo que el navegador ya sabe leer.</p>
 
 <p>Los componentes web son la forma que tiene el propio navegador de crear etiquetas nuevas, como <code>&lt;mi-contador&gt;</code>, con su markup, sus estilos y su comportamiento. No pertenecen a ningún framework: forman parte de la plataforma web, igual que <code>&lt;video&gt;</code> o <code>&lt;dialog&gt;</code>, y funcionan en cualquier página.</p>
 
@@ -70,11 +70,11 @@
 
 <h3 id="declarative-shadow-dom">Qué es Declarative Shadow DOM</h3>
 
-<p>Un componente web necesita dos cosas: su propio markup y sus propios estilos, sin que la página los pise ni él pise a la página. El estándar que lo resuelve es el <strong><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">Shadow DOM</a></strong>: un árbol de elementos que cuelga del componente, separado del resto del documento. Lo que hay dentro no se ve desde fuera, y el CSS de dentro no sale.</p>
+<p>Un componente web necesita dos cosas: su propio markup y sus propios estilos, sin que la página los pise ni él pise a la página. El estándar que lo resuelve es el <strong><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a></strong>: un árbol de elementos que cuelga del componente, separado del resto del documento. Lo que hay dentro no se ve desde fuera, y el CSS de dentro no sale.</p>
 
-<p>Durante años, la única forma de crear ese árbol era con JavaScript (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/attachShadow"><code>attachShadow()</code></a>). Eso obligaba a esperar a que se descargara y ejecutara el script para ver el componente: hasta entonces, un hueco en blanco. Y un servidor no tenía forma de enviar un componente ya pintado.</p>
+<p>Durante años, la única forma de crear ese árbol era con JavaScript (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/attachShadow" target="_blank" rel="noopener"><code>attachShadow()</code></a>). Eso obligaba a esperar a que se descargara y ejecutara el script para ver el componente: hasta entonces, un hueco en blanco. Y un servidor no tenía forma de enviar un componente ya pintado.</p>
 
-<p><strong>Declarative Shadow DOM</strong> es la forma de escribir ese mismo árbol directamente en el HTML, con un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template"><code>&lt;template&gt;</code></a> que lleva el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode"><code>shadowrootmode</code></a>, dentro del componente:</p>
+<p><strong>Declarative Shadow DOM</strong> es la forma de escribir ese mismo árbol directamente en el HTML, con un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a> que lleva el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode" target="_blank" rel="noopener"><code>shadowrootmode</code></a>, dentro del componente:</p>
 
 <ui-code>
 <pre><code>&lt;mi-saludo&gt;
@@ -104,7 +104,7 @@
 <ul>
   <li><strong>El estándar primero.</strong> Lo que el navegador ya sabe hacer, Fudic no lo reinventa. Lo que todavía está en camino, lo cubre con un polyfill pequeño que sigue la propuesta oficial, y que sobrará el día que todos los navegadores la traigan.</li>
   <li><strong>Componentes web pintados en el servidor.</strong> Siempre, no como opción avanzada.</li>
-  <li><strong>100/100/100/100 en <a href="https://developer.chrome.com/docs/lighthouse/overview">Lighthouse</a>.</strong> Rendimiento, accesibilidad, buenas prácticas y SEO. No es una meta a la que llegas optimizando al final: es lo que una app de Fudic saca de serie.</li>
+  <li><strong>100/100/100/100 en <a href="https://developer.chrome.com/docs/lighthouse/overview" target="_blank" rel="noopener">Lighthouse</a>.</strong> Rendimiento, accesibilidad, buenas prácticas y SEO. No es una meta a la que llegas optimizando al final: es lo que una app de Fudic saca de serie.</li>
 </ul>
 
 <h2 id="requirements">Lo que necesitas</h2>
@@ -242,7 +242,7 @@ npx fudic dev</code></pre>
   linked from src/routes/index.fud</code></pre>
 </ui-code>
 
-<p>El nombre <code>counter</code> se ha convertido en <code>&lt;miapp-counter&gt;</code>: el prefijo de la app más el nombre. El estándar exige que el nombre de todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">custom element</a> <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define#valid_custom_element_names">lleve un guion</a>, para que nunca choque con una etiqueta futura de HTML, y el prefijo además evita choques con los componentes de otros. <code>--in</code> lo ha enlazado ya desde la página de inicio.</p>
+<p>El nombre <code>counter</code> se ha convertido en <code>&lt;miapp-counter&gt;</code>: el prefijo de la app más el nombre. El estándar exige que el nombre de todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a> <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define#valid_custom_element_names" target="_blank" rel="noopener">lleve un guion</a>, para que nunca choque con una etiqueta futura de HTML, y el prefijo además evita choques con los componentes de otros. <code>--in</code> lo ha enlazado ya desde la página de inicio.</p>
 
 <h3 id="component-shape">La forma de un componente</h3>
 
@@ -262,7 +262,7 @@ npx fudic dev</code></pre>
 <ul>
   <li><strong>El propio tag</strong> del componente envuelve un <code>&lt;template shadowrootmode="open"&gt;</code>. Es el Declarative Shadow DOM que acabas de ver, en HTML estándar: no es sintaxis de Fudic.</li>
   <li><strong>Todo lo que pinta</strong> va dentro del template.</li>
-  <li><strong>El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code></strong> son los estilos del componente. Fudic los lleva a su shadow root, y a partir de ahí es el estándar el que hace el resto: el shadow root <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#encapsulation_from_css">encapsula el CSS</a>. Una clase <code>.counter</code> de dentro no pisa otra <code>.counter</code> de la página, ni la de la página entra.</li>
+  <li><strong>El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code></strong> son los estilos del componente. Fudic los lleva a su shadow root, y a partir de ahí es el estándar el que hace el resto: el shadow root <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#encapsulation_from_css" target="_blank" rel="noopener">encapsula el CSS</a>. Una clase <code>.counter</code> de dentro no pisa otra <code>.counter</code> de la página, ni la de la página entra.</li>
 </ul>
 
 <h3 id="bring-it-to-life">Dale vida</h3>
@@ -311,14 +311,14 @@ npx fudic dev</code></pre>
 <ul>
   <li><strong><code>@@code { … }</code></strong> es TypeScript estándar. Es lo que el componente sabe hacer.</li>
   <li><strong><code>props&lt;…&gt;()</code></strong> declara lo que recibe de fuera. <code>start</code> es opcional y, si no llega, vale <code>0</code>. Los comentarios <code>/** … */</code> no son decoración: el editor los muestra al usar el componente.</li>
-  <li><strong><code>signal(start)</code></strong> es un valor que, cuando cambia, repinta lo que lo lee. Se lee llamándolo, <code>n()</code>, y se cambia con <code>n.set(…)</code>. Viene de <code>@@fudic/core</code>; los signals todavía no son parte de JavaScript, aunque hay una <a href="https://github.com/tc39/proposal-signals">propuesta para el estándar</a>.</li>
+  <li><strong><code>signal(start)</code></strong> es un valor que, cuando cambia, repinta lo que lo lee. Se lee llamándolo, <code>n()</code>, y se cambia con <code>n.set(…)</code>. Viene de <code>@@fudic/core</code>; los signals todavía no son parte de JavaScript, aunque hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta para el estándar</a>.</li>
   <li><strong><code>@@click=@@inc</code></strong> conecta el clic del botón con la función <code>inc</code>.</li>
-  <li><strong><code>@@n()</code></strong> escribe el valor del signal, y se actualiza solo cada vez que cambia. Lo pinta dentro de un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/output"><code>&lt;output&gt;</code></a>, el elemento de HTML para el resultado de una acción del usuario.</li>
-  <li><strong><code>shadowrootadoptedstylesheets="button output"</code></strong> hace que el botón y el <code>&lt;output&gt;</code> se vean como en el resto de la app: el shadow root <a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets">adopta</a> las hojas <code>button</code> y <code>output</code> de la guía de estilos, que el navegador carga una sola vez para toda la página.</li>
+  <li><strong><code>@@n()</code></strong> escribe el valor del signal, y se actualiza solo cada vez que cambia. Lo pinta dentro de un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/output" target="_blank" rel="noopener"><code>&lt;output&gt;</code></a>, el elemento de HTML para el resultado de una acción del usuario.</li>
+  <li><strong><code>shadowrootadoptedstylesheets="button output"</code></strong> hace que el botón y el <code>&lt;output&gt;</code> se vean como en el resto de la app: el shadow root <a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets" target="_blank" rel="noopener">adopta</a> las hojas <code>button</code> y <code>output</code> de la guía de estilos, que el navegador carga una sola vez para toda la página.</li>
 </ul>
 
 <ui-note>
-  <p><code>shadowrootadoptedstylesheets</code> todavía no es estándar: es una <a href="https://github.com/whatwg/html/issues/10673">propuesta en discusión en el WHATWG</a>, el organismo que mantiene HTML. Mientras los navegadores no la traen, Fudic la cubre con un script pequeño en la página. Es el primer compromiso de la sección anterior, en la práctica.</p>
+  <p><code>shadowrootadoptedstylesheets</code> todavía no es estándar: es una <a href="https://github.com/whatwg/html/issues/10673" target="_blank" rel="noopener">propuesta en discusión en el WHATWG</a>, el organismo que mantiene HTML. Mientras los navegadores no la traen, Fudic la cubre con un script pequeño en la página. Es el primer compromiso de la sección anterior, en la práctica.</p>
 </ui-note>
 
 <ui-note .kind="tip">
@@ -437,10 +437,10 @@ criterion renders
 <p>Lo que usa este capítulo, explicado por la referencia de la plataforma web:</p>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components">Web Components</a>: la introducción a los tres estándares que los forman.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">Using custom elements</a>: etiquetas propias con su comportamiento.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">Using shadow DOM</a>, y en concreto <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html">cómo declararlo en HTML</a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#declarative_shadow_dom"><code>&lt;template&gt;</code> y su atributo <code>shadowrootmode</code></a>: Declarative Shadow DOM con ejemplos.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots">Using templates and slots</a>: cómo recibe un componente contenido de la página. Lo verás en el capítulo 2.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets"><code>ShadowRoot.adoptedStyleSheets</code></a>: hojas de estilo compartidas entre shadow roots.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noopener">Web Components</a>: la introducción a los tres estándares que los forman.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: etiquetas propias con su comportamiento.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Using shadow DOM</a>, y en concreto <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">cómo declararlo en HTML</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#declarative_shadow_dom" target="_blank" rel="noopener"><code>&lt;template&gt;</code> y su atributo <code>shadowrootmode</code></a>: Declarative Shadow DOM con ejemplos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots" target="_blank" rel="noopener">Using templates and slots</a>: cómo recibe un componente contenido de la página. Lo verás en el capítulo 2.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets" target="_blank" rel="noopener"><code>ShadowRoot.adoptedStyleSheets</code></a>: hojas de estilo compartidas entre shadow roots.</li>
 </ul>

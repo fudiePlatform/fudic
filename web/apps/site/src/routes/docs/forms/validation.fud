@@ -243,7 +243,7 @@ await userForm.alias.validate();             // one field, against the whole for
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation">Validación de formularios en el cliente</a>, y por qué no basta sin la del servidor.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/disabled"><code>disabled</code></a>: lo que pasa con un botón deshabilitado.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">Expresiones regulares</a>: la sintaxis de los patrones.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation" target="_blank" rel="noopener">Validación de formularios en el cliente</a>, y por qué no basta sin la del servidor.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/disabled" target="_blank" rel="noopener"><code>disabled</code></a>: lo que pasa con un botón deshabilitado.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">Expresiones regulares</a>: la sintaxis de los patrones.</li>
 </ul>

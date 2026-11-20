@@ -127,6 +127,6 @@ layout.handle(() =&gt; (&#123; seccion: "Error" &#125;));</code></pre>
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/404"><code>404 Not Found</code></a> y los demás <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status">códigos de status</a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer"><code>Referer</code></a>: de donde sale <code>back</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/404" target="_blank" rel="noopener"><code>404 Not Found</code></a> y los demás <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status" target="_blank" rel="noopener">códigos de status</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer" target="_blank" rel="noopener"><code>Referer</code></a>: de donde sale <code>back</code>.</li>
 </ul>

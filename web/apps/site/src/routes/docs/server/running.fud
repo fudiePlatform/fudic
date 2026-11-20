@@ -40,7 +40,7 @@
 
 <h2 id="what">Un <code>Request</code>, una <code>Response</code></h2>
 
-<p>El servidor de una app de Fudic es <code>@@fudic/server</code>. Recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request"><code>Request</code></a> estándar y devuelve una <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response"><code>Response</code></a>, o <code>null</code> si la petición no es suya (un fichero estático, que sirve quien lo aloja):</p>
+<p>El servidor de una app de Fudic es <code>@@fudic/server</code>. Recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> estándar y devuelve una <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>, o <code>null</code> si la petición no es suya (un fichero estático, que sirve quien lo aloja):</p>
 
 <ui-code>
 <pre><code>import &#123; createServer &#125; from "@@fudic/server";
@@ -142,6 +142,6 @@ fudic preview</code></pre>
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Request"><code>Request</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response"><code>Response</code></a>: lo que entra y lo que sale del servidor.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>: lo que entra y lo que sale del servidor.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded" target="_blank" rel="noopener"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
 </ul>

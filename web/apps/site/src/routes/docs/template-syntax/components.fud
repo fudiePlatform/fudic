@@ -47,7 +47,7 @@
 
 <h1>Componentes</h1>
 
-<p>Un componente es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">custom element</a>: una etiqueta propia, como <code>&lt;miapp-card&gt;</code>, con su markup, sus estilos y su comportamiento. Se crea con la CLI:</p>
+<p>Un componente es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a>: una etiqueta propia, como <code>&lt;miapp-card&gt;</code>, con su markup, sus estilos y su comportamiento. Se crea con la CLI:</p>
 
 <ui-code>
 <pre><code>npx fudic g component card</code></pre>
@@ -225,7 +225,7 @@
 
 <h2 id="slots">Slots: contenido de quien usa el componente</h2>
 
-<p>Un componente recibe markup de la página con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>, el mecanismo estándar del shadow DOM. Fudic no añade nada: es la plataforma la que coloca cada elemento en su hueco.</p>
+<p>Un componente recibe markup de la página con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>, el mecanismo estándar del shadow DOM. Fudic no añade nada: es la plataforma la que coloca cada elemento en su hueco.</p>
 
 <ui-code .path="src/components/miapp-card/miapp-card.fud">
 <pre><code>&lt;head&gt;
@@ -259,7 +259,7 @@
   <li><strong>El slot sin nombre</strong> recibe todo lo que no lleva <code>slot="…"</code>: aquí, el párrafo.</li>
   <li><strong>Un slot con nombre</strong> recibe los elementos con ese <code>slot</code>: el <code>&lt;h2&gt;</code> va a <code>title</code> y el botón a <code>actions</code>.</li>
   <li><strong>Lo que hay dentro de un <code>&lt;slot&gt;</code></strong> es su contenido por defecto: se ve si nadie lo rellena.</li>
-  <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a></strong> da estilo, desde el componente, a lo que la página colocó en sus slots.</li>
+  <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted" target="_blank" rel="noopener"><code>::slotted()</code></a></strong> da estilo, desde el componente, a lo que la página colocó en sus slots.</li>
 </ul>
 
 <ui-note .kind="important">
@@ -333,7 +333,7 @@
 <ul>
   <li><strong>Lo que vale un atributo con expresión</strong>: un texto o un número se escribe tal cual; <code>true</code> escribe el atributo vacío; <code>false</code>, <code>null</code> y <code>undefined</code> lo quitan. Es la regla de los atributos booleanos de HTML.</li>
   <li><strong>ARIA no es booleano.</strong> <code>aria-checked</code> o <code>aria-disabled</code> esperan el texto <code>"true"</code> o <code>"false"</code>, y un <code>false</code> quitaría el atributo: escríbelo con un ternario, como arriba.</li>
-  <li><strong>El estilo del host</strong> sale de sus atributos, con el selector <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host()</code></a>: aquí, <code>:host([data-state="on"])</code>. Para una variante, usa un nombre propio (<code>variant</code>) o un <code>data-*</code>. Un atributo estándar conserva su efecto: <code>hidden</code>, <code>title</code> o <code>lang</code> en el host cambian cómo se comporta todo el componente.</li>
+  <li><strong>El estilo del host</strong> sale de sus atributos, con el selector <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host()</code></a>: aquí, <code>:host([data-state="on"])</code>. Para una variante, usa un nombre propio (<code>variant</code>) o un <code>data-*</code>. Un atributo estándar conserva su efecto: <code>hidden</code>, <code>title</code> o <code>lang</code> en el host cambian cómo se comporta todo el componente.</li>
   <li><strong><code>class:</code> no va en el host</strong>: activa clases del <code>&lt;style&gt;</code> del componente sobre elementos de su template. En el host, un atributo y <code>:host()</code>.</li>
 </ul>
 
@@ -385,13 +385,13 @@
 <p>Con la tarjeta desactivada, ni el enlace de su plantilla ni lo que la página puso en su slot navegan, y ningún listener de la página se entera del clic.</p>
 
 <ul>
-  <li><strong>Solo salen del shadow root los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed</code></a></strong>, y solo suben los que <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles">burbujean</a>. Los de interacción del usuario (<code>click</code>, <code>keydown</code>, <code>input</code>…) son las dos cosas. Uno lanzado con <code>new CustomEvent("x", &#123; bubbles: true &#125;)</code>, sin <code>composed</code>, lo oye el <code>&lt;template&gt;</code> pero no llega al host. Los de <code>emit</code> salen siempre (<a href="/docs/template-syntax/events#event-bus">el bus de eventos</a>).</li>
+  <li><strong>Solo salen del shadow root los eventos <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed</code></a></strong>, y solo suben los que <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles" target="_blank" rel="noopener">burbujean</a>. Los de interacción del usuario (<code>click</code>, <code>keydown</code>, <code>input</code>…) son las dos cosas. Uno lanzado con <code>new CustomEvent("x", &#123; bubbles: true &#125;)</code>, sin <code>composed</code>, lo oye el <code>&lt;template&gt;</code> pero no llega al host. Los de <code>emit</code> salen siempre (<a href="/docs/template-syntax/events#event-bus">el bus de eventos</a>).</li>
   <li><strong>El <code>&lt;template&gt;</code> es el sitio para un único listener</strong> que atienda a varios elementos de la plantilla, y también oye lo que pasa en el contenido de sus slots, porque el camino de ese contenido pasa por su <code>&lt;slot&gt;</code>.</li>
 </ul>
 
 <h4 id="capture">Adelantarse a los de dentro: la captura</h4>
 
-<p>Un <code>@@evento</code> escucha en la fase de burbuja, así que el host lo oye <strong>después</strong> que los listeners de dentro: para cuando lo anula, los handlers de la plantilla ya se han ejecutado. Si el host tiene que decidir <strong>antes</strong> que nadie, escucha en la fase de <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture">captura</a>, que recorre el camino al revés, del documento al botón. Fudic no tiene modificadores para eso: se hace con el estándar, en un hook del ciclo de vida:</p>
+<p>Un <code>@@evento</code> escucha en la fase de burbuja, así que el host lo oye <strong>después</strong> que los listeners de dentro: para cuando lo anula, los handlers de la plantilla ya se han ejecutado. Si el host tiene que decidir <strong>antes</strong> que nadie, escucha en la fase de <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture" target="_blank" rel="noopener">captura</a>, que recorre el camino al revés, del documento al botón. Fudic no tiene modificadores para eso: se hace con el estándar, en un hook del ciclo de vida:</p>
 
 <ui-code>
 <pre><code>@@code &#123;
@@ -410,7 +410,7 @@
 <p>Un componente con <code>onConnect</code> se hidrata al cargar la página, no en su primera interacción (capítulo 3). Úsalo solo cuando el orden importa de verdad; para casi todo basta con el <code>@@click</code> del host.</p>
 
 <ui-note>
-  <p><strong>Si vienes de Angular</strong>, es la idea de <a href="https://angular.dev/guide/components/host-elements"><code>@@HostBinding</code> y <code>@@HostListener</code></a>, o de su propiedad <code>host</code> en <code>@@Component</code>. Con una diferencia: en Fudic no hay decoradores ni un objeto de metadatos. El host es un tag que ves en la plantilla, y se le escribe como a cualquier otro elemento.</p>
+  <p><strong>Si vienes de Angular</strong>, es la idea de <a href="https://angular.dev/guide/components/host-elements" target="_blank" rel="noopener"><code>@@HostBinding</code> y <code>@@HostListener</code></a>, o de su propiedad <code>host</code> en <code>@@Component</code>. Con una diferencia: en Fudic no hay decoradores ni un objeto de metadatos. El host es un tag que ves en la plantilla, y se le escribe como a cualquier otro elemento.</p>
 </ui-note>
 
 <h2 id="use-another-component">Usar otro componente</h2>
@@ -427,8 +427,8 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">Using custom elements</a>: qué es un custom element y por qué su nombre lleva guion.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots">Using templates and slots</a>: cómo recibe un componente el contenido de la página.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>: slots con nombre y contenido por defecto.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host"><code>:host</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted"><code>::slotted()</code></a>: dar estilo al propio componente y a lo que recibe.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: qué es un custom element y por qué su nombre lleva guion.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots" target="_blank" rel="noopener">Using templates and slots</a>: cómo recibe un componente el contenido de la página.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>: slots con nombre y contenido por defecto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted" target="_blank" rel="noopener"><code>::slotted()</code></a>: dar estilo al propio componente y a lo que recibe.</li>
 </ul>

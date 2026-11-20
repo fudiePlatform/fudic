@@ -184,6 +184,6 @@ async function activar(p: Person, active: boolean) &#123;
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController"><code>AbortController</code></a>: lo que usa <code>task</code> para cancelar.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-live"><code>aria-live</code></a>: anunciar «Buscando…» a un lector de pantalla.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener"><code>AbortController</code></a>: lo que usa <code>task</code> para cancelar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-live" target="_blank" rel="noopener"><code>aria-live</code></a>: anunciar «Buscando…» a un lector de pantalla.</li>
 </ul>

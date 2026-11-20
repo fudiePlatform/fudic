@@ -40,7 +40,7 @@
 
 <h2 id="why">Por qué una cookie</h2>
 
-<p>Fudic sirve las páginas y responde a sus llamadas desde el mismo servidor, que hace de intermediario con el resto de tu backend. Por eso la sesión es una <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies">cookie</a> que pone el servidor, y no un token que guarda el JavaScript de la página:</p>
+<p>Fudic sirve las páginas y responde a sus llamadas desde el mismo servidor, que hace de intermediario con el resto de tu backend. Por eso la sesión es una <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies" target="_blank" rel="noopener">cookie</a> que pone el servidor, y no un token que guarda el JavaScript de la página:</p>
 
 <ul>
   <li><strong>Con <code>HttpOnly</code>, el JavaScript de la página no la puede leer.</strong> Un script inyectado no tiene qué robar.</li>
@@ -164,6 +164,6 @@ entrar.handle((ctx) =&gt; &#123;
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies">Cookies HTTP</a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"><code>Set-Cookie</code></a>, con sus atributos y sus prefijos.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"><code>Cache-Control</code></a>: qué significan <code>private</code> y <code>no-store</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies" target="_blank" rel="noopener">Cookies HTTP</a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener"><code>Set-Cookie</code></a>, con sus atributos y sus prefijos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: qué significan <code>private</code> y <code>no-store</code>.</li>
 </ul>

@@ -124,7 +124,7 @@ fudic g page /                      # src/routes/index.fud</code></pre>
 <p>Fudic no tiene un router en el navegador. Cada página es un documento completo, que el navegador pide y pinta como cualquier web, así que funciona todo lo que el navegador ya sabe hacer con una navegación:</p>
 
 <ul>
-  <li>el botón «atrás», que puede devolver la página tal como estaba desde la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a> (<a href="/docs/reactivity/lifecycle#route-hooks">Ciclo de vida</a>);</li>
+  <li>el botón «atrás», que puede devolver la página tal como estaba desde la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a> (<a href="/docs/reactivity/lifecycle#route-hooks">Ciclo de vida</a>);</li>
   <li>abrir un enlace en otra pestaña, recargar o compartir la URL, que da siempre la misma página;</li>
   <li>un lector de pantalla, que anuncia la página nueva sin código para gestionar el foco.</li>
 </ul>
@@ -134,7 +134,7 @@ fudic g page /                      # src/routes/index.fud</code></pre>
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a"><code>&lt;a&gt;</code></a>: el enlace con el que se navega.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache">bfcache</a>: la página que vuelve con «atrás» sin recargarse.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API">URL Pattern API</a>: la misma sintaxis <code>:nombre</code> de los patrones de ruta, en el estándar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a" target="_blank" rel="noopener"><code>&lt;a&gt;</code></a>: el enlace con el que se navega.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>: la página que vuelve con «atrás» sin recargarse.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la misma sintaxis <code>:nombre</code> de los patrones de ruta, en el estándar.</li>
 </ul>

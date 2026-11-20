@@ -39,7 +39,7 @@
 
 <h2 id="what">Qué es un <code>103</code></h2>
 
-<p>Mientras el servidor prepara una página, el navegador espera sin hacer nada: no sabe qué CSS ni qué JavaScript va a necesitar hasta que recibe el HTML. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103"><code>103 Early Hints</code></a> es una respuesta del estándar HTTP que el servidor manda <strong>antes</strong> de la respuesta de verdad, con una cabecera <code>Link</code> que dice qué precargar. El navegador empieza a descargarlo mientras el servidor sigue trabajando.</p>
+<p>Mientras el servidor prepara una página, el navegador espera sin hacer nada: no sabe qué CSS ni qué JavaScript va a necesitar hasta que recibe el HTML. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a> es una respuesta del estándar HTTP que el servidor manda <strong>antes</strong> de la respuesta de verdad, con una cabecera <code>Link</code> que dice qué precargar. El navegador empieza a descargarlo mientras el servidor sigue trabajando.</p>
 
 <p>Se nota en una página <code>ssr</code> cuyo <code>load</code> tarda: cuando llega el HTML, su CSS y sus módulos ya están en el navegador.</p>
 
@@ -106,6 +106,6 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103"><code>103 Early Hints</code></a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Link"><code>Link</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload"><code>rel=preload</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload"><code>rel=modulepreload</code></a>: lo que pide cada pista.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Link" target="_blank" rel="noopener"><code>Link</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload" target="_blank" rel="noopener"><code>rel=preload</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>rel=modulepreload</code></a>: lo que pide cada pista.</li>
 </ul>

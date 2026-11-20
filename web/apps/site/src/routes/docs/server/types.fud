@@ -160,7 +160,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File"><code>File</code></a>: lo que recibe un handler y lo que devuelve <code>-&gt; file</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/TrustedHTML"><code>TrustedHTML</code></a>: el tipo de un campo <code>html</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>: lo que recibe un handler y lo que devuelve <code>-&gt; file</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/TrustedHTML" target="_blank" rel="noopener"><code>TrustedHTML</code></a>: el tipo de un campo <code>html</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
 </ul>

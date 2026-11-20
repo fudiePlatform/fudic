@@ -113,6 +113,6 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache"><code>Cache</code></a>: donde se guardan los datos y el HTML.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"><code>Cache-Control</code></a>: <code>private</code>, <code>no-store</code> y <code>stale-while-revalidate</code>, de donde vienen los nombres.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache" target="_blank" rel="noopener"><code>Cache</code></a>: donde se guardan los datos y el HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: <code>private</code>, <code>no-store</code> y <code>stale-while-revalidate</code>, de donde vienen los nombres.</li>
 </ul>

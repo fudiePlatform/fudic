@@ -200,7 +200,7 @@ use error-pages
 
 <h2 id="csrf"><code>csrf</code></h2>
 
-<p>Protege de una página de otra web que llama a tus funciones con las cookies del usuario (<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF">CSRF</a>). La mitad de cliente pone una cabecera, <code>x-fudic-csrf</code>, que una página de otro origen no puede poner. La de servidor rechaza con un <code>403</code> una llamada que no es <code>get</code> si le falta la cabecera, o si <code>Origin</code> o <code>Sec-Fetch-Site</code> dicen que viene de otro sitio.</p>
+<p>Protege de una página de otra web que llama a tus funciones con las cookies del usuario (<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">CSRF</a>). La mitad de cliente pone una cabecera, <code>x-fudic-csrf</code>, que una página de otro origen no puede poner. La de servidor rechaza con un <code>403</code> una llamada que no es <code>get</code> si le falta la cabecera, o si <code>Origin</code> o <code>Sec-Fetch-Site</code> dicen que viene de otro sitio.</p>
 
 <p>Con <code>token true</code> va más lejos: la cabecera lleva un token firmado contra una cookie <code>HttpOnly</code>, que la página pide una vez. Necesita un secreto en el servidor, en <code>FUDIC_SECRET</code>; sin él, responde <code>500</code>. En desarrollo y en <code>fudic preview</code>, Fudic usa uno aleatorio.</p>
 
@@ -242,7 +242,7 @@ compress off          # not for this function</code></pre>
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF">Cross-site request forgery</a>: el ataque del que protege <code>csrf</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site"><code>Sec-Fetch-Site</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Origin"><code>Origin</code></a>: las cabeceras que lee.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API">Compression Streams API</a>: los formatos de <code>compress</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">Cross-site request forgery</a>: el ataque del que protege <code>csrf</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site" target="_blank" rel="noopener"><code>Sec-Fetch-Site</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Origin" target="_blank" rel="noopener"><code>Origin</code></a>: las cabeceras que lee.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API" target="_blank" rel="noopener">Compression Streams API</a>: los formatos de <code>compress</code>.</li>
 </ul>

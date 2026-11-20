@@ -48,7 +48,7 @@
     <tr><th scope="col">Tipo</th><th scope="col">Guarda</th><th scope="col">Empieza en</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>file</code></td><td>un <a href="https://developer.mozilla.org/en-US/docs/Web/API/File"><code>File</code></a></td><td><code>null</code>, hasta que se elige uno; con <code>required</code>, una vez validado es un <code>File</code></td></tr>
+    <tr><td><code>file</code></td><td>un <a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a></td><td><code>null</code>, hasta que se elige uno; con <code>required</code>, una vez validado es un <code>File</code></td></tr>
     <tr><td><code>file?</code></td><td>un <code>File</code>, opcional</td><td><code>null</code></td></tr>
     <tr><td><code>file[]</code></td><td>una lista de <code>File</code></td><td><code>[]</code></td></tr>
   </tbody>
@@ -78,7 +78,7 @@
     <tr><th scope="col">Regla</th><th scope="col">Comprueba</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>accept "…"</code></td><td>el tipo del fichero, con la sintaxis del atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>: tipos MIME, comodines como <code>image/*</code> y extensiones como <code>.pdf</code>. Se mira el tipo y la extensión</td></tr>
+    <tr><td><code>accept "…"</code></td><td>el tipo del fichero, con la sintaxis del atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>: tipos MIME, comodines como <code>image/*</code> y extensiones como <code>.pdf</code>. Se mira el tipo y la extensión</td></tr>
     <tr><td><code>max-size</code></td><td>el tamaño de cada fichero: <code>2mb</code>, <code>500kb</code>. En una lista, el de cada uno</td></tr>
     <tr><td><code>min-length</code>, <code>max-length</code></td><td>en una lista, cuántos ficheros</td></tr>
     <tr><td><code>required</code></td><td>que hay un fichero; en una lista, que no está vacía</td></tr>
@@ -101,12 +101,12 @@
 <ul>
   <li><strong>El compilador escribe el <code>accept</code></strong> del <code>&lt;input&gt;</code> con el de la regla, salvo que lo escribas tú. El diálogo del sistema ya solo enseña los ficheros que valen.</li>
   <li><strong>Elegir es todo el gesto.</strong> Al elegir, el campo cuenta como visitado y sus reglas hablan en ese momento, sin esperar a salir del campo.</li>
-  <li><strong>Desde el código, también.</strong> <code>adjuntosForm.docs.set([file])</code>, por ejemplo desde una zona donde soltar ficheros, mete los ficheros en el <code>&lt;input&gt;</code> con un <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer"><code>DataTransfer</code></a>, y <code>$reset()</code> lo vacía.</li>
+  <li><strong>Desde el código, también.</strong> <code>adjuntosForm.docs.set([file])</code>, por ejemplo desde una zona donde soltar ficheros, mete los ficheros en el <code>&lt;input&gt;</code> con un <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer" target="_blank" rel="noopener"><code>DataTransfer</code></a>, y <code>$reset()</code> lo vacía.</li>
 </ul>
 
 <h2 id="upload">Cómo suben</h2>
 
-<p>Un formulario que puede llevar ficheros sube siempre como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission"><code>multipart/form-data</code></a>, lleve ficheros esa vez o no. El cuerpo tiene:</p>
+<p>Un formulario que puede llevar ficheros sube siempre como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission" target="_blank" rel="noopener"><code>multipart/form-data</code></a>, lleve ficheros esa vez o no. El cuerpo tiene:</p>
 
 <ol>
   <li>una parte <code>$args</code>, primero, con el resto de los campos en el formato de la función (binario, o JSON con <code>use json</code>);</li>
@@ -138,7 +138,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>El byte que pasa un límite para la lectura y responde <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413"><code>413</code></a>, nombrando el límite y el campo. Lo que viene detrás no se lee. Con <code>413</code> en su <code>catches</code>, como <code>adjuntosForm</code>, el formulario lo pinta en vez de llevar a la página de error.</p>
+<p>El byte que pasa un límite para la lectura y responde <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413" target="_blank" rel="noopener"><code>413</code></a>, nombrando el límite y el campo. Lo que viene detrás no se lee. Con <code>413</code> en su <code>catches</code>, como <code>adjuntosForm</code>, el formulario lo pinta en vez de llevar a la página de error.</p>
 
 <h2 id="handler">En el handler</h2>
 
@@ -200,8 +200,8 @@ curl -X PUT -H "x-fudic-csrf: 1" \
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/file"><code>&lt;input type="file"&gt;</code></a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File"><code>File</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer"><code>DataTransfer</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/progress"><code>&lt;progress&gt;</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequestUpload/progress_event">El progreso de una subida</a> con <code>XMLHttpRequest</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413"><code>413 Content Too Large</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/file" target="_blank" rel="noopener"><code>&lt;input type="file"&gt;</code></a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer" target="_blank" rel="noopener"><code>DataTransfer</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/progress" target="_blank" rel="noopener"><code>&lt;progress&gt;</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequestUpload/progress_event" target="_blank" rel="noopener">El progreso de una subida</a> con <code>XMLHttpRequest</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413" target="_blank" rel="noopener"><code>413 Content Too Large</code></a>.</li>
 </ul>

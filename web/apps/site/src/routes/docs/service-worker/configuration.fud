@@ -138,6 +138,6 @@ Content-Security-Policy:
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/importScripts"><code>importScripts()</code></a>: por qué un Service Worker no carga módulos cuando quiere.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src"><code>script-src</code></a> y <code>'unsafe-eval'</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/importScripts" target="_blank" rel="noopener"><code>importScripts()</code></a>: por qué un Service Worker no carga módulos cuando quiere.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src" target="_blank" rel="noopener"><code>script-src</code></a> y <code>'unsafe-eval'</code>.</li>
 </ul>

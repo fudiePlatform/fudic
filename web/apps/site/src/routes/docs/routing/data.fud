@@ -210,6 +210,6 @@ layout.handle((ctx, data) =&gt; (&#123; culture: data.lang, seccion: "Blog" &#12
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/searchParams"><code>URL.searchParams</code></a>: la query string, desde <code>ctx.url</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang"><code>lang</code></a>: el idioma del documento, que puede venir de los datos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/searchParams" target="_blank" rel="noopener"><code>URL.searchParams</code></a>: la query string, desde <code>ctx.url</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: el idioma del documento, que puede venir de los datos.</li>
 </ul>

@@ -176,13 +176,13 @@ to the document stylesheet, the &lt;link rel="stylesheet"&gt; of the layout</cod
 }</code></pre>
 </ui-code>
 
-<p>Con los colores escritos con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a>, como los de la guía de estilos, basta un <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a> para poner una zona en oscuro, con sus componentes: <code>.promo { color-scheme: dark; }</code>.</p>
+<p>Con los colores escritos con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a>, como los de la guía de estilos, basta un <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a> para poner una zona en oscuro, con sus componentes: <code>.promo { color-scheme: dark; }</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja del documento.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets"><code>ShadowRoot.adoptedStyleSheets</code></a>: las hojas que adopta un shadow root, y por qué no cargan <code>@@import</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties">Custom properties</a>: por qué un token del documento llega a un componente.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"><code>color-scheme</code></a>: los colores de los dos temas.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#stylesheet" target="_blank" rel="noopener"><code>&lt;link rel="stylesheet"&gt;</code></a>: la hoja del documento.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets" target="_blank" rel="noopener"><code>ShadowRoot.adoptedStyleSheets</code></a>: las hojas que adopta un shadow root, y por qué no cargan <code>@@import</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">Custom properties</a>: por qué un token del documento llega a un componente.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>: los colores de los dos temas.</li>
 </ul>

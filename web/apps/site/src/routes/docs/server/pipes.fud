@@ -46,7 +46,7 @@
 
 <h2 id="catalog">El catálogo de Fudic</h2>
 
-<p><code>@@fudic/core</code> trae seis, cada uno sobre su formateador de <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl"><code>Intl</code></a>, el estándar de JavaScript para formatear según el idioma. Sus opciones son las de ese formateador:</p>
+<p><code>@@fudic/core</code> trae seis, cada uno sobre su formateador de <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>, el estándar de JavaScript para formatear según el idioma. Sus opciones son las de ese formateador:</p>
 
 <table>
   <thead>
@@ -167,6 +167,6 @@ export default truncar.implement((value, args) =&gt;
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl"><code>Intl</code></a>, y sus formateadores: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat"><code>DateTimeFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat"><code>NumberFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat"><code>RelativeTimeFormat</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/ListFormat"><code>ListFormat</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toLocaleUpperCase"><code>toLocaleUpperCase()</code></a>: por qué el idioma importa también en un pipe propio.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>, y sus formateadores: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat" target="_blank" rel="noopener"><code>DateTimeFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat" target="_blank" rel="noopener"><code>NumberFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat" target="_blank" rel="noopener"><code>RelativeTimeFormat</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/ListFormat" target="_blank" rel="noopener"><code>ListFormat</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toLocaleUpperCase" target="_blank" rel="noopener"><code>toLocaleUpperCase()</code></a>: por qué el idioma importa también en un pipe propio.</li>
 </ul>

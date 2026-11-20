@@ -39,7 +39,7 @@
 
 <h2 id="what">Qué es</h2>
 
-<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker</a> es un script del estándar que el navegador instala para un sitio. Se coloca entre la página y la red: cada petición del sitio pasa por él, y puede responderla él mismo, con algo que tiene guardado, sin preguntar al servidor.</p>
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker</a> es un script del estándar que el navegador instala para un sitio. Se coloca entre la página y la red: cada petición del sitio pasa por él, y puede responderla él mismo, con algo que tiene guardado, sin preguntar al servidor.</p>
 
 <p>El de Fudic hace algo que normalmente solo hace el servidor: <strong>pinta páginas</strong>. Tiene el mismo código de cada ruta que el servidor, así que puede escribir su HTML en el propio navegador, con los datos que pidió y guardó. El resultado es el mismo documento que mandaría el servidor, con Declarative Shadow DOM, pero sin el viaje de ida y vuelta.</p>
 
@@ -112,7 +112,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker API</a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers">ciclo de vida</a>: instalar, activar, tomar el control.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache"><code>Cache</code></a>: donde guarda el código y los datos.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith"><code>FetchEvent.respondWith()</code></a>: cómo responde a una navegación.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers" target="_blank" rel="noopener">ciclo de vida</a>: instalar, activar, tomar el control.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache" target="_blank" rel="noopener"><code>Cache</code></a>: donde guarda el código y los datos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith" target="_blank" rel="noopener"><code>FetchEvent.respondWith()</code></a>: cómo responde a una navegación.</li>
 </ul>

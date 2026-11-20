@@ -41,7 +41,7 @@
 
 <h1>El formulario</h1>
 
-<p>Un formulario de Fudic es un modelo: los campos, sus tipos, sus valores iniciales, sus reglas y los textos de sus errores. No es un elemento ni un componente. La vista lo enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form"><code>&lt;form&gt;</code></a> estándar (<a href="/docs/forms/binding">Enlazar la vista</a>), y el servidor lo usa para validar lo que llega (<a href="/docs/forms/submitting">Enviar al servidor</a>).</p>
+<p>Un formulario de Fudic es un modelo: los campos, sus tipos, sus valores iniciales, sus reglas y los textos de sus errores. No es un elemento ni un componente. La vista lo enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> estándar (<a href="/docs/forms/binding">Enlazar la vista</a>), y el servidor lo usa para validar lo que llega (<a href="/docs/forms/submitting">Enviar al servidor</a>).</p>
 
 <h2 id="one-declaration">Una declaración, los dos extremos</h2>
 
@@ -127,7 +127,7 @@
       require mismatch  clave == repetir  "Las contraseñas no coinciden."</code></pre>
 </ui-code>
 
-<p>En la vista, un grupo se enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset"><code>&lt;fieldset&gt;</code></a>, que es el elemento estándar para agrupar campos y darles un nombre con su <code>&lt;legend&gt;</code>. Un grupo admite todo lo que admite un formulario, grupos incluidos.</p>
+<p>En la vista, un grupo se enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>, que es el elemento estándar para agrupar campos y darles un nombre con su <code>&lt;legend&gt;</code>. Un grupo admite todo lo que admite un formulario, grupos incluidos.</p>
 
 <h2 id="read">Leerlo</h2>
 
@@ -209,7 +209,7 @@ test("asks for the name", async () =&gt; &#123;
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms">Formularios web</a>: la guía de los formularios del HTML.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form"><code>&lt;form&gt;</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset"><code>&lt;fieldset&gt;</code></a>, con su <code>&lt;legend&gt;</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/PATCH"><code>PATCH</code></a>: el método que cambia parte de un recurso.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms" target="_blank" rel="noopener">Formularios web</a>: la guía de los formularios del HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>, con su <code>&lt;legend&gt;</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/PATCH" target="_blank" rel="noopener"><code>PATCH</code></a>: el método que cambia parte de un recurso.</li>
 </ul>

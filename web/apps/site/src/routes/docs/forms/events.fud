@@ -102,7 +102,7 @@
 
 <h2 id="composed">Cruzan el shadow DOM</h2>
 
-<p>Un evento que nace dentro del shadow DOM de un componente no sale de él, salvo que se cree con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed: true</code></a>. Entonces cruza la frontera del shadow root y sigue burbujeando por la página, que lo recibe en el tag del componente. Los dos eventos se crean así, con <code>bubbles</code> y <code>composed</code>:</p>
+<p>Un evento que nace dentro del shadow DOM de un componente no sale de él, salvo que se cree con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed: true</code></a>. Entonces cruza la frontera del shadow root y sigue burbujeando por la página, que lo recibe en el tag del componente. Los dos eventos se crean así, con <code>bubbles</code> y <code>composed</code>:</p>
 
 <ui-code .path="src/routes/usuarios.fud">
 <pre><code>&lt;user-form @@fudic:result=@@alta&gt;&lt;/user-form&gt;</code></pre>
@@ -158,7 +158,7 @@
   <li><strong>Vue</strong> emite con <code>emit("saved")</code>, y <strong>Angular</strong> con un <code>@@Output</code>. Ninguno de los dos burbujea: el evento llega al padre directo, y un abuelo que quiera oírlo necesita que el padre lo reemita.</li>
 </ul>
 
-<p>Fudic no añade ningún mecanismo: usa un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent"><code>CustomEvent</code></a> estándar, que burbujea y cruza el shadow DOM porque así lo define el DOM. Por eso lo puede escuchar cualquier código, sea o no de Fudic: <code>addEventListener("fudic:result", …)</code> en la página, o una herramienta de analítica que cuenta las altas.</p>
+<p>Fudic no añade ningún mecanismo: usa un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar, que burbujea y cruza el shadow DOM porque así lo define el DOM. Por eso lo puede escuchar cualquier código, sea o no de Fudic: <code>addEventListener("fudic:result", …)</code> en la página, o una herramienta de analítica que cuenta las altas.</p>
 
 <h2 id="event">El evento entero</h2>
 
@@ -175,7 +175,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent"><code>CustomEvent</code></a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/detail"><code>detail</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed"><code>composed</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles"><code>bubbles</code></a>: cómo un evento cruza el shadow DOM y sube por la página.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM">Usar el shadow DOM</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/detail" target="_blank" rel="noopener"><code>detail</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles" target="_blank" rel="noopener"><code>bubbles</code></a>: cómo un evento cruza el shadow DOM y sube por la página.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Usar el shadow DOM</a>.</li>
 </ul>

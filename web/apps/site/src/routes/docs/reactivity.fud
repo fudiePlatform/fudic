@@ -43,7 +43,7 @@
 
 <p>Un componente de Fudic no se vuelve a pintar entero cuando algo cambia. Se repinta exactamente lo que lee el valor que ha cambiado: un texto, un atributo, una rama de un <code>@@if</code>. No hay DOM virtual ni comparación de árboles. La pieza que lo hace posible es el <strong>signal</strong>.</p>
 
-<p>Los signals todavía no son parte de JavaScript, aunque hay una <a href="https://github.com/tc39/proposal-signals">propuesta para el estándar</a> en el TC39, el comité que lo mantiene. Fudic trae los suyos en <code>@@fudic/core</code>, con tres piezas: <code>signal</code>, <code>computed</code> y <code>effect</code>.</p>
+<p>Los signals todavía no son parte de JavaScript, aunque hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta para el estándar</a> en el TC39, el comité que lo mantiene. Fudic trae los suyos en <code>@@fudic/core</code>, con tres piezas: <code>signal</code>, <code>computed</code> y <code>effect</code>.</p>
 
 <h2 id="signal"><code>signal</code>: un valor que avisa</h2>
 
@@ -218,7 +218,7 @@ export function add(name: string): void {
 &lt;/miapp-cart-badge&gt;</code></pre>
 </ui-code>
 
-<p>El botón y el contador no se conocen, ni están uno dentro del otro: los dos importan el mismo módulo. Hay un ejemplo completo en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/contador.ts"><code>examples/basic</code></a>.</p>
+<p>El botón y el contador no se conocen, ni están uno dentro del otro: los dos importan el mismo módulo. Hay un ejemplo completo en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/contador.ts" target="_blank" rel="noopener"><code>examples/basic</code></a>.</p>
 
 <ul>
   <li><strong>Un store por documento.</strong> El módulo se carga una vez por página, así que su valor es de la página, no de cada componente.</li>
@@ -251,7 +251,7 @@ export function add(name: string): void {
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage"><code>sessionStorage</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">IndexedDB</a>: dónde guardar un estado en el navegador desde un <code>effect</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules">Módulos de JavaScript</a>: por qué un store se carga una vez por página.</li>
-  <li><a href="https://github.com/tc39/proposal-signals">La propuesta de signals del TC39</a>, todavía fuera de MDN porque aún no es estándar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage" target="_blank" rel="noopener"><code>sessionStorage</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" target="_blank" rel="noopener">IndexedDB</a>: dónde guardar un estado en el navegador desde un <code>effect</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: por qué un store se carga una vez por página.</li>
+  <li><a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">La propuesta de signals del TC39</a>, todavía fuera de MDN porque aún no es estándar.</li>
 </ul>

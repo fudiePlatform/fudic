@@ -229,6 +229,6 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/head"><code>&lt;head&gt;</code></a>: lo que va en la cabecera de un documento.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot"><code>&lt;slot&gt;</code></a>: el mecanismo que coloca cada sección en el componente del layout.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/head" target="_blank" rel="noopener"><code>&lt;head&gt;</code></a>: lo que va en la cabecera de un documento.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>: el mecanismo que coloca cada sección en el componente del layout.</li>
 </ul>
