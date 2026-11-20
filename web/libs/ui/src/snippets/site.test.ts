@@ -15,10 +15,10 @@ test('footer renders', async () => {
 
 test('docsNav marks the current chapter', async () => {
   const t = await renderSnippet('./site.fud', 'docsNav("getting-started")');
-  expect(t.getByRole('link', { name: 'Empezar' })).toHaveAttribute('aria-current', 'page');
+  expect(t.getByRole('link', { name: 'Empezar con Fudic' })).toHaveAttribute('aria-current', 'page');
 });
 
 test('docsNav marks nothing on another page', async () => {
   const t = await renderSnippet('./site.fud', 'docsNav("elsewhere")');
-  expect(t.getByRole('link', { name: 'Empezar' })).not.toHaveAttribute('aria-current');
+  expect(t.getByRole('link', { name: 'Empezar con Fudic' })).not.toHaveAttribute('aria-current');
 });

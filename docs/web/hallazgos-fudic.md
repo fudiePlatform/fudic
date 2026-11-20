@@ -379,3 +379,32 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   - SDD-20 §3 y §4.2: el manifiesto ya no lleva `chunk`, `data`, `html` ni `csp`, y las cachés
     llevan el id de la app.
 - **Qué debería hacer.** Anotar cada uno con la SDD que lo corrige, como ya se hace en otros.
+
+## 25. Un control-componente entrega a un `<form>` ajeno el valor convertido en texto
+
+- **Qué pasó.** Revisando `FudicControlElement` (capítulo 8): `#wire` hace
+  `internals.setFormValue(String(value))` con cualquier valor del control
+  (`packages/forms/src/element.ts`). Un `<form>` que no es de Fudic, con un `app-input` para un
+  campo `file`, recibe en su `FormData` el texto `"[object File]"` en vez del fichero. Un `str[]`
+  llega como `"a,b"` en una sola entrada, y un `bool` en `false` envía `"false"`, cuando una casilla
+  nativa sin marcar no envía nada.
+- **Qué debería hacer.** Lo que admite `setFormValue`: el `File` tal cual, un `FormData` con una
+  entrada por elemento para las listas, y `null` para un `bool` en `false`.
+
+## 26. Un formulario con `form:=` no envía nada sin JavaScript
+
+- **Qué pasó.** El `<form>` de `/entrar` sale del servidor como `<form novalidate="">`, y sus
+  campos sin `name` (`examples/basic/dist/entrar/index.html`). Sin JavaScript, enviarlo hace un
+  `GET` a la misma página sin ningún dato. El formulario se lee y es accesible sin JavaScript, pero
+  solo funciona con él.
+- **Cómo se resolvió en la web.** La página «Enviar al servidor» lo dice tal cual.
+- **Qué debería hacer.** Decidir si `form:=` debe tener un respaldo sin JavaScript (`method`,
+  `action` hacia la función y `name` en cada campo) o documentar que no lo tiene.
+
+## 27. Textos desfasados en `/formularios` y en el README de `@fudic/forms`
+
+- **Qué pasó.** `examples/basic/src/routes/formularios.fud` dice que el formulario «vive en su
+  propio `.ts`» (hoy es un `.fudapi`), cita `Validity.Interacted` y `Validity.Rules` (hoy
+  `validity interacted | rules`) y se titula «5 · Formularios». El README de `@fudic/forms` habla de
+  las reglas de un grupo como «its second argument», del API de builders que ya no es pública.
+- **Qué debería hacer.** Ponerlos al día con el `.fudapi`.

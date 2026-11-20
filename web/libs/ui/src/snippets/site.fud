@@ -23,7 +23,7 @@
   <details class="chapters">
     <summary>Capítulos</summary>
     <ol>
-      <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar</a></li>
+      <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar con Fudic</a></li>
       <li>
         <span class="chapter">El lenguaje <code>.fud</code></span>
         <ol>
