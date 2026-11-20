@@ -112,7 +112,7 @@
 <ul>
   <li><strong>Node.js 22.12</strong> o posterior.</li>
   <li>Un gestor de paquetes: <strong>pnpm</strong> (el que usa Fudic por defecto), npm o yarn.</li>
-  <li>Un editor. Con la extensión de Fudic para VS Code tienes colores, autocompletado y los errores mientras escribes (capítulo 14).</li>
+  <li>Un editor. Con la extensión de Fudic para VS Code tienes colores, autocompletado y los errores mientras escribes (capítulo 16).</li>
 </ul>
 
 <h2 id="create-an-app">Crea tu app</h2>
@@ -429,7 +429,7 @@ criterion renders
 </ui-code>
 
 <ui-note .kind="tip">
-  <p>Un test unitario comprueba el código; un criterio comprueba lo que ve quien usa la app. Los dos tienen su capítulo (capítulo 11).</p>
+  <p>Un test unitario comprueba el código; un criterio comprueba lo que ve quien usa la app. Los dos tienen su capítulo (capítulo 13).</p>
 </ui-note>
 
 <h2 id="mdn">El estándar, en MDN</h2>

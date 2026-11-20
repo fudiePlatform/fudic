@@ -46,7 +46,7 @@
 
 <h2 id="later-fields">Los datos que llegan después</h2>
 
-<p>Los datos de una página los declara su <code>.fudapi</code> y los devuelve su <code>load</code>, en el servidor (capítulo 5). Un campo que termina en <code>later</code> es uno que llega después:</p>
+<p>Los datos de una página los declara su <code>.fudapi</code> y los devuelve su <code>load</code>, en el servidor (<a href="/docs/routing/data">Los datos de la página</a>). Un campo que termina en <code>later</code> es uno que llega después:</p>
 
 <ui-code .path="src/routes/dashboard.fudapi">
 <pre><code># The title comes with the first byte; each later field when its promise settles.

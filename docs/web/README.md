@@ -86,19 +86,20 @@ diga otro.
 | 2 | **El lenguaje `.fud`** | Nueve páginas bajo `/docs/template-syntax`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, `@await`, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. | **Hecho** |
 | 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. | En revisión |
 | 4 | **Estilos** | Cuatro páginas bajo `/docs/styles`: El CSS de un componente (shadow DOM, lo que cruza su frontera, una copia por documento, `style` en el markup), Hojas compartidas (documento, `globalStyles`, `styles`, tokens en `:root`), La guía de estilos (un trozo por elemento, `:where()`, `@sheet`) y Cómo llega el CSS (poda, `css: inline \| link`; Baseline, citado). | En revisión |
-| 5 | **Páginas y rutas** | Rutas por carpetas y parámetros. Layouts (toda página tiene uno). Página de error. Prerender e incremental. Early hints. | — |
-| 6 | **Servidor y datos** | El contrato `.fudapi`. Funciones de servidor y middlewares (`@fudic/http`). RPC binario. Sesión con cookie o token. `@fudic/server` en dev y en producción. | — |
-| 7 | **Formularios** | Modelo, grupos y validación. Controles form-associated. | — |
-| 8 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. | — |
-| 9 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. | — |
-| 10 | **Rendimiento** | Caché del runtime. Lighthouse 100/100/100/100: cómo se mide y qué lo sostiene. | — |
-| 11 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. | — |
-| 12 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. | — |
-| 13 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). | — |
-| 14 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. | — |
-| 15 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). | — |
-| 16 | **Herramientas** | CLI, formateador y typecheck en build y en dev. Baseline (`FUD1524`, «Mover a `@supports`»). | — |
-| 17 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. | — |
+| 5 | **Servidor y datos** | El contrato `.fudapi` entero: tipos, funciones de servidor, `task`, middlewares y cadena, reglas, pipes (con el catálogo de lo que Fudic trae de serie en cada uno), sesión con cookie y `@fudic/server`. | — |
+| 6 | **Páginas y rutas** | Rutas por carpetas y parámetros. Los datos de la página (`load`, `layout`). Los tres modos (`ssg`, `ssr`, `sw`). Página de error. Early hints. | — |
+| 7 | **Service Worker** | Qué hace en cada navegación. `sw.json` y `sw.headers`. Datos en caché (`ttl`, políticas), incremental (`page persist`) y render isomórfico. | — |
+| 8 | **Formularios** | Modelo, grupos y validación. Controles form-associated. | — |
+| 9 | **Internacionalización** | Textos de la vista, `t()`, pipes, compilar por idioma. | — |
+| 10 | **Inyección de dependencias** | Contenedores encadenados y resolución por dueño. | — |
+| 11 | **Rendimiento** | Caché del runtime. Lighthouse 100/100/100/100: cómo se mide y qué lo sostiene. | — |
+| 12 | **Seguridad** | Los ficheros `.headers` (ver §5.3). `serve.trustProxy`. Sesión segura. | — |
+| 13 | **Pruebas** | Tests unitarios (`@fudic/testing`). Criterios `.fudspec`. Workbench. Historial `.fudlog`. | — |
+| 14 | **Configuración** | `fudic.json` campo a campo y `sw.json` (ver §5.4). | — |
+| 15 | **Plugin de Vite** | `@fudic/vite`: qué hace, cómo se configura, dev server y build. | — |
+| 16 | **Editores** | La extensión de VS Code. Open VSX para Antigravity, Cursor, Windsurf y VSCodium. StackBlitz, por verificar. El language server en otros editores (Neovim, Zed…). | — |
+| 17 | **Herramientas** | CLI, formateador y typecheck en build y en dev. Baseline (`FUD1524`, «Mover a `@supports`»). | — |
+| 18 | **Referencia** | API de cada paquete. Catálogo de diagnósticos `FUDnnnn`, generado desde `@fudic/diagnostics`. | — |
 
 ### 5.3 Seguridad: lo que cubre
 
@@ -144,7 +145,7 @@ Lo que hay que hacer:
 - capturas o GIF de la extensión funcionando;
 - un README que venda: titular, escenas visuales y lo que hace, sin muros de texto.
 
-Se hace junto con el capítulo 15, porque comparten contenido.
+Se hace junto con el capítulo 16, porque comparten contenido.
 
 ## 6. Dónde vive el código
 

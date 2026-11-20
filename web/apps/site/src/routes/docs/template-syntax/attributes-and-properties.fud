@@ -153,7 +153,7 @@
 </ui-code>
 
 <ui-note .kind="tip">
-  <p>En un formulario no hace falta ninguna de las dos: <code>control=@@form.campo</code> enlaza el campo con su modelo en los dos sentidos, con validación (capítulo 6).</p>
+  <p>En un formulario no hace falta ninguna de las dos: <code>control=@@form.campo</code> enlaza el campo con su modelo en los dos sentidos, con validación (capítulo 8).</p>
 </ui-note>
 
 <h2 id="component-props">Props de un componente</h2>

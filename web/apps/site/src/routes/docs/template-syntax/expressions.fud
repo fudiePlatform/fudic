@@ -104,7 +104,7 @@
 &lt;p&gt;Por @@names()&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p>El cuerpo de un <code>computed</code> que lee la vista sigue la misma lista, porque el servidor también lo evalúa. Lo que necesite JavaScript completo se calcula en el servidor, con los datos de la página (capítulo 5), en un pipe o en un handler.</p>
+<p>El cuerpo de un <code>computed</code> que lee la vista sigue la misma lista, porque el servidor también lo evalúa. Lo que necesite JavaScript completo se calcula en el servidor, con los datos de la página (<a href="/docs/routing/data">Los datos de la página</a>), en un <a href="/docs/server/pipes">pipe</a> o en un handler.</p>
 
 <h3 id="no-truthiness">Sin «truthiness»</h3>
 
@@ -274,7 +274,7 @@ type Category
 &lt;p&gt;Publicado el @@(post.published | longDate)&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p>Fudic trae <code>date</code>, <code>number</code>, <code>currency</code>, <code>percent</code>, <code>relativeTime</code> y <code>list</code>, y puedes escribir los tuyos. Los pipes formatean igual en el servidor y en el navegador (capítulo 7).</p>
+<p>Fudic trae <code>date</code>, <code>number</code>, <code>currency</code>, <code>percent</code>, <code>relativeTime</code> y <code>list</code>, y puedes escribir los tuyos. Los pipes formatean igual en el servidor y en el navegador (<a href="/docs/server/pipes">Pipes</a>).</p>
 
 <h2 id="comments">Comentarios y caracteres especiales</h2>
 

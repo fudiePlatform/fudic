@@ -38,7 +38,7 @@
 
 <p>Una <strong>ruta</strong> es una página. Un <strong>layout</strong> es el documento completo en el que se pinta: el <code>&lt;html&gt;</code>, el <code>&lt;head&gt;</code>, la cabecera, el pie. Toda ruta enlaza exactamente un layout.</p>
 
-<p>Aquí está su sintaxis. Las URLs con parámetros, los datos de cada página y el prerender tienen su propio capítulo (capítulo 4).</p>
+<p>Aquí está su sintaxis. Las URLs con parámetros, los datos de cada página y el prerender tienen su propio capítulo, <a href="/docs/routing">Páginas y rutas</a>.</p>
 
 <h2 id="route">La ruta</h2>
 
@@ -95,7 +95,7 @@
 </ui-code>
 
 <ol>
-  <li><strong>Los enlaces.</strong> Primero el layout; después los componentes que usa y, si carga datos, su contrato con el servidor (<code>&lt;link rel="server"&gt;</code>, capítulo 5).</li>
+  <li><strong>Los enlaces.</strong> Primero el layout; después los componentes que usa y, si carga datos, su contrato con el servidor (<code>&lt;link rel="server"&gt;</code>, <a href="/docs/server">El contrato <code>.fudapi</code></a>).</li>
   <li><strong><code>@@code</code></strong>, opcional. Como en un componente.</li>
   <li><strong>El <code>&lt;head&gt;</code> de la ruta</strong>, opcional: su <code>&lt;title&gt;</code>, su descripción, lo que solo necesita esta página. Se suma al <code>&lt;head&gt;</code> del layout.</li>
   <li><strong>El contenido</strong>, en HTML estándar. <code>data</code> son los datos que el servidor carga para la página. Los que tardan se esperan con <a href="/docs/template-syntax/await"><code>@@await</code></a>, sin retener el resto.</li>
@@ -224,7 +224,7 @@
 &lt;/head&gt;</code></pre>
 </ui-code>
 
-<p>La ruta le da sus valores desde el servidor, junto con sus datos (capítulo 4).</p>
+<p>La ruta le da sus valores desde el servidor, junto con sus datos (<a href="/docs/routing/data#layout">Los datos de la página</a>).</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
