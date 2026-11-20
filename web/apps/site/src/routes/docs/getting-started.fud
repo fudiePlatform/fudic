@@ -5,11 +5,11 @@
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
-  <title>Empezar · Fudic</title>
+  <title>Empezar con Fudic</title>
   <meta name="description" content="Qué es Fudic y qué es Declarative Shadow DOM, cómo crear una app con la CLI y cómo escribir tu primer componente web, pintado en el servidor.">
   <link rel="canonical" href="https://fudic.dev/docs/getting-started">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Empezar · Fudic">
+  <meta property="og:title" content="Empezar con Fudic">
   <meta property="og:description" content="Qué es Fudic, cómo crear una app y cómo escribir tu primer componente web, pintado en el servidor.">
   <meta property="og:url" content="https://fudic.dev/docs/getting-started">
   <meta property="og:site_name" content="Fudic">
@@ -48,7 +48,7 @@
   </ui-toc>
 }
 
-<h1>Empezar</h1>
+<h1>Empezar con Fudic</h1>
 
 <h2 id="what-is-fudic">Qué es Fudic</h2>
 
