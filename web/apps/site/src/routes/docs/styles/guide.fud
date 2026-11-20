@@ -6,11 +6,11 @@
 
 <head>
   <title>La guía de estilos · Fudic</title>
-  <meta name="description" content="La guía de estilos de Fudic: por qué es un fichero por elemento, por qué sus reglas van en :where(), tokens con modo oscuro y contraste AA, fuente autoalojada y lo que traerá &#64;sheet al estándar.">
+  <meta name="description" content="La guía de estilos de Fudic: el aspecto de partida de una app, en CSS estándar. Una hoja por elemento, reglas en :where() y colores con light-dark().">
   <link rel="canonical" href="https://fudic.dev/docs/styles/guide">
   <meta property="og:type" content="article">
   <meta property="og:title" content="La guía de estilos · Fudic">
-  <meta property="og:description" content="Un fichero por elemento, reglas en :where(), tokens con modo oscuro y lo que traerá &#64;sheet.">
+  <meta property="og:description" content="Una hoja por elemento, reglas en :where() y colores con light-dark().">
   <meta property="og:url" content="https://fudic.dev/docs/styles/guide">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,11 +25,9 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#what">Qué es</a></li>
-        <li><a href="#pieces">Por qué tantos ficheros</a></li>
-        <li><a href="#editor">El editor lleva la cuenta</a></li>
-        <li><a href="#where">Por qué :where()</a></li>
-        <li><a href="#tokens">Tokens: modo oscuro y contraste</a></li>
-        <li><a href="#font">La fuente y el favicon</a></li>
+        <li><a href="#pieces">Una hoja por elemento</a></li>
+        <li><a href="#where">Siempre pierde</a></li>
+        <li><a href="#tokens">Modo oscuro</a></li>
         <li><a href="#sheet">Lo que traerá @@sheet</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
@@ -41,9 +39,9 @@
 
 <h2 id="what">Qué es</h2>
 
-<p>La guía de estilos es el aspecto de partida de una app: los tokens de diseño con su modo oscuro, una fuente, un favicon y el estilo de cada elemento al que el navegador da estilo propio (encabezados, párrafos, enlaces, listas, tablas, formularios, diálogos…). <code>fudic new</code> la crea con el proyecto, y <code>fudic g guide</code> crea otra.</p>
+<p>La guía de estilos es el aspecto de partida de una app: colores, espacios, una fuente, un favicon y el estilo de cada elemento HTML (encabezados, enlaces, botones, tablas, formularios…). <code>fudic new</code> la crea con el proyecto.</p>
 
-<p>En un workspace es una librería, y una app la usa con solo depender de ella. Esta web usa la suya, <code>@@web/guide</code>:</p>
+<p>Es una librería del workspace, y una app la usa con solo depender de ella. Su <code>fudic.json</code> dice cuál es su hoja de entrada y su favicon:</p>
 
 <ui-code .path="libs/guide/fudic.json">
 <pre><code>{
@@ -53,173 +51,79 @@
 }</code></pre>
 </ui-code>
 
+<p>Toda página de la app recibe <code>guide.css</code> sin escribir ningún <code>&lt;link&gt;</code>.</p>
+
+<h2 id="pieces">Una hoja por elemento</h2>
+
+<p>La guía es un fichero por elemento (<code>h1.css</code>, <code>button.css</code>, <code>table.css</code>…), y <code>guide.css</code> los importa todos. El motivo es el shadow DOM:</p>
+
 <ul>
-  <li><strong><code>guide.sheet</code></strong> es la hoja de entrada de la guía. Toda página de un proyecto que depende de esta librería la recibe, podada a lo que usa, sin escribir ningún <code>&lt;link&gt;</code>.</li>
-  <li><strong><code>guide.icon</code></strong> es el favicon de esas páginas.</li>
-  <li><strong><code>base</code></strong>, en <code>globalStyles</code>, es lo único que adoptan todos los componentes: el <code>box-sizing</code>.</li>
+  <li>La página recibe la guía entera, pero esa hoja no entra en los componentes.</li>
+  <li>Dar la guía entera a cada componente sería enviar las reglas de las tablas para pintar un botón.</li>
+  <li>Así que cada componente adopta solo las hojas de los elementos que pinta. Cada hoja se llama como su fichero: <code>button.css</code> es <code>button</code>.</li>
 </ul>
 
-<h2 id="pieces">Por qué tantos ficheros</h2>
-
-<p>Abre la carpeta de la guía y verás un fichero por elemento: <code>h1.css</code>, <code>p.css</code>, <code>button.css</code>, <code>input.css</code>, <code>table.css</code>… y un <code>guide.css</code> que los importa todos:</p>
-
-<ui-code .path="libs/guide/guide.css">
-<pre><code>@@import "./tokens.css";
-@@import "./document.css";
-@@import "./base.css";
-
-@@import "./h1.css";
-@@import "./p.css";
-@@import "./a.css";
-@@import "./button.css";
-@@import "./input.css";
-…</code></pre>
-</ui-code>
-
-<p>Tiene una razón, y sale de cómo funciona el shadow DOM:</p>
-
-<ol>
-  <li><strong>El CSS del documento no entra en un componente.</strong> La página recibe la guía entera, y con ella se pintan los encabezados, los párrafos y todo lo que vive en el light DOM. Pero un <code>&lt;button&gt;</code> dentro de un componente no ve nada de eso: sin más, se pinta con el estilo por defecto del navegador. Es el aislamiento del <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">shadow DOM</a>, que es del estándar.</li>
-  <li><strong>Adoptar la guía entera en cada componente sería tirar bytes.</strong> Cada shadow root cargaría las reglas de las tablas, los diálogos y los formularios para pintar un botón.</li>
-  <li><strong>Así que la guía se parte en trozos, uno por elemento</strong>, y cada componente adopta solo los de lo que pinta. Esta web lo hace con sus notas, que solo tienen párrafos:</li>
-</ol>
+<p>Las notas de esta web solo tienen párrafos, y adoptan solo <code>p</code>:</p>
 
 <ui-code .path="libs/ui/src/components/ui-note/ui-note.fud">
 <pre><code>&lt;ui-note&gt;
   &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
-    &lt;p class="label"&gt;Nota&lt;/p&gt;
     &lt;slot&gt;&lt;/slot&gt;
   &lt;/template&gt;
 &lt;/ui-note&gt;</code></pre>
 </ui-code>
 
-<p>Cada trozo se llama como su fichero (<code>button.css</code> es <code>button</code>) y viaja una sola vez por página, aunque haya cien componentes que lo adopten (<a href="/docs/styles#one-copy">Una copia por documento</a>).</p>
+<p>No tienes que llevar la lista a mano. El editor añade la hoja al escribir el elemento, y avisa si falta una (<code>FUD1440</code>) o si sobra (<code>FUD1441</code>). Las que sobran nunca las quita: puede que un script cree ese elemento más tarde.</p>
 
-<p>No todos los ficheros de la guía son trozos. Hay dos que solo sirven al documento, y uno que es de todos:</p>
+<h2 id="where">Siempre pierde</h2>
 
-<ul>
-  <li><strong><code>tokens.css</code></strong> declara los tokens en <code>:root</code> y la fuente con <code>@@font-face</code>. Dentro de un shadow root, <code>:root</code> no casa con nada, y los tokens no hacen falta: se heredan (<a href="/docs/styles/shared#tokens">Los tokens, en el <code>:root</code></a>).</li>
-  <li><strong><code>document.css</code></strong> estiliza <code>html</code> y <code>body</code>, que solo existen en el documento.</li>
-  <li><strong><code>base.css</code></strong> está en <code>globalStyles</code>: lo adoptan todos los componentes sin nombrarlo.</li>
-</ul>
-
-<h2 id="editor">El editor lleva la cuenta</h2>
-
-<p>Llevar a mano la lista de trozos de cada componente sería tedioso, así que lo hace el editor:</p>
-
-<ul>
-  <li><strong>Al escribir un elemento</strong> que la guía estiliza, el editor añade su trozo a <code>shadowrootadoptedstylesheets</code>.</li>
-  <li><strong>Si falta un trozo</strong>, avisa (<code>FUD1440</code>), con una acción rápida que lo añade:</li>
-</ul>
-
-<ui-code>
-<pre><code>warning FUD1440: &lt;output&gt; is styled by the guide's "output", which this component does not
-adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
-</ui-code>
-
-<ul>
-  <li><strong>Si sobra un trozo</strong>, porque nada de lo que el componente pinta casa con sus reglas, también avisa (<code>FUD1441</code>), pero <strong>nunca lo quita por su cuenta</strong>. Un script puede crear en tiempo de ejecución el elemento que ese trozo estiliza, y eso solo lo sabe quien escribe el componente.</li>
-  <li><strong>Qué trozo pinta qué elemento se sabe por sus selectores</strong>, no por el nombre del fichero: un trozo pinta un <code>&lt;summary&gt;</code> si alguna de sus reglas tiene <code>summary</code> como sujeto. Un trozo con un nombre que no se puede adoptar (con guion o mayúsculas) es un error (<code>FUD1442</code>).</li>
-</ul>
-
-<p>La lista que escribe el autor es la que manda: el build adopta exactamente lo que dice el atributo. Si un componente necesita un trozo que el editor no puede deducir (una clase que pone un script, por ejemplo), basta con añadirlo.</p>
-
-<h2 id="where">Por qué <code>:where()</code></h2>
-
-<p>Todas las reglas de la guía están envueltas en <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a>:</p>
+<p>La guía da valores por defecto, y un valor por defecto debe perder ante cualquier regla tuya. Por eso todas sus reglas van dentro de <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a>, que tiene especificidad cero:</p>
 
 <ui-code .path="libs/guide/button.css">
 <pre><code>:where(button) {
-  padding: var(--guide-space-2) var(--guide-space-4);
-  color: var(--guide-on-accent);
   background: var(--guide-accent);
-  border-radius: var(--guide-radius-md);
-  …
-}
-
-:where(button):disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }</code></pre>
 </ui-code>
 
-<p>La guía da valores por defecto, y un valor por defecto tiene que perder siempre. <code>:where()</code> tiene <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity" target="_blank" rel="noopener">especificidad</a> cero, así que cualquier regla que escribas le gana:</p>
+<p>Un simple <code>button { … }</code> en tu componente le gana, sin <code>!important</code> y sin importar el orden de las hojas.</p>
 
-<ui-code .path="src/components/miapp-toolbar/miapp-toolbar.fud">
-<pre><code>&lt;style&gt;
-  button {
-    background: transparent;
-    color: var(--guide-ink);
-  }
-&lt;/style&gt;</code></pre>
-</ui-code>
+<h2 id="tokens">Modo oscuro</h2>
 
-<ul>
-  <li><strong>Sin <code>!important</code> ni selectores alargados.</strong> Un <code>button</code>, una clase o un <code>:host(…)</code> bastan para sustituir lo de la guía.</li>
-  <li><strong>Sin depender del orden.</strong> Dentro de un componente, su <code>&lt;style&gt;</code> ya va el último en la cascada. Pero en el documento el orden de las hojas varía: la guía, la hoja del layout, el <code>&lt;style&gt;</code> de la página, y cambia otra vez con <code>css: "link"</code>. Con especificidad cero, la guía pierde en todos los casos.</li>
-  <li><strong>Sin perder la información.</strong> <code>:where(button)</code> sigue teniendo <code>button</code> como sujeto, y por eso el editor sabe que ese trozo pinta botones.</li>
-</ul>
-
-<h2 id="tokens">Tokens: modo oscuro y contraste</h2>
-
-<p>Los colores de la guía se escriben con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a>: un valor para el modo claro y otro para el oscuro, en el mismo token.</p>
+<p>Los colores de la guía son tokens escritos con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a>: un valor para el modo claro y otro para el oscuro.</p>
 
 <ui-code .path="libs/guide/tokens.css">
 <pre><code>:root {
   color-scheme: light dark;
   --guide-ink: light-dark(#141413, #eeece4);
-  --guide-surface: light-dark(#faf9f5, #181715);
   --guide-accent: light-dark(#a9472a, #e99a7e);
-  --guide-space-4: 1rem;
-  …
 }</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>El modo lo decide el sistema</strong>, con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>. Para fijar uno en una zona, o en toda la página, basta con cambiar <code>color-scheme</code>, sin tocar ningún token.</li>
-  <li><strong>Cada par de colores de texto cumple el contraste 4.5:1</strong> de <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" target="_blank" rel="noopener">WCAG 2.2 AA</a> sobre los fondos, en los dos modos.</li>
-  <li><strong>Todo trozo usa solo tokens.</strong> Para cambiar el aspecto de la app, se cambian los tokens, no los trozos.</li>
+  <li>El modo lo elige el sistema. Para fijarlo en una zona, basta con <code>color-scheme</code>.</li>
+  <li>Los colores de texto cumplen el contraste de <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" target="_blank" rel="noopener">WCAG 2.2 AA</a> en los dos modos.</li>
+  <li>Para cambiar el aspecto de la app, cambias los tokens, no las hojas.</li>
 </ul>
 
-<h2 id="font">La fuente y el favicon</h2>
-
-<p>La guía trae una fuente <strong>autoalojada y de código abierto</strong>, declarada con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a> en <code>tokens.css</code>. Se sirve desde el mismo origen que la app: sin peticiones a terceros, y con la licencia junto al fichero. Esta web usa Inter Tight, recortada a los pesos y caracteres que usa.</p>
-
-<p>El favicon es el <code>guide.icon</code> de <code>fudic.json</code>, y lo llevan todas las páginas que reciben la guía.</p>
+<p>La fuente está en el mismo <code>tokens.css</code>, con <code>@@font-face</code>. Es de código abierto y se sirve desde tu propio origen, sin pedir nada a terceros.</p>
 
 <h2 id="sheet">Lo que traerá <code>@@sheet</code></h2>
 
-<p>La guía es un fichero por trozo porque, hoy, el estándar no tiene forma de nombrar varias hojas dentro de un mismo fichero. <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/AtSheet/explainer.md" target="_blank" rel="noopener"><code>@@sheet</code></a> es la propuesta que la daría:</p>
+<p>La guía es un fichero por elemento porque hoy el estándar no permite nombrar varias hojas dentro de un fichero. La propuesta <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/AtSheet/explainer.md" target="_blank" rel="noopener"><code>@@sheet</code></a> lo permitiría:</p>
 
 <ui-code .path="guide.css">
-<pre><code>@@sheet button {
-  :where(button) { … }
-}
-
-@@sheet input {
-  :where(input) { … }
-}</code></pre>
+<pre><code>@@sheet button { :where(button) { … } }
+@@sheet input  { :where(input) { … } }</code></pre>
 </ui-code>
-
-<p>Cada bloque es una hoja con nombre, y se importa por ese nombre, desde CSS o desde HTML:</p>
-
-<ui-code>
-<pre><code>@@import button from "guide.css";
-
-&lt;link rel="stylesheet" href="guide.css" sheet="button"&gt;</code></pre>
-</ui-code>
-
-<p>Encaja con lo que hace Fudic: una guía en un solo fichero, de la que cada componente toma sus trozos por nombre, y que se puede escribir dentro de la página o enlazar como fichero cambiando solo el <code>href</code>. Su explainer cita justo este caso: compartir estilos con Declarative Shadow DOM sin JavaScript y sin peticiones de más.</p>
 
 <ui-note>
-  <p><code>@@sheet</code> todavía no es estándar. El CSS Working Group acordó en 2025 incorporarla a la especificación de la cascada (<a href="https://github.com/w3c/csswg-drafts/issues/11509" target="_blank" rel="noopener">w3c/csswg-drafts#11509</a>), pero ningún navegador la implementa aún, ni siquiera tras un flag. Mientras tanto, Fudic usa un fichero por trozo.</p>
+  <p><code>@@sheet</code> aún no es estándar: el CSS Working Group acordó incorporarla en 2025 (<a href="https://github.com/w3c/csswg-drafts/issues/11509" target="_blank" rel="noopener">w3c/csswg-drafts#11509</a>), pero ningún navegador la implementa. Cuando llegue, la guía podrá ser un solo fichero.</p>
 </ui-note>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity" target="_blank" rel="noopener">la especificidad</a>: por qué la guía siempre pierde.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>: los dos temas en un token.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascade/Specificity" target="_blank" rel="noopener">La especificidad</a>: por qué la guía siempre pierde.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>: el modo claro y el oscuro.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a>: la fuente autoalojada.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import" target="_blank" rel="noopener"><code>@@import</code></a>: cómo <code>guide.css</code> reúne los trozos.</li>
 </ul>
