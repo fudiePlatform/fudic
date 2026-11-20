@@ -89,6 +89,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Se repitió** con las ocho páginas del capítulo 2 (`docs/template-syntax/…`): mismo rodeo y
   mismo `href` corregido a mano.
 - **Y otra vez** con las cuatro páginas del capítulo 4 (`docs/styles/…`), el 2026-11-19.
+- **Y otra vez** con las dieciocho páginas de los capítulos 5, 6 y 7 (`docs/server/…`,
+  `docs/routing/…`, `docs/service-worker/…`), el 2026-11-20.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -134,3 +136,29 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `styles`. Junto con el nº 7 (la hoja de un layout), que un solo comando cubra los tres sitios
   donde puede ir una hoja.
 
+
+## 11. No hay `fudic build`
+
+- **Qué pasó.** Al documentar el servidor (capítulo 5). La CLI tiene `fudic dev`, `fudic preview`,
+  `fudic test` y `fudic spec`, pero no `build`. La ayuda de `preview` dice «Build first with pnpm
+  build», y lo que corre es el `vite build` de cada app.
+- **Cómo se resolvió en la web.** «El servidor» dice que el build lo hace Vite, con el script
+  `build` de la app.
+- **Qué debería hacer.** Un `fudic build` que construya las apps del workspace, o de una con
+  `--project`, igual que `dev` y `preview` las sirven. Así el ciclo entero se hace con la CLI.
+
+## 12. No hay generador para un middleware ni para una regla
+
+- **Qué pasó.** Al documentar el `.fudapi` (capítulo 5). Existen `fudic g api`, `g form` y
+  `g pipe`. Un middleware (su `.fudapi` y sus dos mitades, en `src/server` y `src/browser`) y una
+  regla (su `.fudapi` y su `check` en la carpeta que toca según `runs`) se escriben a mano.
+- **Cómo se resolvió en la web.** La documentación lo dice: se escriben a mano.
+- **Qué debería hacer.** `fudic g middleware <n> [--client] [--server]` y
+  `fudic g rule <n> --runs both|server|remote`, que escriban la declaración y su implementación
+  vacía en su sitio, como `g pipe`.
+
+## 13. La ayuda general no lista `generate pipe` ni `check`
+
+- **Qué pasó.** `generate pipe` está en `packages/cli/src/help/commands.ts:248`, pero no en la ayuda
+  general (`help/general.ts`). `run.ts:306` tiene un comando `check` que ninguna ayuda menciona.
+- **Qué debería hacer.** Que la ayuda general liste todos los comandos que existen.

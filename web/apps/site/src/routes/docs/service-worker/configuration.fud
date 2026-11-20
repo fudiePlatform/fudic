@@ -1,0 +1,143 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Configuración del Service Worker · Fudic</title>
+  <meta name="description" content="sw.json y sw.headers: qué descarga el Service Worker de Fudic al instalarse, cómo guarda los ficheros estáticos, si se registra en desarrollo y por qué su CSP necesita unsafe-eval.">
+  <link rel="canonical" href="https://fudic.dev/docs/service-worker/configuration">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Configuración del Service Worker · Fudic">
+  <meta property="og:description" content="sw.json y sw.headers en Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/service-worker/configuration">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("service-worker-configuration")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#sw-json">sw.json</a></li>
+        <li><a href="#shell">shell</a></li>
+        <li><a href="#resources">resources</a></li>
+        <li><a href="#dev">dev</a></li>
+        <li><a href="#id">El id de la app</a></li>
+        <li><a href="#sw-headers">sw.headers</a></li>
+        <li><a href="#diagnostics">Lo que se comprueba</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Configuración del Service Worker</h1>
+
+<h2 id="sw-json"><code>sw.json</code></h2>
+
+<p>El Service Worker de una app se configura en <code>sw.json</code>, en su raíz, junto a <code>fudic.json</code>. Tenerlo es lo que activa el Service Worker. Lo que de cada página se guarda no está aquí, sino en su línea de <code>load</code> (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>). Este es el que escribe <code>fudic new</code>:</p>
+
+<ui-code .path="sw.json">
+<pre><code>&#123;
+  "shell": [],
+  "resources": &#123;
+    "assets": &#123;
+      "pattern": "/assets/**",
+      "policy": "cache-first",
+      "ttl": null,
+      "maxEntries": 200
+    &#125;
+  &#125;,
+  "dev": "off"
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="shell"><code>shell</code></h2>
+
+<p>Las URLs que el Service Worker descarga al instalarse, exactas, y que después sirve siempre desde su caché. Es obligatorio, y una lista vacía vale. El manifiesto de rutas y el JavaScript de arranque de cada página ya los añade Fudic: aquí va lo tuyo que tenga que estar disponible desde el primer momento, como una imagen que se usa sin conexión.</p>
+
+<ui-code>
+<pre><code>"shell": ["/logo.svg", "/offline.css"]</code></pre>
+</ui-code>
+
+<p>Una URL que el build no produce es un aviso (<code>FUD0391</code>).</p>
+
+<h2 id="resources"><code>resources</code></h2>
+
+<p>Cómo se guardan los ficheros que no son páginas, por patrón. Cada entrada tiene un nombre libre y cuatro campos:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Campo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>pattern</code></td><td>las URLs a las que se aplica. <code>*</code> casa con lo que haya dentro de un segmento, y <code>**</code>, con varios</td></tr>
+    <tr><td><code>policy</code></td><td><code>cache-first</code>, <code>network-first</code>, <code>stale-while-revalidate</code> o <code>network-only</code>, como en <code>load</code> (<a href="/docs/service-worker/caching#policies">Las políticas</a>)</td></tr>
+    <tr><td><code>ttl</code></td><td>cuánto valen (<code>"7d"</code>), o <code>null</code> para siempre</td></tr>
+    <tr><td><code>maxEntries</code></td><td>cuántos ficheros guarda como mucho; al pasarse, borra los más antiguos</td></tr>
+  </tbody>
+</table>
+
+<p>Gana el primer patrón que casa, en el orden en que están escritos. Los ficheros de <code>/assets/</code> llevan un hash en el nombre, así que nunca caducan: un contenido nuevo es un nombre nuevo. Por eso la entrada de la plantilla es <code>cache-first</code> sin <code>ttl</code>.</p>
+
+<p>El patrón se compara con la ruta entera de la URL, <code>base</code> incluido: en una app servida en <code>/admin/</code>, es <code>/admin/assets/**</code>.</p>
+
+<h2 id="dev"><code>dev</code></h2>
+
+<ul>
+  <li><strong><code>"off"</code></strong>, por defecto: en <code>fudic dev</code> no se registra. Lo que ves es siempre lo último que guardaste, sin una caché en medio.</li>
+  <li><strong><code>"preview"</code></strong>: se registra también en desarrollo, para probarlo sin construir.</li>
+</ul>
+
+<h2 id="id">El id de la app</h2>
+
+<p>Las cachés del Service Worker llevan el <code>id</code> de <code>fudic.json</code> y el del build. Por eso un <code>sw.json</code> exige un <code>id</code> (<code>FUD0726</code>), y por eso dos apps en el mismo dominio no se pisan: cada una borra solo sus cachés viejas.</p>
+
+<p>El <code>id</code> no se cambia nunca. Con otro <code>id</code>, el Service Worker trataría como ajenas las cachés de la misma app, que se quedarían ocupando espacio en el navegador de cada usuario.</p>
+
+<h2 id="sw-headers"><code>sw.headers</code></h2>
+
+<p>Las cabeceras con las que se sirve el propio Service Worker, <code>/fudic-sw.js</code>. Un Service Worker no hereda la política de seguridad de la página: tiene la suya.</p>
+
+<ui-code .path="sw.headers">
+<pre><code># The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
+# 'unsafe-eval' is what lets it link the route chunks: without it the app is served without it.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'self' 'unsafe-eval'</code></pre>
+</ui-code>
+
+<p>Necesita <code>'unsafe-eval'</code> por una limitación del estándar: un Service Worker no puede cargar módulos con <code>import()</code>, y <code>importScripts</code> solo funciona mientras se instala. Para cargar el código de una ruta cuando se visita, Fudic lo evalúa con <code>new Function</code>. El permiso vale solo dentro del Service Worker: la página sigue sin <code>'unsafe-eval'</code>.</p>
+
+<p>Sin él, el Service Worker se instala pero no pinta ninguna página, y todas las navegaciones van al servidor. El build avisa (<code>FUD1548</code>).</p>
+
+<p>El formato del fichero (una cabecera por línea, continuaciones sangradas, <code>#</code> para comentarios) es el mismo de <code>page.headers</code> y <code>assets.headers</code>, y los tres se explican en Seguridad (capítulo 12). Un <code>sw.headers</code> sin <code>sw.json</code> es un aviso (<code>FUD1554</code>): sobra.</p>
+
+<h2 id="diagnostics">Lo que se comprueba</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Código</th><th scope="col">Qué</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>FUD0390</code></td><td><code>sw.json</code> no es JSON válido, le falta <code>shell</code> o tiene un recurso mal escrito. La app sale sin Service Worker</td></tr>
+    <tr><td><code>FUD0391</code></td><td>una URL de <code>shell</code> que el build no produce</td></tr>
+    <tr><td><code>FUD0392</code></td><td>un <code>ttl</code> que no se entiende; esa entrada se descarta</td></tr>
+    <tr><td><code>FUD0726</code></td><td><code>sw.json</code> sin <code>id</code> en <code>fudic.json</code></td></tr>
+    <tr><td><code>FUD1548</code></td><td><code>sw.headers</code> sin <code>'unsafe-eval'</code>: el Service Worker no podrá pintar</td></tr>
+    <tr><td><code>FUD1554</code></td><td><code>sw.headers</code> sin <code>sw.json</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/importScripts"><code>importScripts()</code></a>: por qué un Service Worker no carga módulos cuando quiere.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src"><code>script-src</code></a> y <code>'unsafe-eval'</code>.</li>
+</ul>

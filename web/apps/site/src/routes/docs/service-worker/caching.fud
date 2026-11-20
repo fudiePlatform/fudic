@@ -1,0 +1,118 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Datos y páginas en caché · Fudic</title>
+  <meta name="description" content="Cómo guarda el Service Worker de Fudic los datos de cada página: ttl y política en la línea de load, lo privado que nunca se guarda, la invalidación tras una llamada y page persist, el modo incremental que guarda el HTML.">
+  <link rel="canonical" href="https://fudic.dev/docs/service-worker/caching">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Datos y páginas en caché · Fudic">
+  <meta property="og:description" content="ttl, políticas, invalidación y page persist en el Service Worker de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/service-worker/caching">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("service-worker-caching")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#data">Se guardan los datos, no el HTML</a></li>
+        <li><a href="#ttl">ttl</a></li>
+        <li><a href="#policies">Las políticas</a></li>
+        <li><a href="#private">Lo privado no se guarda</a></li>
+        <li><a href="#invalidate">Invalidar</a></li>
+        <li><a href="#persist">page persist: guardar el HTML</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Datos y páginas en caché</h1>
+
+<h2 id="data">Se guardan los datos, no el HTML</h2>
+
+<p>Cuando el Service Worker pinta una página, lo que guarda son sus <strong>datos</strong>, la respuesta de <code>load</code>. El HTML lo vuelve a pintar en cada navegación, en unos milisegundos, con los datos que tiene. Así nunca sirve una página vieja con datos nuevos, ni al revés.</p>
+
+<p>Cómo guarda los datos de cada página lo dice su línea de <code>load</code>:</p>
+
+<ui-code .path="src/routes/blog/index.fudapi">
+<pre><code>load sw ttl 5m cache-first
+  title  str
+  posts  Post[]</code></pre>
+</ui-code>
+
+<p>Todo esto solo tiene efecto con Service Worker. Sin él, el servidor pinta cada vez y estas opciones no hacen nada (<a href="/docs/routing/rendering#without-sw">Sin Service Worker</a>).</p>
+
+<h2 id="ttl"><code>ttl</code></h2>
+
+<p>Cuánto tiempo valen los datos guardados: <code>30s</code>, <code>5m</code>, <code>2h</code>, <code>7d</code>. Pasado ese tiempo, la política decide qué hacer.</p>
+
+<p>Sin <code>ttl</code>, los datos valen hasta el siguiente despliegue o hasta que una llamada los invalida (<a href="#invalidate">abajo</a>). Sin nada en la línea de <code>load</code>, la política es <code>cache-first</code> sin caducidad.</p>
+
+<h2 id="policies">Las políticas</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Política</th><th scope="col">Qué hace</th><th scope="col">Para</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>cache-first</code></td><td>usa lo guardado mientras vale; si no, pide a la red, y si la red falla, sirve lo guardado aunque haya caducado</td><td>lo que cambia poco: un blog, un catálogo. Es la de por defecto</td></tr>
+    <tr><td><code>stale-while-revalidate</code></td><td>sirve lo guardado al momento y, si ha caducado, lo renueva por detrás para la próxima vez</td><td>lo que puede llegar un poco tarde a cambio de pintar ya</td></tr>
+    <tr><td><code>network-first</code></td><td>pide siempre a la red, y usa lo guardado solo si la red falla</td><td>lo que tiene que estar al día, pero debe verse sin conexión</td></tr>
+    <tr><td><code>network-only</code></td><td>pide siempre a la red</td><td>lo que no tiene sentido sin conexión</td></tr>
+  </tbody>
+</table>
+
+<p>Dos navegaciones a la misma URL a la vez comparten una sola petición a la red. Solo se guardan las respuestas <code>200</code>.</p>
+
+<h2 id="private">Lo privado no se guarda</h2>
+
+<p>Una respuesta con <code>Cache-Control: private</code> o <code>no-store</code> no se guarda nunca, con ninguna política, y si había una copia anterior de esa URL, se borra. Fudic marca así, solo, toda respuesta de un <code>load</code> que lee la sesión (<a href="/docs/server/session#private">Sesión y cookies</a>): los datos de un usuario nunca se quedan en un navegador compartido para el siguiente.</p>
+
+<h2 id="invalidate">Invalidar</h2>
+
+<p>Una función que cambia datos dice qué rutas deja viejas, con <code>invalidates</code> (<a href="/docs/server/functions#invalidates"><code>invalidates</code></a>):</p>
+
+<ui-code>
+<pre><code>put publish
+  invalidates /blog /blog/:slug
+  slug  str</code></pre>
+</ui-code>
+
+<p>Cuando la llamada sale bien, y antes de que termine, el Service Worker borra lo que tenía guardado de esas rutas: los datos y, con <code>page persist</code>, el HTML. Una ruta con parámetros cubre todas sus URLs: <code>/blog/:slug</code> borra todos los artículos. Además, una llamada que no es <code>get</code> borra siempre lo guardado de la página en la que está el usuario.</p>
+
+<p>Después, si la página está en una de esas rutas, pide sus datos otra vez y se repinta.</p>
+
+<h2 id="persist"><code>page persist</code>: guardar el HTML</h2>
+
+<p>Con <code>page persist</code>, el Service Worker guarda también el HTML de cada URL la primera vez que la pinta, y las siguientes lo sirve tal cual, con un nonce nuevo. Es el modo <strong>incremental</strong>: cada página se pinta una vez, cuando alguien la pide, y queda guardada.</p>
+
+<ui-code>
+<pre><code>load sw ttl 1h page persist
+  title  str
+  body   str</code></pre>
+</ui-code>
+
+<p>Una página nunca tiene dos caducidades: su HTML caduca con sus datos. Un <code>page persist 2h</code> con <code>ttl 1h</code> no tiene sentido, Fudic avisa (<code>FUD0396</code>) y gana el <code>ttl</code>. Invalidar los datos de una URL borra también su HTML, y un despliegue nuevo lo borra todo.</p>
+
+<p>Un HTML con datos privados no se guarda nunca, aunque la página diga <code>page persist</code>.</p>
+
+<ui-note>
+  <p>Casi nunca hace falta. Pintar con los datos ya guardados cuesta unos milisegundos, y guardar el HTML abre la puerta a servir una página que no corresponde a sus datos. <code>page never</code>, el valor por defecto, es lo seguro.</p>
+</ui-note>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache"><code>Cache</code></a>: donde se guardan los datos y el HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"><code>Cache-Control</code></a>: <code>private</code>, <code>no-store</code> y <code>stale-while-revalidate</code>, de donde vienen los nombres.</li>
+</ul>

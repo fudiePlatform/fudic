@@ -223,3 +223,159 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   en el `.fud`, como ya lo es `@sheet` con `FUD0907`, en vez de un error de Oxc sobre el código
   generado.
 
+## 12. El arranque en Node del ejemplo sirve la página de error en vez de un fichero estático
+
+- **Qué pasó.** Al documentar el servidor (capítulo 5). Comprobado cargando la app construida.
+  - `examples/basic/node-server.mjs` y el ejemplo de `packages/server/README.md` montan
+    `nodeMiddleware(…, { notFound: true })` **delante** de `staticFiles`.
+  - `notFound` pinta un `404` para todo `GET` cuyo `Accept` incluya `text/html`
+    (`packages/server/src/server.ts:311-319`).
+  - Por eso una navegación directa a un fichero (`/logo.svg` o `/fudic-routes.json` abiertos en una
+    pestaña) recibe la página de error. Un `<img>` o un `<script>` no lo notan, porque no piden HTML.
+  - La opción está documentada para «el último middleware de la cadena, después de los ficheros del
+    host» (`packages/server/src/node/index.ts:180-184`), y la preview lo hace bien
+    (`packages/vite/src/plugin.ts:1268-1272`).
+- **Cómo se resolvió en la web.** La página «El servidor» explica las piezas y el orden correcto
+  (la app, los ficheros, la página de error), sin copiar el código del ejemplo.
+- **Qué debería hacer.** Corregir el orden en el ejemplo y en el README. Mejor aún, una función de
+  `@fudic/server/node` que monte las tres piezas en su orden, para que nadie tenga que acertarlo.
+
+## 13. Los diagnósticos de `sw.json` no salen nunca
+
+- **Qué pasó.** Leído en el código al documentar el Service Worker (capítulo 7); no reproducido.
+  - `packages/vite/src/plugin.ts:926` se queda con `readSwConfig(…).config` y tira sus
+    `.diagnostics`, y nadie más llama a `readSwConfig`.
+  - Un `sw.json` mal escrito deja la app sin Service Worker sin decir nada (`FUD0390`).
+  - Un `ttl` que no se entiende descarta su recurso en silencio (`FUD0392`).
+- **Cómo se resolvió en la web.** La página «Configuración» lista los diagnósticos como deberían
+  salir.
+- **Qué debería hacer.** Reportarlos en el build y en dev, como los del resto de ficheros de la app.
+
+## 14. El HTML de `page persist` no caduca nunca
+
+- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+  - La regla es que una ruta no tiene dos TTL: con `page persist`, el HTML caduca con sus datos
+    (`FUD0396`, `packages/vite/src/manifest.ts:99-109`).
+  - Pero `servePage` (`packages/transport/src/router.ts:272-280`) sirve desde su índice sin mirar la
+    frescura, y nada en `transport/src` lee `page.ttl`.
+  - El HTML guardado solo desaparece al invalidar o con un despliegue nuevo.
+- **Cómo se resolvió en la web.** La página «Datos y páginas en caché» cuenta la regla como está
+  diseñada.
+- **Qué debería hacer.** Comprobar la edad del HTML guardado contra `page.ttl` antes de servirlo.
+
+## 15. `"dev": "preview"` registra el Service Worker, pero nunca pinta
+
+- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+  - El manifiesto de desarrollo marca todas las rutas como `ssr` y sin `deps`
+    (`packages/vite/src/dev.ts:94`), y el middleware de desarrollo no sirve `/sw/c/*`.
+  - Con `"dev": "preview"`, el Service Worker se registra y deja pasar todas las navegaciones.
+  - Lo mismo para el banco de trabajo, que fuerza `preview` (`plugin.ts:929`).
+- **Cómo se resolvió en la web.** La página «Configuración» describe `preview` como lo que promete.
+- **Qué debería hacer.** Lo que dice SDD-20 §4.11: en `preview`, rutas `sw` y chunks servidos en dev.
+
+## 16. `paramFallback: 'notFound'` solo lo respeta el Service Worker
+
+- **Qué pasó.** Leído en el código (capítulo 6); no reproducido.
+  - El pase edge construye toda ruta no excluida (`packages/vite/src/edge.ts:196`).
+  - El servidor pinta cualquier valor sin fichero prerenderizado
+    (`packages/server/src/server.ts:229-240`).
+  - Con `notFound`, un slug que `paths` no dio sigue pintándose bajo demanda en el servidor; solo
+    el Service Worker se niega.
+- **Cómo se resolvió en la web.** «Los modos» solo cuenta el comportamiento por defecto (`lazy`) y
+  remite la opción al capítulo del plugin de Vite.
+- **Qué debería hacer.** Que el servidor responda `404` para un valor fuera de `paths` cuando la
+  opción lo pide.
+
+## 17. Sin red, unos datos que no llegan marcan la ruta como rota hasta reiniciar
+
+- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+  - Si `stores.data.get` rechaza (sin conexión, con `network-first` o `network-only` y sin copia),
+    no es un `DataUnavailable`.
+  - La ruta queda marcada como muerta hasta que el Service Worker se reinicia, y la respuesta sale
+    con `x-fudic-fallback: link-error` (`packages/transport/src/router.ts:361-374`).
+  - El rescate por la red también falla, porque no hay conexión.
+- **Qué debería hacer.** Distinguir un fallo de datos de uno de enlace: el primero no debe matar la
+  ruta.
+
+## 18. `network-only` guarda igualmente las respuestas `200`
+
+- **Qué pasó.** Leído en el código (capítulo 7).
+  - `fromNetwork` guarda toda respuesta `200` no privada (`packages/transport/src/store.ts:211-213`),
+    también la de `network-only`.
+  - La copia no se lee nunca, pero ocupa espacio, y la guía del MCP dice «nunca se guarda».
+  - SDD-69 §1 lo señaló, y solo se arregló el caso privado.
+- **Qué debería hacer.** No escribir en la caché con `network-only`.
+
+## 19. Una opción cualquiera en la línea de `load` anula los `defaults` del plugin
+
+- **Qué pasó.** Leído en el código (capítulo 6).
+  - `strategyOfLoad` cuenta cualquier opción como «declarada» (`packages/vite/src/strategy.ts:158`).
+  - Un `load ttl 5m`, sin modo, hace que la ruta ignore su entrada de `defaults` y avise con
+    `FUD0397`, aunque no declaró ningún modo (`mode.ts:99-110`).
+  - Además, la opción `prerender` del plugin se resuelve (`options.ts:105`) y no la lee nadie.
+- **Qué debería hacer.** Que solo un modo escrito cuente como declarado. Quitar `prerender` o hacer
+  que funcione.
+
+## 20. Los patrones de `sw.json` llevan el `base`, y la plantilla de `g app` no
+
+- **Qué pasó.** Leído en el código (capítulo 7).
+  - El router compara el patrón con la ruta entera, con el `base`
+    (`packages/transport/src/router.ts:387-394`). Así lo hace
+    `examples/workspace/apps/admin/sw.json` (`/admin/assets/**`).
+  - La guía del MCP (`packages/mcp/guide/config.md:53`) dice que se escriben sin `base`.
+  - `fudic g app`, cuyo `base` por defecto es `/<nombre>/`, escribe `"/assets/**"`
+    (`packages/cli/src/plans/scaffold.ts:207`), que en esa app no casa con nada.
+- **Cómo se resolvió en la web.** La página «Configuración» cuenta lo que hace el router: con `base`.
+- **Qué debería hacer.** Decidir una regla. Sin `base` sería coherente con `assets.headers`, que va
+  «by path without the base».
+
+## 21. `paths` solo admite textos en su tipo, aunque el prerender acepta objetos
+
+- **Qué pasó.** Leído en el código (capítulo 6).
+  - El prerender acepta en `paths` un texto para una ruta de un parámetro, o un objeto por nombre
+    para varias (`packages/vite/src/prerender.ts:160-186`).
+  - El tipo que genera el `.fudapi` es `() => readonly string[]`
+    (`packages/api/src/emit/declarations.ts:208`).
+  - Una ruta como `[lang]/docs/[page]` no puede enumerar sus valores sin saltarse el tipo.
+- **Cómo se resolvió en la web.** «Los datos de la página» enseña `paths` con un solo parámetro.
+- **Qué debería hacer.** Generar el tipo según los parámetros de la ruta: `string[]` con uno, y
+  objetos con sus nombres con varios.
+
+## 22. Textos de diagnósticos desfasados
+
+- **Qué pasó.** Al contrastar los diagnósticos con el código (capítulos 5 a 7):
+  - `FUD0397` y `FUD0398` hablan de `strategy()` y `paths()`, que ya no existen: el modo va en la
+    línea de `load` y `paths` es una declaración del `.fudapi`. Además, `FUD0398` dice que la ruta
+    «se pinta en el Service Worker», cuando sin Service Worker pasa a `ssr`.
+  - `FUD1340` pone de ejemplo `on date i64`, y `i64` no es un tipo (da `FUD1080`).
+  - `FUD1097` dice que una regla necesita `runs both` o `runs server`, y no cita `runs remote`.
+  - El comentario de `packages/transport/src/bootstrap.ts:28` cita `FUD0721`, que hoy es `FUD0726`.
+- **Qué debería hacer.** Actualizar los `.md` y los mensajes.
+
+## 23. Nombres de parámetro y palabras clave en el `.fudapi`
+
+- **Qué pasó.** Comprobado con el validador (capítulo 5):
+  - Un parámetro de middleware en kebab-case (`per-minute  u16`) da en la declaración un `FUD1065`
+    («no es válido aquí»), que no dice por qué. En el `use`, el mismo nombre da `FUD1070`, que sí lo
+    explica.
+  - Un argumento llamado como una cláusula (`use  str`) se lee como la cláusula y da
+    `FUD1080 unknown middleware 'str'`, en vez del `FUD1076` que promete SDD-60 §3.1.
+- **Cómo se resolvió en la web.** «Middlewares y cadena» dice que los parámetros van en camelCase.
+- **Qué debería hacer.** `FUD1070` también en la declaración, y `FUD1076` para un argumento que se
+  llama como una cláusula.
+
+## 24. SDD con texto superado y sin nota de corrección
+
+- **Qué pasó.** Al documentar los capítulos 5 a 7, varios SDD dicen lo contrario que el código y no
+  llevan la nota «Corregido por…»:
+  - SDD-56 §3.1 y §3.5: la API de builders (`put().use().handle`), y un `data` de `_error.fud` sin
+    `path`, `back` ni `home`.
+  - SDD-60 §3.2, §3.7, §3.8 y §3.10: no hay `file`, solo `runs both|server`, un middleware sin
+    mitades es un error y hay seis reglas de serie. Hoy son ocho, y `csrf` tiene `token`.
+  - SDD-68 §3.1, §4.2 y §4.5: `run()` devuelve `R | undefined`; hoy devuelve `TaskResult`.
+  - SDD-68 §4.8 da a entender que toda mutación refresca la página. Solo lo hacen las rutas de
+    `invalidates`.
+  - SDD-69 §4.1: `Secure` se quita en `localhost`. Hoy lo decide `secureCookies`, nunca el `Host`.
+  - SDD-20 §3 y §4.2: el manifiesto ya no lleva `chunk`, `data`, `html` ni `csp`, y las cachés
+    llevan el id de la app.
+- **Qué debería hacer.** Anotar cada uno con la SDD que lo corrige, como ya se hace en otros.

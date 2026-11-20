@@ -79,6 +79,15 @@
           <li><a href="/docs/routing/early-hints" aria-current=@(current === "routing-early-hints" ? "page" : false)>Early hints</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Service Worker</span>
+        <ol>
+          <li><a href="/docs/service-worker" aria-current=@(current === "service-worker" ? "page" : false)>Qué hace</a></li>
+          <li><a href="/docs/service-worker/caching" aria-current=@(current === "service-worker-caching" ? "page" : false)>Datos y páginas en caché</a></li>
+          <li><a href="/docs/service-worker/configuration" aria-current=@(current === "service-worker-configuration" ? "page" : false)>Configuración</a></li>
+          <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

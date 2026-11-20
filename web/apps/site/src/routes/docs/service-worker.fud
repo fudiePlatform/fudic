@@ -1,0 +1,118 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Qué hace el Service Worker · Fudic</title>
+  <meta name="description" content="El Service Worker de Fudic: pinta en el navegador las páginas que no necesitan al servidor, con el mismo código que el servidor y sus datos guardados, decide cada navegación y se actualiza con cada despliegue.">
+  <link rel="canonical" href="https://fudic.dev/docs/service-worker">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Qué hace el Service Worker · Fudic">
+  <meta property="og:description" content="El Service Worker de Fudic pinta páginas en el navegador con el código del servidor.">
+  <meta property="og:url" content="https://fudic.dev/docs/service-worker">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("service-worker")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué es</a></li>
+        <li><a href="#navigation">Una navegación, paso a paso</a></li>
+        <li><a href="#warm">La primera visita y las siguientes</a></li>
+        <li><a href="#resources">Lo que no es una página</a></li>
+        <li><a href="#updates">Un despliegue nuevo</a></li>
+        <li><a href="#on-off">Tenerlo o no</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Qué hace el Service Worker</h1>
+
+<h2 id="what">Qué es</h2>
+
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker</a> es un script del estándar que el navegador instala para un sitio. Se coloca entre la página y la red: cada petición del sitio pasa por él, y puede responderla él mismo, con algo que tiene guardado, sin preguntar al servidor.</p>
+
+<p>El de Fudic hace algo que normalmente solo hace el servidor: <strong>pinta páginas</strong>. Tiene el mismo código de cada ruta que el servidor, así que puede escribir su HTML en el propio navegador, con los datos que pidió y guardó. El resultado es el mismo documento que mandaría el servidor, con Declarative Shadow DOM, pero sin el viaje de ida y vuelta.</p>
+
+<p>Qué páginas pinta lo decide el modo de cada una (<a href="/docs/routing/rendering">Los modos</a>): las <code>sw</code> y las <code>ssg</code>, nunca las <code>ssr</code>.</p>
+
+<h2 id="navigation">Una navegación, paso a paso</h2>
+
+<p>Cuando el usuario sigue un enlace, el Service Worker decide:</p>
+
+<ol>
+  <li><strong>¿Es una página de la app?</strong> Si la URL no encaja con ninguna ruta, la deja pasar a la red.</li>
+  <li><strong>¿Es <code>ssr</code>?</strong> La deja pasar: esa página la pinta siempre el servidor.</li>
+  <li><strong>¿Tiene guardado el HTML de esa URL?</strong> Solo pasa con <code>page persist</code> (<a href="/docs/service-worker/caching#persist">Datos y páginas en caché</a>). Si lo tiene, lo sirve.</li>
+  <li><strong>¿Tiene el código de esa página?</strong> Si no, la deja pasar a la red y, mientras, se lo guarda para la próxima vez.</li>
+  <li><strong>La pinta.</strong> Pide sus datos al servidor, en <code>/_fudic/data/&lt;ruta&gt;</code>, o los toma de los que tiene guardados según la política de la página. Después ejecuta el código de la ruta y responde con el HTML.</li>
+</ol>
+
+<p>Cada respuesta lleva las cabeceras de <code>page.headers</code> y su propio nonce, igual que si la mandara el servidor: la página cumple la misma política de seguridad venga de donde venga.</p>
+
+<p>Si algo falla al pintar (el código de una ruta que no se puede cargar, unos datos que no llegan), el Service Worker no deja al usuario sin página: la pide a la red.</p>
+
+<h2 id="warm">La primera visita y las siguientes</h2>
+
+<ul>
+  <li><strong>La primera visita</strong> a una ruta la responde el servidor. El navegador ya tiene la página pintada, y el Service Worker se guarda el código de esa ruta.</li>
+  <li><strong>Desde la segunda</strong>, la pinta el Service Worker.</li>
+  <li><strong>Sin conexión</strong>, una ruta cuyo código y datos están guardados se sigue pintando.</li>
+</ul>
+
+<p>El código de las rutas no se descarga entero al instalar: el Service Worker guarda el de cada ruta cuando se visita. Al instalarse solo descarga lo que dice <code>shell</code> en <code>sw.json</code> (<a href="/docs/service-worker/configuration">Configuración</a>).</p>
+
+<p>También prepara la hidratación: la página le dice qué componentes tiene a la vista, y el Service Worker se guarda su JavaScript sin ejecutarlo. Cuando el usuario toca un componente, su código ya está en el navegador.</p>
+
+<h2 id="resources">Lo que no es una página</h2>
+
+<p>Además de las navegaciones, el Service Worker sirve:</p>
+
+<ul>
+  <li><strong>el runtime de Fudic</strong> (<code>/_fudic/&lt;versión&gt;/…</code>), desde su caché y sin caducidad: su URL lleva la versión, y una versión nueva es una URL nueva;</li>
+  <li><strong>lo que lista <code>shell</code></strong>, también desde su caché;</li>
+  <li><strong>lo que casa con un patrón de <code>resources</code></strong>, con la política de ese patrón.</li>
+</ul>
+
+<p>Las funciones de servidor (<code>/_fudic/fn/…</code>) y el token de <code>csrf</code> no los toca nunca: van siempre a la red.</p>
+
+<h2 id="updates">Un despliegue nuevo</h2>
+
+<p>Cada build escribe un Service Worker nuevo, con su propio identificador. El navegador nota que ha cambiado, lo instala, y el nuevo:</p>
+
+<ol>
+  <li>descarga lo que dice <code>shell</code>;</li>
+  <li>toma el control enseguida, sin esperar a que se cierren las pestañas;</li>
+  <li>borra las cachés de los builds anteriores de esa app, y deja las de otras apps del mismo dominio.</li>
+</ol>
+
+<p>Nunca se mezclan el código de un build y los datos de otro: cada build tiene sus cachés.</p>
+
+<h2 id="on-off">Tenerlo o no</h2>
+
+<p>Una app tiene Service Worker si tiene <code>sw.json</code> en su raíz. <code>fudic new</code> y <code>fudic g app</code> lo crean, salvo con <code>--no-sw</code>:</p>
+
+<ui-code>
+<pre><code>fudic new mi-app --no-sw</code></pre>
+</ui-code>
+
+<p>Para quitárselo a una app que ya lo tiene, se borran <code>sw.json</code> y <code>sw.headers</code>. Sin Service Worker, todo funciona igual, pintado por el servidor (<a href="/docs/routing/rendering#without-sw">Sin Service Worker</a>). Esta web no lo tiene: es documentación que cambia con cada despliegue, y sus páginas son <code>ssg</code>.</p>
+
+<p>En <code>fudic dev</code> no se registra, para que lo que ves sea siempre lo último que has guardado (<a href="/docs/service-worker/configuration#dev">Configuración</a>).</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service Worker API</a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers">ciclo de vida</a>: instalar, activar, tomar el control.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache"><code>Cache</code></a>: donde guarda el código y los datos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith"><code>FetchEvent.respondWith()</code></a>: cómo responde a una navegación.</li>
+</ul>
