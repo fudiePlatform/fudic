@@ -6,11 +6,11 @@
 
 <head>
   <title>Sintaxis de plantillas · Fudic</title>
-  <meta name="description" content="La sintaxis de plantillas de Fudic: HTML estándar con una sola marca, la @, al estilo de Razor y con TypeScript. Las cuatro piezas de un proyecto y las vistas que se pintan en cualquier servidor.">
+  <meta name="description" content="La sintaxis de plantillas de Fudic: HTML estándar con una sola marca, la &#64;, al estilo de Razor y con TypeScript. Las cuatro piezas de un proyecto y las vistas que se pintan en cualquier servidor.">
   <link rel="canonical" href="https://fudic.dev/docs/template-syntax">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Sintaxis de plantillas · Fudic">
-  <meta property="og:description" content="HTML estándar con una sola marca, la @, al estilo de Razor y con TypeScript.">
+  <meta property="og:description" content="HTML estándar con una sola marca, la &#64;, al estilo de Razor y con TypeScript.">
   <meta property="og:url" content="https://fudic.dev/docs/template-syntax">
   <meta property="og:site_name" content="Fudic">
 </head>
