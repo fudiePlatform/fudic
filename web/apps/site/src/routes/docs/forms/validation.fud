@@ -6,7 +6,7 @@
 
 <head>
   <title>Validación y validez · Fudic</title>
-  <meta name="description" content="Las reglas de un formulario de Fudic: las de cada campo, las del resumen con require y when, sus textos, las que pregunta el navegador al servidor y la validez silenciosa con $valid().">
+  <meta name="description" content="Las reglas de un formulario de Fudic: las de cada campo, las del resumen, sus textos, las que se preguntan al servidor y la validez silenciosa con $valid().">
   <link rel="canonical" href="https://fudic.dev/docs/forms/validation">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Validación y validez · Fudic">
@@ -26,12 +26,10 @@
       <ul>
         <li><a href="#field">Las reglas de un campo</a></li>
         <li><a href="#messages">Los textos</a></li>
-        <li><a href="#summary">El resumen: <code>require</code> y <code>when</code></a></li>
-        <li><a href="#own-rules">Reglas propias</a></li>
-        <li><a href="#remote">Una regla que se pregunta al servidor</a></li>
-        <li><a href="#validate">Validar desde el código</a></li>
+        <li><a href="#summary">Errores de varios campos</a></li>
+        <li><a href="#remote">Reglas del servidor</a></li>
         <li><a href="#validity">Validez: lo que no se muestra</a></li>
-        <li><a href="#traps">Dos trampas del botón deshabilitado</a></li>
+        <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -40,37 +38,29 @@
 
 <h1>Validación y validez</h1>
 
-<p>Un formulario responde a dos preguntas que parecen la misma y no lo son. <strong>¿Qué error le enseño al usuario?</strong> Depende de por dónde ha pasado y de cuándo: no se acusa a nadie de un campo que todavía no ha tocado. <strong>¿Cumplen los valores las reglas?</strong> Eso no depende de nada más que de los valores, y sirve para habilitar un botón sin pintar ningún mensaje. Fudic las separa: los errores son lo que se muestra, y la validez es silenciosa.</p>
+<p>Un formulario responde a dos preguntas distintas. <strong>¿Qué error le enseño al usuario?</strong> Depende de por dónde ha pasado. <strong>¿Cumplen los valores las reglas?</strong> Sirve, por ejemplo, para habilitar un botón sin pintar ningún mensaje. En Fudic, los errores son lo que se muestra, y la validez es silenciosa.</p>
 
 <h2 id="field">Las reglas de un campo</h2>
-
-<p>Las reglas de un campo van debajo de él, cada una con el texto de su error:</p>
 
 <ui-code .path="src/forms/user.fudapi">
 <pre><code>form userForm
   alias  str = ""
     required              "Elige un alias."
-    min-length 3          "El alias necesita al menos &#123;n&#125; caracteres."
+    min-length 3          "Al menos &#123;n&#125; caracteres."
     alias-taken           "Ese alias ya está cogido."
   web  str = ""
     pattern web-url       "La web empieza por http:// o https://."</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>Van en orden y la primera que falla para.</strong> Un campo tiene <em>un</em> error. Para un alias vacío, el usuario lee «Elige un alias», no tres mensajes a la vez, y no se pregunta al servidor si un alias vacío está cogido.</li>
-  <li><strong>Salvo <code>required</code>, dejan pasar el campo vacío.</strong> <code>web</code> es opcional: vacío es válido, y si se escribe tiene que ser una URL.</li>
-  <li><strong>Las de serie no se importan.</strong> <code>required</code>, <code>min</code>, <code>max</code>, <code>min-length</code>, <code>max-length</code>, <code>pattern</code>, <code>max-size</code> y <code>accept</code> vienen con <code>@@fudic/forms</code>, igual que el patrón <code>email</code> (<a href="/docs/server/rules#catalog">el catálogo</a>).</li>
+  <li><strong>Van en orden, y la primera que falla para.</strong> Un alias vacío dice «Elige un alias», y no se pregunta al servidor si está cogido.</li>
+  <li><strong>Salvo <code>required</code>, todas aceptan el campo vacío.</strong> <code>web</code> es opcional, pero si se escribe tiene que ser una URL.</li>
+  <li><strong>Las de serie no se importan</strong>: <code>required</code>, <code>min</code>, <code>max</code>, <code>min-length</code>, <code>max-length</code>, <code>pattern</code>… Las propias, como <code>alias-taken</code>, se declaran en el <code>.fudapi</code> (<a href="/docs/server/rules">Reglas y patrones</a>).</li>
 </ul>
 
 <h2 id="messages">Los textos</h2>
 
-<p>Una regla no falla con una frase, sino con un código y sus argumentos: <code>min-length</code> con <code>&#123; n: 3 &#125;</code>. El texto se busca en este orden:</p>
-
-<ol>
-  <li>el que va al lado de la regla, en el campo;</li>
-  <li>el del código en <code>messages</code>, el bloque con los textos por defecto de todo el proyecto;</li>
-  <li>si no hay ninguno, el propio código: <code>min-length</code>.</li>
-</ol>
+<p>Una regla falla con un código, y su texto se busca en este orden: el que va al lado de la regla, el del bloque <code>messages</code> del proyecto, y si no hay ninguno, el propio código.</p>
 
 <ui-code .path="src/rules/messages.fudapi">
 <pre><code>messages
@@ -78,172 +68,75 @@
   min-length  "Al menos &#123;n&#125; caracteres."</code></pre>
 </ui-code>
 
-<p>Hay un solo <code>messages</code> en el proyecto, en el <code>.fudapi</code> que quieras. Dos serían dejar sin decidir qué texto gana (<code>FUD1096</code>). Un texto cita los argumentos de su regla entre llaves, y el error de rango de un tipo, sus límites: <code>range "Entre &#123;min&#125; y &#123;max&#125;."</code>.</p>
+<p>Los textos están en el <code>.fudapi</code>, no en el servidor: el navegador los pinta en el idioma de la página, y se traducen con el resto de la app.</p>
 
-<p>Los textos son del <code>.fudapi</code>, no del servidor: el navegador los pinta en el idioma de la página, y <code>fudic translate</code> los extrae para traducirlos como el resto de la app (capítulo 9). Un backend en otro lenguaje no tiene que traducir nada.</p>
+<h2 id="summary">Errores de varios campos</h2>
 
-<h2 id="summary">El resumen: <code>require</code> y <code>when</code></h2>
-
-<p>Un error que depende de dos campos no es de ninguno de los dos. Va en el <code>summary</code> del formulario o del grupo, con <code>require</code>: un código, una condición que tiene que cumplirse y su texto.</p>
+<p>Un error que depende de dos campos va en el <code>summary</code> del formulario o del grupo, con <code>require</code>: un código, la condición que tiene que cumplirse y su texto.</p>
 
 <ui-code .path="src/forms/user.fudapi">
-<pre><code>form userForm
-  …
-  acceso  group
-    clave    str = ""
-    repetir  str = ""
-    summary
-      require mismatch  clave == repetir  "Las contraseñas no coinciden."
-
-  summary
-    require same-as-name  empty alias or alias != name  "El alias no puede ser tu nombre."
-    require key-has-name  empty name or not acceso.clave contains name
-                          "La contraseña no puede contener tu nombre."</code></pre>
+<pre><code>  summary
+    require same-as-name  empty alias or alias != name  "El alias no puede ser tu nombre."</code></pre>
 </ui-code>
-
-<p>A diferencia de las reglas de un campo, las del resumen se ejecutan <strong>todas</strong>, y el resumen dice todos sus errores a la vez. Escribe el mismo texto como nombre, como alias y dentro de la contraseña, y salen los dos.</p>
-
-<p>La condición se escribe con:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Pieza</th><th scope="col">Ejemplo</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>rutas a campos, textos y números</td><td><code>acceso.clave</code>, <code>"admin"</code>, <code>18</code></td></tr>
-    <tr><td>comparaciones</td><td><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td></tr>
-    <tr><td><code>contains</code></td><td><code>acceso.clave contains name</code></td></tr>
-    <tr><td><code>empty</code>, <code>length</code>, <code>valid</code></td><td><code>empty alias</code>, <code>length tags &lt;= 5</code>, <code>valid acceso</code></td></tr>
-    <tr><td><code>and</code>, <code>or</code>, <code>not</code> y paréntesis</td><td><code>empty alias or alias != name</code></td></tr>
-  </tbody>
-</table>
-
-<p>De menos a más fuerte: <code>or</code>, <code>and</code>, <code>not</code>, las comparaciones, y <code>empty</code>, <code>length</code> y <code>valid</code>. <code>empty name or not acceso.clave contains name</code> se lee como <code>(empty name) or (not (acceso.clave contains name))</code>.</p>
-
-<p>Dos añadidos:</p>
 
 <ul>
-  <li><strong><code>on campo</code></strong> pinta el error en ese campo en vez de en el resumen, porque a veces sí hay un campo culpable.</li>
-  <li><strong><code>when</code></strong> agrupa los <code>require</code> que solo cuentan cuando se cumple una condición.</li>
+  <li>La condición admite campos, textos y números, comparaciones, <code>contains</code>, <code>empty</code>, <code>length</code>, <code>and</code>, <code>or</code> y <code>not</code>.</li>
+  <li>Al contrario que las de un campo, se comprueban todas, y el resumen muestra todos sus errores a la vez.</li>
+  <li><code>on campo</code> pinta el error en ese campo, y <code>when</code> agrupa los <code>require</code> que solo cuentan si se cumple una condición.</li>
 </ul>
 
-<ui-code .path="src/forms/post.fudapi">
-<pre><code>form post
-  title  str = ""
-    required  "Escribe un título."
-  published  bool
-  tags  str[]
-  seo  group
-    description  str = ""
-    canonical    str = ""
-  summary
-    when published
-      require seo-description  not empty seo.description  "Describe la entrada para publicarla."  on seo.description
-    require same-url  title != seo.canonical  "El título no es una URL."
-    require few-tags  length tags &lt;= 5  "Como mucho cinco etiquetas."</code></pre>
-</ui-code>
+<h2 id="remote">Reglas del servidor</h2>
 
-<p>Un <code>require</code> se genera como la misma regla en el navegador y en el servidor: se escribe una vez y los dos lados dicen lo mismo.</p>
+<p>«Ese alias ya está cogido» necesita datos que solo tiene el servidor. Al declarar la regla, <code>runs</code> dice dónde se ejecuta:</p>
 
-<h2 id="own-rules">Reglas propias</h2>
-
-<p>Lo que no se dice con las de serie ni con un <code>require</code> es una regla del proyecto, con su nombre: «este alias ya está cogido», «este email ya lo usa otra persona». Se declaran y se implementan como cuenta <a href="/docs/server/rules#own">Reglas y patrones</a>, y en un campo se usan como las de serie. Lo que importa aquí es dónde se ejecuta cada una:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col"><code>runs</code></th><th scope="col">En el formulario</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>both</code></td><td>valida en el navegador mientras se escribe, y otra vez en el servidor al enviar</td></tr>
-    <tr><td><code>server</code></td><td>no se ejecuta en el navegador: su veredicto llega con el <code>422</code> del envío (<a href="/docs/forms/submitting#server">Enviar al servidor</a>)</td></tr>
-    <tr><td><code>remote</code></td><td>el navegador se la pregunta al servidor mientras se escribe, y el servidor la vuelve a ejecutar al enviar (<a href="#remote">abajo</a>)</td></tr>
-  </tbody>
-</table>
-
-<h2 id="remote">Una regla que se pregunta al servidor</h2>
-
-<p>«Ese alias ya está cogido» necesita la tabla de alias, que no sale del servidor. Con <code>runs server</code>, el usuario se entera al enviar. Con <code>runs remote</code>, mientras escribe:</p>
+<ul>
+  <li><code>both</code>: en el navegador mientras se escribe, y otra vez en el servidor al enviar.</li>
+  <li><code>server</code>: solo en el servidor, al enviar.</li>
+  <li><code>remote</code>: el navegador se la pregunta al servidor mientras se escribe, y el servidor la vuelve a ejecutar al enviar.</li>
+</ul>
 
 <ui-code .path="src/rules/people.fudapi">
 <pre><code>rule alias-taken
   on field str
   runs remote
-  debounce 500
   fails alias-taken</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>Una pregunta por pausa.</strong> El navegador pregunta cuando pasan 300 ms sin cambios (<code>debounce</code> lo cambia), y aborta la pregunta anterior si llega otra tecla.</li>
-  <li><strong>Cada respuesta se guarda por valor.</strong> Volver a un alias que ya se preguntó no pregunta nada.</li>
-  <li><strong>Lo que no es un <code>200</code> pasa como válido.</strong> La red caída, un <code>401</code>, un <code>429</code>, un <code>500</code>: no se pinta nada, porque el envío vuelve a ejecutar la regla en el servidor, que es quien decide. Al enviar, el navegador no la pregunta: va una sola petición, la de la función.</li>
-  <li><strong>Mientras espera, el campo está <code>pending()</code></strong>, y el formulario, <code>$pending()</code>. La vista lo pinta:</li>
-</ul>
+<p>Con <code>remote</code>, el navegador pregunta cuando el usuario hace una pausa, y no repite una pregunta ya hecha. Mientras espera, el campo está <code>pending()</code>, y la vista lo puede pintar:</p>
 
-<ui-code .path="src/components/app-form.fud">
+<ui-code>
 <pre><code>@@if (userForm.alias.pending()) &#123;
   &lt;small role="status"&gt;Comprobando…&lt;/small&gt;
 &#125;</code></pre>
 </ui-code>
 
-<p>Una respuesta que llega tarde nunca pinta. Cada campo lleva la cuenta de sus validaciones, y una que fue adelantada por otra se descarta: una regla lenta no puede pintar el error de un valor que el usuario ya cambió.</p>
-
-<h2 id="validate">Validar desde el código</h2>
-
-<ui-code>
-<pre><code>await userForm.$validate();                  // the rules the browser runs
-await userForm.$validate(&#123; server: true &#125;);  // plus the runs server ones, on the server
-await userForm.alias.validate();             // one field, against the whole form</code></pre>
-</ui-code>
-
-<p>Las tres devuelven si es válido y publican los errores. Los que llegan de fuera, como un <code>422</code> de otra API, entran por su ruta:</p>
-
-<ui-code>
-<pre><code>userForm.$setErrors(&#123; "acceso.clave": &#123; weak: true &#125; &#125;);</code></pre>
-</ui-code>
-
-<p>Un campo con un error que puso <code>$setErrors</code> sigue inválido hasta que su valor cambia.</p>
+<p>Si la pregunta falla (sin red, un <code>500</code>), el campo pasa como válido: al enviar decide el servidor.</p>
 
 <h2 id="validity">Validez: lo que no se muestra</h2>
 
-<p><code>valid()</code> en un campo y <code>$valid()</code> en un formulario o un grupo dicen si los valores cumplen las reglas, y son silenciosas: leerlas no pinta ningún error, no marca ningún campo como tocado y no cambia nada. Se siguen como un <code>computed</code>, así que un botón puede seguirlas solo:</p>
+<p><code>valid()</code> en un campo y <code>$valid()</code> en el formulario dicen si los valores cumplen las reglas, sin pintar ningún error. Un botón puede seguirlas:</p>
 
 <ui-code>
 <pre><code>&lt;button type="submit" disabled=@@(!userForm.$valid())&gt;Guardar&lt;/button&gt;</code></pre>
 </ui-code>
 
-<p>El botón cambia también por el campo que lee una regla del resumen: escribir la segunda contraseña habilita el botón aunque la regla sea del grupo.</p>
-
-<p>Qué cuenta para la validez lo decide <code>validity</code>, que se declara como <code>validate-on</code>, en el campo, el grupo o el formulario:</p>
-
-<ul>
-  <li><strong><code>validity interacted</code></strong>, por defecto: un campo cuenta cuando el usuario ya ha salido de él o lo ha cambiado. Un formulario recién abierto es válido, y el botón nace habilitado.</li>
-  <li><strong><code>validity rules</code></strong>: todas las reglas cuentan desde el principio. Un <code>required</code> vacío hace inválido el formulario recién abierto, y el botón nace deshabilitado.</li>
-</ul>
-
-<ui-code .path="src/forms/signup.fudapi">
-<pre><code>form signup
-  validity rules
-  alias  str = ""
-    required  "Elige un alias."</code></pre>
-</ui-code>
-
-<p>La validez nunca <em>llama</em> a una regla asíncrona: leerla en una vista pondría una petición en la red en cada tecla. Lee el veredicto que esa regla ya dio para el valor actual, o cuenta el campo como pendiente mientras no lo hay. Una regla <code>server</code> no cuenta en el navegador: su veredicto llega con el <code>422</code>.</p>
-
-<h2 id="traps">Dos trampas del botón deshabilitado</h2>
-
-<ul>
-  <li><strong>Un botón deshabilitado no envía, y sin envío nadie ve por qué.</strong> Al no haber envío, no se marcan los campos ni se mueve el foco. Con los valores por defecto (<code>blur</code> e <code>interacted</code>) no importa: un campo solo cuenta cuando ya has salido de él, y al salir ya se pinta su error. Con <code>validity rules</code>, di en algún sitio que se pueda leer por qué está deshabilitado.</li>
-  <li><strong><code>validate-on submit</code> + una regla asíncrona + el botón deshabilitado por <code>$valid()</code> se bloquean.</strong> La regla solo se ejecuta al enviar, el envío no llega nunca porque el botón está deshabilitado, y el campo se queda pendiente para siempre.</li>
-</ul>
+<p>Por defecto, un campo solo cuenta cuando el usuario ya ha pasado por él, así que el botón nace habilitado. Con <code>validity rules</code>, cuentan todas las reglas desde el principio, y el botón nace deshabilitado.</p>
 
 <ui-note>
-  <p>En la duda, no deshabilites el botón. Un envío fallido marca todos los campos, mueve el foco al resumen o al primer error y se lee entero con un lector de pantalla. Un botón gris no dice nada.</p>
+  <p>En la duda, no deshabilites el botón. Un envío fallido muestra todos los errores y lleva el foco al primero. Un botón gris no dice por qué.</p>
 </ui-note>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li id="validate"><code>await userForm.$validate()</code> valida desde el código, y <code>$setErrors(&#123; … &#125;)</code> pone errores que llegan de fuera, como los de otra API.</li>
+  <li>Una respuesta del servidor que llega tarde nunca pinta el error de un valor que el usuario ya cambió.</li>
+  <li id="traps">No combines <code>validate-on submit</code>, una regla <code>remote</code> y un botón deshabilitado por <code>$valid()</code>: la regla espera al envío, y el botón no deja enviar.</li>
+</ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation" target="_blank" rel="noopener">Validación de formularios en el cliente</a>, y por qué no basta sin la del servidor.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/disabled" target="_blank" rel="noopener"><code>disabled</code></a>: lo que pasa con un botón deshabilitado.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">Expresiones regulares</a>: la sintaxis de los patrones.</li>
 </ul>

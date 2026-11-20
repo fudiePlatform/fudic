@@ -6,11 +6,11 @@
 
 <head>
   <title>El contrato .fudapi · Fudic</title>
-  <meta name="description" content="El contrato .fudapi de Fudic: el servidor de una ruta o de un componente se declara en un fichero hermano, con tipos que se comprueban en el navegador y en el servidor, y se implementa en TypeScript estándar.">
+  <meta name="description" content="El contrato .fudapi de Fudic: declara todo lo que una ruta o un componente necesita del servidor, para que el cliente solo llame a la función con sus datos y el servidor pueda escribirse en cualquier lenguaje.">
   <link rel="canonical" href="https://fudic.dev/docs/server">
   <meta property="og:type" content="article">
   <meta property="og:title" content="El contrato .fudapi · Fudic">
-  <meta property="og:description" content="El servidor de una ruta o de un componente, declarado en un fichero hermano e implementado en TypeScript estándar.">
+  <meta property="og:description" content="El cliente solo llama a la función con sus datos, y el servidor puede escribirse en cualquier lenguaje.">
   <meta property="og:url" content="https://fudic.dev/docs/server">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,13 +25,12 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#what">Qué es</a></li>
+        <li><a href="#why">Por qué existe</a></li>
         <li><a href="#example">Un ejemplo de punta a punta</a></li>
-        <li><a href="#link">Enlazarlo desde un .fud</a></li>
+        <li><a href="#declarations">Todo lo que se declara</a></li>
         <li><a href="#implement">Implementarlo</a></li>
         <li><a href="#where">Dónde vive cada fichero</a></li>
-        <li><a href="#declarations">Lo que se declara</a></li>
         <li><a href="#syntax">La forma del fichero</a></li>
-        <li><a href="#cli">Con la CLI</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -42,209 +41,126 @@
 
 <h2 id="what">Qué es</h2>
 
-<p>Lo que una ruta o un componente necesita del servidor (sus datos, las funciones a las que llama, las reglas que validan sus formularios) se declara en un fichero hermano, con extensión <code>.fudapi</code>. Es el <strong>contrato</strong> entre el navegador y el servidor: dice qué se puede pedir, con qué argumentos y qué se recibe, y nada más.</p>
+<p>Todo lo que una ruta o un componente necesita del servidor (sus datos, las funciones a las que llama, sus formularios) se declara en un fichero hermano con extensión <code>.fudapi</code>. Es el <strong>contrato</strong> entre el navegador y el servidor: qué se puede pedir, con qué argumentos y qué se recibe.</p>
 
-<p>El contrato no es TypeScript, y eso es deliberado:</p>
+<h2 id="why">Por qué existe</h2>
 
-<ul>
-  <li><strong>Se comprueba en los dos lados.</strong> Un argumento que no cumple su tipo o sus reglas se rechaza en el navegador, antes de salir, y otra vez en el servidor, que nunca se fía de lo que llega.</li>
-  <li><strong>No depende del lenguaje del servidor.</strong> El contrato y el formato en que viajan las llamadas están publicados para que otro backend pueda cumplirlos. Hoy el único servidor que existe es el de TypeScript (<a href="/docs/server/running">El servidor</a>).</li>
-  <li><strong>Se lee de un vistazo.</strong> Cada línea es una declaración: un fichero entero cabe en una pantalla.</li>
-</ul>
+<p>El <code>.fudapi</code> existe por dos razones.</p>
 
-<p>La implementación sí es TypeScript estándar, en una carpeta aparte que nunca llega al navegador.</p>
+<p><strong>1. En el cliente no escribes nada más que la llamada.</strong> Llamas a la función con sus datos, como a cualquier función de TypeScript:</p>
+
+<ui-code>
+<pre><code>const people = await search(&#123; q: "mar" &#125;);   // Person[]</code></pre>
+</ui-code>
+
+<p>No escribes un <code>fetch</code>, ni una URL, ni cabeceras, ni cómo se serializan los datos, ni cómo se validan antes de salir, ni cómo se lee la respuesta o el error. Todo eso sale del contrato, y llega tipado al editor.</p>
+
+<p><strong>2. El servidor no está atado a TypeScript.</strong> El contrato no es código de ningún lenguaje: dice qué entra y qué sale, y cualquier backend que lo cumpla sirve a la misma página sin tocarla. Por eso el formato en que viajan las llamadas está documentado, y por eso la vista solo admite lo que se puede traducir a otros lenguajes (<a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>). Hoy el servidor que existe es el de TypeScript; C#, Java, Go, Rust y Python están diseñados.</p>
+
+<p>Además, el contrato se comprueba en los dos lados: un argumento que no cumple su tipo se rechaza en el navegador antes de salir, y otra vez en el servidor, que nunca se fía de lo que llega.</p>
 
 <h2 id="example">Un ejemplo de punta a punta</h2>
 
-<p>Una página que lista personas, las busca y las activa. Primero el contrato:</p>
+<p>Una página que lista personas y las busca. El contrato:</p>
 
 <ui-code .path="src/routes/usuarios.fudapi">
-<pre><code># The data of the page, rendered per request.
+<pre><code># The data of the page.
 load ssr
   users  Person[]
 
-# Public: searching needs no session.
+# Searches people by name.
 get search
   q  str
-    max-length 80
   -&gt; Person[]
 
-# Turns a person on or off.
-put save
-  use auth
-  id      i32
-  active  bool
-
 type Person
-  id      i32
-  name    str
-  active  bool</code></pre>
+  id    i32
+  name  str</code></pre>
 </ui-code>
 
-<p>Después, quien lo cumple, en <code>src/server</code>:</p>
+<p>Quien lo cumple, en <code>src/server</code>:</p>
 
 <ui-code .path="src/server/usuarios.ts">
-<pre><code>import &#123; inject &#125; from "@@fudic/di";
-import &#123; load, save, search &#125; from "fudic:routes/usuarios";
-import &#123; Users &#125; from "../services/users";
+<pre><code>import &#123; load, search &#125; from "fudic:routes/usuarios";
 
-load.handle(() =&gt; (&#123; users: inject(Users).all() &#125;));
-
-search.handle((ctx) =&gt; inject(Users).find(ctx.args.q));
-
-save.handle((ctx) =&gt; &#123;
-  inject(Users).setActive(ctx.args.id, ctx.args.active);
-&#125;);</code></pre>
+load.handle(() =&gt; (&#123; users: db.users.all() &#125;));
+search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 </ui-code>
 
-<p>Y la página, que lo usa sin importar nada:</p>
+<p>Y la página, que lo enlaza con <code>&lt;link rel="server"&gt;</code> y lo usa sin importar nada:</p>
 
 <ui-code .path="src/routes/usuarios.fud">
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
 &lt;link rel="server" href="./usuarios.fudapi"&gt;
 
-@@code &#123;
-  import &#123; signal, task &#125; from "@@fudic/core";
-
-  const q = signal("");
-  const found = task(search, () =&gt; (&#123; q: q() &#125;), &#123; initial: data.users &#125;);
-
-  function buscar(text: string) &#123;
-    q.set(text);
-  &#125;
-&#125;
-
-&lt;input type="search" @@input=@@buscar($value) aria-label="Buscar"&gt;
 &lt;ul&gt;
-  @@foreach (const p of found.value()) key (p.id) &#123;
+  @@foreach (const p of data.users) key (p.id) &#123;
     &lt;li&gt;@@p.name&lt;/li&gt;
   &#125;
 &lt;/ul&gt;</code></pre>
 </ui-code>
 
-<p><code>data</code> y <code>search</code> llegan del contrato, tipados: <code>p.name</code> es un <code>string</code> porque <code>Person</code> lo dice, y el editor marca un <code>p.nombre</code> antes de compilar. <code>task</code> tiene su propia página (<a href="/docs/server/task"><code>task</code></a>).</p>
+<p id="link"><code>data</code> y <code>search</code> llegan tipados del contrato: el editor marca un <code>p.nombre</code> antes de compilar. Si el <code>@@code</code> necesita un tipo, se importa: <code>import type &#123; Person &#125; from "fudic:routes/usuarios"</code>.</p>
 
-<h2 id="link">Enlazarlo desde un <code>.fud</code></h2>
+<h2 id="declarations">Todo lo que se declara</h2>
 
-<p>Una ruta o un componente enlaza su contrato en la cabecera, con los demás enlaces:</p>
-
-<ui-code>
-<pre><code>&lt;link rel="server" href="./usuarios.fudapi"&gt;</code></pre>
-</ui-code>
-
-<p>Desde ese momento, lo que el contrato declara está en su <code>@@code</code> y en su vista <strong>sin importarlo</strong>: las funciones, los formularios y, en una ruta, <code>data</code>. Lo único que se importa son los tipos, cuando hacen falta en el <code>@@code</code>:</p>
-
-<ui-code>
-<pre><code>import type &#123; Person &#125; from "fudic:routes/usuarios";</code></pre>
-</ui-code>
-
-<p>Un layout o un fichero de snippets no enlazan ningún contrato (<code>FUD1112</code>): no tienen servidor propio. Un layout recibe lo que necesita como props, que le da cada ruta (<a href="/docs/routing/data#layout">Los datos de la página</a>).</p>
-
-<h2 id="implement">Implementarlo</h2>
-
-<p>Fudic convierte cada <code>.fudapi</code> en un módulo, <code>fudic:&lt;id&gt;</code>, donde el id es su ruta dentro de <code>src/</code> sin la extensión: <code>src/routes/usuarios.fudapi</code> es <code>fudic:routes/usuarios</code>, y <code>src/routes/blog/[slug].fudapi</code>, <code>fudic:routes/blog/[slug]</code>. Sus tipos se escriben en <code>.fudic/api/</code> y se regeneran al guardar, así que el editor los tiene siempre al día.</p>
-
-<p>El módulo exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
+<p>Un <code>.fudapi</code> admite estas declaraciones. Cada una se desarrolla en su página:</p>
 
 <table>
   <thead>
-    <tr><th scope="col">Declaración</th><th scope="col">Se implementa con</th><th scope="col">En</th></tr>
+    <tr><th scope="col">Declaración</th><th scope="col">Qué es</th><th scope="col">Dónde se explica</th></tr>
   </thead>
   <tbody>
-    <tr><td>una función (<code>get search</code>)</td><td><code>search.handle(fn)</code></td><td><code>src/server</code></td></tr>
-    <tr><td><code>load</code>, <code>paths</code>, <code>layout</code></td><td><code>load.handle(fn)</code></td><td><code>src/server</code></td></tr>
-    <tr><td>un middleware</td><td><code>auth.server(fn)</code> y <code>auth.client(fn)</code></td><td><code>src/server</code> y <code>src/browser</code></td></tr>
-    <tr><td>una regla</td><td><code>aliasTaken.check(fn)</code></td><td>según dónde se ejecuta (<a href="/docs/server/rules">Reglas</a>)</td></tr>
-    <tr><td>un pipe</td><td><code>iniciales.implement(fn)</code></td><td><code>src/pipes</code></td></tr>
-    <tr><td><code>type</code>, <code>enum</code>, <code>form</code>, <code>pattern</code></td><td>nada: son solo declaración</td><td>—</td></tr>
+    <tr><td><code>type</code>, <code>enum</code></td><td>la forma de los datos</td><td><a href="/docs/server/types">Tipos</a></td></tr>
+    <tr><td><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code></td><td>una función que el navegador llama</td><td><a href="/docs/server/functions">Funciones de servidor</a></td></tr>
+    <tr><td><code>middleware</code>, <code>chain</code></td><td>lo que envuelve a cada llamada: sesión, CSRF, compresión…</td><td><a href="/docs/server/middlewares">Middlewares y cadena</a></td></tr>
+    <tr><td><code>rule</code>, <code>pattern</code></td><td>una validación con nombre, y una expresión regular con nombre</td><td><a href="/docs/server/rules">Reglas y patrones</a></td></tr>
+    <tr><td><code>pipe</code></td><td>un formato para la vista: una fecha, una moneda</td><td><a href="/docs/server/pipes">Pipes</a></td></tr>
+    <tr><td><code>load</code>, <code>paths</code>, <code>layout</code></td><td>los datos de una página, sus URL y las props de su layout</td><td><a href="/docs/routing/data">Los datos de la página</a></td></tr>
+    <tr><td><code>form</code>, <code>messages</code></td><td>un formulario y los textos de sus errores</td><td><a href="/docs/forms">El formulario</a></td></tr>
   </tbody>
 </table>
 
-<p>Los nombres en kebab-case del contrato son camelCase en TypeScript: <code>alias-taken</code> es <code>aliasTaken</code>, y <code>error-pages</code>, <code>errorPages</code>.</p>
+<p>Las llamadas viajan en un formato binario compacto que Fudic describe con el propio contrato, o en JSON si se pide con <code>use json</code> (<a href="/docs/server/functions#wire">Cómo viaja una llamada</a>).</p>
 
-<p>Las dos carpetas de implementación se pueden cambiar en <code>fudic.json</code>, con <code>server</code> y <code>browser</code>. Fudic carga todos sus ficheros, así que sus nombres son libres: uno por contrato, como en el ejemplo, o uno por servicio. Lo que no puede pasar es implementar algo dos veces, o en la carpeta que no toca. Las dos cosas paran el build y salen en el overlay de <code>fudic dev</code>:</p>
+<h2 id="implement">Implementarlo</h2>
 
-<ui-code>
-<pre><code>search of routes/usuarios is implemented twice: src/server/usuarios.ts, src/server/busquedas.ts
-save of routes/usuarios must be implemented in src/server: src/browser/usuarios.ts</code></pre>
-</ui-code>
+<p>Cada <code>.fudapi</code> se convierte en un módulo, <code>fudic:</code> más su ruta dentro de <code>src/</code> sin extensión: <code>src/routes/usuarios.fudapi</code> es <code>fudic:routes/usuarios</code>. Exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
 
-<p>Una función declarada que nadie implementa responde <code>404</code>, y en desarrollo dice cuál es: <code>save of routes/usuarios has no implementation in src/server</code>.</p>
+<ul>
+  <li>una función, <code>load</code>, <code>paths</code> o <code>layout</code>: <code>search.handle(fn)</code>, en <code>src/server</code>;</li>
+  <li>un middleware: <code>auth.server(fn)</code> en <code>src/server</code> y <code>auth.client(fn)</code> en <code>src/browser</code>;</li>
+  <li>una regla: <code>aliasTaken.check(fn)</code>;</li>
+  <li>un pipe: <code>iniciales.implement(fn)</code>, en <code>src/pipes</code>;</li>
+  <li><code>type</code>, <code>enum</code>, <code>form</code> y <code>pattern</code> no se implementan: son solo declaración.</li>
+</ul>
+
+<p>Los nombres en kebab-case del contrato son camelCase en TypeScript: <code>alias-taken</code> es <code>aliasTaken</code>. Fudic carga todos los ficheros de <code>src/server</code>, así que sus nombres son libres. Implementar algo dos veces, o en la carpeta equivocada, para el build.</p>
 
 <ui-note>
-  <p><code>src/server</code> nunca llega al navegador: el bundle del cliente no lo ve. Lo que un handler importa (la base de datos, los secretos) se queda en el servidor.</p>
+  <p><code>src/server</code> nunca llega al navegador. Lo que importa un handler (la base de datos, los secretos) se queda en el servidor.</p>
 </ui-note>
 
 <h2 id="where">Dónde vive cada fichero</h2>
 
-<p>Fudic lee todos los <code>.fudapi</code> que hay bajo <code>src/</code>. Lo que puede declarar cada uno depende de dónde está:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Fichero</th><th scope="col">Qué declara</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>junto a una ruta, <code>src/routes/blog/[slug].fudapi</code></td><td><code>load</code>, <code>paths</code> y <code>layout</code>, y las funciones de la página</td></tr>
-    <tr><td>junto a un componente</td><td>sus funciones y sus formularios; nunca <code>load</code> (<code>FUD1114</code>)</td></tr>
-    <tr><td><code>src/http.fudapi</code></td><td>la cadena global de middlewares (<a href="/docs/server/middlewares">Middlewares y cadena</a>)</td></tr>
-    <tr><td>cualquier otro, por convención <code>src/middlewares/</code>, <code>src/rules/</code>, <code>src/forms/</code></td><td>middlewares, reglas, patrones o formularios que usa todo el proyecto</td></tr>
-    <tr><td><code>src/pipes/</code></td><td>pipes, cada uno con su implementación al lado</td></tr>
-  </tbody>
-</table>
-
-<p>Hay dos clases de fichero, y no se mezclan (<code>FUD1078</code>):</p>
-
 <ul>
-  <li><strong>De contrato</strong>: funciones, <code>load</code>, <code>paths</code>, <code>layout</code>, <code>chain</code>, <code>form</code> y <code>messages</code>. Es lo que se enlaza desde un <code>.fud</code>.</li>
-  <li><strong>De extensiones</strong>: <code>rule</code>, <code>middleware</code>, <code>pattern</code> y <code>pipe</code>. Amplían el lenguaje para todo el proyecto, y no se enlazan.</li>
+  <li><strong>Junto a una ruta</strong> (<code>src/routes/blog/[slug].fudapi</code>): sus datos y sus funciones.</li>
+  <li><strong>Junto a un componente</strong>: sus funciones y sus formularios, pero no <code>load</code>.</li>
+  <li><strong><code>src/http.fudapi</code></strong>: la cadena de middlewares de todo el proyecto.</li>
+  <li><strong>Cualquier otro</strong>, por convención en <code>src/forms/</code>, <code>src/rules/</code> o <code>src/pipes/</code>: lo que comparte todo el proyecto.</li>
 </ul>
 
-<p><code>type</code> y <code>enum</code> caben en los dos. Los tipos, los enums, los formularios, las reglas, los middlewares, los patrones y los pipes son <strong>del proyecto</strong>: se usan desde cualquier <code>.fudapi</code> sin importarlos, y dos con el mismo nombre son un error (<code>FUD1081</code>). Las funciones son del fichero: dos <code>search</code> en contratos distintos no chocan.</p>
-
-<p>Una librería publica los suyos en su carpeta <code>fudapi/</code>, y una app los ve en cuanto la tiene como dependencia directa. Así llegan los middlewares de <code>@@fudic/http</code> y las reglas de <code>@@fudic/forms</code>.</p>
-
-<h2 id="declarations">Lo que se declara</h2>
-
-<table>
-  <thead>
-    <tr><th scope="col">Palabra</th><th scope="col">Qué es</th><th scope="col">Dónde se explica</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>type</code>, <code>enum</code></td><td>la forma de los datos</td><td><a href="/docs/server/types">Tipos</a></td></tr>
-    <tr><td><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code></td><td>una función de servidor</td><td><a href="/docs/server/functions">Funciones de servidor</a></td></tr>
-    <tr><td><code>middleware</code>, <code>chain</code></td><td>lo que envuelve a cada llamada</td><td><a href="/docs/server/middlewares">Middlewares y cadena</a></td></tr>
-    <tr><td><code>rule</code>, <code>pattern</code></td><td>una validación y una expresión regular con nombre</td><td><a href="/docs/server/rules">Reglas y patrones</a></td></tr>
-    <tr><td><code>pipe</code></td><td>un formato para la vista</td><td><a href="/docs/server/pipes">Pipes</a></td></tr>
-    <tr><td><code>load</code>, <code>paths</code>, <code>layout</code></td><td>los datos de una página</td><td><a href="/docs/routing/data">Los datos de la página</a></td></tr>
-    <tr><td><code>form</code>, <code>messages</code></td><td>un formulario y los textos de sus errores</td><td><a href="/docs/forms">Formularios</a></td></tr>
-  </tbody>
-</table>
+<p>Los tipos, formularios, reglas, middlewares y pipes son del proyecto: se usan desde cualquier <code>.fudapi</code> sin importarlos. Las funciones son de su fichero. Una librería publica los suyos en su carpeta <code>fudapi/</code>, y una app los ve en cuanto depende de ella.</p>
 
 <h2 id="syntax">La forma del fichero</h2>
 
 <ul>
-  <li><strong>Una declaración por línea</strong>, y lo que le pertenece, debajo, sangrado con <strong>dos espacios</strong> (<code>FUD1061</code> si no).</li>
-  <li><strong><code>#</code> empieza un comentario.</strong> Los comentarios justo encima de una declaración son su documentación: el editor los enseña al pasar el ratón por encima de su nombre, también en el <code>.fud</code> que la usa.</li>
-  <li><strong>Los textos van entre comillas dobles</strong>, en una sola línea, con <code>\"</code> y <code>\\</code> como escapes.</li>
-  <li><strong>Los nombres de declaración van en kebab-case</strong> (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>). <code>FUD1070</code> avisa si no.</li>
+  <li>Una declaración por línea, y lo que le pertenece, debajo, con dos espacios de sangría.</li>
+  <li><code>#</code> empieza un comentario. El que va justo encima de una declaración es su documentación, y el editor la enseña.</li>
+  <li>Los nombres van en kebab-case (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>).</li>
 </ul>
 
-<p>Una palabra que no cabe donde está da un error que dice qué cabía (<code>FUD1065</code>), y una mal escrita, a qué se parece:</p>
-
-<ui-code>
-<pre><code>error FUD1080: unknown rule `requird`: did you mean `required`?</code></pre>
-</ui-code>
-
-<h2 id="cli">Con la CLI</h2>
-
-<ui-code>
-<pre><code>fudic g api src/routes/usuarios.fud  # the .fudapi, its handler and the &lt;link rel="server"&gt;
-fudic add http                       # src/http.fudapi, with csrf in the chain
-fudic g form person                  # src/forms/person.fudapi
-fudic g pipe iniciales               # src/pipes/iniciales.fudapi, .ts and its test</code></pre>
-</ui-code>
-
-<p><code>fudic g api</code> sirve para una ruta o un componente que ya existen: a una ruta le escribe un <code>load</code>, y a un componente, una función <code>get hello</code> de ejemplo. Una página nueva con datos se crea de una vez con <code>fudic g page blog/:slug --server</code>. Los middlewares y las reglas no tienen generador: se escriben a mano.</p>
+<p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/usuarios.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code>, la cadena global.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

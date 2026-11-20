@@ -1,16 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Resultado y error · Fudic</title>
-  <meta name="description" content="fudic:result y fudic:error, los dos eventos de un formulario de Fudic: llevan lo que respondió el servidor, con su tipo, y cruzan el shadow DOM hasta la página que usa el componente.">
+  <meta name="description" content="fudic:result y fudic:error, los dos eventos de un formulario de Fudic: llevan lo que respondió el servidor, con su tipo, y cruzan el shadow DOM hasta la página.">
   <link rel="canonical" href="https://fudic.dev/docs/forms/events">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Resultado y error · Fudic">
-  <meta property="og:description" content="Dos eventos que cruzan el shadow DOM: la página se entera de lo que el servidor respondió al formulario de un componente.">
+  <meta property="og:description" content="Dos eventos que cruzan el shadow DOM: la página se entera de lo que el servidor respondió.">
   <meta property="og:url" content="https://fudic.dev/docs/forms/events">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,13 +24,9 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#two-events">Dos eventos</a></li>
-        <li><a href="#result"><code>fudic:result</code></a></li>
-        <li><a href="#error"><code>fudic:error</code></a></li>
+        <li><a href="#result">fudic:result</a></li>
+        <li><a href="#error">fudic:error</a></li>
         <li><a href="#composed">Cruzan el shadow DOM</a></li>
-        <li><a href="#list">Añadir a una lista cuando el servidor dice que sí</a></li>
-        <li><a href="#types">El tipo, en el tag</a></li>
-        <li><a href="#others">Comparado con otros frameworks</a></li>
-        <li><a href="#event">El evento entero</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -40,87 +35,48 @@
 
 <h1>Resultado y error</h1>
 
-<p>Un formulario enviado con <code>form:=</code> (<a href="/docs/forms/submitting">Enviar al servidor</a>) termina de dos formas: el servidor devuelve un valor, o la llamada falla con un error que el formulario no se queda. Cada final es un evento del <code>&lt;form&gt;</code>, y quien lo escucha recibe directamente lo que respondió el servidor.</p>
-
 <h2 id="two-events">Dos eventos</h2>
 
-<table>
-  <thead>
-    <tr><th scope="col">Evento</th><th scope="col">Cuándo</th><th scope="col">El handler recibe</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>fudic:result</code></td><td>la función respondió bien</td><td>lo que devolvió, con el tipo de su <code>-&gt;</code></td></tr>
-    <tr><td><code>fudic:error</code></td><td>la función falló con un status que el formulario no se queda</td><td>un <code>Error</code></td></tr>
-  </tbody>
-</table>
+<p>Un formulario enviado con <code>form:=</code> (<a href="/docs/forms/submitting">Enviar al servidor</a>) termina con uno de dos eventos en el <code>&lt;form&gt;</code>:</p>
 
-<p>Lo que el formulario sí se queda, los status de su <code>catches</code>, no es ninguno de los dos: ya está pintado en el formulario (<a href="/docs/forms/submitting#catches">Los errores que se quedan en el formulario</a>). Una llamada cancelada tampoco se anuncia.</p>
+<ul>
+  <li><code>fudic:result</code>: el servidor respondió bien. El handler recibe lo que devolvió la función.</li>
+  <li><code>fudic:error</code>: la llamada falló. El handler recibe un <code>Error</code>.</li>
+</ul>
+
+<p>Los errores que el formulario se queda, los de su <code>catches</code>, no lanzan ninguno de los dos: ya están pintados en el formulario (<a href="/docs/forms/submitting#catches">Los errores que se quedan en el formulario</a>).</p>
 
 <h2 id="result"><code>fudic:result</code></h2>
 
 <ui-code .path="src/components/user-form.fud">
 <pre><code>@@code &#123;
-  import type &#123; Person &#125; from "fudic:routes/usuarios";
-
-  const aviso = signal("");
-
   function hecho(persona: Person) &#123;
-    aviso.set(`Guardado: $&#123;persona.name&#125; (id $&#123;persona.id&#125;).`);
+    aviso.set(`Guardado con el id $&#123;persona.id&#125;.`);
     personForm.$reset();
   &#125;
 &#125;
 
 &lt;form control=@@personForm form:=@@save @@fudic:result=@@hecho&gt;
   …
-  &lt;p class="aviso" role="status"&gt;@@aviso()&lt;/p&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
-<p>El handler recibe el dato, no el evento: <code>persona</code> es la <code>Person</code> que devolvió <code>save</code>, la que declara su <code>-&gt; Person</code>. El editor lo tipa desde el <code>.fudapi</code>. Si declaras otro tipo en <code>hecho</code>, lo subraya.</p>
-
-<p>El valor es <strong>el del servidor</strong>, no el que escribió el usuario: lleva el <code>id</code> que asignó la base de datos, el nombre como se guardó y lo que el handler calculó. Por eso el aviso puede decir el <code>id</code>.</p>
+<p><code>persona</code> es lo que devolvió <code>save</code>, con el tipo que declara su <code>.fudapi</code>. Es el valor del servidor, no el que escribió el usuario: por eso trae el <code>id</code> que asignó la base de datos.</p>
 
 <h2 id="error"><code>fudic:error</code></h2>
 
 <ui-code>
-<pre><code>@@code &#123;
-  import &#123; HttpError &#125; from "@@fudic/http";
-
-  function fallo(error: Error) &#123;
-    if (error instanceof HttpError &amp;&amp; error.status === 403) aviso.set("Tu sesión ha caducado.");
-    else aviso.set("No se ha podido guardar. Inténtalo de nuevo.");
-  &#125;
-&#125;
-
-&lt;form control=@@personForm form:=@@save @@fudic:result=@@hecho @@fudic:error=@@fallo&gt;</code></pre>
+<pre><code>&lt;form control=@@personForm form:=@@save @@fudic:error=@@fallo&gt;</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>Lleva siempre un <code>Error</code></strong>, así que el tipo no miente. Uno del servidor es un <code>HttpError</code>, con su <code>status</code>. Si algo rechazó la llamada con un valor que no es un <code>Error</code>, ese valor llega como su <code>cause</code>.</li>
-  <li><strong>Lo que no se escucha, no se pierde.</strong> Si la cadena tiene <code>error-pages</code>, un error que nadie espera lleva a la página de error (<a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>).</li>
-</ul>
+<p><code>fallo</code> recibe un <code>Error</code>. Uno del servidor es un <code>HttpError</code>, con su <code>status</code>. Si nadie escucha <code>fudic:error</code>, el error lleva a la página de error.</p>
 
 <h2 id="composed">Cruzan el shadow DOM</h2>
 
-<p>Un evento que nace dentro del shadow DOM de un componente no sale de él, salvo que se cree con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed: true</code></a>. Entonces cruza la frontera del shadow root y sigue burbujeando por la página, que lo recibe en el tag del componente. Los dos eventos se crean así, con <code>bubbles</code> y <code>composed</code>:</p>
-
-<ui-code .path="src/routes/usuarios.fud">
-<pre><code>&lt;user-form @@fudic:result=@@alta&gt;&lt;/user-form&gt;</code></pre>
-</ui-code>
-
-<p>El formulario vive dentro de <code>user-form</code>, en su shadow DOM, y la página escucha en el tag. No hay que declarar ningún evento en el componente ni reenviarlo: el estándar ya lo hace llegar. Funciona a cualquier profundidad. Si <code>user-form</code> estuviera dentro de otro componente, la página lo oiría igual, en el tag de fuera.</p>
-
-<p>El orden es el del burbujeo: primero el <code>&lt;form&gt;</code>, dentro del componente, y luego el tag, en la página. En el ejemplo, <code>hecho</code> pinta el aviso y deja el formulario listo para otra alta, y después <code>alta</code> hace lo suyo fuera.</p>
-
-<h2 id="list">Añadir a una lista cuando el servidor dice que sí</h2>
-
-<p>Es el caso para el que existen. La página <code>/usuarios</code> tiene una tabla de personas y, debajo, el componente <code>user-form</code> para dar de alta una. Cuando el servidor confirma el alta, la persona tiene que aparecer en la tabla:</p>
+<p>Los dos eventos son <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar que salen del componente y suben por la página. Así, la página que usa un componente con un formulario se entera de lo que respondió el servidor sin que el componente haga nada:</p>
 
 <ui-code .path="src/routes/usuarios.fud">
 <pre><code>@@code &#123;
-  import type &#123; Person &#125; from "fudic:routes/usuarios";
-
-  // The table paints this signal, which starts with what load brought.
   const personas = signal(data.users);
 
   function alta(persona: Person) &#123;
@@ -128,54 +84,18 @@
   &#125;
 &#125;
 
-&lt;table&gt;
-  …
-  @@foreach (const p of personas()) key (p.id) &#123; … &#125;
-&lt;/table&gt;
-
 &lt;user-form @@fudic:result=@@alta&gt;&lt;/user-form&gt;</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>Solo cuando el servidor dice que sí.</strong> Si el formulario no valida, o el servidor responde <code>409</code> porque el nombre está reservado, no hay <code>fudic:result</code> y la tabla no cambia. No hay que deshacer nada.</li>
-  <li><strong>Con lo que devolvió el servidor.</strong> La fila nueva lleva el <code>id</code> real, no uno inventado en el navegador mientras tanto.</li>
-  <li><strong>Sin recargar y sin pedir la lista otra vez.</strong> La página ya sabe qué ha cambiado, y lo pone al día en su signal. Ni <code>invalidates</code> ni un segundo viaje al servidor.</li>
-  <li><strong>El componente no sabe nada de la tabla.</strong> <code>user-form</code> da de alta personas. Qué hace la página con ellas es cosa de la página: otra podría usar el mismo componente para ir a la ficha de la persona recién creada.</li>
-</ul>
+<p>La persona aparece en la lista solo cuando el servidor dice que sí, con su <code>id</code> real y sin volver a pedir la lista. El componente no sabe nada de la tabla.</p>
 
-<h2 id="types">El tipo, en el tag</h2>
+<p id="others">En React se pasaría una función de componente en componente, y en Vue o Angular habría que reemitir el evento en cada nivel. Aquí lo hace el DOM.</p>
 
-<p>En el tag, el dato también tiene su tipo: el de lo que devuelven las funciones de los <code>form:=</code> del componente. Si el componente usa otros con formulario, se suma lo que anuncian ellos, porque el evento sube por todos los niveles. En <code>&lt;user-form @@fudic:result=@@alta&gt;</code>, <code>alta</code> recibe una <code>Person</code>, y el editor lo comprueba.</p>
-
-<p>En un componente sin formulario, ni propio ni de sus componentes, el tipo es <code>never</code>, y el handler es un error: no hay nada que escuchar. En un elemento de la misma plantilla que no tiene <code>form:=</code>, como un <code>&lt;div&gt;</code> que envuelve el formulario, el dato es <code>unknown</code>.</p>
-
-<h2 id="others">Comparado con otros frameworks</h2>
-
-<p>Avisar al padre de que algo ha terminado es un problema de todos los frameworks de componentes, y cada uno lo resuelve con su propio mecanismo:</p>
-
-<ul>
-  <li><strong>React</strong> pasa una función como prop, <code>onSaved</code>, y cada componente intermedio la tiene que recibir y pasar al siguiente.</li>
-  <li><strong>Vue</strong> emite con <code>emit("saved")</code>, y <strong>Angular</strong> con un <code>@@Output</code>. Ninguno de los dos burbujea: el evento llega al padre directo, y un abuelo que quiera oírlo necesita que el padre lo reemita.</li>
-</ul>
-
-<p>Fudic no añade ningún mecanismo: usa un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar, que burbujea y cruza el shadow DOM porque así lo define el DOM. Por eso lo puede escuchar cualquier código, sea o no de Fudic: <code>addEventListener("fudic:result", …)</code> en la página, o una herramienta de analítica que cuenta las altas.</p>
-
-<h2 id="event">El evento entero</h2>
-
-<p>Una referencia (<code>@@fudic:result=@@alta</code>) o una función flecha reciben el dato. Una llamada recibe lo que escribas, y el evento está en <code>$event</code>, con el dato en su <code>detail</code>:</p>
-
-<ui-code>
-<pre><code>&lt;user-form @@fudic:result=@@alta($event.detail, "desde la tabla")&gt;&lt;/user-form&gt;</code></pre>
-</ui-code>
-
-<ui-note>
-  <p>Un formulario que se envía dos veces seguidas lanza dos llamadas, una al lado de la otra, y anuncia dos resultados. <code>$cancel()</code> para todas las que están en marcha, y una llamada cancelada no anuncia nada (<a href="/docs/forms/files#progress">Ficheros</a>).</p>
-</ui-note>
+<p id="event">Si necesitas el evento entero, usa una llamada: <code>@@fudic:result=@@alta($event.detail)</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> y su <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/detail" target="_blank" rel="noopener"><code>detail</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/bubbles" target="_blank" rel="noopener"><code>bubbles</code></a>: cómo un evento cruza el shadow DOM y sube por la página.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Usar el shadow DOM</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a>: un evento propio con un dato.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>Event.composed</code></a>: cómo un evento sale de un shadow root.</li>
 </ul>

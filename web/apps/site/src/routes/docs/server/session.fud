@@ -5,7 +5,7 @@
 
 <head>
   <title>Sesión y cookies · Fudic</title>
-  <meta name="description" content="La sesión en Fudic: una cookie HttpOnly que pone y lee el servidor, con valores seguros por defecto, respuestas privadas que ninguna caché guarda y una página con sesión que nunca se prerenderiza.">
+  <meta name="description" content="La sesión en Fudic: una cookie HttpOnly que pone y lee el servidor, con valores seguros por defecto, respuestas privadas que ninguna caché guarda y páginas con sesión que no se prerenderizan.">
   <link rel="canonical" href="https://fudic.dev/docs/server/session">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Sesión y cookies · Fudic">
@@ -24,12 +24,8 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#why">Por qué una cookie</a></li>
-        <li><a href="#sign-in">Entrar y salir</a></li>
-        <li><a href="#defaults">Los valores por defecto</a></li>
-        <li><a href="#read">Leer la sesión</a></li>
+        <li><a href="#sign-in">Entrar, salir y leer la sesión</a></li>
         <li><a href="#private">Lo que lee la sesión es privado</a></li>
-        <li><a href="#prerender">Una página con sesión no se prerenderiza</a></li>
-        <li><a href="#example">De punta a punta</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -40,21 +36,20 @@
 
 <h2 id="why">Por qué una cookie</h2>
 
-<p>Fudic sirve las páginas y responde a sus llamadas desde el mismo servidor, que hace de intermediario con el resto de tu backend. Por eso la sesión es una <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies" target="_blank" rel="noopener">cookie</a> que pone el servidor, y no un token que guarda el JavaScript de la página:</p>
+<p>En Fudic, la sesión es una <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies" target="_blank" rel="noopener">cookie</a> estándar que pone el servidor, no un token que guarda el JavaScript de la página:</p>
 
 <ul>
-  <li><strong>Con <code>HttpOnly</code>, el JavaScript de la página no la puede leer.</strong> Un script inyectado no tiene qué robar.</li>
-  <li><strong>El navegador la manda solo</strong>, en cada navegación y en cada llamada, sin código en el cliente.</li>
-  <li><strong>Llega también a la primera petición de una página</strong>, así que el servidor puede pintarla ya con los datos del usuario.</li>
+  <li><strong>Es <code>HttpOnly</code></strong>: el JavaScript de la página no la puede leer, así que un script inyectado no tiene qué robar.</li>
+  <li><strong>El navegador la manda solo</strong>, en cada navegación y en cada llamada.</li>
+  <li><strong>Llega también en la primera petición</strong>, así que el servidor pinta la página ya con los datos del usuario.</li>
 </ul>
 
-<h2 id="sign-in">Entrar y salir</h2>
+<h2 id="sign-in">Entrar, salir y leer la sesión</h2>
 
-<p><code>setCookie</code> y <code>deleteCookie</code>, de <code>@@fudic/http</code>, escriben en la respuesta del handler:</p>
+<p><code>setCookie</code> y <code>deleteCookie</code>, de <code>@@fudic/http</code>, escriben la cookie en la respuesta de un handler:</p>
 
 <ui-code .path="src/server/usuarios.ts">
 <pre><code>import &#123; deleteCookie, setCookie &#125; from "@@fudic/http";
-import &#123; login, logout &#125; from "fudic:routes/usuarios";
 
 login.handle((ctx) =&gt; &#123;
   setCookie(ctx, SESSION_COOKIE, sessions.open(ctx.args.user));
@@ -65,105 +60,23 @@ logout.handle((ctx) =&gt; &#123;
 &#125;);</code></pre>
 </ui-code>
 
-<p>Una función que cambia la sesión suele cambiar también lo que la página enseña. Con <code>invalidates</code>, la página pide sus datos otra vez al terminar la llamada y se pinta con el usuario nuevo:</p>
+<p id="defaults">Sin opciones, la cookie sale segura: <code>HttpOnly</code>, <code>Secure</code> (solo por HTTPS), <code>SameSite=Lax</code> (no viaja en peticiones de otra web) y <code>Path=/</code>. En desarrollo, sin HTTPS, Fudic quita <code>Secure</code> para que funcione en <code>localhost</code>.</p>
 
-<ui-code .path="src/routes/usuarios.fudapi">
-<pre><code>post login
-  invalidates /usuarios
-  user  str
+<p id="read">Se lee en el servidor con <code>ctx.cookies.get(SESSION_COOKIE)</code>. Lo habitual es leerla una vez en un middleware y dejar el usuario en el <code>ctx</code> (<a href="/docs/server/middlewares#adds">Middlewares y cadena</a>).</p>
 
-post logout
-  invalidates /usuarios</code></pre>
-</ui-code>
-
-<h2 id="defaults">Los valores por defecto</h2>
-
-<p>Sin opciones, <code>setCookie</code> escribe la cookie segura:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Atributo</th><th scope="col">Por defecto</th><th scope="col">Por qué</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>HttpOnly</code></td><td>sí</td><td>el JavaScript de la página no la lee</td></tr>
-    <tr><td><code>Secure</code></td><td>sí</td><td>solo viaja por HTTPS</td></tr>
-    <tr><td><code>SameSite</code></td><td><code>Lax</code></td><td>no viaja en las peticiones que hace otra web</td></tr>
-    <tr><td><code>Path</code></td><td><code>/</code></td><td>vale para toda la app</td></tr>
-  </tbody>
-</table>
-
-<p>El cuarto argumento cambia lo que haga falta: <code>maxAge</code>, <code>expires</code>, <code>path</code>, <code>domain</code>, <code>sameSite</code>, <code>secure</code>, <code>httpOnly</code> o <code>partitioned</code>. Un nombre con el prefijo <code>__Host-</code> o <code>__Secure-</code> lleva siempre <code>Secure</code>.</p>
-
-<p><code>setCookie</code> lanza un error con lo que un navegador tiraría sin avisar: un nombre que no es válido en HTTP, <code>SameSite=None</code> o <code>Partitioned</code> sin <code>Secure</code>, o una <code>__Host-</code> con <code>Domain</code> o con otra ruta que <code>/</code>. Mejor un error al escribirla que una sesión que no funciona y no dice por qué.</p>
-
-<p>Si el servidor de desarrollo no usa HTTPS, Fudic quita <code>Secure</code> para que la cookie funcione en <code>http://localhost</code> (<a href="/docs/server/running">El servidor</a>).</p>
-
-<h2 id="read">Leer la sesión</h2>
-
-<p>En el servidor, en <code>ctx.cookies</code>, desde un handler, un <code>load</code> o un middleware:</p>
-
-<ui-code .path="src/server/cuenta.ts">
-<pre><code>load.handle((ctx) =&gt; &#123;
-  const user = inject(Sessions).find(ctx.cookies.get(SESSION_COOKIE));
-  return user === undefined ? &#123;&#125; : &#123; name: user.name &#125;;
-&#125;);</code></pre>
-</ui-code>
-
-<p>Lo habitual es leerla una vez, en un middleware, y dejar el usuario en el <code>ctx</code> de cada función que lo necesita (el <code>auth</code> de <a href="/docs/server/middlewares#adds">Middlewares y cadena</a>).</p>
+<p>Con <code>invalidates</code> en <code>login</code> y <code>logout</code>, la página se repinta con el usuario nuevo al terminar la llamada.</p>
 
 <h2 id="private">Lo que lee la sesión es privado</h2>
 
-<p>Una respuesta que depende de quién la pide no puede guardarla ninguna caché: la de Ana acabaría en la pantalla de Luis. Fudic lo resuelve solo: si un handler, un <code>load</code> o un middleware lee <code>ctx.cookies</code>, o las cabeceras <code>cookie</code> o <code>authorization</code>, la respuesta sale con <code>Cache-Control: private, no-store</code>, salvo que el handler haya puesto el suyo.</p>
+<p>Una respuesta que depende de quién la pide no puede guardarla ninguna caché: la página de Ana acabaría en la pantalla de Luis. Si un handler, un <code>load</code> o un middleware lee las cookies, Fudic manda la respuesta con <code>Cache-Control: private, no-store</code>, y ni el navegador, ni un CDN, ni el Service Worker la guardan.</p>
 
-<p>Ni el navegador, ni un CDN, ni el Service Worker de Fudic la guardan, y el Service Worker borra la copia vieja que tuviera de esa URL (<a href="/docs/routing/rendering#sw">Los modos</a>).</p>
+<p id="prerender">Por la misma razón, una página cuyo <code>load</code> lee la sesión no se puede pintar en el build, porque sería igual para todos. El build se para (<code>FUD1300</code>), y la solución es pintarla en cada petición, con <code>load ssr</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</p>
 
-<h2 id="prerender">Una página con sesión no se prerenderiza</h2>
-
-<p>Una página que se pinta en el build no tiene usuario. Si su <code>load</code> o su <code>layout</code> leen la sesión, el build se para:</p>
-
-<ui-code>
-<pre><code>error FUD1300: the prerender of /cuenta reads the session: its HTML would be the same for everyone</code></pre>
-</ui-code>
-
-<p>La solución es pintarla en cada petición, con <code>load ssr</code> (<a href="/docs/routing/rendering">Los modos</a>).</p>
-
-<h2 id="example">De punta a punta</h2>
-
-<p>Entrar con un formulario: la función pone la cookie y redirige a la cuenta, que dice quién ha entrado.</p>
-
-<ui-code .path="src/routes/entrar.fudapi">
-<pre><code>post entrar
-  form entrarForm
-
-form entrarForm
-  user  str = ""
-    required  "Escribe tu usuario."</code></pre>
-</ui-code>
-
-<ui-code .path="src/server/entrar.ts">
-<pre><code>import &#123; redirect, setCookie &#125; from "@@fudic/http";
-import &#123; entrar &#125; from "fudic:routes/entrar";
-
-entrar.handle((ctx) =&gt; &#123;
-  setCookie(ctx, SESSION_COOKIE, ctx.form.$value().user.trim().toLowerCase());
-  throw redirect("/cuenta");
-&#125;);</code></pre>
-</ui-code>
-
-<ui-code .path="src/routes/entrar.fud">
-<pre><code>&lt;form control=@@entrarForm form:=@@entrar&gt;
-  &lt;label for="usuario"&gt;Usuario&lt;/label&gt;
-  &lt;input id="usuario" autocomplete="username" control=@@entrarForm.user&gt;
-  &lt;small error=@@entrarForm.user&gt;&lt;/small&gt;
-  &lt;button type="submit"&gt;Entrar&lt;/button&gt;
-&lt;/form&gt;</code></pre>
-</ui-code>
-
-<p>Con <code>error-pages</code> en la cadena y <code>routes 403 /entrar</code>, una llamada protegida sin sesión trae al usuario aquí en vez de a la página de error (<a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>). Contra las llamadas desde otra web, <code>csrf</code> (<a href="/docs/server/middlewares#csrf"><code>csrf</code></a>).</p>
+<p id="example">Para que una llamada sin sesión lleve a entrar en vez de a la página de error, usa <code>routes 403 /entrar</code> en <a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>. Contra las llamadas desde otra web, <a href="/docs/server/middlewares#csrf"><code>csrf</code></a>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies" target="_blank" rel="noopener">Cookies HTTP</a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener"><code>Set-Cookie</code></a>, con sus atributos y sus prefijos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener"><code>Set-Cookie</code></a>: los atributos de una cookie.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: qué significan <code>private</code> y <code>no-store</code>.</li>
 </ul>

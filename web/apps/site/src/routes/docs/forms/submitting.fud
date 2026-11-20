@@ -5,7 +5,7 @@
 
 <head>
   <title>Enviar al servidor · Fudic</title>
-  <meta name="description" content="Cómo envía Fudic un formulario a una función de servidor con form:=, cómo lo recibe y lo valida el servidor sobre una copia nueva, y qué errores se quedan en el formulario.">
+  <meta name="description" content="Cómo envía Fudic un formulario a una función de servidor con form:=, cómo lo valida el servidor y qué errores se quedan en el formulario.">
   <link rel="canonical" href="https://fudic.dev/docs/forms/submitting">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Enviar al servidor · Fudic">
@@ -23,16 +23,12 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#form-send"><code>form:=</code></a></li>
+        <li><a href="#form-send">form:=</a></li>
         <li><a href="#declare">La función que lo recibe</a></li>
-        <li><a href="#trip">El viaje, paso a paso</a></li>
         <li><a href="#server">Cómo lo recibe el servidor</a></li>
         <li><a href="#catches">Los errores que se quedan en el formulario</a></li>
-        <li><a href="#redirect">Redirigir</a></li>
         <li><a href="#wire">Cómo viaja</a></li>
-        <li><a href="#json">Desde otro cliente</a></li>
-        <li><a href="#code">Enviarlo desde el código</a></li>
-        <li><a href="#no-js">Sin JavaScript</a></li>
+        <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -41,7 +37,7 @@
 
 <h1>Enviar al servidor</h1>
 
-<p>Un formulario válido se manda a una <a href="/docs/server/functions">función de servidor</a>, y el servidor lo vuelve a validar antes de dárselo al handler. En el navegador no hay que escribir el <code>fetch</code>, ni convertir los datos, ni pintar a mano los errores que devuelve el servidor.</p>
+<p>Un formulario válido se envía a una <a href="/docs/server/functions">función de servidor</a> del mismo <code>.fudapi</code>, y el servidor lo vuelve a validar antes de dárselo a su handler. No hay que escribir el <code>fetch</code>, ni convertir los datos, ni pintar a mano los errores del servidor.</p>
 
 <h2 id="form-send"><code>form:=</code></h2>
 
@@ -50,157 +46,84 @@
 
 &lt;form control=@@entrarForm form:=@@entrar&gt;
   &lt;label for="usuario"&gt;Usuario&lt;/label&gt;
-  &lt;input id="usuario" type="text" autocomplete="username" control=@@entrarForm.user&gt;
-  &lt;small class="error" error=@@entrarForm.user&gt;&lt;/small&gt;
+  &lt;input id="usuario" type="text" control=@@entrarForm.user&gt;
+  &lt;small error=@@entrarForm.user&gt;&lt;/small&gt;
   &lt;button type="submit"&gt;Entrar&lt;/button&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
-<p><code>form:=@@entrar</code> hace que un envío válido llame a la función <code>entrar</code> en vez de navegar. Un envío con errores no sale (<a href="/docs/forms/binding#submit">El envío</a>). Va en un <code>&lt;form&gt;</code> con <code>control</code> (<code>FUD1006</code>) y nombra una función de un <code>.fudapi</code> que la vista enlaza (<code>FUD1005</code>).</p>
-
-<p>Lo que responde el servidor llega por dos eventos, <code>fudic:result</code> y <code>fudic:error</code>, que tienen su página: <a href="/docs/forms/events">Resultado y error</a>.</p>
+<p><code>form:=@@entrar</code> hace que un envío válido llame a la función <code>entrar</code> en vez de navegar. Lo que responde llega por dos eventos (<a href="/docs/forms/events">Resultado y error</a>).</p>
 
 <h2 id="declare">La función que lo recibe</h2>
 
-<p>Una función recibe un formulario con <code>form</code>, en vez de argumentos:</p>
+<p>En el <code>.fudapi</code>, la función recibe el formulario con <code>form</code>, en lugar de argumentos:</p>
 
 <ui-code .path="src/routes/entrar.fudapi">
 <pre><code>post entrar
   form entrarForm
 
 form entrarForm
-  catches 400 422
   user  str = ""
     required  "Escribe tu usuario."</code></pre>
 </ui-code>
 
-<p>El formulario puede declararse en el mismo fichero, como aquí, o en <code>src/forms/</code> y usarse en varias funciones. En el handler está en <code>ctx.form</code>, ya validado y con sus tipos:</p>
+<p>En el handler, el formulario está en <code>ctx.form</code>, ya validado y con sus tipos:</p>
 
 <ui-code .path="src/server/entrar.ts">
-<pre><code>import &#123; redirect, setCookie &#125; from "@@fudic/http";
+<pre><code>import &#123; redirect &#125; from "@@fudic/http";
 import &#123; entrar &#125; from "fudic:routes/entrar";
 
 entrar.handle((ctx) =&gt; &#123;
-  setCookie(ctx, SESSION_COOKIE, ctx.form.$value().user.trim().toLowerCase());
+  const &#123; user &#125; = ctx.form.$value();
+  // …start the session for user
   throw redirect("/cuenta");
 &#125;);</code></pre>
 </ui-code>
 
-<h2 id="trip">El viaje, paso a paso</h2>
-
-<ol class="flow" aria-label="El viaje de un formulario">
-  <li><span class="side">Navegador</span> El usuario envía. El formulario valida todas sus reglas de navegador; con errores, se para aquí y no sale ninguna petición.</li>
-  <li><span class="side">Navegador</span> La función comprueba que cada valor cabe en su tipo y manda el formulario a <code>/_fudic/fn/routes/entrar/entrar</code>, con la cabecera de <code>csrf</code> y la firma del contrato.</li>
-  <li class="server"><span class="side">Servidor</span> La cadena de middlewares envuelve la llamada. El cuerpo se descomprime si viene comprimido y se lee en el formato de la función; en otro formato, <code>415</code>.</li>
-  <li class="server"><span class="side">Servidor</span> Hace una copia nueva del formulario y le pone los datos con <code>$set</code>. Si falta un campo o un valor no encaja en su tipo, <code>400</code>.</li>
-  <li class="server"><span class="side">Servidor</span> Valida la copia con todas sus reglas, también las <code>server</code> y las <code>remote</code>. Si falla, <code>422</code> con los errores de cada campo y los del resumen.</li>
-  <li class="server"><span class="side">Servidor</span> El handler recibe <code>ctx.form</code>, ya válido, y devuelve lo que dice <code>-&gt;</code>, lanza un error o redirige.</li>
-  <li><span class="side">Navegador</span> Un resultado sale en <code>fudic:result</code>. Un status de <code>catches</code> se pinta en el formulario. Cualquier otro error sale en <code>fudic:error</code>.</li>
-</ol>
-
 <h2 id="server">Cómo lo recibe el servidor</h2>
 
-<p>Los pasos 3 a 5 son los que separan a Fudic de un <code>JSON.parse</code> y un <code>if</code>:</p>
+<p>El navegador valida para avisar antes. Quien decide es el servidor, que no se fía de lo que llega:</p>
 
 <ul>
-  <li><strong>Una copia por petición.</strong> El servidor atiende a muchos usuarios a la vez, y un formulario compartido mezclaría sus valores. Cada envío se valida sobre una copia nueva, hecha desde la misma declaración, que se tira al terminar.</li>
-  <li><strong><code>$set</code>, no <code>$patch</code>.</strong> Lo que llega tiene que traer todos los campos. Un cuerpo al que le faltan es un <code>400</code>, no un formulario con campos vacíos que sí validarían (<a href="/docs/forms#write"><code>$set</code> y <code>$patch</code></a>).</li>
-  <li><strong>Las reglas del servidor también.</strong> El navegador no ejecuta las <code>runs server</code>, y las <code>remote</code> solo las pregunta mientras se escribe. Aquí se ejecutan todas, con el <code>ctx</code> de la llamada: una regla con <code>use auth</code> ve <code>ctx.user</code>.</li>
-  <li><strong>El <code>422</code> lleva el mismo formato que los errores del navegador.</strong> Los errores van por la ruta de cada campo, y el formulario los pinta en su sitio como si los hubiera encontrado él: «Ese email ya lo usa otra persona» aparece debajo del email.</li>
+  <li>Hace una copia nueva del formulario para esta petición, y le pone los datos con <code>$set</code>. Si falta un campo, responde <code>400</code>.</li>
+  <li>La valida con todas sus reglas, también las que solo corren en el servidor. Si falla, responde <code>422</code> con el error de cada campo.</li>
+  <li>El navegador pinta esos errores en su sitio, como si los hubiera encontrado él.</li>
 </ul>
 
-<p>El navegador valida <em>por cortesía</em>, para avisar antes. El que decide es el servidor, que no se fía de lo que llega: una petición hecha con <code>curl</code> pasa por las mismas reglas que la de la página.</p>
+<p>Una petición hecha con <code>curl</code> pasa por las mismas reglas que la de la página.</p>
 
 <h2 id="catches">Los errores que se quedan en el formulario</h2>
 
-<p>Algunos errores son del usuario: un email que ya existe, un nombre reservado. No deben llevar a la página de error. <code>catches</code> dice qué status se quedan en el formulario. Por defecto son <code>400</code>, <code>409</code> y <code>422</code>:</p>
+<p>Algunos errores son del usuario, como un email que ya existe, y no deben llevar a la página de error. <code>catches</code> dice qué status se quedan en el formulario, y por defecto son <code>400</code>, <code>409</code> y <code>422</code>.</p>
 
-<ui-code .path="src/forms/person.fudapi">
-<pre><code>form personForm
-  catches 400 409 422
-  …</code></pre>
-</ui-code>
-
-<p>Un <code>422</code> se pinta en cada campo y en el resumen. Un <code>400</code> o un <code>409</code>, que no traen errores por campo, se pintan en el resumen con el texto del error. En los dos casos el foco va al resumen con <code>fields</code> o al primer campo que falla, como en un envío con errores del navegador.</p>
-
-<p>Los errores propios del handler se declaran en la función con <code>fails</code>, y su texto también es del <code>.fudapi</code> (<a href="/docs/server/functions#fails-catches"><code>fails</code> y <code>catches</code></a>):</p>
+<p>Un error propio del handler se declara en la función con <code>fails</code>, con su status y su texto:</p>
 
 <ui-code .path="src/components/user-form.fudapi">
 <pre><code>put save
-  use auth
   form personForm
-  catches 409
-  fails reserved 409 "Ese nombre está reservado."
-  -&gt; Person</code></pre>
+  fails reserved 409 "Ese nombre está reservado."</code></pre>
 </ui-code>
 
-<ui-code .path="src/server/user-form.ts">
-<pre><code>save.handle(async (ctx) =&gt; &#123;
-  const &#123; avatar, ...person &#125; = ctx.form.$value();
-  if (person.name.trim().toLowerCase() === "admin") throw SaveFails.reserved();
-  const added = inject(Users).add(&#123; ...person, avatar: avatar !== null &#125;);
-  if (avatar !== null) await inject(Avatars).put(added.id, avatar);
-  return added;
-&#125;);</code></pre>
-</ui-code>
-
-<h2 id="redirect">Redirigir</h2>
-
-<p>Un handler que termina en otra página lanza <code>redirect</code>, como <code>entrar</code> arriba. Las cabeceras que puso antes salen igual, así que la cookie viaja con la redirección. Quien navega es <code>error-pages</code> en el navegador, que tiene que estar en la cadena (<a href="/docs/server/functions#redirect">Redirigir</a>).</p>
+<p>Un <code>422</code> se pinta en cada campo. Un <code>409</code>, que no es de un campo, se pinta en el resumen. En los dos casos el foco va al primer error.</p>
 
 <h2 id="wire">Cómo viaja</h2>
 
+<p>El formulario viaja en el formato binario de Fudic. Los nombres de los campos no viajan, porque el navegador y el servidor los conocen por la declaración, y cada valor ocupa lo que dice su tipo: un <code>u8</code>, un byte. El formato se explica entero en <a href="/docs/server/functions#wire">Funciones de servidor</a>.</p>
+
+<p>Si el formulario tiene ficheros, viaja en <code>multipart/form-data</code> (<a href="/docs/forms/files">Ficheros</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
 <ul>
-  <li><strong>En binario, por defecto.</strong> Cada campo va con su tipo, en el orden de la declaración, y sin su nombre: los dos extremos lo conocen. Un <code>u8</code> es un byte.</li>
-  <li><strong>Comprimido</strong>, si la cadena tiene <code>compress</code> y el cuerpo pasa de su umbral: unas notas largas suben en gzip (<a href="/docs/server/middlewares#compress"><code>compress</code></a>).</li>
-  <li><strong>En <code>multipart/form-data</code></strong>, si el formulario tiene ficheros (<a href="/docs/forms/files">Ficheros</a>).</li>
-  <li><strong>Con firma.</strong> Si la página es de un build anterior al del servidor y el formulario ha cambiado, la llamada falla con un <code>412</code> en vez de mandar campos con otra forma.</li>
+  <li id="json">Con <code>use json</code> en la función, el formulario viaja en JSON con los campos por su nombre, para clientes que no son una página de Fudic.</li>
+  <li id="code">La función también se llama desde el código, con el formulario: <code>await save(personForm)</code>. Valida antes de enviar.</li>
+  <li id="redirect">Un handler que lanza <code>redirect</code> lleva al usuario a otra página, con las cookies que haya puesto.</li>
+  <li id="no-js">El formulario se ve sin JavaScript, pero <code>form:=</code> necesita JavaScript para enviarse. Si tiene que funcionar sin él, escribe tú el <code>action</code>, el <code>method</code> y los <code>name</code>, sin <code>form:=</code>.</li>
 </ul>
-
-<h2 id="json">Desde otro cliente</h2>
-
-<p>Con <code>use json</code>, la función habla JSON, con los campos por su nombre, para un cliente que no es una página de Fudic:</p>
-
-<ui-code .path="src/routes/newsletter.fudapi">
-<pre><code>post subscribe
-  use json
-  form subscribeForm
-
-form subscribeForm
-  email  str = ""
-    required       "Escribe tu email."
-    pattern email  "Ese email no parece válido."</code></pre>
-</ui-code>
-
-<ui-code>
-<pre><code>curl -X POST https://example.com/_fudic/fn/routes/newsletter/subscribe \
-  -H "content-type: application/json" \
-  -H "x-fudic-csrf: 1" \
-  -d '&#123;"email":"ada@@example.com"&#125;'</code></pre>
-</ui-code>
-
-<p>Las reglas son las mismas, y un email mal escrito responde <code>422</code> con sus errores, como problema JSON (<code>application/problem+json</code>). La cabecera <code>x-fudic-csrf</code> la pide <code>csrf</code> en toda llamada que no es <code>get</code> (<a href="/docs/server/middlewares#csrf"><code>csrf</code></a>).</p>
-
-<h2 id="code">Enviarlo desde el código</h2>
-
-<p>Una función con <code>form</code> también se llama a mano, con el formulario:</p>
-
-<ui-code>
-<pre><code>const person = await save(personForm);</code></pre>
-</ui-code>
-
-<p>Valida antes de mandar: un formulario inválido lanza un <code>422</code> sin salir a la red. Es útil cuando el envío no es un <code>submit</code>, como guardar un borrador cada pocos segundos. Si la función tiene además parámetros de ruta, el formulario va con ellos: <code>save(&#123; id, form: personForm &#125;)</code>.</p>
-
-<h2 id="no-js">Sin JavaScript</h2>
-
-<p>El formulario sale del servidor con sus valores, sus etiquetas, sus <code>aria-describedby</code> y los errores que el servidor conoce: se lee y se entiende sin JavaScript. <strong>Enviarlo, no.</strong> <code>form:=</code> lo hace el navegador con JavaScript, y el <code>&lt;form&gt;</code> no lleva <code>method</code> ni <code>action</code> hacia la función, ni <code>name</code> en sus campos. Sin JavaScript, el envío recarga la página sin mandar nada.</p>
-
-<p>Para un formulario que tenga que funcionar sin JavaScript, no uses <code>form:=</code>: escribe tú el <code>action</code>, el <code>method</code> y los <code>name</code>, y el formulario seguirá validando en el navegador cuando haya JavaScript. Un envío válido sin <code>form:=</code> sigue el camino estándar del <code>&lt;form&gt;</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Sending_and_retrieving_form_data" target="_blank" rel="noopener">Enviar los datos de un formulario</a>: <code>action</code>, <code>method</code> y <code>name</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422" target="_blank" rel="noopener"><code>422 Unprocessable Content</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/409" target="_blank" rel="noopener"><code>409 Conflict</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/415" target="_blank" rel="noopener"><code>415 Unsupported Media Type</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/303" target="_blank" rel="noopener"><code>303 See Other</code></a>: la redirección después de enviar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422" target="_blank" rel="noopener"><code>422 Unprocessable Content</code></a>: los datos llegan, pero no cumplen las reglas.</li>
 </ul>

@@ -1,7 +1,6 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
@@ -28,10 +27,8 @@
         <li><a href="#declare">Declararlo</a></li>
         <li><a href="#types">El tipo de cada campo</a></li>
         <li><a href="#groups">Grupos</a></li>
-        <li><a href="#read">Leerlo</a></li>
-        <li><a href="#write"><code>$set</code> y <code>$patch</code></a></li>
+        <li><a href="#read">Leerlo y escribirlo</a></li>
         <li><a href="#state">El estado de un campo</a></li>
-        <li><a href="#copies">Una copia por petición</a></li>
         <li><a href="#test">Probarlo</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
@@ -41,175 +38,111 @@
 
 <h1>El formulario</h1>
 
-<p>Un formulario de Fudic es un modelo: los campos, sus tipos, sus valores iniciales, sus reglas y los textos de sus errores. No es un elemento ni un componente. La vista lo enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> estándar (<a href="/docs/forms/binding">Enlazar la vista</a>), y el servidor lo usa para validar lo que llega (<a href="/docs/forms/submitting">Enviar al servidor</a>).</p>
+<p>Un formulario de Fudic se declara en un <code>.fudapi</code>, con <code>form</code>, junto a las funciones de servidor que lo reciben (<a href="/docs/server#declarations">lo que se declara en un <code>.fudapi</code></a>). Sus reglas vienen del mismo sitio (<a href="/docs/server/rules">Reglas y patrones</a>). Enviarlo es como llamar a cualquier función de servidor: sin <code>fetch</code> ni conversión de datos, y validado en los dos lados desde la misma declaración (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</p>
+
+<p>No es un elemento ni un componente: es un modelo con campos, tipos, valores iniciales, reglas y textos de error. La vista lo enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> estándar, y el servidor lo usa para validar lo que llega.</p>
 
 <h2 id="one-declaration">Una declaración, los dos extremos</h2>
 
-<p>Un formulario se valida dos veces. En el navegador, para avisar al usuario antes de enviar. En el servidor, porque lo que llega por la red puede venir de cualquiera y no hay que fiarse de ello. Las dos validaciones tienen que decir lo mismo: si el navegador acepta una edad de 17 y el servidor la rechaza, el usuario ve un error que nadie le había avisado.</p>
+<p>Un formulario se valida dos veces: en el navegador, para avisar al usuario, y en el servidor, porque no se puede fiar de lo que llega. Las dos validaciones tienen que decir lo mismo.</p>
 
-<p>En React, Vue o Angular, el esquema vive en el código del cliente: un esquema de Zod con React Hook Form, las reglas de VeeValidate o los <code>Validators</code> de Angular. El servidor escribe su propia validación, a veces en otro lenguaje, y mantener las dos iguales es trabajo de quien las escribe.</p>
-
-<p>En Fudic el formulario se declara <strong>una vez</strong>, en el <code>.fudapi</code>, y el navegador y el servidor lo construyen desde esa misma declaración. No hay un esquema del cliente y otro del servidor que puedan dejar de coincidir: hay uno.</p>
+<p>En React, Vue o Angular, el esquema vive en el cliente (Zod, VeeValidate, los <code>Validators</code> de Angular), y el servidor escribe el suyo. En Fudic se declara una vez, y los dos extremos lo construyen desde esa declaración.</p>
 
 <h2 id="declare">Declararlo</h2>
 
-<p>La CLI lo crea en <code>src/forms/</code>, con su test:</p>
-
-<ui-code>
-<pre><code>fudic g form signup</code></pre>
-</ui-code>
-
-<p>Cada campo lleva su nombre, su tipo, su valor inicial y, debajo, sus reglas con el texto de su error:</p>
+<p><code>fudic g form person</code> lo crea en <code>src/forms/</code>, con su test. Cada campo lleva su tipo, su valor inicial y, debajo, sus reglas con el texto de su error:</p>
 
 <ui-code .path="src/forms/person.fudapi">
 <pre><code>form personForm
   name  str = ""
     required             "Escribe el nombre."
   email  str = ""
-    required             "Escribe el email."
     pattern email        "Ese email no parece válido."
   age  u8
-    required             "Escribe la edad."
     min 18               "Tiene que tener al menos &#123;n&#125; años."
-  active  bool = true
-  notes  str = ""</code></pre>
+  active  bool = true</code></pre>
 </ui-code>
 
-<p>Las reglas se ejecutan en el orden en que se escriben, y la primera que falla para: un campo tiene un error, no una lista. Las reglas, sus textos y las que no son de ningún campo están en <a href="/docs/forms/validation">Validación y validez</a>.</p>
+<p>Las reglas se comprueban en orden, y la primera que falla para: un campo tiene un solo error (<a href="/docs/forms/validation">Validación y validez</a>).</p>
 
-<p>Una vista ve el formulario por su nombre cuando enlaza el <code>.fudapi</code> que lo declara, o el de una función que lo recibe:</p>
-
-<ui-code .path="src/components/app-form.fud">
-<pre><code>&lt;link rel="server" href="../forms/person.fudapi"&gt;</code></pre>
-</ui-code>
-
-<p>Desde un fichero TypeScript, se importa del módulo del formulario:</p>
-
-<ui-code>
-<pre><code>import &#123; personForm &#125; from "fudic:forms/person";</code></pre>
-</ui-code>
+<p>Una vista ve el formulario cuando enlaza su <code>.fudapi</code>, con <code>&lt;link rel="server" href="../forms/person.fudapi"&gt;</code>. Desde TypeScript se importa: <code>import &#123; personForm &#125; from "fudic:forms/person"</code>.</p>
 
 <h2 id="types">El tipo de cada campo</h2>
 
-<p>Los tipos son los del <code>.fudapi</code> (<a href="/docs/server/types">Tipos</a>), y en un formulario tienen dos efectos:</p>
+<p>Los tipos son los del <code>.fudapi</code> (<a href="/docs/server/types">Tipos</a>), y en un formulario hacen dos cosas:</p>
 
 <ul>
-  <li><strong>Validan.</strong> Un tipo es un rango: <code>u8</code> va de 0 a 255 y rechaza 300 sin escribir ninguna regla, y <code>uuid</code> rechaza un identificador mal formado. El texto de ese error se escribe con <code>range</code>, que puede citar los límites:</li>
+  <li><strong>Validan.</strong> Un <code>u8</code> va de 0 a 255, así que rechaza 300 sin escribir ninguna regla. El texto de ese error se escribe con <code>range "Entre &#123;min&#125; y &#123;max&#125;."</code>.</li>
+  <li><strong>Deciden cómo viaja.</strong> Un <code>u8</code> ocupa un byte al enviarse (<a href="/docs/forms/submitting#wire">Enviar al servidor</a>).</li>
 </ul>
 
-<ui-code>
-<pre><code>age  u8
-  range "Entre &#123;min&#125; y &#123;max&#125;."
-  min 18 "Tiene que ser mayor de edad."</code></pre>
-</ui-code>
-
-<ul>
-  <li><strong>Fijan cómo viaja.</strong> El formulario sube en binario, cada campo con su tipo: un <code>u8</code> ocupa un byte, y los nombres de los campos no viajan, porque los dos extremos los conocen por la declaración (<a href="/docs/forms/submitting#wire">Enviar al servidor</a>).</li>
-</ul>
-
-<p>Un campo sin <code>=</code> empieza vacío: <code>""</code> un texto, <code>null</code> un número o una fecha, <code>false</code> un <code>bool</code> y <code>[]</code> una lista. Puede quedarse vacío mientras no tenga <code>required</code>. Los ficheros (<code>file</code>, <code>file?</code>, <code>file[]</code>) tienen su página (<a href="/docs/forms/files">Ficheros</a>).</p>
+<p>Un campo sin <code>=</code> empieza vacío: <code>""</code>, <code>null</code>, <code>false</code> o <code>[]</code>, según su tipo. Los ficheros tienen su página (<a href="/docs/forms/files">Ficheros</a>).</p>
 
 <h2 id="groups">Grupos</h2>
 
-<p>Un grupo es un formulario dentro de otro. Agrupa campos que van juntos y puede tener sus propias reglas, como «las dos contraseñas coinciden»:</p>
+<p>Un grupo es un formulario dentro de otro, con sus propias reglas, como «las dos contraseñas coinciden». En la vista se enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>:</p>
 
 <ui-code .path="src/forms/user.fudapi">
 <pre><code>form userForm
-  name  str = ""
-    required  "Escribe tu nombre."
   acceso  group
-    clave  str = ""
-      required      "Elige una contraseña."
-      min-length 8  "Mínimo &#123;n&#125; caracteres."
+    clave    str = ""
     repetir  str = ""
-      required      "Repite la contraseña."
     summary
       require mismatch  clave == repetir  "Las contraseñas no coinciden."</code></pre>
 </ui-code>
 
-<p>En la vista, un grupo se enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>, que es el elemento estándar para agrupar campos y darles un nombre con su <code>&lt;legend&gt;</code>. Un grupo admite todo lo que admite un formulario, grupos incluidos.</p>
+<h2 id="read">Leerlo y escribirlo</h2>
 
-<h2 id="read">Leerlo</h2>
-
-<p>Un campo se lee llamándolo, como un <a href="/docs/reactivity">signal</a>. La lectura se sigue: un <code>effect</code>, un <code>computed</code> o una vista que lee un campo se vuelve a ejecutar cuando el campo cambia.</p>
+<p>Un campo se lee llamándolo y se escribe con <code>set</code>, como un <a href="/docs/reactivity">signal</a>:</p>
 
 <ui-code>
 <pre><code>personForm.name.set("Ada");
-personForm.name();          // "Ada"
-userForm.acceso.clave();    // ""  — a group is read the same way
-
-personForm.$value();        // &#123; name: "Ada", email: "", age: null, active: true, notes: "" &#125;</code></pre>
+personForm.name();       // "Ada"
+personForm.$value();     // &#123; name: "Ada", email: "", age: null, active: true &#125;</code></pre>
 </ui-code>
 
-<p>Lo que es del formulario entero empieza por <code>$</code>, para que no choque con el nombre de ningún campo: <code>$value()</code>, <code>$valid()</code>, <code>$reset()</code>. Lo que es de un campo no lo lleva: <code>name()</code>, <code>name.set()</code>, <code>name.errors()</code>.</p>
+<p>Lo que es del formulario entero empieza por <code>$</code>, para no chocar con ningún campo: <code>$value()</code>, <code>$valid()</code>, <code>$reset()</code>.</p>
 
-<h2 id="write"><code>$set</code> y <code>$patch</code></h2>
-
-<p>Para escribir el formulario entero hay dos operaciones, con nombres distintos a propósito:</p>
-
-<ui-code>
-<pre><code>personForm.$set(&#123; name: "Ada", email: "ada@@example.com", age: 36, active: true, notes: "" &#125;);
-personForm.$patch(&#123; notes: "Llamar el lunes" &#125;);</code></pre>
-</ui-code>
-
-<ul>
-  <li><strong><code>$set</code></strong> es total: necesita todos los campos, y uno que falte es un error.</li>
-  <li><strong><code>$patch</code></strong> es parcial: cambia los campos que recibe y no toca los demás.</li>
+<ul id="write">
+  <li><code>$set(&#123; … &#125;)</code> escribe todos los campos, y falla si falta uno.</li>
+  <li><code>$patch(&#123; … &#125;)</code> escribe solo los que recibe.</li>
+  <li><code>$reset()</code> vuelve a los valores iniciales y borra los errores.</li>
 </ul>
 
-<p>Por qué <code>$set</code> no rellena con vacíos lo que falta: piensa en un <code>PATCH</code> que trae tres campos de doce. Si la operación total aceptara un objeto incompleto, vaciaría en silencio los nueve que no venían. Con dos operaciones, quien escribe dice qué quiere, y el error sale en el momento, no semanas después en los datos.</p>
-
-<p><code>$reset()</code> devuelve el formulario a sus valores iniciales y borra sus errores, como tras dar de alta una persona y dejarlo listo para la siguiente.</p>
+<p>Son dos operaciones para que un objeto incompleto no vacíe en silencio los campos que faltan.</p>
 
 <h2 id="state">El estado de un campo</h2>
 
-<p>Además del valor, cada campo sabe cosas de sí mismo, y todas se leen llamándolas:</p>
+<p>Cada campo sabe cosas de sí mismo, y se leen llamándolas:</p>
 
-<table>
-  <thead>
-    <tr><th scope="col">Lectura</th><th scope="col">Qué dice</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>errors()</code></td><td>el error que se le muestra al usuario, con el código de la regla y sus argumentos, o <code>null</code></td></tr>
-    <tr><td><code>message()</code></td><td>el texto de ese error, o <code>""</code></td></tr>
-    <tr><td><code>touched()</code></td><td>si el usuario ya ha pasado por él</td></tr>
-    <tr><td><code>dirty()</code></td><td>si su valor ya no es el inicial</td></tr>
-    <tr><td><code>valid()</code></td><td>si su valor cumple las reglas, sin mostrar nada (<a href="/docs/forms/validation#validity">Validez</a>)</td></tr>
-    <tr><td><code>pending()</code></td><td>si espera la respuesta de una regla del servidor (<a href="/docs/forms/validation#remote">Validación y validez</a>)</td></tr>
-  </tbody>
-</table>
+<ul>
+  <li><code>message()</code>: el texto de su error, o <code>""</code>. <code>errors()</code> da el error con el código de la regla.</li>
+  <li><code>touched()</code>: si el usuario ya ha pasado por él.</li>
+  <li><code>dirty()</code>: si su valor ya no es el inicial.</li>
+  <li><code>valid()</code>: si cumple las reglas, sin mostrar nada (<a href="/docs/forms/validation#validity">Validez</a>).</li>
+  <li><code>pending()</code>: si espera a una regla del servidor (<a href="/docs/forms/validation#remote">Reglas remotas</a>).</li>
+</ul>
 
-<p>El formulario y los grupos tienen sus versiones con <code>$</code>: <code>$errors()</code>, con los errores de todos sus campos por su ruta, <code>$valid()</code> y <code>$pending()</code>.</p>
-
-<h2 id="copies">Una copia por petición</h2>
-
-<p>El navegador tiene un formulario por página. El servidor no puede tener uno solo: atiende a muchos usuarios a la vez, y dos peticiones que compartieran el mismo formulario se pisarían los valores. Por eso valida cada envío sobre <strong>una copia nueva</strong>, hecha desde la declaración para esa petición, y la tira al terminar (<a href="/docs/forms/submitting#server">Enviar al servidor</a>).</p>
-
-<ui-note>
-  <p>Un formulario no tiene DOM en ninguna de sus ramas: el mismo modelo se ejecuta en el navegador, en el render del servidor y en un test. Por eso el servidor puede pintar el formulario con sus valores y sus errores en el HTML, y el navegador hidratarlo sobre ese mismo marcado.</p>
-</ui-note>
+<p id="copies">Un formulario no tiene DOM, así que el mismo modelo funciona en el navegador, en el servidor y en un test. El servidor valida cada envío sobre una copia nueva, para que dos peticiones no se pisen (<a href="/docs/forms/submitting#server">En el servidor</a>).</p>
 
 <h2 id="test">Probarlo</h2>
 
-<p>Como no tiene DOM, se prueba sin navegador. <code>fudic g form</code> ya crea el test:</p>
+<p>Como no tiene DOM, se prueba sin navegador, con <code>fudic test</code>:</p>
 
-<ui-code .path="src/forms/signup.test.ts">
+<ui-code .path="src/forms/person.test.ts">
 <pre><code>import &#123; expect, test &#125; from "vitest";
-import &#123; signupForm &#125; from "fudic:forms/signup";
+import &#123; personForm &#125; from "fudic:forms/person";
 
 test("asks for the name", async () =&gt; &#123;
-  expect(await signupForm.$validate()).toBe(false);
-  signupForm.name.set("Ada");
-  expect(await signupForm.$validate()).toBe(true);
+  expect(await personForm.$validate()).toBe(false);
+  personForm.name.set("Ada");
+  expect(await personForm.$validate()).toBe(true);
 &#125;);</code></pre>
 </ui-code>
-
-<p>Se ejecuta con <code>fudic test</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms" target="_blank" rel="noopener">Formularios web</a>: la guía de los formularios del HTML.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>, con su <code>&lt;legend&gt;</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/PATCH" target="_blank" rel="noopener"><code>PATCH</code></a>: el método que cambia parte de un recurso.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>: agrupar campos con un nombre.</li>
 </ul>

@@ -5,7 +5,7 @@
 
 <head>
   <title>Funciones de servidor · Fudic</title>
-  <meta name="description" content="Funciones de servidor en Fudic: se declaran en el .fudapi, se implementan con handle y se llaman desde la página por su nombre, con errores tipados, invalidación, enlaces y cancelación.">
+  <meta name="description" content="Funciones de servidor en Fudic: se declaran en el .fudapi, se implementan con handle y la página las llama por su nombre. Errores, invalidación, enlaces y cómo viajan.">
   <link rel="canonical" href="https://fudic.dev/docs/server/functions">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Funciones de servidor · Fudic">
@@ -23,17 +23,13 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#declare">Declararla</a></li>
-        <li><a href="#call">Llamarla</a></li>
-        <li><a href="#arguments">Dónde viaja cada argumento</a></li>
+        <li><a href="#declare">Declarar, implementar y llamar</a></li>
         <li><a href="#handler">El handler y su ctx</a></li>
         <li><a href="#errors">Errores</a></li>
-        <li><a href="#fails-catches">fails y catches</a></li>
-        <li><a href="#redirect">Redirigir</a></li>
-        <li><a href="#invalidates">invalidates</a></li>
+        <li><a href="#invalidates">Páginas que se quedan viejas</a></li>
         <li><a href="#url">Una función como enlace</a></li>
-        <li><a href="#cancel">Cancelar</a></li>
-        <li><a href="#wire">Cómo viaja</a></li>
+        <li><a href="#wire">Cómo viaja una llamada</a></li>
+        <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -42,155 +38,78 @@
 
 <h1>Funciones de servidor</h1>
 
-<p>Una función de servidor es código que se ejecuta en el servidor y que la página llama por su nombre, como si fuera suya. Fudic pone en medio la petición HTTP, la comprobación de los tipos y el formato en que viajan los datos.</p>
+<p>Una función de servidor es código que se ejecuta en el servidor y que la página llama por su nombre, como si fuera suya. Fudic se encarga de la petición HTTP, de comprobar los tipos y de cómo viajan los datos.</p>
 
-<h2 id="declare">Declararla</h2>
+<h2 id="declare">Declarar, implementar y llamar</h2>
 
-<p>Se declara en el <code>.fudapi</code> con su verbo HTTP, sus argumentos y lo que devuelve:</p>
+<p>Se declara en el <code>.fudapi</code> con su verbo HTTP, sus argumentos y lo que devuelve tras <code>-&gt;</code>:</p>
 
 <ui-code .path="src/routes/usuarios.fudapi">
-<pre><code>put save
-  use auth
-  id      i32
-  active  bool
-
-get search
+<pre><code>get search
   q  str
-    max-length 80
   -&gt; Person[]</code></pre>
 </ui-code>
 
-<p>El verbo dice lo que hace, como en HTTP: <code>get</code> lee, <code>post</code> crea, <code>put</code> y <code>patch</code> cambian y <code>delete</code> borra. Fudic lo usa para decidir dónde viajan los argumentos (<a href="#arguments">abajo</a>) y si una llamada que sale bien deja vieja la página (<a href="#invalidates">abajo</a>).</p>
+<p>Se implementa en <code>src/server</code> con <code>handle</code>:</p>
 
-<p>Debajo, en cualquier orden, van:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Línea</th><th scope="col">Qué hace</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>id i32</code></td><td>un argumento, con su tipo y, debajo, sus reglas (<a href="/docs/server/types#arg-rules">Tipos</a>)</td></tr>
-    <tr><td><code>-&gt; Person[]</code></td><td>lo que devuelve. Sin <code>-&gt;</code>, nada: responde <code>204</code></td></tr>
-    <tr><td><code>use auth</code>, <code>skip csrf</code></td><td>los middlewares de esta función (<a href="/docs/server/middlewares">Middlewares y cadena</a>)</td></tr>
-    <tr><td><code>query page u16</code></td><td>un argumento que viaja en la URL (<a href="#arguments">abajo</a>)</td></tr>
-    <tr><td><code>form personForm</code></td><td>recibe un formulario en vez de argumentos (<a href="/docs/forms/submitting">Enviar al servidor</a>)</td></tr>
-    <tr><td><code>catches 409</code>, <code>fails ana 409 "…"</code></td><td>los errores que se quedan en la página (<a href="#fails-catches">abajo</a>)</td></tr>
-    <tr><td><code>invalidates /usuarios</code></td><td>las páginas cuyos datos cambia (<a href="#invalidates">abajo</a>)</td></tr>
-    <tr><td><code>compress gzip 200</code></td><td>comprime lo que sube (<a href="/docs/server/middlewares#compress">Middlewares y cadena</a>)</td></tr>
-  </tbody>
-</table>
-
-<h2 id="call">Llamarla</h2>
-
-<p>En una ruta o un componente que enlaza el contrato, la función está en el <code>@@code</code> sin importarla, y se llama con un objeto con sus argumentos:</p>
-
-<ui-code>
-<pre><code>const people = await search(&#123; q: "mar" &#125;);   // Person[]
-await save(&#123; id: 3, active: false &#125;);         // undefined: it returns nothing</code></pre>
+<ui-code .path="src/server/usuarios.ts">
+<pre><code>search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 </ui-code>
 
-<p>Desde otro fichero TypeScript de <code>src/browser</code>, se importa del módulo del contrato: <code>import &#123; search &#125; from "fudic:routes/usuarios"</code>.</p>
-
-<p>Una función sin argumentos se llama sin nada (<code>await logout()</code>), y una con <code>-&gt; file</code> devuelve un <code>File</code>. Un segundo argumento, opcional, lleva las opciones de esa llamada:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>signal</code></td><td>un <code>AbortSignal</code> para cancelarla (<a href="#cancel">abajo</a>)</td></tr>
-    <tr><td><code>params</code></td><td>los parámetros de ruta; por defecto, los de la página en la que está</td></tr>
-    <tr><td><code>onProgress</code></td><td>recibe los bytes que lleva subidos y bajados, y <code>null</code> al terminar</td></tr>
-  </tbody>
-</table>
-
-<p>Llamarla con <code>await</code> es lo más directo, pero casi nunca lo más cómodo: <a href="/docs/server/task"><code>task</code></a> envuelve la función con su estado (si está en marcha, su último valor, su error) como signals que la vista pinta.</p>
-
-<h2 id="arguments">Dónde viaja cada argumento</h2>
+<p>Y la página la llama sin importarla, con un objeto con sus argumentos:</p>
 
 <ui-code>
-<pre><code>patch rename /:id
-  query notify  bool
-  id    i32
-  name  str</code></pre>
+<pre><code>const people = await search(&#123; q: "mar" &#125;);   // Person[]</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>Un parámetro de ruta</strong> (<code>/:id</code> tras el nombre) viaja en la URL, y en el handler está en <code>ctx.params</code>. Necesita un argumento con su nombre (<code>FUD1099</code>), de un tipo simple y nunca opcional (<code>FUD1101</code>).</li>
-  <li><strong>Un argumento <code>query</code></strong> viaja en la query string, y está en <code>ctx.query</code>.</li>
-  <li><strong>El resto</strong> viaja en el cuerpo, y está en <code>ctx.args</code>. En un <code>get</code>, que no tiene cuerpo, viajan todos en la query string.</li>
+  <li><strong>El verbo dice lo que hace</strong>, como en HTTP: <code>get</code> lee, <code>post</code> crea, <code>put</code> y <code>patch</code> cambian, <code>delete</code> borra.</li>
+  <li><strong>Sin <code>-&gt;</code></strong>, no devuelve nada.</li>
+  <li><strong>Con <code>use auth</code></strong> debajo, pasa por ese middleware (<a href="/docs/server/middlewares">Middlewares y cadena</a>).</li>
+  <li><strong>Con <code>form</code></strong> debajo, recibe un formulario (<a href="/docs/forms/submitting">Enviar al servidor</a>).</li>
 </ul>
 
-<p>Los parámetros de la página (el <code>slug</code> de <code>/blog/[slug]</code>) también están en <code>ctx.params</code>, sin declararlos: una función de una ruta los recibe de la URL en la que está el navegador. Un argumento que se llame como uno de ellos es un error (<code>FUD1100</code>).</p>
+<p>Llamarla con <code>await</code> es lo más directo. Para pintar su estado (si está en marcha, su valor, su error), está <a href="/docs/server/task"><code>task</code></a>.</p>
 
 <h2 id="handler">El handler y su <code>ctx</code></h2>
 
-<p>El handler recibe un único argumento, <code>ctx</code>, tipado por la declaración, y devuelve lo que dice <code>-&gt;</code>, directamente o como promesa:</p>
+<p>El handler recibe un argumento, <code>ctx</code>, tipado por la declaración:</p>
 
-<ui-code .path="src/server/usuarios.ts">
-<pre><code>search.handle((ctx) =&gt; inject(Users).find(ctx.args.q));</code></pre>
-</ui-code>
+<ul>
+  <li><code>ctx.args</code>: los argumentos.</li>
+  <li><code>ctx.params</code>: los parámetros de la URL, como el <code>slug</code> de <code>/blog/[slug]</code>.</li>
+  <li><code>ctx.form</code>: el formulario, ya validado, si la función lo recibe.</li>
+  <li><code>ctx.cookies</code>, <code>ctx.headers</code>: los de la petición (<a href="/docs/server/session">Sesión y cookies</a>).</li>
+  <li><code>ctx.response</code>: el status y las cabeceras de la respuesta.</li>
+  <li>Lo que añada un middleware, como <code>ctx.user</code> tras <code>use auth</code>.</li>
+</ul>
 
-<table>
-  <thead>
-    <tr><th scope="col">Campo</th><th scope="col">Qué es</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>args</code></td><td>los argumentos del cuerpo (en un <code>get</code>, los de la query string)</td></tr>
-    <tr><td><code>params</code></td><td>los de la ruta: los de la página y los de la función</td></tr>
-    <tr><td><code>query</code></td><td>los argumentos <code>query</code></td></tr>
-    <tr><td><code>form</code></td><td>en una función con <code>form</code>, el formulario, ya validado en el servidor: <code>ctx.form.$value()</code></td></tr>
-    <tr><td><code>cookies</code></td><td>las cookies de la petición, en un <code>ReadonlyMap</code> (<a href="/docs/server/session">Sesión y cookies</a>)</td></tr>
-    <tr><td><code>headers</code>, <code>url</code>, <code>method</code></td><td>los de la petición</td></tr>
-    <tr><td><code>signal</code></td><td>se aborta si el navegador se va (<a href="#cancel">abajo</a>)</td></tr>
-    <tr><td><code>response</code></td><td>el <code>status</code> y las <code>headers</code> de la respuesta, para cambiarlos</td></tr>
-    <tr><td>lo que añada un middleware</td><td>por ejemplo <code>ctx.user</code>, tras <code>use auth</code></td></tr>
-  </tbody>
-</table>
-
-<p>Los servicios se piden con <code>inject</code> de <code>@@fudic/di</code>, sin pasar <code>ctx</code>: cada petición tiene su propio contenedor (capítulo 10).</p>
+<p>Los servicios se piden con <code>inject</code>, de <code>@@fudic/di</code>. Cada petición tiene los suyos.</p>
 
 <h2 id="errors">Errores</h2>
 
-<p>Un handler falla lanzando un error de <code>@@fudic/http</code>, con su status:</p>
+<p>Un handler falla lanzando un error de <code>@@fudic/http</code>: <code>badRequest</code>, <code>unauthorized</code>, <code>forbidden</code>, <code>notFound</code> o <code>conflict</code>.</p>
 
 <ui-code>
 <pre><code>import &#123; notFound &#125; from "@@fudic/http";
 
 find.handle(async (ctx) =&gt; &#123;
   const post = await posts.find(ctx.args.slug);
-  if (post === undefined) throw notFound("no such post");
+  if (post === undefined) throw notFound();
   return post;
 &#125;);</code></pre>
 </ui-code>
 
-<table>
-  <thead>
-    <tr><th scope="col">Función</th><th scope="col">Status</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>badRequest(detail?)</code></td><td>400</td></tr>
-    <tr><td><code>unauthorized(detail?)</code></td><td>401</td></tr>
-    <tr><td><code>forbidden(detail?)</code></td><td>403</td></tr>
-    <tr><td><code>notFound(detail?)</code></td><td>404</td></tr>
-    <tr><td><code>conflict(detail?)</code></td><td>409</td></tr>
-    <tr><td><code>redirect(location, status?)</code></td><td>303 por defecto (<a href="#redirect">abajo</a>)</td></tr>
-  </tbody>
-</table>
+<p>En el navegador, el <code>await</code> lanza el mismo error, con su <code>status</code>. Cualquier otro error del handler es un <code>500</code>, y su mensaje solo llega al navegador en desarrollo.</p>
 
-<p>El error viaja como un <em>problem</em> (RFC 9457) y en el navegador se lanza <strong>la misma clase</strong>: un <code>HttpError</code> con su <code>status</code>, y su <code>message</code> es el <code>detail</code>. Cualquier otro error que lance el handler es un <code>500</code>, y su mensaje solo llega al navegador en desarrollo: en producción no se filtran los detalles del servidor.</p>
+<p>Un error que nadie espera lleva a la página de error (<a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>).</p>
 
-<p>Fudic responde por su cuenta en los casos que no llegan al handler: <code>400</code> si faltan argumentos o no cumplen su tipo, <code>422</code> si un formulario no valida y <code>404</code> si la función no está implementada.</p>
+<h3 id="fails-catches">Errores que se quedan en la página</h3>
 
-<p>Lo que pasa con un error en el navegador lo decide la cadena: con <code>error-pages</code>, el que nadie espera lleva a la página de error (<a href="/docs/server/middlewares#error-pages">Middlewares y cadena</a>).</p>
-
-<h2 id="fails-catches"><code>fails</code> y <code>catches</code></h2>
-
-<p>Algunos errores son de la página, no de la página de error: el usuario puede hacer algo con ellos. <code>catches</code> dice qué status se quedan en quien llamó, y <code>fails</code> les da un código y un texto:</p>
+<p>Algunos errores son para el usuario: puede corregir algo. <code>catches</code> dice qué status se quedan en la página, y <code>fails</code> les da un código y un texto:</p>
 
 <ui-code .path="src/routes/usuarios.fudapi">
 <pre><code>put save
-  use auth
   catches 409
   fails ana 409 "A Ana no se la puede desactivar."
   id      i32
@@ -198,88 +117,67 @@ find.handle(async (ctx) =&gt; &#123;
 </ui-code>
 
 <ui-code .path="src/server/usuarios.ts">
-<pre><code>import &#123; save, SaveFails &#125; from "fudic:routes/usuarios";
-
-save.handle((ctx) =&gt; &#123;
-  if (ctx.args.id === 1 &amp;&amp; !ctx.args.active) throw SaveFails.ana();
-  inject(Users).setActive(ctx.args.id, ctx.args.active);
+<pre><code>save.handle((ctx) =&gt; &#123;
+  if (ctx.args.id === 1) throw SaveFails.ana();
+  …
 &#125;);</code></pre>
 </ui-code>
 
-<p>Con <code>catches 409</code>, el error llega a la página: el <code>await</code> lo lanza, o <code>task</code> lo deja en su <code>message()</code>. Sin él, <code>error-pages</code> se lo llevaría a la página de error.</p>
+<p>El servidor solo manda el status y el código. El texto lo pone el navegador desde el <code>.fudapi</code>, en el idioma de la página, así que el servidor no traduce nada.</p>
 
-<p>El servidor solo manda el status y el código, en la cabecera <code>fud-code</code>. El texto lo pone el navegador, desde el <code>.fudapi</code>, en el idioma de la página: un backend en otro lenguaje no tiene que traducir nada. Los códigos van en kebab-case y en TypeScript son camelCase: <code>fails csrf-token</code> es <code>CsrfFails.csrfToken()</code>.</p>
+<h3 id="redirect">Redirigir</h3>
 
-<h2 id="redirect">Redirigir</h2>
+<p><code>throw redirect("/cuenta")</code>, de <code>@@fudic/http</code>, hace que la página navegue a ese destino. Las cookies que el handler puso antes viajan con la redirección.</p>
 
-<p><code>redirect</code> se lanza como un error, y la página navega a su destino:</p>
+<h2 id="invalidates">Páginas que se quedan viejas</h2>
 
-<ui-code .path="src/server/entrar.ts">
-<pre><code>import &#123; redirect, setCookie &#125; from "@@fudic/http";
-
-entrar.handle((ctx) =&gt; &#123;
-  setCookie(ctx, SESSION_COOKIE, ctx.form.$value().user);
-  throw redirect("/cuenta");
-&#125;);</code></pre>
-</ui-code>
-
-<p>Las cabeceras que el handler puso antes de lanzar salen igual: la cookie viaja con la redirección. Quien navega es <code>error-pages</code>, en el navegador, así que una app que redirige desde sus funciones lo tiene en su cadena.</p>
-
-<h2 id="invalidates"><code>invalidates</code></h2>
-
-<p>Una función que cambia datos dice qué páginas se quedan viejas:</p>
+<p>Una función que cambia datos puede decir qué páginas se quedan viejas con <code>invalidates</code>:</p>
 
 <ui-code>
-<pre><code>post login
+<pre><code>post create
   invalidates /usuarios
-  user  str</code></pre>
+  name  str</code></pre>
 </ui-code>
 
-<p>Cuando la llamada sale bien, la página que está en una de esas rutas pide sus datos otra vez y se repinta con ellos, sin recargar. La llamada termina cuando la página ya está al día. Con Service Worker, además, se borra lo que tenía guardado de esas rutas (<a href="/docs/routing/rendering#sw">Los modos</a>). Las rutas pueden llevar parámetros: <code>invalidates /blog/:slug</code> cubre todos los artículos.</p>
-
-<p>Una función que no declara <code>invalidates</code> no repinta nada: si la página ya sabe qué ha cambiado, lo pone al día ella misma en sus signals, que es lo más rápido. Es lo que hace <code>/usuarios</code> al activar o borrar una persona.</p>
+<p>Cuando la llamada sale bien, si la página está en <code>/usuarios</code>, pide sus datos otra vez y se repinta, sin recargar. Sin <code>invalidates</code> no se repinta nada: si la página ya sabe qué ha cambiado, lo pone al día ella misma en sus signals, que es más rápido.</p>
 
 <h2 id="url">Una función como enlace</h2>
 
-<p>Un <code>get</code> tiene además <code>url()</code>: la URL que lo llama con esos argumentos, para un <code>href</code> o un <code>src</code>. El navegador la pide por su cuenta, sin JavaScript:</p>
+<p>Un <code>get</code> tiene <code>url()</code>: la URL que lo llama con esos argumentos. Sirve para un <code>href</code> o un <code>src</code>, y el navegador la pide sin JavaScript:</p>
 
 <ui-code>
-<pre><code>get avatar
-  id  i32
-  -&gt; file?
-
-get csv
-  -&gt; file</code></pre>
-</ui-code>
-
-<ui-code>
-<pre><code>&lt;img src=@@avatar.url(&#123; id: p.id &#125;) alt=@@(`Foto de $&#123;p.name&#125;`)&gt;
+<pre><code>&lt;img src=@@avatar.url(&#123; id: p.id &#125;) alt=@@p.name&gt;
 &lt;a href=@@csv.url() download&gt;Exportar CSV&lt;/a&gt;</code></pre>
 </ui-code>
 
-<p>Funciona también en el render del servidor. Un <code>-&gt; file?</code> que devuelve <code>undefined</code> responde <code>204</code>.</p>
+<h2 id="wire">Cómo viaja una llamada</h2>
 
-<h2 id="cancel">Cancelar</h2>
+<p>Por defecto, los argumentos y la respuesta viajan en <strong><code>fud-bin</code></strong>, el formato binario de Fudic (<code>application/fud+bin</code>). Es de la misma familia que <a href="https://protobuf.dev/" target="_blank" rel="noopener">Protocol Buffers</a> o <a href="https://msgpack.org/" target="_blank" rel="noopener">MessagePack</a>, con una diferencia: su esquema es el propio <code>.fudapi</code>, así que no hay nada más que escribir ni que mantener.</p>
 
-<p>Una llamada se cancela con un <code>AbortSignal</code> estándar, en sus opciones. En el servidor, <code>ctx.signal</code> se aborta si el navegador corta la conexión, para que el handler deje de trabajar:</p>
+<p>Suena raro, pero la idea es sencilla: el navegador y el servidor ya conocen el contrato, así que no hace falta mandar lo que los dos saben.</p>
 
-<ui-code>
-<pre><code>const controller = new AbortController();
-const people = search(&#123; q &#125;, &#123; signal: controller.signal &#125;);
-controller.abort();</code></pre>
-</ui-code>
-
-<p>Fudic no pone ningún timeout. Si quieres uno, es <code>AbortSignal.timeout(5000)</code>. <code>task</code> cancela solo la búsqueda anterior cuando llega una nueva.</p>
-
-<h2 id="wire">Cómo viaja</h2>
+<p>Compáralo con JSON. Para <code>&#123; id: 3, active: true &#125;</code>, JSON manda los nombres de los campos, las comillas y los números como texto. El binario de Fudic manda solo los valores, en el orden del contrato:</p>
 
 <ul>
-  <li><strong>En binario, por defecto.</strong> Argumentos, respuesta y errores van en un formato compacto que Fudic describe con el propio contrato. Cada función lleva una firma de su forma (la cabecera <code>fud-sig</code>): si la página es de un build anterior al del servidor, la llamada falla con un <code>412</code> en vez de mandar datos con otra forma.</li>
-  <li><strong>En JSON, con <code>use json</code></strong>, para un cliente que no es una página de Fudic. La función responde en <code>/_fudic/fn/&lt;id&gt;/&lt;nombre&gt;</code>, con los argumentos en la query string si es un <code>get</code> o en el cuerpo si no:</li>
+  <li>Los nombres de los campos no viajan: los dos lados saben que primero va <code>id</code> y después <code>active</code>.</li>
+  <li>Un número ocupa su ancho declarado: un <code>u8</code>, un byte, y un <code>i32</code>, cuatro.</li>
+  <li>Los <code>bool</code> van juntos como bits, ocho por byte, y los campos opcionales vacíos se marcan igual.</li>
+  <li>Un texto es su longitud y sus bytes en UTF-8. Las longitudes van en varint, el truco de Protocol Buffers: un número pequeño ocupa un byte. Una fecha, los milisegundos desde 1970 en seis bytes.</li>
+  <li>Una lista es cuántos elementos tiene y después los elementos. Un <code>enum</code> es la posición de su valor.</li>
 </ul>
 
+<p>Pesa menos y se lee más rápido, y el servidor no se fía de lo que llega: unos bytes que no encajan con el contrato son un <code>400</code>.</p>
+
+<ul>
+  <li><strong>Si la página es de una versión anterior</strong> a la del servidor, cada llamada lleva una firma de la forma de su contrato (la cabecera <code>fud-sig</code>), y la llamada falla con un <code>412</code> en vez de leer datos con otra forma.</li>
+  <li><strong>Los datos de una página</strong> viajan en el mismo formato, en trozos (<code>application/fud+frames</code>): primero lo que devuelve <code>load</code>, y después cada campo <code>later</code> según llega.</li>
+  <li><strong>El formato está documentado</strong>, para que otro backend pueda cumplirlo.</li>
+</ul>
+
+<p>Para un cliente que no es una página de Fudic, por ejemplo <code>curl</code> u otra app, la función se declara con <code>use json</code> y viaja en JSON normal:</p>
+
 <ui-code>
-<pre><code>get searchJson
+<pre><code>get search-json
   use json
   q  str
   -&gt; Person[]</code></pre>
@@ -289,12 +187,18 @@ controller.abort();</code></pre>
 <pre><code>curl "https://example.com/_fudic/fn/routes/usuarios/searchJson?q=mar"</code></pre>
 </ui-code>
 
-<p>Con <code>csrf</code> en la cadena, una llamada que no es <code>get</code> también necesita su cabecera (<a href="/docs/server/middlewares#csrf">Middlewares y cadena</a>).</p>
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li id="arguments">En un <code>get</code>, los argumentos viajan en la URL. En los demás, en el cuerpo. <code>query nombre tipo</code> manda uno en la URL, y <code>patch rename /:id</code> lo pone en la ruta.</li>
+  <li id="cancel">Una llamada se cancela con un <code>AbortSignal</code> estándar: <code>search(&#123; q &#125;, &#123; signal &#125;)</code>. En el servidor, <code>ctx.signal</code> se aborta si el navegador se va. Fudic no pone timeouts.</li>
+  <li>Una función declarada que nadie implementa responde <code>404</code>.</li>
+  <li>Con <code>csrf</code> en la cadena, una llamada que no es <code>get</code> necesita su cabecera (<a href="/docs/server/middlewares#csrf">CSRF</a>).</li>
+</ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods" target="_blank" rel="noopener">Métodos HTTP</a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status" target="_blank" rel="noopener">códigos de status</a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal" target="_blank" rel="noopener"><code>AbortSignal</code></a>: cancelar una llamada, y <code>AbortSignal.timeout()</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/download" target="_blank" rel="noopener"><code>download</code></a>: el enlace que descarga lo que devuelve una función.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal" target="_blank" rel="noopener"><code>AbortSignal</code></a>: cancelar una llamada.</li>
 </ul>

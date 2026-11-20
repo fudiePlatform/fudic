@@ -5,11 +5,11 @@
 
 <head>
   <title>Ficheros · Fudic</title>
-  <meta name="description" content="Campos file, file? y file[] en un formulario de Fudic: sus reglas, cómo suben en multipart y en streaming, los límites del servidor, el progreso de la subida y cómo se cancela.">
+  <meta name="description" content="Campos de fichero en un formulario de Fudic: sus reglas, cómo suben, los límites del servidor, el progreso de la subida y cómo se cancela.">
   <link rel="canonical" href="https://fudic.dev/docs/forms/files">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Ficheros · Fudic">
-  <meta property="og:description" content="Subir ficheros con un formulario de Fudic: reglas, streaming, límites, progreso y cancelación.">
+  <meta property="og:description" content="Subir ficheros con un formulario de Fudic: reglas, límites, progreso y cancelación.">
   <meta property="og:url" content="https://fudic.dev/docs/forms/files">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -23,14 +23,11 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#fields">Tres campos</a></li>
-        <li><a href="#rules">Sus reglas</a></li>
+        <li><a href="#fields">Un campo de fichero</a></li>
         <li><a href="#bind">En la vista</a></li>
         <li><a href="#upload">Cómo suben</a></li>
         <li><a href="#limits">Los límites del servidor</a></li>
-        <li><a href="#handler">En el handler</a></li>
         <li><a href="#progress">Progreso y cancelación</a></li>
-        <li><a href="#curl">Desde otro cliente</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -39,96 +36,49 @@
 
 <h1>Ficheros</h1>
 
-<p>Un fichero es un campo más del formulario, con su tipo y sus reglas. Lo que cambia es el viaje: el formulario sube como <code>multipart/form-data</code>, el servidor lo lee en streaming, sin cargarlo entero en memoria, y la vista puede pintar cuánto lleva y cancelarlo.</p>
+<p>Un fichero es un campo más del formulario, con su tipo y sus reglas. Lo que cambia es el viaje: sube sin cargarse entero en memoria, y la vista puede enseñar cuánto lleva y cancelarlo.</p>
 
-<h2 id="fields">Tres campos</h2>
+<h2 id="fields">Un campo de fichero</h2>
 
-<table>
-  <thead>
-    <tr><th scope="col">Tipo</th><th scope="col">Guarda</th><th scope="col">Empieza en</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>file</code></td><td>un <a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a></td><td><code>null</code>, hasta que se elige uno; con <code>required</code>, una vez validado es un <code>File</code></td></tr>
-    <tr><td><code>file?</code></td><td>un <code>File</code>, opcional</td><td><code>null</code></td></tr>
-    <tr><td><code>file[]</code></td><td>una lista de <code>File</code></td><td><code>[]</code></td></tr>
-  </tbody>
-</table>
+<p>Hay tres tipos: <code>file</code> (uno), <code>file?</code> (uno, opcional) y <code>file[]</code> (una lista). Sus reglas:</p>
 
 <ui-code .path="src/forms/person.fudapi">
 <pre><code>form personForm
-  …
   avatar  file?
     accept "image/png, image/jpeg"  "Tiene que ser PNG o JPEG."
     max-size 2mb                     "Como mucho &#123;n&#125;."</code></pre>
 </ui-code>
 
-<ui-code .path="src/components/app-adjuntos.fudapi">
-<pre><code>form adjuntosForm
-  catches 400 413 422
-  docs  file[]
-    required        "Elige al menos un fichero."
-    max-length 3    "Como mucho &#123;n&#125; ficheros."
-    max-size 300mb  "Cada uno, como mucho &#123;n&#125;."</code></pre>
-</ui-code>
+<ul>
+  <li id="rules"><code>accept</code> comprueba el tipo, con la sintaxis del atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a> de HTML.</li>
+  <li><code>max-size</code> limita el tamaño de cada fichero.</li>
+  <li>En una lista, <code>min-length</code> y <code>max-length</code> limitan cuántos.</li>
+</ul>
 
-<h2 id="rules">Sus reglas</h2>
-
-<table>
-  <thead>
-    <tr><th scope="col">Regla</th><th scope="col">Comprueba</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>accept "…"</code></td><td>el tipo del fichero, con la sintaxis del atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>: tipos MIME, comodines como <code>image/*</code> y extensiones como <code>.pdf</code>. Se mira el tipo y la extensión</td></tr>
-    <tr><td><code>max-size</code></td><td>el tamaño de cada fichero: <code>2mb</code>, <code>500kb</code>. En una lista, el de cada uno</td></tr>
-    <tr><td><code>min-length</code>, <code>max-length</code></td><td>en una lista, cuántos ficheros</td></tr>
-    <tr><td><code>required</code></td><td>que hay un fichero; en una lista, que no está vacía</td></tr>
-  </tbody>
-</table>
-
-<p>Se ejecutan en los dos lados. El navegador avisa al elegir: con <code>max-length 3</code>, elegir cuatro dice «Como mucho 3 ficheros» sin subir un byte. El servidor las vuelve a comprobar <strong>mientras lee</strong>, así que un fichero de 3 MB contra un <code>max-size 2mb</code> se corta en el byte que pasa del límite, sin esperar al final.</p>
+<p>El navegador las comprueba al elegir, sin subir nada. El servidor las vuelve a comprobar mientras lee, y corta en el byte que pasa del límite.</p>
 
 <h2 id="bind">En la vista</h2>
 
 <ui-code .path="src/components/app-adjuntos.fud">
-<pre><code>&lt;form control=@@adjuntosForm form:=@@adjuntar @@fudic:result=@@recibidos&gt;
+<pre><code>&lt;form control=@@adjuntosForm form:=@@adjuntar&gt;
   &lt;label for="docs"&gt;Documentos&lt;/label&gt;
   &lt;input id="docs" type="file" multiple control=@@adjuntosForm.docs&gt;
-  &lt;small class="error" error=@@adjuntosForm.docs&gt;&lt;/small&gt;
+  &lt;small error=@@adjuntosForm.docs&gt;&lt;/small&gt;
   &lt;button type="submit"&gt;Adjuntar&lt;/button&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>El compilador escribe el <code>accept</code></strong> del <code>&lt;input&gt;</code> con el de la regla, salvo que lo escribas tú. El diálogo del sistema ya solo enseña los ficheros que valen.</li>
-  <li><strong>Elegir es todo el gesto.</strong> Al elegir, el campo cuenta como visitado y sus reglas hablan en ese momento, sin esperar a salir del campo.</li>
-  <li><strong>Desde el código, también.</strong> <code>adjuntosForm.docs.set([file])</code>, por ejemplo desde una zona donde soltar ficheros, mete los ficheros en el <code>&lt;input&gt;</code> con un <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer" target="_blank" rel="noopener"><code>DataTransfer</code></a>, y <code>$reset()</code> lo vacía.</li>
-</ul>
+<p>El compilador copia el <code>accept</code> de la regla en el <code>&lt;input&gt;</code>, así que el diálogo del sistema solo enseña los ficheros que valen.</p>
 
 <h2 id="upload">Cómo suben</h2>
 
-<p>Un formulario que puede llevar ficheros sube siempre como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission" target="_blank" rel="noopener"><code>multipart/form-data</code></a>, lleve ficheros esa vez o no. El cuerpo tiene:</p>
+<p>Un formulario con ficheros sube como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission" target="_blank" rel="noopener"><code>multipart/form-data</code></a>: una parte con el resto de los campos, en el formato de la función, y una parte por fichero.</p>
 
-<ol>
-  <li>una parte <code>$args</code>, primero, con el resto de los campos en el formato de la función (binario, o JSON con <code>use json</code>);</li>
-  <li>una parte por fichero, con la ruta de su campo como nombre: <code>avatar</code>, o <code>docs.0</code>, <code>docs.1</code>… en una lista.</li>
-</ol>
-
-<p>El navegador lee cada fichero del disco a medida que lo envía: ninguno está entero en memoria. Esta subida nunca se comprime con <code>compress</code>, porque una imagen o un PDF ya van comprimidos y comprimirlos otra vez solo gasta tiempo.</p>
-
-<p>En el servidor, el cuerpo se lee <strong>en streaming</strong>, parte a parte. No usa <code>request.formData()</code>, que en Node junta el cuerpo entero en memoria antes de entregar un solo byte: un servidor que tiene que cortar en un límite, o mandar un fichero al disco, necesita los bytes según llegan. En Node, cada fichero se escribe en un fichero temporal mientras llega, y se borra cuando termina la respuesta, sea cual sea.</p>
+<p>Ni el navegador ni el servidor cargan un fichero entero en memoria: lo leen a medida que pasa. En el handler, cada fichero es un <code>File</code> estándar, ya comprobado, que se puede guardar con su <code>stream()</code>.</p>
 
 <h2 id="limits">Los límites del servidor</h2>
 
-<table>
-  <thead>
-    <tr><th scope="col">Límite</th><th scope="col">Por defecto</th><th scope="col">En <code>serve.uploads</code></th></tr>
-  </thead>
-  <tbody>
-    <tr><td>tamaño de cada fichero</td><td>10 MB, salvo que el campo diga su <code>max-size</code></td><td><code>maxFileSize</code></td></tr>
-    <tr><td>ficheros por llamada</td><td>20</td><td><code>maxFiles</code></td></tr>
-    <tr><td>tamaño de la parte <code>$args</code></td><td>1 MB</td><td><code>maxArgs</code></td></tr>
-  </tbody>
-</table>
+<p>Por defecto, el servidor acepta ficheros de hasta 10 MB y hasta 20 por llamada. Se cambia en <code>fudic.json</code>:</p>
 
 <ui-code .path="fudic.json">
 <pre><code>&#123;
@@ -138,30 +88,11 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>El byte que pasa un límite para la lectura y responde <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413" target="_blank" rel="noopener"><code>413</code></a>, nombrando el límite y el campo. Lo que viene detrás no se lee. Con <code>413</code> en su <code>catches</code>, como <code>adjuntosForm</code>, el formulario lo pinta en vez de llevar a la página de error.</p>
-
-<h2 id="handler">En el handler</h2>
-
-<p>En <code>ctx.form</code>, un fichero es un <code>File</code> estándar, ya comprobado:</p>
-
-<ui-code .path="src/server/app-adjuntos.ts">
-<pre><code>import &#123; adjuntar &#125; from "fudic:components/app-adjuntos";
-
-adjuntar.handle((ctx) =&gt; &#123;
-  const &#123; docs &#125; = ctx.form.$value();
-  return &#123;
-    count: docs.length,
-    bytes: docs.reduce((sum, doc) =&gt; sum + doc.size, 0),
-    names: docs.map((doc) =&gt; doc.name),
-  &#125;;
-&#125;);</code></pre>
-</ui-code>
-
-<p>En Node, ese <code>File</code> lee del fichero temporal: guardarlo es pasar su <code>stream()</code> a donde vaya, sin cargarlo en memoria. Para devolver un fichero, una función usa <code>-&gt; file</code> (<a href="/docs/server/types#files">Tipos</a>).</p>
+<p>Si un fichero pasa un límite, el servidor deja de leer y responde <code>413</code>. Con <code>413</code> en el <code>catches</code> del formulario, el error se pinta en el formulario.</p>
 
 <h2 id="progress">Progreso y cancelación</h2>
 
-<p>Mientras <code>form:=</code> sube, <code>$progress()</code> dice cuánto lleva: <code>&#123; loaded, total, phase &#125;</code>, con <code>phase</code> en <code>"up"</code> mientras sube y <code>"down"</code> mientras baja la respuesta. Al terminar vuelve a <code>null</code>. <code>$cancel()</code> corta la subida:</p>
+<p>Mientras sube, <code>$progress()</code> dice cuánto lleva, y <code>$cancel()</code> corta la subida:</p>
 
 <ui-code .path="src/components/app-adjuntos.fud">
 <pre><code>@@if (adjuntosForm.$progress() !== null) &#123;
@@ -172,36 +103,12 @@ adjuntar.handle((ctx) =&gt; &#123;
 &#125;</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>El progreso de subida necesita <code>XMLHttpRequest</code>.</strong> Es la única API del navegador que informa de los bytes que suben en todos los motores, y Fudic la usa para las llamadas con ficheros. Las demás van con <code>fetch</code>. El código no cambia: las dos devuelven una <code>Response</code>.</li>
-  <li><strong>Cancelar es cancelar de verdad.</strong> El navegador deja de mandar bytes, el servidor tira lo que ya había guardado de esa subida, y una llamada cancelada no anuncia nada: ni <code>fudic:result</code> ni <code>fudic:error</code>.</li>
-  <li><code>$cancel()</code> para todas las llamadas del formulario que están en marcha: un segundo envío sale al lado del primero, no en su lugar.</li>
-</ul>
-
-<h2 id="curl">Desde otro cliente</h2>
-
-<p>Con <code>use json</code>, la parte <code>$args</code> va en JSON, y cualquier cliente puede subir ficheros:</p>
-
-<ui-code .path="src/components/app-adjuntos.fudapi">
-<pre><code>put adjuntar
-  use json
-  form adjuntosForm
-  -&gt; Recibidos</code></pre>
-</ui-code>
-
-<ui-code>
-<pre><code>echo &#123;&#125; &gt; args.json
-curl -X PUT -H "x-fudic-csrf: 1" \
-  -F '$args=@@args.json;type=application/json' \
-  -F docs.0=@@a.pdf \
-  https://example.com/_fudic/fn/components/app-adjuntos/adjuntar</code></pre>
-</ui-code>
+<p>Cancelar deja de enviar bytes, el servidor tira lo que ya había recibido, y no se lanza ni <code>fudic:result</code> ni <code>fudic:error</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/file" target="_blank" rel="noopener"><code>&lt;input type="file"&gt;</code></a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer" target="_blank" rel="noopener"><code>DataTransfer</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/progress" target="_blank" rel="noopener"><code>&lt;progress&gt;</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequestUpload/progress_event" target="_blank" rel="noopener">El progreso de una subida</a> con <code>XMLHttpRequest</code>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413" target="_blank" rel="noopener"><code>413 Content Too Large</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/file" target="_blank" rel="noopener"><code>&lt;input type="file"&gt;</code></a>: el campo para elegir ficheros.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>: el fichero en el navegador y en el handler.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/progress" target="_blank" rel="noopener"><code>&lt;progress&gt;</code></a>: la barra de progreso.</li>
 </ul>

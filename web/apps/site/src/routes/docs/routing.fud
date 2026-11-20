@@ -1,11 +1,10 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
-<link rel="component" href="@web/ui/ui-code.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Rutas por carpetas · Fudic</title>
-  <meta name="description" content="Las rutas de Fudic salen de las carpetas: cada .fud de src/routes es una URL, con parámetros entre corchetes, un orden fijo cuando dos rutas encajan y la navegación estándar del navegador.">
+  <meta name="description" content="Las rutas de Fudic salen de las carpetas: cada .fud de src/routes es una URL, con parámetros entre corchetes y la navegación estándar del navegador.">
   <link rel="canonical" href="https://fudic.dev/docs/routing">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Rutas por carpetas · Fudic">
@@ -25,9 +24,8 @@
       <ul>
         <li><a href="#files">Un fichero, una URL</a></li>
         <li><a href="#params">Parámetros</a></li>
-        <li><a href="#order">Cuando dos rutas encajan</a></li>
-        <li><a href="#cli">Crear una página</a></li>
         <li><a href="#navigation">Navegar</a></li>
+        <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -36,11 +34,9 @@
 
 <h1>Rutas por carpetas</h1>
 
-<p>Las partes de una página (su layout, su <code>&lt;head&gt;</code>, sus secciones) están en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>. Esta página va de cómo se convierte en una URL.</p>
+<p>En Fudic no hay tabla de rutas: cada <code>.fud</code> dentro de <code>src/routes/</code> es una página, y su URL sale de dónde está. Cómo se escribe una página está en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>; sus datos, en su <code>.fudapi</code> (<a href="/docs/routing/data">Los datos de la página</a>).</p>
 
 <h2 id="files">Un fichero, una URL</h2>
-
-<p>No hay una tabla de rutas que mantener: cada <code>.fud</code> dentro de <code>src/routes/</code> es una página, y su ruta en disco es su URL.</p>
 
 <table>
   <thead>
@@ -50,91 +46,42 @@
     <tr><td><code>src/routes/index.fud</code></td><td><code>/</code></td></tr>
     <tr><td><code>src/routes/about.fud</code></td><td><code>/about</code></td></tr>
     <tr><td><code>src/routes/docs/index.fud</code></td><td><code>/docs</code></td></tr>
-    <tr><td><code>src/routes/docs/styles/guide.fud</code></td><td><code>/docs/styles/guide</code></td></tr>
-    <tr><td><code>src/routes/blog/[slug].fud</code></td><td><code>/blog/declarative-shadow-dom</code>, <code>/blog/lo-que-sea</code></td></tr>
+    <tr><td><code>src/routes/blog/[slug].fud</code></td><td><code>/blog/lo-que-sea</code></td></tr>
   </tbody>
 </table>
 
-<p><code>index.fud</code> es la raíz de su carpeta. Una página y una carpeta pueden llamarse igual: <code>docs/styles.fud</code> es <code>/docs/styles</code> y lo que hay en <code>docs/styles/</code> cuelga de ella, como en esta documentación. Lo que no puede haber son dos ficheros para la misma URL, como <code>about.fud</code> y <code>about/index.fud</code> (<code>FUD0361</code>).</p>
-
-<p><code>src/routes/_error.fud</code> es la excepción: no es una URL, es la página de error (<a href="/docs/routing/error-page">La página de error</a>).</p>
+<p>Se crea con la CLI: <code>fudic g page about</code>, o <code>fudic g page blog/:slug --server</code> para una página con datos, que también escribe su <code>.fudapi</code>.</p>
 
 <h2 id="params">Parámetros</h2>
 
-<p>Un segmento entre corchetes es un <strong>parámetro</strong>: casa con cualquier valor en esa posición, y la página lo recibe por su nombre.</p>
+<p>Un segmento entre corchetes, como <code>[slug]</code>, es un <strong>parámetro</strong>: casa con cualquier valor en esa posición. La página lo lee en el servidor, en <code>ctx.params.slug</code> (<a href="/docs/routing/data#ctx">El ctx de load</a>).</p>
 
-<table>
-  <thead>
-    <tr><th scope="col">Fichero</th><th scope="col">Patrón</th><th scope="col">Parámetros</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>blog/[slug].fud</code></td><td><code>/blog/:slug</code></td><td><code>slug</code></td></tr>
-    <tr><td><code>sesion/[user].fud</code></td><td><code>/sesion/:user</code></td><td><code>user</code></td></tr>
-    <tr><td><code>[lang]/docs/[page].fud</code></td><td><code>/:lang/docs/:page</code></td><td><code>lang</code> y <code>page</code></td></tr>
-  </tbody>
-</table>
-
-<ul>
-  <li>Un parámetro ocupa un segmento entero: <code>/blog/a/b</code> no casa con <code>/blog/:slug</code>. No hay parámetros que recojan varios segmentos, ni opcionales.</li>
-  <li>Su nombre es un identificador (<code>slug</code>, <code>userId</code>), y no se repite en la misma ruta (<code>FUD0360</code>).</li>
-  <li>El valor llega como texto. Donde se lee es en el servidor, en el <code>ctx.params</code> del <code>load</code>, ya tipado: <code>ctx.params.slug</code> (<a href="/docs/routing/data">Los datos de la página</a>).</li>
-</ul>
-
-<h2 id="order">Cuando dos rutas encajan</h2>
-
-<p>Con <code>blog/new.fud</code> y <code>blog/[slug].fud</code>, la URL <code>/blog/new</code> encaja con las dos. Gana siempre la más específica:</p>
-
-<ol>
-  <li>Se comparan segmento a segmento, y en el primero en que difieren, <strong>un segmento fijo gana a un parámetro</strong>: <code>/blog/new</code> va a <code>blog/new.fud</code>.</li>
-  <li>Si una ruta es más larga que la otra, gana la más larga.</li>
-</ol>
-
-<p>El orden no depende de cómo se llamen los ficheros ni de en qué orden se crearon: se decide en el build y es siempre el mismo.</p>
-
-<h2 id="cli">Crear una página</h2>
-
-<ui-code>
-<pre><code>fudic g page about                  # src/routes/about.fud
-fudic g page blog/:slug --server    # src/routes/blog/[slug].fud, with its .fudapi and handler
-fudic g page /                      # src/routes/index.fud</code></pre>
-</ui-code>
-
-<p>La CLI escribe la página enlazada al layout más cercano, con las secciones que ese layout tiene, y su test. Si no hay ningún layout, no escribe nada y dice cómo crear uno: toda página tiene layout. Sus opciones:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>--server</code></td><td>la página con datos: su <code>.fudapi</code> con un <code>load</code>, y el handler en <code>src/server</code></td></tr>
-    <tr><td><code>--layout &lt;ruta&gt;</code></td><td>otro layout que el más cercano; el de una librería, por su nombre de paquete</td></tr>
-    <tr><td><code>--sections a,b</code></td><td>solo esas secciones del layout</td></tr>
-    <tr><td><code>--skip-test</code></td><td>sin test</td></tr>
-  </tbody>
-</table>
+<p id="order">Si dos rutas encajan, como <code>blog/new.fud</code> y <code>blog/[slug].fud</code> con <code>/blog/new</code>, gana la que tiene un segmento fijo.</p>
 
 <h2 id="navigation">Navegar</h2>
 
-<p>Se navega con un enlace estándar:</p>
-
-<ui-code>
-<pre><code>&lt;a href="/blog/declarative-shadow-dom"&gt;Declarative Shadow DOM, sin JavaScript&lt;/a&gt;</code></pre>
-</ui-code>
-
-<p>Fudic no tiene un router en el navegador. Cada página es un documento completo, que el navegador pide y pinta como cualquier web, así que funciona todo lo que el navegador ya sabe hacer con una navegación:</p>
+<p>Se navega con un <code>&lt;a href&gt;</code> estándar. Fudic no tiene un router en el navegador: cada página es un documento completo, así que funciona todo lo que el navegador ya sabe hacer:</p>
 
 <ul>
-  <li>el botón «atrás», que puede devolver la página tal como estaba desde la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a> (<a href="/docs/reactivity/lifecycle#route-hooks">Ciclo de vida</a>);</li>
-  <li>abrir un enlace en otra pestaña, recargar o compartir la URL, que da siempre la misma página;</li>
-  <li>un lector de pantalla, que anuncia la página nueva sin código para gestionar el foco.</li>
+  <li>el botón «atrás», que puede devolver la página tal como estaba desde la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>;</li>
+  <li>abrir en otra pestaña, recargar o compartir la URL;</li>
+  <li>un lector de pantalla, que anuncia la página nueva sin código extra.</li>
 </ul>
 
-<p>Lo que haría un router de cliente (no volver a descargar lo común, no perder el estado) lo cubren otras piezas: el runtime de Fudic se guarda en la caché del navegador y no se vuelve a descargar entre páginas, la página llega ya pintada del servidor sin esperar a ningún JavaScript, y con Service Worker la siguiente página se pinta en el propio navegador (<a href="/docs/routing/rendering">Los modos</a>).</p>
+<p>La página llega pintada del servidor, el runtime de Fudic queda en la caché del navegador, y con Service Worker la siguiente página se pinta en el propio navegador (<a href="/docs/routing/rendering">Los modos</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><code>index.fud</code> es la raíz de su carpeta. Una página y una carpeta pueden llamarse igual: <code>docs/styles.fud</code> es <code>/docs/styles</code>, y lo de <code>docs/styles/</code> cuelga de ella.</li>
+  <li>Dos ficheros para la misma URL, como <code>about.fud</code> y <code>about/index.fud</code>, son un error (<code>FUD0361</code>).</li>
+  <li>Un parámetro ocupa un segmento entero; no hay opcionales ni que recojan varios segmentos.</li>
+  <li><code>src/routes/_error.fud</code> no es una URL: es la <a href="/docs/routing/error-page">página de error</a>.</li>
+</ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a" target="_blank" rel="noopener"><code>&lt;a&gt;</code></a>: el enlace con el que se navega.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>: la página que vuelve con «atrás» sin recargarse.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la misma sintaxis <code>:nombre</code> de los patrones de ruta, en el estándar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la sintaxis <code>:nombre</code> de los patrones de ruta, en el estándar.</li>
 </ul>

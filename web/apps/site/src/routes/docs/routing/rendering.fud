@@ -5,7 +5,7 @@
 
 <head>
   <title>Cuándo se pinta: los modos · Fudic</title>
-  <meta name="description" content="Los tres modos de una página de Fudic: ssg se pinta en el build, ssr en el servidor en cada petición y sw en el navegador, con su Service Worker. Cuál se elige si no se declara, qué hace paths y qué pasa sin Service Worker.">
+  <meta name="description" content="Los tres modos de una página de Fudic: ssg se pinta en el build, ssr en el servidor en cada petición y sw en el navegador, con su Service Worker. Cuál elegir y cuál se usa si no se declara.">
   <link rel="canonical" href="https://fudic.dev/docs/routing/rendering">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Cuándo se pinta: los modos · Fudic">
@@ -25,11 +25,9 @@
       <ul>
         <li><a href="#modes">Tres modos</a></li>
         <li><a href="#ssg">ssg: en el build</a></li>
-        <li><a href="#ssr">ssr: en el servidor, en cada petición</a></li>
+        <li><a href="#ssr">ssr: en cada petición</a></li>
         <li><a href="#sw">sw: en el navegador</a></li>
-        <li><a href="#without-sw">Sin Service Worker</a></li>
         <li><a href="#inferred">Si no se declara</a></li>
-        <li><a href="#paths">Una página por valor: paths</a></li>
         <li><a href="#choose">Cuál elegir</a></li>
         <li><a href="#line">La línea de load, entera</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
@@ -42,123 +40,61 @@
 
 <h2 id="modes">Tres modos</h2>
 
-<p>Toda página de Fudic llega al navegador ya pintada, como HTML con Declarative Shadow DOM. Lo que cambia de una a otra es <strong>quién</strong> la pinta y <strong>cuándo</strong>, y eso es su <strong>modo</strong>:</p>
-
-<table>
-  <thead>
-    <tr><th scope="col">Modo</th><th scope="col">La pinta</th><th scope="col">Cuándo</th><th scope="col">Para</th></tr>
-  </thead>
-  <tbody>
-    <tr><th scope="row"><code>ssg</code></th><td>el build</td><td>una vez, al construir</td><td>lo que es igual para todos y cambia con cada despliegue</td></tr>
-    <tr><th scope="row"><code>ssr</code></th><td>el servidor</td><td>en cada petición</td><td>lo que depende de quién pide, o de cuándo</td></tr>
-    <tr><th scope="row"><code>sw</code></th><td>el Service Worker, en el navegador</td><td>en cada navegación, con datos guardados</td><td>lo que cambia, pero no a cada segundo</td></tr>
-  </tbody>
-</table>
-
-<p>El modo se declara en la línea de <code>load</code> del <code>.fudapi</code> de la página:</p>
+<p>Toda página de Fudic llega al navegador ya pintada. Lo que cambia es quién la pinta y cuándo, y eso es su <strong>modo</strong>. Se declara en la línea de <code>load</code> de su <code>.fudapi</code>:</p>
 
 <ui-code>
 <pre><code>load ssr
   users  Person[]</code></pre>
 </ui-code>
 
-<p>Una página sin <code>load</code>, o con <code>load</code> sin modo, tiene el que Fudic deduce (<a href="#inferred">abajo</a>).</p>
+<ul>
+  <li><strong><code>ssg</code></strong>: la pinta el build, una vez. Para lo que es igual para todos.</li>
+  <li><strong><code>ssr</code></strong>: la pinta el servidor, en cada petición. Para lo que depende de quién la pide.</li>
+  <li><strong><code>sw</code></strong>: la pinta el Service Worker, en el navegador. Para lo que cambia, pero no a cada segundo.</li>
+</ul>
 
 <h2 id="ssg"><code>ssg</code>: en el build</h2>
 
-<p>El build ejecuta el <code>load</code> de la página, la pinta y escribe el HTML en un fichero. El servidor lo manda tal cual en cada petición, sin pintar nada: es lo más rápido y lo que menos cuesta servir.</p>
+<p>El build ejecuta <code>load</code>, pinta la página y la guarda en un fichero, que el servidor envía tal cual. Es lo más rápido. Los datos son los del momento del build, así que una página que lee la sesión no puede ser <code>ssg</code> (<a href="/docs/server/session#prerender"><code>FUD1300</code></a>).</p>
 
-<ui-code .path="src/routes/mapas.fudapi">
-<pre><code># Static with data: the build runs load and prerenders the HTML.
-load ssg
-  options  Option[]</code></pre>
-</ui-code>
+<p>Todas las páginas de esta documentación son <code>ssg</code>.</p>
 
-<p>Los datos son los del momento del build: un cambio en la base de datos no se ve hasta el siguiente despliegue. Por eso una página que lee la sesión no puede ser <code>ssg</code>, y el build se para (<a href="/docs/server/session#prerender"><code>FUD1300</code></a>).</p>
+<h2 id="ssr"><code>ssr</code>: en cada petición</h2>
 
-<p>Todas las páginas de esta documentación son <code>ssg</code>: no tienen <code>load</code>, y su contenido solo cambia cuando se publica una versión nueva.</p>
+<p>El servidor ejecuta <code>load</code> y pinta la página cada vez que alguien la pide. Es el modo de una página con sesión, con permisos o que enseña la hora.</p>
 
-<h2 id="ssr"><code>ssr</code>: en el servidor, en cada petición</h2>
-
-<p>El servidor ejecuta <code>load</code> y pinta la página cada vez que alguien la pide. Es el modo de lo que no puede ser igual para todos ni esperar al siguiente despliegue: una página con sesión, con permisos o que enseña la hora.</p>
-
-<ui-code .path="src/routes/usuarios.fudapi">
-<pre><code># Per request: the list changes with every new person, and a prerendered page would not see it.
-load ssr
-  users    Person[]
-  session  str?</code></pre>
-</ui-code>
-
-<p>La página sale en streaming: el servidor manda el principio en cuanto lo tiene, y los campos <code>later</code> llegan después, en el mismo documento (<a href="/docs/template-syntax/await"><code>@@await</code></a>). Mientras <code>load</code> trabaja, el navegador ya puede ir descargando el CSS y el JavaScript que la página va a necesitar (<a href="/docs/routing/early-hints">Early hints</a>).</p>
-
-<p>Con Service Worker, una página <code>ssr</code> va siempre a la red: el Service Worker nunca la intercepta ni descarga su código.</p>
+<p>Sale en streaming: el principio llega en cuanto está, y los campos <code>later</code> después (<a href="/docs/template-syntax/await"><code>@@await</code></a>). Mientras, el navegador ya descarga el CSS y el JavaScript (<a href="/docs/routing/early-hints">Early hints</a>).</p>
 
 <h2 id="sw"><code>sw</code>: en el navegador</h2>
 
-<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker</a> es un script del estándar que el navegador instala para un sitio y que se coloca entre la página y la red: puede responder a una navegación sin preguntar al servidor. Con modo <code>sw</code>, el de Fudic pinta la página <strong>en el propio navegador</strong>, con el mismo código con el que la pinta el servidor:</p>
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker</a> es un script estándar que se coloca entre la página y la red. Con <code>sw</code>, el de Fudic pinta la página en el navegador, con el mismo código que el servidor:</p>
 
 <ol>
-  <li>La primera visita a la página la responde el servidor, como si fuera <code>ssr</code>. Mientras, el Service Worker se guarda el código de esa página.</li>
-  <li>En las siguientes, el Service Worker pide los datos al servidor (<code>/_fudic/data/&lt;ruta&gt;</code>, que ejecuta <code>load</code>), los guarda según la política de la página y pinta el HTML él mismo, en milisegundos.</li>
-  <li>Con los datos guardados, la página se pinta sin ir a la red, incluso sin conexión.</li>
+  <li>La primera visita la pinta el servidor, y el Service Worker se guarda el código de la página.</li>
+  <li>Después, el Service Worker pide los datos al servidor (que ejecuta <code>load</code>), los guarda y pinta él la página.</li>
+  <li>Con los datos guardados, la página se pinta sin red, incluso sin conexión.</li>
 </ol>
 
 <ui-code .path="src/routes/blog/index.fudapi">
-<pre><code># The Service Worker paints it: five minutes from its cache before asking the network again.
-load sw ttl 5m cache-first
-  title  str
+<pre><code>load sw ttl 5m cache-first
   posts  Post[]</code></pre>
 </ui-code>
 
-<p><code>ttl 5m cache-first</code> es cuánto tiempo valen los datos guardados y cómo se usan. Sin nada, los datos valen hasta el siguiente despliegue o hasta que una función los invalida. El Service Worker, sus políticas y sus cachés tienen su propio capítulo (capítulo 7).</p>
+<p><code>ttl 5m cache-first</code> dice cuánto valen los datos guardados y cómo se usan (<a href="/docs/service-worker">Service Worker</a>). El Service Worker nunca ejecuta <code>load</code>, y nunca guarda una respuesta privada, como la que lee la sesión.</p>
 
-<p>Tres cosas que lo hacen seguro:</p>
-
-<ul>
-  <li><strong>El Service Worker nunca ejecuta <code>load</code></strong>: pide su resultado al servidor. Tu base de datos y tus secretos no salen del servidor.</li>
-  <li><strong>Una respuesta privada no se guarda nunca.</strong> Si <code>load</code> lee la sesión, sus datos salen con <code>Cache-Control: private</code> y el Service Worker no los guarda (<a href="/docs/server/session#private">Sesión y cookies</a>).</li>
-  <li><strong>Una función con <code>invalidates</code> borra lo guardado</strong> de esas rutas antes de terminar (<a href="/docs/server/functions#invalidates"><code>invalidates</code></a>).</li>
-</ul>
-
-<p>Las páginas <code>ssg</code> también las pinta el Service Worker en cuanto tiene su código: el fichero del build sirve para la primera visita, y después la página se pinta en el navegador igual que una <code>sw</code>, con sus datos pedidos al servidor.</p>
-
-<h2 id="without-sw">Sin Service Worker</h2>
-
-<p>Una app sin <code>sw.json</code>, o creada con <code>--no-sw</code>, no instala Service Worker. Entonces:</p>
-
-<ul>
-  <li>las páginas <code>ssg</code> se prerenderizan igual;</li>
-  <li>las <code>ssr</code>, igual;</li>
-  <li>las <code>sw</code> las pinta el servidor en cada petición, como si fueran <code>ssr</code>. <code>ttl</code> y la política de su <code>load</code> no tienen efecto.</li>
-</ul>
-
-<p>Así una página escrita para el Service Worker funciona igual en una app que no lo tiene, sin tocarla. Esta web no tiene Service Worker.</p>
+<p id="without-sw">En una app sin Service Worker, las páginas <code>sw</code> las pinta el servidor en cada petición, como <code>ssr</code>. Así funcionan sin tocarlas. Esta web no tiene Service Worker.</p>
 
 <h2 id="inferred">Si no se declara</h2>
 
-<p>Fudic deduce el modo de lo que sabe de la página:</p>
+<ul>
+  <li>Sin <code>load</code>: <code>ssg</code>.</li>
+  <li>Con parámetros y con <code>paths</code>: <code>ssg</code>, una página por valor.</li>
+  <li>En el resto de casos: <code>sw</code>.</li>
+</ul>
 
-<table>
-  <thead>
-    <tr><th scope="col">La página</th><th scope="col">Modo</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>sin parámetros y sin <code>load</code></td><td><code>ssg</code>: no hay nada que pueda cambiar</td></tr>
-    <tr><td>sin parámetros y con <code>load</code></td><td><code>sw</code></td></tr>
-    <tr><td>con parámetros y con <code>paths</code></td><td><code>ssg</code>, una página por valor (<a href="#paths">abajo</a>)</td></tr>
-    <tr><td>con parámetros y sin <code>paths</code></td><td><code>sw</code></td></tr>
-  </tbody>
-</table>
+<p><code>ssr</code> nunca se deduce: quien escribe una página con sesión lo sabe, y es mejor que lo diga.</p>
 
-<p><code>ssr</code> nunca se deduce: se declara. Una página con sesión o con permisos lo sabe quien la escribe, y es mejor que lo diga.</p>
-
-<h2 id="paths">Una página por valor: <code>paths</code></h2>
-
-<p>Una página con parámetros solo se puede prerenderizar si se sabe qué valores existen. Eso dice <code>paths</code> (<a href="/docs/routing/data#paths">Los datos de la página</a>): el build escribe un HTML por cada valor que devuelve.</p>
-
-<p>Un valor que <code>paths</code> no dio, como un artículo publicado después del build, se pinta cuando alguien lo pide: en el servidor, o en el Service Worker si lo hay. El plugin de Vite tiene una opción para que, en vez de eso, responda <code>404</code> (capítulo 15).</p>
-
-<p><code>load ssg</code> en una página con parámetros y sin <code>paths</code> no se puede cumplir: no hay qué prerenderizar. Fudic avisa (<code>FUD0398</code>) y la pinta bajo demanda.</p>
+<p id="paths">Con <code>paths</code> (<a href="/docs/routing/data#paths">Los datos de la página</a>), el build escribe un HTML por cada valor. Uno que <code>paths</code> no dio, como un artículo publicado después, se pinta cuando alguien lo pide.</p>
 
 <h2 id="choose">Cuál elegir</h2>
 
@@ -168,9 +104,9 @@ load sw ttl 5m cache-first
   </thead>
   <tbody>
     <tr><td>Documentación, una landing, un aviso legal</td><td><code>ssg</code>, sin declarar nada</td></tr>
-    <tr><td>Un catálogo o un blog, con una página por producto o por artículo</td><td><code>ssg</code> con <code>paths</code></td></tr>
-    <tr><td>Un listado que cambia cada pocos minutos, igual para todos</td><td><code>sw</code> con un <code>ttl</code></td></tr>
-    <tr><td>La cuenta del usuario, un panel con permisos, la hora</td><td><code>ssr</code></td></tr>
+    <tr><td>Un blog, con una página por artículo</td><td><code>ssg</code> con <code>paths</code></td></tr>
+    <tr><td>Un listado que cambia cada pocos minutos</td><td><code>sw</code> con un <code>ttl</code></td></tr>
+    <tr><td>La cuenta del usuario, un panel con permisos</td><td><code>ssr</code></td></tr>
   </tbody>
 </table>
 
@@ -180,13 +116,7 @@ load sw ttl 5m cache-first
 <pre><code>load [ssg|ssr|sw] [ttl &lt;duración&gt;] [&lt;política&gt;] [page never|persist] [buffer &lt;bytes&gt;]</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>El modo</strong>, en esta página.</li>
-  <li><strong><code>ttl</code></strong>, <strong>la política</strong> (<code>cache-first</code>, <code>network-first</code>, <code>stale-while-revalidate</code> o <code>network-only</code>) y <strong><code>page</code></strong>: cómo guarda el Service Worker los datos y el HTML de la página (capítulo 7).</li>
-  <li><strong><code>buffer</code></strong>: cuántos bytes junta el stream de la página antes de mandarlos; <code>buffer 0</code> manda cada trozo en cuanto está.</li>
-</ul>
-
-<p>Un valor mal escrito es un error, con los que caben (<code>FUD1074</code>).</p>
+<p><code>ttl</code>, la política y <code>page</code> son del <a href="/docs/service-worker/caching">Service Worker</a>. <code>buffer</code> es cuántos bytes junta el streaming antes de enviarlos.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

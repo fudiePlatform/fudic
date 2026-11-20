@@ -1,16 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Pipes · Fudic</title>
-  <meta name="description" content="Pipes en Fudic: el catálogo de formatos que trae Fudic sobre Intl (fechas, números, monedas, porcentajes, tiempo relativo y listas) y cómo se escribe un pipe propio que formatea igual en el servidor y en el navegador.">
+  <meta name="description" content="Pipes en Fudic: los formatos que trae Fudic sobre Intl (fechas, números, monedas, porcentajes, tiempo relativo y listas) y cómo escribir uno propio que formatea igual en el servidor y en el navegador.">
   <link rel="canonical" href="https://fudic.dev/docs/server/pipes">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Pipes · Fudic">
-  <meta property="og:description" content="El catálogo de pipes de Fudic y cómo se escribe uno propio.">
+  <meta property="og:description" content="Los pipes de Fudic y cómo se escribe uno propio.">
   <meta property="og:url" content="https://fudic.dev/docs/server/pipes">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,11 +24,8 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#what">Qué es un pipe</a></li>
-        <li><a href="#catalog">El catálogo de Fudic</a></li>
-        <li><a href="#locale">El idioma</a></li>
+        <li><a href="#catalog">Los que trae Fudic</a></li>
         <li><a href="#own">Escribir un pipe</a></li>
-        <li><a href="#params">Un pipe con parámetros</a></li>
-        <li><a href="#library">Pipes de una librería</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -40,78 +36,54 @@
 
 <h2 id="what">Qué es un pipe</h2>
 
-<p>Un pipe convierte un valor en el texto que se pinta, en el idioma de la página: <code>@@(total() | euros)</code> escribe <code>1.234,50 €</code> en una página en español. Se configura una vez en el <code>@@code</code> y se aplica en la vista con <code>|</code> (<a href="/docs/template-syntax/expressions#pipes">Expresiones</a>).</p>
+<p>Un pipe convierte un valor en el texto que se pinta, en el idioma de la página: <code>@@(total() | euros)</code> escribe <code>1.234,50 €</code> en una página en español y <code>€1,234.50</code> en una en inglés. Se aplica en la vista con <code>|</code> (<a href="/docs/template-syntax/expressions#pipes">Expresiones</a>).</p>
 
-<p>Un pipe da el mismo texto en el servidor y en el navegador. Por eso es la forma de formatear en la vista: un <code>toLocaleDateString()</code> escrito a mano depende de la configuración de cada máquina, y la página cambiaría al hidratarse.</p>
+<p>Da el mismo texto en el servidor y en el navegador. Un <code>toLocaleDateString()</code> escrito a mano depende de cada máquina, y la página cambiaría al hidratarse.</p>
 
-<h2 id="catalog">El catálogo de Fudic</h2>
+<h2 id="catalog">Los que trae Fudic</h2>
 
-<p><code>@@fudic/core</code> trae seis, cada uno sobre su formateador de <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>, el estándar de JavaScript para formatear según el idioma. Sus opciones son las de ese formateador:</p>
+<p><code>@@fudic/core</code> trae seis, sobre <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>, el estándar de JavaScript para formatear según el idioma. Sus opciones son las de <code>Intl</code>:</p>
 
-<table>
-  <thead>
-    <tr><th scope="col">Pipe</th><th scope="col">Formatea</th><th scope="col">Sobre</th><th scope="col">Ejemplo</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>date(options)</code></td><td>un <code>Date</code> o un número</td><td><code>Intl.DateTimeFormat</code></td><td><code>date(&#123; dateStyle: "long", timeZone: "Europe/Madrid" &#125;)</code></td></tr>
-    <tr><td><code>number(options?)</code></td><td>un número</td><td><code>Intl.NumberFormat</code></td><td><code>number(&#123; maximumFractionDigits: 1 &#125;)</code></td></tr>
-    <tr><td><code>currency(code, options?)</code></td><td>un importe</td><td><code>Intl.NumberFormat</code></td><td><code>currency("EUR")</code></td></tr>
-    <tr><td><code>percent(options?)</code></td><td>una fracción: <code>0.25</code> es 25 %</td><td><code>Intl.NumberFormat</code></td><td><code>percent()</code></td></tr>
-    <tr><td><code>relativeTime(unit, options?)</code></td><td>una cantidad de esa unidad</td><td><code>Intl.RelativeTimeFormat</code></td><td><code>relativeTime("day", &#123; numeric: "auto" &#125;)</code>: <code>-1</code> es «ayer»</td></tr>
-    <tr><td><code>list(options?)</code></td><td>una lista de textos</td><td><code>Intl.ListFormat</code></td><td><code>list(&#123; type: "conjunction" &#125;)</code>: «Ana, Luis y Marta»</td></tr>
-  </tbody>
-</table>
+<ul>
+  <li><code>date(options)</code>: una fecha.</li>
+  <li><code>number(options)</code>: un número.</li>
+  <li><code>currency("EUR")</code>: un importe.</li>
+  <li><code>percent()</code>: una fracción, <code>0.25</code> es «25 %».</li>
+  <li><code>relativeTime("day")</code>: <code>-1</code> es «ayer».</li>
+  <li><code>list()</code>: «Ana, Luis y Marta».</li>
+</ul>
 
 <ui-code>
 <pre><code>@@code &#123;
-  import &#123; date, relativeTime &#125; from "@@fudic/core";
+  import &#123; date &#125; from "@@fudic/core";
 
-  const day = date(&#123; weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Madrid" &#125;);
-  const daysAgo = relativeTime("day", &#123; numeric: "auto" &#125;);
+  const day = date(&#123; dateStyle: "long", timeZone: "Europe/Madrid" &#125;);
 &#125;
 
-&lt;p&gt;@@(post.published | day), @@(post.age | daysAgo)&lt;/p&gt;</code></pre>
+&lt;p&gt;Publicado el @@(post.published | day)&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p><code>date</code> exige <code>timeZone</code>: sin ella, el servidor formatearía en su zona horaria y el navegador en la del usuario, y la misma fecha saldría distinta en cada lado.</p>
+<p><code>date</code> exige <code>timeZone</code>: sin ella, el servidor y el navegador formatearían la misma fecha en zonas distintas.</p>
 
-<p>Cada pipe carga solo su formateador: una página que formatea fechas no descarga nada de números.</p>
-
-<h2 id="locale">El idioma</h2>
-
-<p>Un pipe no recibe el idioma: lo pone la página. Toda app tiene uno (<code>en</code> si no se dice otro, o el de <code>--locale</code> al crearla con la CLI), y con varios idiomas, cada página se compila en el suyo (capítulo 9). El mismo <code>@@(total() | euros)</code> escribe <code>€1,234.50</code> en una página en inglés.</p>
+<p id="locale">El idioma no se le pasa al pipe: lo pone la página. Con varios idiomas, cada página se compila en el suyo.</p>
 
 <h2 id="own">Escribir un pipe</h2>
 
-<p>Para un formato que <code>Intl</code> no trae, un pipe propio. Se crea con la CLI:</p>
-
-<ui-code>
-<pre><code>fudic g pipe iniciales --on str</code></pre>
-</ui-code>
-
-<p>Escribe tres ficheros en <code>src/pipes/</code>: la declaración, la implementación y su test. La declaración dice qué tipos formatea, con <code>on</code> (obligatorio, <code>FUD1340</code>; varios tipos son una unión):</p>
+<p>Para un formato que <code>Intl</code> no trae, <code>fudic g pipe iniciales --on str</code> crea tres ficheros en <code>src/pipes/</code>: la declaración, la implementación y su test.</p>
 
 <ui-code .path="src/pipes/iniciales.fudapi">
-<pre><code># The initials of a name, upper case: "ada lovelace" → "AL".
+<pre><code># The initials of a name: "ada lovelace" → "AL".
 pipe iniciales
   on str</code></pre>
 </ui-code>
-
-<p>La implementación es una función que recibe el valor y el idioma de la página, y devuelve el texto:</p>
 
 <ui-code .path="src/pipes/iniciales.ts">
 <pre><code>import &#123; iniciales &#125; from "fudic:pipes/iniciales";
 
 export default iniciales.implement((value, locale) =&gt;
-  value
-    .split(/\s+/u)
-    .filter((word) =&gt; word !== "")
-    .map((word) =&gt; word.charAt(0).toLocaleUpperCase(locale))
-    .join(""),
+  value.split(/\s+/u).map((w) =&gt; w.charAt(0).toLocaleUpperCase(locale)).join(""),
 );</code></pre>
 </ui-code>
-
-<p>La vista lo importa por su export por defecto y lo usa como cualquier otro:</p>
 
 <ui-code>
 <pre><code>@@code &#123;
@@ -121,52 +93,17 @@ export default iniciales.implement((value, locale) =&gt;
 &lt;span class="avatar"&gt;@@(user.name | iniciales)&lt;/span&gt;</code></pre>
 </ui-code>
 
-<p><code>src/pipes</code> está fuera de <code>src/server</code> y de <code>src/browser</code> porque su código se ejecuta en los dos: se escribe una vez y lo cargan el render del servidor, el navegador y los tests. De esa carpeta, la vista solo puede importar el export por defecto (<code>FUD1150</code>). La carpeta se cambia con <code>pipes</code> en <code>fudic.json</code>.</p>
-
-<ui-note>
-  <p>Usa el idioma que recibes, no uno fijo: <code>toLocaleUpperCase("tr")</code> convierte la <code>i</code> en <code>İ</code>, con punto. Quien decide el idioma es la página que pinta, no el pipe.</p>
-</ui-note>
-
-<h2 id="params">Un pipe con parámetros</h2>
-
-<p>Un pipe puede recibir parámetros, declarados con su tipo:</p>
-
-<ui-code .path="src/pipes/truncar.fudapi">
-<pre><code># The text cut at max characters, with an ellipsis.
-pipe truncar
-  on str
-  max  u16</code></pre>
-</ui-code>
-
-<ui-code .path="src/pipes/truncar.ts">
-<pre><code>import &#123; truncar &#125; from "fudic:pipes/truncar";
-
-export default truncar.implement((value, args) =&gt;
-  value.length &lt;= args.max ? value : `$&#123;value.slice(0, args.max)&#125;…`,
-);</code></pre>
-</ui-code>
-
-<p>Con parámetros, el export por defecto es una función que los recibe y devuelve el pipe, como los del catálogo:</p>
-
-<ui-code>
-<pre><code>@@code &#123;
-  import truncar from "../pipes/truncar";
-
-  const corto = truncar(&#123; max: 40 &#125;);
-&#125;
-
-&lt;p&gt;@@(post.summary | corto)&lt;/p&gt;</code></pre>
-</ui-code>
-
-<h2 id="library">Pipes de una librería</h2>
-
-<p>Una librería publica sus pipes igual, en su carpeta de pipes, y una app que la tiene como dependencia los importa por el nombre del paquete. Así un pipe se escribe una vez y lo usan todas las apps del workspace.</p>
-
-<p>Un pipe es también un dato: su nombre y sus parámetros. Un backend en otro lenguaje puede formatear con su propia biblioteca de idiomas a partir de eso, y por eso los del catálogo llevan las mismas opciones que <code>Intl</code>.</p>
+<ul>
+  <li><strong><code>src/pipes</code> no es ni de servidor ni de navegador</strong>: su código se ejecuta en los dos.</li>
+  <li><strong>Usa el idioma que recibes</strong>, no uno fijo: no todos los idiomas pasan a mayúsculas igual.</li>
+  <li id="params"><strong>Un pipe puede recibir parámetros</strong>, declarados con su tipo (<code>max u16</code>). Entonces se configura como los de Fudic: <code>const corto = truncar(&#123; max: 40 &#125;)</code>.</li>
+  <li id="library"><strong>Una librería publica sus pipes igual</strong>, y una app los importa por el nombre del paquete.</li>
+</ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>, y sus formateadores: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat" target="_blank" rel="noopener"><code>DateTimeFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat" target="_blank" rel="noopener"><code>NumberFormat</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat" target="_blank" rel="noopener"><code>RelativeTimeFormat</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/ListFormat" target="_blank" rel="noopener"><code>ListFormat</code></a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toLocaleUpperCase" target="_blank" rel="noopener"><code>toLocaleUpperCase()</code></a>: por qué el idioma importa también en un pipe propio.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>: el formateo según el idioma.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat" target="_blank" rel="noopener"><code>Intl.DateTimeFormat</code></a>: las opciones de <code>date</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat" target="_blank" rel="noopener"><code>Intl.NumberFormat</code></a>: las de <code>number</code>, <code>currency</code> y <code>percent</code>.</li>
 </ul>
