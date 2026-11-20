@@ -53,6 +53,11 @@ Es lo que Pedro aprobó al reescribir Estilos, Reactividad, `.fud`, Servidor, Ru
 - **El estándar primero.** HTML, CSS y TypeScript son «estándar», siempre con esa palabra. Lo
   que hace la plataforma se le atribuye a la plataforma y se enlaza a MDN; a Fudic, solo lo que
   añade. Lo que aún no es estándar se dice, con su propuesta (issue o explainer) y su polyfill.
+- **Políglota, sin atarse a Node.** Hoy el servidor es Node, pero la vista y el `.fudapi` están
+  diseñados para traducirse a C#, Java, Go, Rust y Python: cuando lleguen, se desplegará sin
+  Node, en el backend que la empresa ya tiene. Muchas empresas no quieren Node en producción;
+  donde el tema lo toque (servidor, vista, despliegue), se dice. En el navegador, siempre
+  TypeScript. Nunca se vende como hecho: hoy está implementado TypeScript, el resto diseñado.
 - **Fudic** con mayúscula en la prosa; en minúscula solo el código (`fudic dev`, `@fudic/core`).
 - Al citar frameworks, **Angular va con React y Vue**.
 - **Los conceptos clave se explican**, no se dan por sabidos.

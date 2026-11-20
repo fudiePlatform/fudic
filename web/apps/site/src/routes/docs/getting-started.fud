@@ -34,7 +34,9 @@
         <li><a href="#check-it-works">Pruébalo</a></li>
         <li><a href="#inside-the-app">Qué hay dentro</a></li>
         <li><a href="#declarative-shadow-dom">Qué es Declarative Shadow DOM</a></li>
-        <li><a href="#why-fudic">Por qué existe Fudic</a></li>
+        <li><a href="#why-fudic">Por qué existe Fudic</a>
+          <ul><li><a href="#polyglot">Políglota</a></li></ul>
+        </li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -73,6 +75,7 @@
   <li><strong>El HTML llega pintado.</strong> Cada componente sale del servidor como <a href="#declarative-shadow-dom">Declarative Shadow DOM</a>, que el navegador muestra mientras lee la página.</li>
   <li><strong>El JavaScript llega solo donde hace falta.</strong> Un componente sin estado ni eventos se queda en HTML y CSS. El que los tiene descarga su código cuando entra en pantalla y se activa al primer clic.</li>
   <li><strong>100/100/100/100 en <a href="https://developer.chrome.com/docs/lighthouse/overview" target="_blank" rel="noopener">Lighthouse</a>, de serie.</strong> Rendimiento, accesibilidad, buenas prácticas y SEO, sin optimizar nada al final.</li>
+  <li><strong>Tu servidor, en tu lenguaje.</strong> Hoy el servidor de Fudic es Node. Pero las vistas y los contratos con el servidor están pensados para traducirse a C#, Java, Go, Rust y Python, y cuando lleguen podrás desplegar sin Node, en el backend que tu empresa ya tiene.</li>
 </ul>
 
 <ui-note>
@@ -258,7 +261,19 @@ test('counts up from where it starts', async () =&gt; {
   <li><strong>El estándar primero.</strong> Lo que el navegador ya hace, Fudic no lo reinventa. Lo que está en camino, como <code>shadowrootadoptedstylesheets</code>, lo cubre con un polyfill pequeño que sobrará cuando llegue (<a href="/docs/styles#one-copy">Una copia por página</a>).</li>
   <li><strong>Componentes web pintados en el servidor</strong>, siempre, no como opción avanzada.</li>
   <li><strong>100/100/100/100 en Lighthouse</strong>, de serie.</li>
+  <li><strong>Sin atarte a Node.</strong> Muchas empresas no quieren poner Node en producción, y no deberían tener que hacerlo para pintar HTML.</li>
 </ul>
+
+<h3 id="polyglot">Políglota: el servidor que ya tienes</h3>
+
+<p>Hoy, una app de Fudic se despliega en Node. Pero todo lo que ejecuta el servidor está diseñado para no depender de él:</p>
+
+<ul>
+  <li><strong>La vista</strong> solo admite lo que se puede traducir con el mismo resultado a otros lenguajes, así que el mismo <code>.fud</code> se podrá pintar en un servidor de C#, Java, Go, Rust o Python (<a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>).</li>
+  <li><strong>El contrato con el servidor</strong>, el <code>.fudapi</code>, no es código de ningún lenguaje, y el formato en que viajan las llamadas está documentado. Cualquier backend que lo cumpla sirve a la misma página (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</li>
+</ul>
+
+<p>Cuando esos servidores lleguen, podrás desplegar sin Node, en .NET, en la JVM o donde ya esté tu backend, sin tocar una línea de tus páginas. Lo que corre en el navegador seguirá siendo TypeScript, como en cualquier web.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
