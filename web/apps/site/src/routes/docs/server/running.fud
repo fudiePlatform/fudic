@@ -1,0 +1,147 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El servidor · Fudic</title>
+  <meta name="description" content="El servidor de Fudic: un Request entra y una Response sale, el mismo código en desarrollo, en la preview y en producción; qué responde y en qué orden, cómo se monta en Node y la configuración serve de fudic.json.">
+  <link rel="canonical" href="https://fudic.dev/docs/server/running">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El servidor · Fudic">
+  <meta property="og:description" content="El mismo servidor en desarrollo, en la preview y en producción.">
+  <meta property="og:url" content="https://fudic.dev/docs/server/running">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("server-running")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Un Request, una Response</a></li>
+        <li><a href="#order">Qué responde, y en qué orden</a></li>
+        <li><a href="#dev">En desarrollo</a></li>
+        <li><a href="#preview">La preview</a></li>
+        <li><a href="#node">En producción, en Node</a></li>
+        <li><a href="#serve">serve, en fudic.json</a></li>
+        <li><a href="#other">Otros entornos y otros lenguajes</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El servidor</h1>
+
+<h2 id="what">Un <code>Request</code>, una <code>Response</code></h2>
+
+<p>El servidor de una app de Fudic es <code>@@fudic/server</code>. Recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request"><code>Request</code></a> estándar y devuelve una <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response"><code>Response</code></a>, o <code>null</code> si la petición no es suya (un fichero estático, que sirve quien lo aloja):</p>
+
+<ui-code>
+<pre><code>import &#123; createServer &#125; from "@@fudic/server";
+import &#123; config, createApp &#125; from "./.fudic/edge/server.mjs";
+
+const server = createServer(createApp(&#123; prerendered: (pathname) =&gt; pages.get(pathname) &#125;), config);
+const response = await server.fetch(request);   // null: not the app's</code></pre>
+</ui-code>
+
+<p><code>.fudic/edge/server.mjs</code> lo escribe el build: es la app, con sus rutas, sus contratos y sus handlers. <code>config</code> es lo que dice <code>fudic.json</code> en <code>serve</code> (<a href="#serve">abajo</a>).</p>
+
+<p>Su entrada principal solo necesita <code>Request</code>, <code>Response</code> y <code>crypto</code>, sin nada de Node. Es el mismo código en <code>fudic dev</code>, en <code>fudic preview</code> y en producción: lo que cambia es de dónde salen las páginas.</p>
+
+<h2 id="order">Qué responde, y en qué orden</h2>
+
+<ol>
+  <li>Con <code>trustProxy</code>, primero calcula la URL pública, y todo lo que viene después la ve.</li>
+  <li>Las funciones de servidor (<code>/_fudic/fn/…</code>), las reglas <code>remote</code> (<code>/_fudic/rule/…</code>) y el token de <code>csrf</code> (<code>/_fudic/csrf</code>).</li>
+  <li>A partir de aquí, solo <code>GET</code> y <code>HEAD</code>.</li>
+  <li>En una app con varios idiomas, una página pedida sin el prefijo del idioma redirige al que corresponde (capítulo 9).</li>
+  <li>Los datos de una página (<code>/_fudic/data/…</code>), que pide el navegador tras un <code>invalidates</code> o el Service Worker al pintarla.</li>
+  <li>La página de error, en <code>/_fudic/error/&lt;status&gt;</code>.</li>
+  <li>Una página: su HTML prerenderizado, o su render en streaming (<a href="/docs/routing/rendering">Los modos</a>).</li>
+</ol>
+
+<p>Toda página, la de error incluida, sale con las cabeceras de <code>page.headers</code>, y con un nonce propio cuando esas cabeceras lo piden (capítulo 12). Cuando nada responde a una navegación, <code>server.notFound(request)</code> pinta la página de error con un <code>404</code>: quien aloja la app lo llama después de buscar sus propios ficheros.</p>
+
+<h2 id="dev">En desarrollo</h2>
+
+<ui-code>
+<pre><code>fudic dev</code></pre>
+</ui-code>
+
+<p>Arranca el servidor de desarrollo de cada app del workspace detrás de un único puerto (5173, o el de <code>--port</code>), cada una en su <code>base</code>. Pinta todas las páginas en cada petición, sin prerender, y enseña los errores de los handlers en el overlay del navegador, con la línea de tu <code>.ts</code>. <code>--project</code> arranca solo una.</p>
+
+<p>En desarrollo, las cookies salen sin <code>Secure</code> si el servidor no usa HTTPS, para que la sesión funcione en <code>http://localhost</code>, y <code>csrf</code> con <code>token true</code> firma con un secreto aleatorio.</p>
+
+<h2 id="preview">La preview</h2>
+
+<ui-code>
+<pre><code>vite build
+fudic preview</code></pre>
+</ui-code>
+
+<p>El build lo hace Vite, con el script <code>build</code> de la app (<code>vite build</code>). <code>fudic preview</code> sirve lo construido igual que lo servirá producción: las páginas prerenderizadas desde <code>dist/</code>, y el resto desde el <code>server.mjs</code> del build. Es donde se mide de verdad, con Lighthouse por ejemplo. Una app sin construir da <code>FUD0454</code>.</p>
+
+<h2 id="node">En producción, en Node</h2>
+
+<p><code>@@fudic/server/node</code> trae las piezas para montarlo sobre <code>node:http</code>:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Pieza</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>nodeMiddleware(server, options?)</code></td><td>convierte la petición de Node, pone a los ficheros estáticos las cabeceras de <code>assets.headers</code>, manda el <code>103</code> por HTTP/2 (<a href="/docs/routing/early-hints">Early hints</a>), llama a <code>fetch</code> y, si no es suya, pasa a la siguiente. Con <code>&#123; notFound: true &#125;</code>, pinta la página de error</td></tr>
+    <tr><td><code>staticPages(dir)</code></td><td>las páginas prerenderizadas del build, para <code>createApp</code></td></tr>
+    <tr><td><code>staticFiles(dir)</code></td><td>el resto de ficheros del build</td></tr>
+    <tr><td><code>diskSpool()</code></td><td>guarda cada fichero subido en disco mientras su handler trabaja, en vez de en memoria</td></tr>
+  </tbody>
+</table>
+
+<p>El orden importa: primero la app, después los ficheros del build y, al final, la página de error para lo que nadie ha respondido. Con la página de error delante de los ficheros, una navegación directa a un fichero (abrir <code>/logo.svg</code> en una pestaña) recibiría un <code>404</code>.</p>
+
+<p>Tres valores vienen del entorno en vez del código:</p>
+
+<ul>
+  <li><strong>El secreto</strong> de <code>csrf</code> con <code>token true</code>, <code>secret</code>, normalmente desde <code>FUDIC_SECRET</code>. Sin él, esas llamadas responden <code>500</code>.</li>
+  <li><strong><code>secureCookies</code></strong>, que es <code>true</code> por defecto. Nunca se decide por el <code>Host</code> de la petición.</li>
+  <li><strong>El puerto</strong>, que es cosa tuya.</li>
+</ul>
+
+<p><code>examples/basic/node-server.mjs</code>, en el repositorio, arranca así el ejemplo construido.</p>
+
+<h2 id="serve"><code>serve</code>, en <code>fudic.json</code></h2>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "serve": &#123;
+    "trustProxy": true,
+    "uploads": &#123; "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": 100 &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>trustProxy</code></strong>: detrás de un proxy, la URL pública (la que ve el usuario) sale de <code>Forwarded</code>, o de <code>X-Forwarded-Proto</code> y <code>X-Forwarded-Host</code>. Actívalo solo detrás de un proxy en el que confíes: sin proxy, esas cabeceras las escribe cualquiera. <code>csrf</code> compara el <code>Origin</code> con esa URL pública.</li>
+  <li><strong><code>uploads</code></strong>: los límites de una subida: el tamaño de cada fichero, cuántos ficheros y cuántos argumentos.</li>
+</ul>
+
+<p>Un valor con la forma equivocada es un error (<code>FUD1488</code>). La configuración completa de <code>fudic.json</code> está en el capítulo 14.</p>
+
+<h2 id="other">Otros entornos y otros lenguajes</h2>
+
+<p>Como <code>fetch</code> recibe un <code>Request</code> y devuelve una <code>Response</code>, el servidor puede correr donde existan, sin Node: Deno, Bun o un runtime en el edge le pasan sus peticiones directamente. Fudic no trae aún un adaptador para cada uno: el de Node es el único con piezas propias.</p>
+
+<p>El contrato está pensado para que otro lenguaje pueda cumplirlo: la vista solo admite lo que se puede traducir con la misma semántica a otros lenguajes, el formato binario de las llamadas está publicado con vectores de prueba, y el servidor solo manda códigos de error, nunca textos que traducir. Pero hoy el único servidor que existe es el de TypeScript.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Request"><code>Request</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response"><code>Response</code></a>: lo que entra y lo que sale del servidor.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
+</ul>

@@ -1,0 +1,198 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Reglas y patrones · Fudic</title>
+  <meta name="description" content="Reglas y patrones en Fudic: las validaciones que comparten el navegador y el servidor, dónde se ejecuta cada una (both, server, remote) y el catálogo de las que trae Fudic.">
+  <link rel="canonical" href="https://fudic.dev/docs/server/rules">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Reglas y patrones · Fudic">
+  <meta property="og:description" content="Validaciones que comparten el navegador y el servidor, y el catálogo de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/server/rules">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("server-rules")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué es una regla</a></li>
+        <li><a href="#catalog">El catálogo de Fudic</a></li>
+        <li><a href="#patterns">Patrones</a></li>
+        <li><a href="#own">Escribir una regla</a></li>
+        <li><a href="#runs">Dónde se ejecuta: both, server, remote</a></li>
+        <li><a href="#params">Parámetros y códigos</a></li>
+        <li><a href="#scope">Campo, grupo o formulario</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Reglas y patrones</h1>
+
+<h2 id="what">Qué es una regla</h2>
+
+<p>Una regla es una validación con nombre: «obligatorio», «como mucho 80 caracteres», «este alias no está cogido». Se escribe una vez y se ejecuta en el navegador, para avisar mientras se escribe, y en el servidor, que no se fía de lo que llega.</p>
+
+<p>Se usan en dos sitios:</p>
+
+<ul>
+  <li><strong>En los campos de un formulario</strong>, con el texto de su error. Es su uso principal, y los formularios tienen su capítulo (capítulo 8).</li>
+  <li><strong>En los argumentos de una función</strong>, solo las del catálogo (<a href="/docs/server/types#arg-rules">Tipos</a>).</li>
+</ul>
+
+<ui-code .path="src/forms/person.fudapi">
+<pre><code>form person
+  name  str = ""
+    required    "Escribe tu nombre."
+    max-length 60 "Como mucho &#123;n&#125; letras."
+  email  str = ""
+    required    "Escribe tu email."
+    pattern email "No parece un email."</code></pre>
+</ui-code>
+
+<p>El texto puede citar los parámetros de la regla entre llaves: <code>&#123;n&#125;</code> sale como <code>60</code>. Una llave que nada rellena es un error (<code>FUD1085</code>).</p>
+
+<h2 id="catalog">El catálogo de Fudic</h2>
+
+<p><code>@@fudic/forms</code> trae ocho reglas, que se ejecutan en los dos lados:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Regla</th><th scope="col">Para</th><th scope="col">Parámetro</th><th scope="col">Comprueba</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>required</code></td><td>cualquier tipo</td><td>—</td><td>que hay un valor: ni <code>""</code>, ni nada, ni una lista vacía. <code>false</code> es un valor</td></tr>
+    <tr><td><code>min</code></td><td>números</td><td><code>n</code></td><td>que no es menor que <code>n</code></td></tr>
+    <tr><td><code>max</code></td><td>números</td><td><code>n</code></td><td>que no es mayor que <code>n</code></td></tr>
+    <tr><td><code>min-length</code></td><td><code>str</code> y listas</td><td><code>n</code></td><td>que tiene al menos <code>n</code> caracteres o elementos</td></tr>
+    <tr><td><code>max-length</code></td><td><code>str</code> y listas</td><td><code>n</code></td><td>que tiene como mucho <code>n</code></td></tr>
+    <tr><td><code>pattern</code></td><td><code>str</code></td><td>un patrón</td><td>que el texto entero casa con el patrón</td></tr>
+    <tr><td><code>max-size</code></td><td><code>file</code> y <code>file[]</code></td><td><code>n</code>, como <code>2mb</code></td><td>que cada fichero no pasa de <code>n</code> bytes</td></tr>
+    <tr><td><code>accept</code></td><td><code>file</code> y <code>file[]</code></td><td>tipos, entre comillas</td><td>que el tipo del fichero está en la lista, con la sintaxis del atributo <code>accept</code></td></tr>
+  </tbody>
+</table>
+
+<p>Salvo <code>required</code>, todas dejan pasar un campo vacío: que esté es cosa de <code>required</code>. Además, un campo numérico comprueba solo que el valor cabe en su tipo, y uno <code>uuid</code>, que tiene forma de UUID: no hace falta escribir esas reglas.</p>
+
+<h2 id="patterns">Patrones</h2>
+
+<p>Un patrón es una expresión regular con nombre, para la regla <code>pattern</code>:</p>
+
+<ui-code .path="src/rules/people.fudapi">
+<pre><code># Something, an at sign, something, a dot and something.
+pattern email-loose  [^@@\s]+@@[^@@\s]+\.[^@@\s]+
+
+pattern web-url      https?://.+</code></pre>
+</ui-code>
+
+<ul>
+  <li>Es el resto de la línea, tal cual: ahí <code>#</code> no empieza un comentario.</li>
+  <li>Casa con el <strong>texto entero</strong>, sin escribir <code>^</code> ni <code>$</code>, y el texto vacío pasa.</li>
+  <li>Es sintaxis de JavaScript sin flags. Una que no compila es un error (<code>FUD1077</code>).</li>
+</ul>
+
+<p>Fudic trae uno, <code>email</code>: la misma expresión con la que el HTML valida un <code>&lt;input type="email"&gt;</code>.</p>
+
+<h2 id="own">Escribir una regla</h2>
+
+<p>Una regla del proyecto se declara en un fichero de extensiones (por convención, en <code>src/rules/</code>) con lo que valida, dónde se ejecuta y con qué código falla:</p>
+
+<ui-code .path="src/rules/people.fudapi">
+<pre><code># The email belongs to somebody else already. Only on the server, on submit: it reads the
+# people table, which never reaches the browser.
+rule email-taken
+  on field str
+  runs server
+  async
+  fails email-taken</code></pre>
+</ui-code>
+
+<p>Y se implementa con <code>check</code>, una función que recibe el valor y devuelve si es válido:</p>
+
+<ui-code .path="src/server/rules.ts">
+<pre><code>import &#123; emailTaken &#125; from "fudic:rules/people";
+import &#123; emailTaken as emailInUse &#125; from "../data/people";
+
+emailTaken.check(async (value) =&gt; !(await emailInUse(value)));</code></pre>
+</ui-code>
+
+<p><code>on</code>, <code>runs</code> y <code>fails</code> son obligatorios (<code>FUD1097</code>). <code>async</code> dice que <code>check</code> devuelve una promesa.</p>
+
+<h2 id="runs">Dónde se ejecuta: <code>both</code>, <code>server</code>, <code>remote</code></h2>
+
+<table>
+  <thead>
+    <tr><th scope="col"><code>runs</code></th><th scope="col"><code>check</code> va en</th><th scope="col">Cuándo se ejecuta</th><th scope="col">Para</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>both</code></td><td><code>src/browser</code></td><td>en el navegador mientras se escribe, y en el servidor al enviar</td><td>lo que se comprueba con el valor solo, como las del catálogo</td></tr>
+    <tr><td><code>server</code></td><td><code>src/server</code></td><td>solo en el servidor, al enviar</td><td>lo que necesita datos que no salen del servidor</td></tr>
+    <tr><td><code>remote</code></td><td><code>src/server</code></td><td>en el servidor, al enviar, y el navegador se la pregunta mientras se escribe</td><td>lo mismo, avisando antes de enviar</td></tr>
+  </tbody>
+</table>
+
+<p>Una regla <code>remote</code> es la que dice «ese alias ya está cogido» mientras el usuario aún escribe:</p>
+
+<ui-code .path="src/rules/people.fudapi">
+<pre><code># The alias is taken. The browser asks it while the user types, 300 ms after the last key,
+# and the server runs it again on submit.
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken</code></pre>
+</ui-code>
+
+<p>El navegador la pregunta en una petición propia, 300 ms después de la última tecla (<code>debounce 500</code> lo cambia), guarda las respuestas por valor y cancela la pregunta anterior si llega otra tecla. Mientras espera, el campo dice que está comprobando, para que el formulario lo pinte.</p>
+
+<p>Una regla <code>server</code> o <code>remote</code> se ejecuta en el servidor como una función: recibe un tercer argumento, <code>ctx</code>, y puede llevar <code>use</code> y <code>skip</code> para su cadena, que hereda solo la global (<code>FUD1461</code> en una <code>both</code>). Por defecto viaja en binario, y con <code>use json</code>, en JSON.</p>
+
+<h2 id="params">Parámetros y códigos</h2>
+
+<p>Una regla puede recibir parámetros, con su tipo, y citarlos en sus códigos para que el texto los use:</p>
+
+<ui-code>
+<pre><code>rule between
+  on field i32
+  runs both
+  low   i32
+  high  i32
+  fails between low high</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>age  i32 = 0
+  between 18 99 "Entre &#123;low&#125; y &#123;high&#125;."</code></pre>
+</ui-code>
+
+<p>Un parámetro de tipo <code>pattern</code> recibe el nombre de un patrón del proyecto, como el de la regla <code>pattern</code>. Con varios <code>fails</code>, <code>check</code> devuelve <code>true</code> o el código que falla.</p>
+
+<p>El texto que acompaña a una regla en el campo es el que se pinta. El texto por defecto de cada código para todo el proyecto se declara con <code>messages</code>, que se explica con los formularios.</p>
+
+<h2 id="scope">Campo, grupo o formulario</h2>
+
+<p><code>on</code> dice qué valida la regla:</p>
+
+<ul>
+  <li><strong><code>on field</code></strong> y los tipos que admite: un campo. <code>*</code> es cualquier tipo y <code>*[]</code>, cualquier lista. Una regla en un campo de otro tipo es un error (<code>FUD1083</code>).</li>
+  <li><strong><code>on group</code></strong>: un grupo de campos, como «las dos contraseñas coinciden».</li>
+  <li><strong><code>on form</code></strong>: el formulario entero.</li>
+</ul>
+
+<p>Las de grupo y de formulario van en el <code>summary</code> del formulario, no en un campo (<code>FUD1098</code>). Los formularios, sus grupos y sus <code>summary</code> son del capítulo 8.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">Validación de formularios</a>: las reglas que el HTML ya trae, que el catálogo sigue.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">Expresiones regulares</a>: la sintaxis de un patrón.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
+</ul>

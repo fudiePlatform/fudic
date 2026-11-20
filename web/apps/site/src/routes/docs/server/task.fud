@@ -1,0 +1,189 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>task · Fudic</title>
+  <meta name="description" content="task en Fudic: una función de servidor con su estado como signals (valor, pendiente, error, progreso), que cancela la búsqueda anterior y pone en fila las mutaciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/server/task">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="task · Fudic">
+  <meta property="og:description" content="Una función de servidor con su estado como signals.">
+  <meta property="og:url" content="https://fudic.dev/docs/server/task">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("server-task")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#why">Para qué</a></li>
+        <li><a href="#reads">Lo que se lee</a></li>
+        <li><a href="#source">Una búsqueda que sigue a un signal</a></li>
+        <li><a href="#run">run y cancel</a></li>
+        <li><a href="#modes">latest y queue</a></li>
+        <li><a href="#optimistic">Un cambio optimista</a></li>
+        <li><a href="#lifetime">Cuánto vive</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>task</code></h1>
+
+<h2 id="why">Para qué</h2>
+
+<p>Llamar a una función de servidor con <code>await</code> devuelve su valor, pero la vista necesita más: si está en marcha para pintar «Buscando…», el error para enseñarlo, y que una búsqueda vieja no pise a la nueva. <code>task</code>, de <code>@@fudic/core</code>, envuelve la función y lleva todo eso como <a href="/docs/reactivity">signals</a>:</p>
+
+<ui-code>
+<pre><code>@@code &#123;
+  import &#123; task &#125; from "@@fudic/core";
+
+  const guardar = task(save);
+&#125;
+
+&lt;button type="button" @@click=@@(() =&gt; guardar.run(&#123; id: 3, active: true &#125;)) disabled=@@guardar.pending()&gt;
+  Guardar
+&lt;/button&gt;
+@@if (guardar.message() !== "") &#123;
+  &lt;p role="alert"&gt;@@guardar.message()&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p><code>task</code> recibe <strong>la función</strong>, no una llamada: <code>task(save)</code>, nunca <code>task(save(…))</code>. Sirve cualquier función del contrato, o cualquier función asíncrona tuya.</p>
+
+<h2 id="reads">Lo que se lee</h2>
+
+<p>Todo es reactivo: la vista que lo lee se repinta cuando cambia.</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Lectura</th><th scope="col">Qué devuelve</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>value()</code></td><td>la última respuesta, o <code>initial</code>. Se mantiene mientras otra llamada está en marcha, para que la lista no se vacíe al buscar</td></tr>
+    <tr><td><code>pending()</code></td><td><code>true</code> mientras hay una llamada en marcha</td></tr>
+    <tr><td><code>state()</code></td><td><code>"idle"</code>, <code>"pending"</code>, <code>"done"</code>, <code>"cancelled"</code> o <code>"failed"</code></td></tr>
+    <tr><td><code>error()</code></td><td>el error de la última llamada, o <code>undefined</code></td></tr>
+    <tr><td><code>message()</code></td><td>el mensaje de ese error, o <code>""</code>: lo que se pinta</td></tr>
+    <tr><td><code>progress()</code></td><td>los bytes subidos y bajados (<code>loaded</code>, <code>total</code>, <code>phase</code>), o <code>null</code>: la barra de una subida</td></tr>
+  </tbody>
+</table>
+
+<p>El mensaje de un <code>fails</code> llega ya traducido al idioma de la página (<a href="/docs/server/functions#fails-catches"><code>fails</code> y <code>catches</code></a>).</p>
+
+<h2 id="source">Una búsqueda que sigue a un signal</h2>
+
+<p>Con un segundo argumento, una función que devuelve los argumentos, la tarea llama sola cada vez que cambia lo que lee:</p>
+
+<ui-code .path="src/routes/usuarios.fud">
+<pre><code>@@code &#123;
+  import &#123; signal, task &#125; from "@@fudic/core";
+
+  const texto = signal("");
+  const found = task(search, () =&gt; (&#123; q: texto() &#125;), &#123; initial: [] &#125;);
+
+  function buscar(q: string) &#123;
+    texto.set(q);
+  &#125;
+&#125;
+
+&lt;input type="search" aria-label="Buscar por nombre" @@input=@@buscar($value)&gt;
+&lt;p aria-live="polite"&gt;@@(found.pending() ? "Buscando…" : "")&lt;/p&gt;
+&lt;ul&gt;
+  @@foreach (const p of found.value()) key (p.id) &#123;
+    &lt;li&gt;@@p.name&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Al crearla no llama: empieza a seguir la fuente, y llama en el primer cambio. Lo que la página ya trae se le da con <code>initial</code>, a menudo desde <code>data</code>: <code>&#123; initial: data.users &#125;</code>. Cada tecla lanza una búsqueda y cancela la anterior, así que gana siempre la última.</p>
+
+<h2 id="run"><code>run</code> y <code>cancel</code></h2>
+
+<p>Sin fuente, la tarea llama cuando se le pide, con <code>run(args)</code>. <code>run</code> <strong>nunca lanza</strong>: devuelve cómo terminó esa llamada.</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Terminó</th><th scope="col"><code>run</code> devuelve</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>bien</td><td><code>&#123; ok: true, status: "done", value &#125;</code></td></tr>
+    <tr><td>con un error</td><td><code>&#123; ok: false, status: "failed", error &#125;</code></td></tr>
+    <tr><td>cancelada</td><td><code>&#123; ok: false, status: "cancelled" &#125;</code></td></tr>
+  </tbody>
+</table>
+
+<p><code>cancel()</code> aborta la llamada en marcha y descarta las que esperan. Si no hay ninguna, no hace nada:</p>
+
+<ui-code>
+<pre><code>const lenta = task(slowSearch, undefined, &#123; initial: [] &#125;);</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;button type="button" @@click=@@(() =&gt; lenta.run(&#123; q: texto() &#125;))&gt;Buscar&lt;/button&gt;
+&lt;button type="button" @@click=@@(() =&gt; lenta.cancel()) disabled=@@(!lenta.pending())&gt;Cancelar&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>Cancelar aborta de verdad la petición: el handler ve su <code>ctx.signal</code> abortado y puede dejar de trabajar.</p>
+
+<h2 id="modes"><code>latest</code> y <code>queue</code></h2>
+
+<p>Dos llamadas seguidas a la misma tarea pueden hacer dos cosas, y el verbo de la función decide cuál:</p>
+
+<ul>
+  <li><strong><code>latest</code></strong>, para un <code>get</code>: la nueva cancela la anterior. Una respuesta que llega tarde nunca se escribe, aunque la función no hiciera caso de la cancelación.</li>
+  <li><strong><code>queue</code></strong>, para <code>post</code>, <code>put</code>, <code>patch</code> y <code>delete</code>: cada una espera a que termine la anterior, en el orden en que se pidieron. Un cambio nunca se pierde por pulsar dos veces.</li>
+</ul>
+
+<p>Se puede elegir a mano con <code>&#123; mode: "latest" &#125;</code> o <code>&#123; mode: "queue" &#125;</code>.</p>
+
+<h2 id="optimistic">Un cambio optimista</h2>
+
+<p>Con <code>run</code> devolviendo cómo terminó, un cambio optimista se escribe sin <code>try</code>: primero se pinta, después se pregunta al servidor, y si dice que no, se deshace:</p>
+
+<ui-code .path="src/routes/usuarios.fud">
+<pre><code>const personas = signal(data.users);
+const guardar = task(save);
+
+function marcar(id: number, active: boolean) &#123;
+  personas.set(personas().map((x) =&gt; (x.id === id ? &#123; ...x, active &#125; : x)));
+&#125;
+
+async function activar(p: Person, active: boolean) &#123;
+  marcar(p.id, active);
+  const guardado = await guardar.run(&#123; id: p.id, active &#125;);
+  if (!guardado.ok) &#123;
+    marcar(p.id, !active);
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Si el servidor responde con el <code>409</code> que la función declara en <code>catches</code>, la casilla vuelve a su sitio y <code>guardar.message()</code> dice por qué.</p>
+
+<h2 id="lifetime">Cuánto vive</h2>
+
+<ul>
+  <li><strong>Una tarea creada en el <code>@@code</code> es del componente.</strong> Cuando el componente sale de la página, la tarea cancela lo que tiene en marcha y deja de seguir su fuente, y un <code>run</code> posterior devuelve <code>cancelled</code>. Es la misma regla que la de un <code>effect</code> (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>).</li>
+  <li><strong>Una creada dentro de un handler no tiene dueño</strong>, y vive tanto como la página.</li>
+  <li><strong>En el servidor nunca llama</strong>: pinta <code>initial</code>, con <code>state()</code> en <code>"idle"</code>.</li>
+</ul>
+
+<ui-note>
+  <p>Si <code>error-pages</code> se lleva al usuario a otra página por un error, la tarea se queda en <code>pending</code>: la página que la pintaba ya se ha ido.</p>
+</ui-note>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController"><code>AbortController</code></a>: lo que usa <code>task</code> para cancelar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-live"><code>aria-live</code></a>: anunciar «Buscando…» a un lector de pantalla.</li>
+</ul>

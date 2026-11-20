@@ -55,6 +55,30 @@
           <li><a href="/docs/styles/delivery" aria-current=@(current === "styles-delivery" ? "page" : false)>Cómo llega el CSS</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Servidor y datos</span>
+        <ol>
+          <li><a href="/docs/server" aria-current=@(current === "server" ? "page" : false)>El contrato <code>.fudapi</code></a></li>
+          <li><a href="/docs/server/types" aria-current=@(current === "server-types" ? "page" : false)>Tipos</a></li>
+          <li><a href="/docs/server/functions" aria-current=@(current === "server-functions" ? "page" : false)>Funciones de servidor</a></li>
+          <li><a href="/docs/server/task" aria-current=@(current === "server-task" ? "page" : false)><code>task</code></a></li>
+          <li><a href="/docs/server/middlewares" aria-current=@(current === "server-middlewares" ? "page" : false)>Middlewares y cadena</a></li>
+          <li><a href="/docs/server/rules" aria-current=@(current === "server-rules" ? "page" : false)>Reglas y patrones</a></li>
+          <li><a href="/docs/server/pipes" aria-current=@(current === "server-pipes" ? "page" : false)>Pipes</a></li>
+          <li><a href="/docs/server/session" aria-current=@(current === "server-session" ? "page" : false)>Sesión y cookies</a></li>
+          <li><a href="/docs/server/running" aria-current=@(current === "server-running" ? "page" : false)>El servidor</a></li>
+        </ol>
+      </li>
+      <li>
+        <span class="chapter">Páginas y rutas</span>
+        <ol>
+          <li><a href="/docs/routing" aria-current=@(current === "routing" ? "page" : false)>Rutas por carpetas</a></li>
+          <li><a href="/docs/routing/data" aria-current=@(current === "routing-data" ? "page" : false)>Los datos de la página</a></li>
+          <li><a href="/docs/routing/rendering" aria-current=@(current === "routing-rendering" ? "page" : false)>Cuándo se pinta: los modos</a></li>
+          <li><a href="/docs/routing/error-page" aria-current=@(current === "routing-error-page" ? "page" : false)>La página de error</a></li>
+          <li><a href="/docs/routing/early-hints" aria-current=@(current === "routing-early-hints" ? "page" : false)>Early hints</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

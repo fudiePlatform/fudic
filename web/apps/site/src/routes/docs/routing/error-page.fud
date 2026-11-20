@@ -1,0 +1,132 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>La página de error · Fudic</title>
+  <meta name="description" content="La página de error de Fudic: un _error.fud con layout, sin URL propia, que pinta un 404, un load que falla o una llamada que nadie espera, sabe de qué página venía el usuario y se puede compartir desde una librería.">
+  <link rel="canonical" href="https://fudic.dev/docs/routing/error-page">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="La página de error · Fudic">
+  <meta property="og:description" content="Un _error.fud para el 404, el load que falla y la llamada que nadie espera.">
+  <meta property="og:url" content="https://fudic.dev/docs/routing/error-page">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("routing-error-page")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#file">_error.fud</a></li>
+        <li><a href="#data">Su data</a></li>
+        <li><a href="#sources">De dónde llega</a></li>
+        <li><a href="#layout">Su layout</a></li>
+        <li><a href="#library">Una página de error para varias apps</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>La página de error</h1>
+
+<h2 id="file"><code>_error.fud</code></h2>
+
+<p>La página de error de una app es <code>src/routes/_error.fud</code>. Se crea con la CLI, enlazada al layout que tocaría a cualquier página:</p>
+
+<ui-code>
+<pre><code>fudic g error-page</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/_error.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Error @@data.status · Mi app&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.status · @@data.title&lt;/h1&gt;
+@@if (data.detail !== undefined) &#123;
+  &lt;p&gt;@@data.detail&lt;/p&gt;
+&#125;
+@@if (data.back !== undefined) &#123;
+  &lt;p&gt;&lt;a href=@@data.back&gt;Volver&lt;/a&gt;&lt;/p&gt;
+&#125; @@else &#123;
+  &lt;p&gt;&lt;a href=@@data.home&gt;Ir al inicio&lt;/a&gt;&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Es una página como las demás, con una diferencia: <strong>no tiene URL propia</strong>. No es <code>/_error</code>: se pinta en la URL que falló, con el status del error. Así un buscador que pide <code>/blog/no-existe</code> recibe un <code>404</code> de verdad, con una página útil para quien llega.</p>
+
+<p>Sin <code>_error.fud</code>, Fudic pinta los errores con una página mínima propia.</p>
+
+<h2 id="data">Su <code>data</code></h2>
+
+<p>Su <code>data</code> no lo trae un <code>load</code>: es el error que la trae aquí, con su tipo (<code>ErrorPage</code> de <code>@@fudic/http</code>):</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Campo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>status</code></td><td>el status: <code>404</code>, <code>500</code>…</td></tr>
+    <tr><td><code>title</code></td><td>su nombre estándar: <code>Not Found</code></td></tr>
+    <tr><td><code>detail</code></td><td>lo que dijo el servidor, si dijo algo: el texto de <code>notFound("…")</code>. Opcional</td></tr>
+    <tr><td><code>path</code></td><td>la ruta que falló</td></tr>
+    <tr><td><code>back</code></td><td>la página de la que venía el usuario, si es de esta app. Opcional</td></tr>
+    <tr><td><code>home</code></td><td>el inicio de la app</td></tr>
+  </tbody>
+</table>
+
+<p><code>back</code> sale de la cabecera <code>Referer</code>, nunca de la URL: una URL de error no puede llevar a nadie a otro sitio. Si el usuario venía de fuera, no hay <code>back</code>, y la página ofrece <code>home</code>. Los dos llevan ya el <code>base</code> de la app y van tal cual en un <code>href</code>.</p>
+
+<h2 id="sources">De dónde llega</h2>
+
+<ol>
+  <li><strong>Una ruta que no existe.</strong> Una navegación a una URL que no encaja con ninguna ruta pinta la página de error con un <code>404</code>.</li>
+  <li><strong>Un <code>load</code> que lanza.</strong> <code>throw notFound("no existe")</code> la pinta con un <code>404</code> y ese <code>detail</code>; cualquier error que no sea de <code>@@fudic/http</code>, con un <code>500</code> (<a href="/docs/routing/data#errors">Los datos de la página</a>).</li>
+  <li><strong>Una llamada que falla y que nadie espera.</strong> Con <code>error-pages</code> en la cadena, el navegador va a la página de error con el status de la llamada, en <code>/_fudic/error/&lt;status&gt;</code> (<a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>).</li>
+</ol>
+
+<p>En los tres casos sale con las cabeceras de <code>page.headers</code>, como toda página, y con sus propias <a href="/docs/routing/early-hints">early hints</a>: su CSS empieza a bajar antes de que el servidor termine.</p>
+
+<h2 id="layout">Su layout</h2>
+
+<p>La página de error enlaza un layout como cualquier otra. Sin él no se compila como página de error (<code>FUD1581</code>), y Fudic usa la mínima.</p>
+
+<p>Si su layout tiene props, se las da un <code>_error.fudapi</code> con <code>layout</code>, igual que en una ruta (<a href="/docs/routing/data#layout">Los datos de la página</a>). Es lo único que puede declarar: ni <code>load</code>, ni funciones (<code>FUD1010</code>), ni <code>paths</code> (<code>FUD1091</code>).</p>
+
+<ui-code .path="src/routes/_error.fudapi">
+<pre><code>layout</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/error.ts">
+<pre><code>import &#123; layout &#125; from "fudic:routes/_error";
+
+layout.handle(() =&gt; (&#123; seccion: "Error" &#125;));</code></pre>
+</ui-code>
+
+<h2 id="library">Una página de error para varias apps</h2>
+
+<p>En un workspace con varias apps, la página de error puede vivir en la librería que comparten, junto a su layout, como <code>src/_error.fud</code>:</p>
+
+<ui-code>
+<pre><code>fudic g error-page --project ui</code></pre>
+</ui-code>
+
+<p>Toda app que depende de esa librería y no tiene <code>_error.fud</code> propio pinta sus errores con ella, sin escribir nada. Una app nueva no tiene que acordarse de enlazarla. Si una app tiene la suya, gana la suya.</p>
+
+<p>Dos librerías de la cadena con página de error son un error (<code>FUD1570</code>): Fudic no elige una por el orden de las dependencias, porque añadir una dependencia cambiaría las páginas de la app sin avisar. Se resuelve escribiendo la de la app.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/404"><code>404 Not Found</code></a> y los demás <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status">códigos de status</a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer"><code>Referer</code></a>: de donde sale <code>back</code>.</li>
+</ul>

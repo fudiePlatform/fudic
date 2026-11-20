@@ -1,0 +1,111 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Early hints · Fudic</title>
+  <meta name="description" content="Early hints en Fudic: el servidor manda un 103 con el CSS y los módulos que la página va a necesitar mientras su load trabaja, y siempre la cabecera Link, calculados en el build para cada página.">
+  <link rel="canonical" href="https://fudic.dev/docs/routing/early-hints">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Early hints · Fudic">
+  <meta property="og:description" content="El 103 con lo que la página va a necesitar, mientras load trabaja.">
+  <meta property="og:url" content="https://fudic.dev/docs/routing/early-hints">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("routing-early-hints")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué es un 103</a></li>
+        <li><a href="#hints">Las pistas de cada página</a></li>
+        <li><a href="#when">Cuándo se manda</a></li>
+        <li><a href="#error">La página de error</a></li>
+        <li><a href="#see">Verlo funcionar</a></li>
+        <li><a href="#off">Apagarlo</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Early hints</h1>
+
+<h2 id="what">Qué es un <code>103</code></h2>
+
+<p>Mientras el servidor prepara una página, el navegador espera sin hacer nada: no sabe qué CSS ni qué JavaScript va a necesitar hasta que recibe el HTML. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103"><code>103 Early Hints</code></a> es una respuesta del estándar HTTP que el servidor manda <strong>antes</strong> de la respuesta de verdad, con una cabecera <code>Link</code> que dice qué precargar. El navegador empieza a descargarlo mientras el servidor sigue trabajando.</p>
+
+<p>Se nota en una página <code>ssr</code> cuyo <code>load</code> tarda: cuando llega el HTML, su CSS y sus módulos ya están en el navegador.</p>
+
+<h2 id="hints">Las pistas de cada página</h2>
+
+<p>Fudic sabe en el build qué necesita cada página, porque compila sus componentes, su layout y su CSS. Con eso calcula sus <strong>pistas</strong> y las guarda en el manifiesto de rutas:</p>
+
+<ul>
+  <li>las hojas del <code>&lt;head&gt;</code>, en su orden, con la URL de la copia podada para esa página (<a href="/docs/styles/delivery">Cómo llega el CSS</a>);</li>
+  <li>las hojas que no se podan, como una de <code>public/</code> o de otro origen;</li>
+  <li>con <code>css: "link"</code>, las hojas de los componentes de la página;</li>
+  <li>los módulos de JavaScript que la página carga al arrancar.</li>
+</ul>
+
+<ui-code>
+<pre><code>Link: &lt;/assets/tokens-BqSaBSRF.css&gt;; rel=preload; as=style,
+      &lt;/fudic-boot-b0dcce6d.js&gt;; rel=modulepreload,
+      &lt;/_fudic/0.0.1-9bbca9df/core/hydrate.js&gt;; rel=modulepreload</code></pre>
+</ui-code>
+
+<p>Como salen del manifiesto, no del render, un servidor en cualquier lenguaje puede mandarlas leyendo un fichero: no necesita pintar la página para saberlas.</p>
+
+<h2 id="when">Cuándo se manda</h2>
+
+<ul>
+  <li><strong>Siempre, la cabecera <code>Link</code></strong> en la respuesta de una página. El navegador la usa como precarga, y un CDN puede convertirla en un <code>103</code> por su cuenta.</li>
+  <li><strong>El <code>103</code>, en una navegación por HTTP/2 o más.</strong> Es lo que recomienda Chrome: por HTTP/1.1 no se manda. Los navegadores no dicen si entienden el <code>103</code>, y uno que no lo entiende lo ignora.</li>
+  <li><strong>Uno por respuesta.</strong> Chrome ignora los siguientes.</li>
+</ul>
+
+<p>El <code>103</code> lleva también la <code>Content-Security-Policy</code> y la <code>Referrer-Policy</code> de la respuesta final, para que la precarga cumpla la misma política que la página. Qué cabeceras salen y cómo se configuran es de la seguridad (capítulo 12).</p>
+
+<p>Ni el endpoint de datos, ni las funciones de servidor, ni los ficheros estáticos llevan pistas: solo las páginas.</p>
+
+<h2 id="error">La página de error</h2>
+
+<p>La página de error tiene sus propias pistas, calculadas igual. Si un <code>load</code> lanza después de que saliera el <code>103</code> de la ruta, la respuesta final lleva en su <code>Link</code> las de la página de error, que es lo que se pinta. Un <code>404</code> también llega con su CSS precargado (<a href="/docs/routing/error-page">La página de error</a>).</p>
+
+<h2 id="see">Verlo funcionar</h2>
+
+<p>La página <code>/lento</code> de <code>examples/basic</code> tiene un <code>load</code> que tarda dos segundos:</p>
+
+<ui-code .path="src/server/lento.ts">
+<pre><code>load.handle(async (ctx) =&gt; &#123;
+  await wait(2000, ctx.signal);
+  return &#123; title: "Dos segundos de espera", start: 5 &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Servida por HTTP/2, en la pestaña Network de las herramientas del navegador el CSS y el JavaScript salen con iniciador <code>early-hints</code>, y terminan de bajar mientras el servidor aún espera. Por HTTP/1.1 solo se ve la cabecera <code>Link</code>: el ejemplo tiene una preview por HTTPS y HTTP/2 para verlo, en su script <code>preview:h2</code>.</p>
+
+<h2 id="off">Apagarlo</h2>
+
+<p>Las pistas no cuestan nada a la página, y por eso están activadas por defecto. Se apagan en <code>fudic.json</code>:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "earlyHints": false
+&#125;</code></pre>
+</ui-code>
+
+<p>Sin ellas, ni el build las calcula ni el servidor las manda.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103"><code>103 Early Hints</code></a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Link"><code>Link</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload"><code>rel=preload</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload"><code>rel=modulepreload</code></a>: lo que pide cada pista.</li>
+</ul>

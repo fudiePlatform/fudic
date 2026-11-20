@@ -1,0 +1,215 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Los datos de la página · Fudic</title>
+  <meta name="description" content="Los datos de una página de Fudic: load los trae en el servidor, data los lee la vista, paths enumera los parámetros que se prerenderizan y layout da sus props al layout.">
+  <link rel="canonical" href="https://fudic.dev/docs/routing/data">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Los datos de la página · Fudic">
+  <meta property="og:description" content="load, data, paths y layout: los datos de una página de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/routing/data">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("routing-data")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#load">load</a></li>
+        <li><a href="#data">data, en la página</a></li>
+        <li><a href="#ctx">El ctx de load</a></li>
+        <li><a href="#errors">Cuando no hay página</a></li>
+        <li><a href="#later">Lo que tarda</a></li>
+        <li><a href="#paths">paths</a></li>
+        <li><a href="#layout">layout: las props del layout</a></li>
+        <li><a href="#refresh">Datos que cambian</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Los datos de la página</h1>
+
+<p>Lo que una página necesita del servidor para pintarse lo declara su <code>.fudapi</code> (<a href="/docs/server">El contrato <code>.fudapi</code></a>), con tres piezas que solo existen en el contrato de una ruta: <code>load</code>, <code>paths</code> y <code>layout</code>. En otro sitio son un error (<code>FUD1090</code>).</p>
+
+<h2 id="load"><code>load</code></h2>
+
+<p><code>load</code> declara los datos de la página, un campo por línea, con sus tipos:</p>
+
+<ui-code .path="src/routes/blog/index.fudapi">
+<pre><code>load
+  title  str
+  posts  Post[]
+
+type Post
+  slug      str
+  title     str
+  summary   str
+  featured  bool</code></pre>
+</ui-code>
+
+<p>Y su handler los devuelve:</p>
+
+<ui-code .path="src/server/blog.ts">
+<pre><code>import &#123; load &#125; from "fudic:routes/blog/index";
+import &#123; listPosts &#125; from "../data/posts";
+
+load.handle(async () =&gt; (&#123; title: "Blog", posts: [...(await listPosts())] &#125;));</code></pre>
+</ui-code>
+
+<p><code>load</code> se ejecuta siempre en el servidor: nunca lo llama el navegador directamente. Cuándo se ejecuta (en el build, en cada petición) lo decide el modo de la página, que va en su misma línea: <code>load ssr</code>, <code>load ssg</code> o <code>load sw</code> (<a href="/docs/routing/rendering">Los modos</a>).</p>
+
+<p>Los middlewares de la cadena envuelven también a <code>load</code>: una página con <code>use auth</code> en su <code>load</code> no se pinta sin sesión.</p>
+
+<h2 id="data"><code>data</code>, en la página</h2>
+
+<p>Lo que <code>load</code> devuelve es <code>data</code> en la página enlazada, tipado y sin importarlo. Se lee en la vista, en el <code>&lt;head&gt;</code> y en el <code>@@code</code>:</p>
+
+<ui-code .path="src/routes/blog/index.fud">
+<pre><code>&lt;link rel="layout" href="../../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../../components/app-card.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;@@data.title · Mi app&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+@@foreach (const post of data.posts) key (post.slug) &#123;
+  &lt;app-card .title=@@post.title .href=@@("/blog/" + post.slug)&gt;@@post.summary&lt;/app-card&gt;
+&#125; @@empty &#123;
+  &lt;p&gt;Todavía no hay artículos.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p><code>data</code> es lo que trajo <code>load</code>, y solo cambia cuando la página pide sus datos otra vez (<a href="#refresh">abajo</a>). La página no lo escribe: lo que cambia por su cuenta va en un signal que arranca con él, <code>const personas = signal(data.users)</code>, o en el <code>initial</code> de un <a href="/docs/server/task"><code>task</code></a>.</p>
+
+<p>Al navegador solo viaja la parte de <code>data</code> que lee el código de cliente de la página. Lo que solo pinta la vista ya está en el HTML y no se manda dos veces. Un acceso dinámico, como <code>data[campo]</code>, manda <code>data</code> entero, porque no se sabe qué campo hace falta.</p>
+
+<h2 id="ctx">El <code>ctx</code> de <code>load</code></h2>
+
+<p>El handler de <code>load</code> recibe el <code>ctx</code> de una función de servidor (<a href="/docs/server/functions#handler">El handler y su <code>ctx</code></a>), con los parámetros de la página tipados:</p>
+
+<ui-code .path="src/server/blog.ts">
+<pre><code>import &#123; load &#125; from "fudic:routes/blog/[slug]";
+
+load.handle(async (ctx) =&gt; &#123;
+  const post = await findPost(ctx.params.slug);   // slug: string
+  if (post === undefined) throw notFound(`no post "$&#123;ctx.params.slug&#125;"`);
+  return &#123; title: post.title, body: post.body &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>params</code></strong>: los de la URL, por su nombre.</li>
+  <li><strong><code>url</code></strong>: la URL entera. La query string se lee de ella, con <code>ctx.url.searchParams</code>.</li>
+  <li><strong><code>cookies</code></strong> y <strong><code>headers</code></strong>: los de la petición. Leer la sesión hace privada la respuesta (<a href="/docs/server/session#private">Sesión y cookies</a>).</li>
+  <li><strong><code>response</code></strong>: el status y las cabeceras de la página. Un <code>load</code> puede poner una cookie o una cabecera con las que sale el documento.</li>
+  <li><strong><code>signal</code></strong>: se aborta si el usuario se va antes de que la página llegue.</li>
+</ul>
+
+<h2 id="errors">Cuando no hay página</h2>
+
+<p>Un <code>load</code> que lanza no pinta la página:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Lanza</th><th scope="col">La navegación responde</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>notFound("…")</code>, o cualquier error de <code>@@fudic/http</code></td><td>la página de error, con ese status y ese <code>detail</code></td></tr>
+    <tr><td><code>redirect("/entrar")</code></td><td>la redirección, con su status y su <code>Location</code></td></tr>
+    <tr><td>cualquier otro error</td><td>la página de error con un <code>500</code>; en desarrollo, además, el overlay</td></tr>
+  </tbody>
+</table>
+
+<p>Así un <code>/blog/no-existe</code> responde un <code>404</code> de verdad, que es lo que un buscador necesita ver (<a href="/docs/routing/error-page">La página de error</a>). Un <code>load</code> no lleva <code>fails</code> (<code>FUD1360</code>): sus errores no se quedan en la página, porque no hay página.</p>
+
+<h2 id="later">Lo que tarda</h2>
+
+<p>Un campo que termina en <code>later</code> no retiene la página: el handler lo devuelve como una promesa, la página sale en cuanto llega lo demás, y <a href="/docs/template-syntax/await"><code>@@await</code></a> pinta ese trozo cuando llega, en el mismo documento.</p>
+
+<ui-code .path="src/routes/espera.fudapi">
+<pre><code>load ssr
+  title    str
+  resumen  Resumen  later</code></pre>
+</ui-code>
+
+<h2 id="paths"><code>paths</code></h2>
+
+<p>Una página con parámetros puede decir qué valores existen, para que el build escriba una página por cada uno:</p>
+
+<ui-code .path="src/routes/blog/[slug].fudapi">
+<pre><code># Prerendered once per slug that paths gives.
+load
+  title  str
+  body   str
+
+# Every slug the build prerenders.
+paths</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/blog.ts">
+<pre><code>import &#123; paths &#125; from "fudic:routes/blog/[slug]";
+
+paths.handle(async () =&gt; [...(await listSlugs())]);</code></pre>
+</ui-code>
+
+<p>Con <code>paths</code>, la página se prerenderiza una vez por valor (<a href="/docs/routing/rendering#paths">Los modos</a>). Lo que pasa con un valor que <code>paths</code> no dio también está allí. <code>paths</code> en una ruta sin parámetros es un error (<code>FUD1091</code>).</p>
+
+<h2 id="layout"><code>layout</code>: las props del layout</h2>
+
+<p>Un layout puede declarar props, como un componente (<a href="/docs/template-syntax/routes-and-layouts#layout-props">Rutas y layouts</a>), y cada ruta se las da desde el servidor con <code>layout</code>:</p>
+
+<ui-code .path="src/layouts/_layout-articulo.fud">
+<pre><code>&lt;head&gt;
+  @@code &#123;
+    const &#123; culture = "es", seccion &#125; = props&lt;&#123; culture?: string; seccion: string &#125;&gt;();
+  &#125;
+  …
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/blog/[slug].fudapi">
+<pre><code>load
+  title  str
+  lang   str
+
+layout</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/blog.ts">
+<pre><code>import &#123; layout &#125; from "fudic:routes/blog/[slug]";
+
+layout.handle((ctx, data) =&gt; (&#123; culture: data.lang, seccion: "Blog" &#125;));</code></pre>
+</ui-code>
+
+<p><code>layout</code> se ejecuta después de <code>load</code> y recibe sus datos: por eso un artículo en inglés sale con <code>&lt;html lang="en"&gt;</code> y su vecino en español con <code>lang="es"</code>, desde el mismo layout y el mismo build. Su tipo sale del layout enlazado: si falta una prop obligatoria, el build se para (<code>FUD0702</code>) y el editor ofrece completarla.</p>
+
+<h2 id="refresh">Datos que cambian</h2>
+
+<p>Una función que declara <code>invalidates</code> con la ruta de la página hace que la página pida sus datos otra vez al terminar, y se repinte con el <code>data</code> nuevo, sin recargar (<a href="/docs/server/functions#invalidates"><code>invalidates</code></a>):</p>
+
+<ui-code>
+<pre><code>post login
+  invalidates /usuarios
+  user  str</code></pre>
+</ui-code>
+
+<p>El navegador los pide al mismo sitio que el Service Worker, <code>/_fudic/data/&lt;ruta&gt;</code>, y en el mismo formato.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/searchParams"><code>URL.searchParams</code></a>: la query string, desde <code>ctx.url</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang"><code>lang</code></a>: el idioma del documento, que puede venir de los datos.</li>
+</ul>

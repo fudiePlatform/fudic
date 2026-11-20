@@ -1,0 +1,166 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tipos · Fudic</title>
+  <meta name="description" content="Los tipos del contrato .fudapi de Fudic: primitivos con ancho, listas, opcionales, mapas, type y enum, y cómo se comprueban al cruzar entre el navegador y el servidor.">
+  <link rel="canonical" href="https://fudic.dev/docs/server/types">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tipos · Fudic">
+  <meta property="og:description" content="Primitivos, listas, opcionales, mapas, type y enum en el contrato .fudapi.">
+  <meta property="og:url" content="https://fudic.dev/docs/server/types">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("server-types")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#primitives">Los primitivos</a></li>
+        <li><a href="#modifiers">Listas, opcionales y mapas</a></li>
+        <li><a href="#type">type</a></li>
+        <li><a href="#enum">enum</a></li>
+        <li><a href="#checked">Se comprueban al cruzar</a></li>
+        <li><a href="#arg-rules">Reglas en un argumento</a></li>
+        <li><a href="#files">Ficheros</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Tipos</h1>
+
+<p>Cada campo y cada argumento de un <code>.fudapi</code> lleva un tipo. Con él, Fudic escribe el tipo de TypeScript que ven el handler y la vista, y comprueba el valor cada vez que cruza entre el navegador y el servidor.</p>
+
+<h2 id="primitives">Los primitivos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Tipo</th><th scope="col">En TypeScript</th><th scope="col">Qué admite</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>str</code></td><td><code>string</code></td><td>cualquier texto</td></tr>
+    <tr><td><code>bool</code></td><td><code>boolean</code></td><td><code>true</code> o <code>false</code></td></tr>
+    <tr><td><code>u8</code> <code>u16</code> <code>u32</code></td><td><code>number</code></td><td>enteros sin signo de 8, 16 y 32 bits</td></tr>
+    <tr><td><code>i8</code> <code>i16</code> <code>i32</code></td><td><code>number</code></td><td>enteros con signo de 8, 16 y 32 bits</td></tr>
+    <tr><td><code>f32</code> <code>f64</code></td><td><code>number</code></td><td>números con decimales</td></tr>
+    <tr><td><code>date</code></td><td><code>Date</code></td><td>un instante</td></tr>
+    <tr><td><code>uuid</code></td><td><code>string</code></td><td>un UUID en su forma de texto (RFC 9562)</td></tr>
+    <tr><td><code>html</code></td><td><code>TrustedHTML</code></td><td>HTML que viene del servidor, para <a href="/docs/template-syntax/ref-and-raw"><code>@@raw</code></a></td></tr>
+    <tr><td><code>file</code></td><td><code>File</code></td><td>un fichero (abajo)</td></tr>
+  </tbody>
+</table>
+
+<p>No hay un tipo <code>number</code>: un número dice su ancho, porque un backend en otro lenguaje necesita saberlo, y porque el ancho es una validación gratis. Un <code>u8</code> que recibe <code>300</code> se rechaza. Escribir <code>number</code> da <code>FUD1080</code>, con la lista de anchos. No hay enteros de 64 bits: JavaScript no los representa en un <code>number</code>.</p>
+
+<p><code>html</code> viaja como texto, nunca como la marca de confianza. <code>@@raw</code> lo escapa igual en el servidor y en el navegador: lo que el servidor manda no se convierte en HTML vivo por cruzar el contrato.</p>
+
+<h2 id="modifiers">Listas, opcionales y mapas</h2>
+
+<ui-code>
+<pre><code>load
+  tags     str[]          # a list: readonly string[]
+  author   Author?        # optional: it may be missing
+  stock    map str i32    # Readonly&lt;Record&lt;string, number&gt;&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>T[]</code></strong> es una lista, de solo lectura en TypeScript.</li>
+  <li><strong><code>T?</code></strong> es un campo opcional: puede no estar. Como en el resto de Fudic, ausente no es lo mismo que <code>undefined</code>: el handler omite el campo.</li>
+  <li><strong><code>map K V</code></strong> es un diccionario. La clave es <code>str</code>, <code>uuid</code> o un entero (<code>FUD1089</code> si no); el valor, cualquier tipo, otro mapa incluido.</li>
+</ul>
+
+<h2 id="type">type</h2>
+
+<p>Un tipo con nombre, en PascalCase, con un campo por línea:</p>
+
+<ui-code>
+<pre><code>type Person
+  id      i32
+  name    str
+  email   str
+  age     u8
+  active  bool
+  # Whether `avatar` has a photo of this person.
+  avatar  bool</code></pre>
+</ui-code>
+
+<p>Es del proyecto: cualquier <code>.fudapi</code> lo usa sin importarlo, y en TypeScript se importa como tipo desde el módulo que lo declara (<code>import type &#123; Person &#125; from "fudic:routes/usuarios"</code>). El comentario encima de un campo es su documentación en el editor.</p>
+
+<ul>
+  <li>Un campo de un <code>type</code> no lleva valor por defecto (<code>FUD1064</code>). Los defectos son de los formularios.</li>
+  <li>Un <code>type</code> puede contenerse a sí mismo solo a través de una lista, un opcional o un mapa: <code>children Node[]</code> sí, <code>parent Node</code> no (<code>FUD1088</code>), porque no tendría fin.</li>
+</ul>
+
+<h2 id="enum">enum</h2>
+
+<p>Un valor de una lista cerrada, uno por línea:</p>
+
+<ui-code>
+<pre><code>enum Tone
+  info
+  warning
+  error</code></pre>
+</ui-code>
+
+<p>En TypeScript es la unión de sus valores, <code>"info" | "warning" | "error"</code>, que el editor completa y comprueba en la vista.</p>
+
+<h2 id="checked">Se comprueban al cruzar</h2>
+
+<p>Un valor se comprueba contra su tipo cada vez que pasa de un lado al otro:</p>
+
+<ul>
+  <li><strong>En el navegador</strong>, antes de enviar una llamada: unos argumentos que no cumplen su tipo no salen, y la llamada falla sin tocar la red.</li>
+  <li><strong>En el servidor</strong>, al recibirla: lo que no cumple el tipo se responde con un <code>400</code>, sin llegar al handler. El servidor no se fía de lo que llega, aunque lo haya mandado una página de Fudic.</li>
+</ul>
+
+<p>El handler recibe valores que ya cumplen el contrato: no tiene que comprobar que <code>age</code> es un entero entre 0 y 255.</p>
+
+<h2 id="arg-rules">Reglas en un argumento</h2>
+
+<p>Un argumento puede llevar, debajo, reglas de <code>@@fudic/forms</code>, con la misma doble comprobación:</p>
+
+<ui-code>
+<pre><code>get search
+  q  str
+    max-length 80
+  -&gt; Person[]</code></pre>
+</ui-code>
+
+<p>Un texto de 81 caracteres se rechaza en el navegador, antes de salir. En un argumento solo valen las ocho reglas que trae Fudic (<a href="/docs/server/rules#catalog">el catálogo</a>); las del proyecto son para formularios (<code>FUD1260</code>).</p>
+
+<p>Los tamaños se escriben con su unidad, en base 1024: <code>500kb</code>, <code>2mb</code>, <code>1.5gb</code>.</p>
+
+<h2 id="files">Ficheros</h2>
+
+<p><code>file</code>, <code>file?</code> y <code>file[]</code> van donde un fichero tiene sentido:</p>
+
+<ul>
+  <li><strong>En los argumentos de un <code>post</code>, <code>put</code>, <code>patch</code> o <code>delete</code></strong>, y en los campos de un formulario: la llamada sube como <code>multipart/form-data</code>, en streaming.</li>
+  <li><strong>En la respuesta de cualquier función</strong>, <code>get</code> incluido: <code>-&gt; file</code> manda el fichero como cuerpo de la respuesta, con su tipo y su nombre.</li>
+</ul>
+
+<p>No caben en los argumentos de un <code>get</code> ni en los de la URL (<code>FUD1480</code>), porque viajan en la URL, ni en los datos de una página (<code>FUD1481</code>). <code>max-size</code> y <code>accept</code> los validan:</p>
+
+<ui-code>
+<pre><code>post upload
+  photo  file
+    max-size 2mb
+    accept "image/png, image/jpeg"</code></pre>
+</ui-code>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File"><code>File</code></a>: lo que recibe un handler y lo que devuelve <code>-&gt; file</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/TrustedHTML"><code>TrustedHTML</code></a>: el tipo de un campo <code>html</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
+</ul>
