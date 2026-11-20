@@ -1,16 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Signals · Fudic</title>
-  <meta name="description" content="La reactividad de Fudic: signal, computed y effect, qué evalúa el servidor, por qué un computed sigue la lista de la vista, y el patrón store para compartir estado entre componentes.">
+  <meta name="description" content="La reactividad de Fudic: signal, computed y effect, qué hace el servidor con ellos y cómo compartir estado entre componentes con un store.">
   <link rel="canonical" href="https://fudic.dev/docs/reactivity">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Signals · Fudic">
-  <meta property="og:description" content="signal, computed y effect en Fudic, qué evalúa el servidor y el patrón store.">
+  <meta property="og:description" content="signal, computed y effect en Fudic, y el patrón store.">
   <meta property="og:url" content="https://fudic.dev/docs/reactivity">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,13 +24,11 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#signal">signal: un valor que avisa</a></li>
-        <li><a href="#computed">computed: un valor derivado</a>
-          <ul><li><a href="#computed-syntax">Lo que puede escribirse en un computed</a></li></ul>
-        </li>
+        <li><a href="#computed">computed: un valor derivado</a></li>
         <li><a href="#effect">effect: hacer algo cuando cambia</a></li>
-        <li><a href="#batch-untrack">batch, untrack y now</a></li>
         <li><a href="#server">En el servidor</a></li>
-        <li><a href="#store">El patrón store</a></li>
+        <li><a href="#store">Compartir estado: el store</a></li>
+        <li><a href="#batch-untrack">batch, untrack y now</a></li>
         <li><a href="#instead-of">Si vienes de otro framework</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
@@ -41,9 +38,9 @@
 
 <h1>Signals</h1>
 
-<p>Un componente de Fudic no se vuelve a pintar entero cuando algo cambia. Se repinta exactamente lo que lee el valor que ha cambiado: un texto, un atributo, una rama de un <code>@@if</code>. No hay DOM virtual ni comparación de árboles. La pieza que lo hace posible es el <strong>signal</strong>.</p>
+<p>Cuando algo cambia, un componente de Fudic no se vuelve a pintar entero: solo se actualiza lo que lee el valor que ha cambiado. No hay DOM virtual. La pieza que lo hace posible es el <strong>signal</strong>.</p>
 
-<p>Los signals todavía no son parte de JavaScript, aunque hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta para el estándar</a> en el TC39, el comité que lo mantiene. Fudic trae los suyos en <code>@@fudic/core</code>, con tres piezas: <code>signal</code>, <code>computed</code> y <code>effect</code>.</p>
+<p>Los signals aún no son parte de JavaScript: hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta en el TC39</a>, el comité que lo mantiene. Mientras llega, Fudic trae los suyos en <code>@@fudic/core</code>.</p>
 
 <h2 id="signal"><code>signal</code>: un valor que avisa</h2>
 
@@ -62,52 +59,33 @@
 
 &lt;miapp-order&gt;
   &lt;template shadowrootmode="open"&gt;
-    &lt;p&gt;@@quantity() × @@price() € = &lt;output&gt;@@total() €&lt;/output&gt;&lt;/p&gt;
+    &lt;p&gt;@@quantity() × @@price() € = @@total() €&lt;/p&gt;
     &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
   &lt;/template&gt;
 &lt;/miapp-order&gt;</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>Se lee llamándolo</strong>: <code>quantity()</code>. Quien lo lee (la plantilla, un <code>computed</code>, un <code>effect</code>) queda suscrito.</li>
-  <li><strong>Se escribe con <code>set</code></strong>: <code>quantity.set(2)</code>. Todo lo suscrito se actualiza: aquí, la cantidad y el total.</li>
-  <li><strong>Un valor nuevo, no uno modificado.</strong> Un signal avisa cuando recibe otro valor. Cambiar una lista por dentro (<code>items().push(x)</code>) no avisa a nadie; se escribe una lista nueva: <code>items.set([...items(), x])</code>.</li>
+  <li>Se lee llamándolo: <code>quantity()</code>. Quien lo lee queda suscrito.</li>
+  <li>Se escribe con <code>set</code>: <code>quantity.set(2)</code>. Todo lo suscrito se actualiza.</li>
+  <li>Avisa cuando recibe un valor nuevo. Cambiar una lista por dentro (<code>items().push(x)</code>) no avisa; escribe una lista nueva: <code>items.set([...items(), x])</code>.</li>
 </ul>
 
 <h2 id="computed"><code>computed</code>: un valor derivado</h2>
 
-<p><code>computed(() =&gt; …)</code> es un valor que se calcula a partir de otros y se recalcula solo cuando cambian. Es de solo lectura: no tiene <code>set</code>.</p>
+<p>Se calcula a partir de otros signals y se recalcula solo cuando cambian. No tiene <code>set</code>:</p>
 
 <ui-code>
-<pre><code>const total = computed(() =&gt; price() * quantity());
-const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
+<pre><code>const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
 </ui-code>
 
-<ui-code>
-<pre><code>@@if (freeShipping()) {
-  &lt;p&gt;Envío gratis.&lt;/p&gt;
-}</code></pre>
-</ui-code>
+<p id="computed-syntax">Si la plantilla lo lee, el servidor también lo calcula, y ese servidor puede no ser Node (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso se escribe con lo mismo que una expresión de la plantilla: una flecha sin llaves y la <a href="/docs/template-syntax/expressions#the-closed-list">lista de operaciones de la vista</a>. Un <code>find</code>, por ejemplo, da error (<code>FUD1140</code>); se escribe <code>filter(…)[0]</code>.</p>
 
-<h3 id="computed-syntax">Lo que puede escribirse en un <code>computed</code></h3>
-
-<p>Un <code>computed</code> que lee la plantilla lo evalúa también el servidor, para pintar la página. Y la vista de Fudic está pensada para que ese servidor pueda ser Node, C#, Java, Go, Rust o Python (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso su cuerpo sigue la misma lista cerrada que la plantilla:</p>
-
-<ul>
-  <li><strong>Una flecha con cuerpo de expresión</strong>: <code>computed(() =&gt; a() + b())</code>. Un cuerpo de bloque, con <code>{ … }</code> y <code>return</code>, es <code>FUD1150</code>.</li>
-  <li><strong>Lo que admite una expresión de la vista</strong>: literales, aritmética, comparaciones, el ternario, <code>??</code>, plantillas de texto, leer otros signals y las cinco operaciones de colección (<code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code> y <code>.length</code>). La lista completa está en <a href="/docs/template-syntax/expressions#the-closed-list">Expresiones</a>.</li>
-  <li><strong>Sin métodos sueltos de JavaScript</strong>: <code>computed(() =&gt; tasks().find(t =&gt; t.done))</code> es <code>FUD1140</code> en el <code>find</code>. Se escribe <code>tasks().filter(t =&gt; t.done)[0]</code>.</li>
-</ul>
-
-<p>La razón es la misma que en la plantilla: <code>find</code>, <code>join</code> o <code>toUpperCase</code> existen en JavaScript, pero no existen igual en los seis lenguajes. Las cinco operaciones de colección sí tienen un equivalente directo en todos, y combinadas cubren cualquier cálculo sobre una lista. Recortar ahora es lo que permite que mañana el mismo <code>.fud</code> se pinte en un servidor que no es Node, sin tocarlo.</p>
-
-<ui-note .kind="tip">
-  <p>La lista solo se aplica a lo que lee la plantilla. Un <code>computed</code> que solo usan los handlers o los efectos es TypeScript libre, porque nunca se ejecuta en el servidor: <code>computed(() =&gt; names().join(", "))</code> no da ningún error si la plantilla no lo lee.</p>
-</ui-note>
+<p>Un <code>computed</code> que la plantilla no lee es TypeScript libre.</p>
 
 <h2 id="effect"><code>effect</code>: hacer algo cuando cambia</h2>
 
-<p>Un <code>effect</code> ejecuta una función y la vuelve a ejecutar cada vez que cambia algo de lo que leyó. Es para lo que sale de Fudic: el título del documento, el almacenamiento del navegador, una librería de terceros.</p>
+<p>Ejecuta una función, y la repite cada vez que cambia algo de lo que leyó. Sirve para tocar lo que está fuera del componente: el título del documento, el almacenamiento del navegador, una librería de terceros.</p>
 
 <ui-code>
 <pre><code>effect(() =&gt; {
@@ -115,18 +93,11 @@ const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
 });</code></pre>
 </ui-code>
 
-<p>Si solo debe reaccionar a algunos valores, pásaselos como <strong>fuentes</strong>. Entonces se vuelve a ejecutar solo cuando cambia una de ellas, y lo que lea el cuerpo no cuenta:</p>
-
-<ui-code>
-<pre><code>effect(() =&gt; {
-  sessionStorage.setItem("quantity", String(quantity()));
-}, [quantity]);</code></pre>
-</ui-code>
-
 <ul>
-  <li><strong>Se pasan las fuentes, no sus valores</strong>: <code>[quantity]</code>, no <code>[quantity()]</code>, que es un error de tipos. Una fuente puede ser también una función: <code>[() =&gt; user().id]</code>.</li>
-  <li><strong><code>[]</code> se ejecuta una vez.</strong></li>
-  <li><strong>La función que devuelve es su limpieza</strong>: se ejecuta antes de cada repetición y cuando el efecto se destruye.</li>
+  <li><strong>Para reaccionar solo a algunos valores</strong>, pásalos como segundo argumento: <code>effect(fn, [quantity])</code>. Con <code>[]</code>, se ejecuta una vez.</li>
+  <li><strong>La función que devuelve es su limpieza</strong>, y se ejecuta antes de cada repetición y al final.</li>
+  <li><strong>Muere con el componente</strong> si se escribe en <code>@@code</code> (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>).</li>
+  <li><strong>Hace que el componente se hidrate al cargar la página</strong>, porque tiene que estar escuchando desde el principio (<a href="/docs/reactivity/hydration">Hidratación</a>).</li>
 </ul>
 
 <ui-code>
@@ -136,78 +107,35 @@ const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
 }, []);</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong>Un <code>effect</code> escrito en <code>@@code</code> muere con el componente</strong>, sin que tengas que guardarlo. Uno creado dentro de un handler vive tanto como la página. Lo explica <a href="/docs/reactivity/lifecycle">Ciclo de vida</a>.</li>
-  <li><strong>Un <code>effect</code> en <code>@@code</code> hace que el componente se hidrate al cargar la página</strong>, no en su primera interacción: tiene que estar escuchando desde el principio (<a href="/docs/reactivity/hydration">Hidratación</a>).</li>
-  <li><strong>Un <code>effect</code> que escribe un signal que él mismo lee</strong> se llamaría en bucle. Fudic lo corta y avisa con un error con nombre.</li>
-</ul>
-
-<h2 id="batch-untrack"><code>batch</code>, <code>untrack</code> y <code>now</code></h2>
-
-<ul>
-  <li><strong><code>batch(fn)</code></strong> agrupa varias escrituras: los efectos que dependen de ellas se ejecutan una vez, al final, y no una por escritura.</li>
-  <li><strong><code>untrack(fn)</code></strong> lee sin suscribirse: dentro de un <code>effect</code> o un <code>computed</code>, lo que se lee ahí no lo hace repetirse.</li>
-  <li><strong><code>now()</code></strong> es «ahora», solo como valor inicial de un signal: <code>signal(now())</code>. El servidor lo evalúa una vez al pintar, y el navegador que hidrata lee el mismo instante, así que los dos pintan lo mismo. <code>new Date()</code> daría un valor distinto en cada lado.</li>
-</ul>
-
-<ui-code>
-<pre><code>function reset() {
-  batch(() =&gt; {
-    price.set(12);
-    quantity.set(1);
-  });
-}</code></pre>
-</ui-code>
-
 <h2 id="server">En el servidor</h2>
 
-<p>En el servidor no hay nada que reaccione: pinta la página una vez y la envía. Por eso:</p>
+<p>El servidor pinta la página una vez y la envía, así que nada reacciona:</p>
 
 <ul>
-  <li><strong>un signal es su valor inicial</strong>;</li>
-  <li><strong>un <code>computed</code> se calcula una vez</strong>, en su sitio del <code>@@code</code>;</li>
-  <li><strong>un <code>effect</code> no se ejecuta.</strong> Por eso puede usar <code>document</code>, <code>window</code> o el almacenamiento del navegador sin comprobar dónde está.</li>
+  <li>un signal es su valor inicial;</li>
+  <li>un <code>computed</code> se calcula una vez;</li>
+  <li>un <code>effect</code> no se ejecuta, así que puede usar <code>document</code> o <code>window</code> sin comprobar dónde está.</li>
 </ul>
 
-<p>El navegador recibe la página ya pintada con esos valores, y el componente se hidrata a partir de ellos sin volver a calcularlos.</p>
+<p>El navegador recibe la página con esos valores y no los vuelve a calcular.</p>
 
-<h2 id="store">El patrón store</h2>
+<h2 id="store">Compartir estado: el store</h2>
 
-<p>Un signal no tiene por qué vivir dentro de un componente. Si lo declaras en un módulo y lo exportas, todos los componentes que lo importan leen el mismo: es lo que cualquier framework de signals llama un <strong>store</strong>.</p>
+<p>Un signal declarado en un módulo es el mismo para todos los componentes que lo importan. Es lo que se llama un <strong>store</strong>:</p>
 
 <ui-code .path="src/stores/cart.ts">
 <pre><code>import { computed, signal } from "@@fudic/core";
 
-/** What is in the cart. One per page: every component that imports it reads the same signal. */
 export const items = signal&lt;readonly string[]&gt;([]);
-
-/** How many things are in the cart. */
 export const count = computed(() =&gt; items().length);
 
-/** Put a product in the cart. */
 export function add(name: string): void {
   items.set([...items(), name]);
 }</code></pre>
 </ui-code>
 
-<ui-code .path="src/components/miapp-add-button/miapp-add-button.fud">
-<pre><code>@@code {
-  /** Adds a product to the cart. */
-  import { add } from "../../stores/cart";
-
-  const { product } = props&lt;{ product: string }&gt;();
-}
-
-&lt;miapp-add-button&gt;
-  &lt;template shadowrootmode="open"&gt;
-    &lt;button type="button" @@click=@@add(product)&gt;Añadir @@product&lt;/button&gt;
-  &lt;/template&gt;
-&lt;/miapp-add-button&gt;</code></pre>
-</ui-code>
-
 <ui-code .path="src/components/miapp-cart-badge/miapp-cart-badge.fud">
 <pre><code>@@code {
-  /** How many things the cart holds. */
   import { count } from "../../stores/cart";
 }
 
@@ -218,40 +146,43 @@ export function add(name: string): void {
 &lt;/miapp-cart-badge&gt;</code></pre>
 </ui-code>
 
-<p>El botón y el contador no se conocen, ni están uno dentro del otro: los dos importan el mismo módulo. Hay un ejemplo completo en <a href="https://github.com/fudiePlatform/fudic/blob/main/examples/basic/src/store/contador.ts" target="_blank" rel="noopener"><code>examples/basic</code></a>.</p>
+<p>Cualquier otro componente que llame a <code>add</code> actualiza este contador, aunque no se conozcan.</p>
 
 <ul>
-  <li><strong>Un store por documento.</strong> El módulo se carga una vez por página, así que su valor es de la página, no de cada componente.</li>
-  <li><strong>Lo escribe solo el navegador.</strong> El servidor pinta su valor inicial y nada más: un módulo se carga una vez por proceso de Node, y un store escrito en el servidor pasaría datos de un usuario a la petición del siguiente.</li>
-  <li><strong>Lo que la plantilla lee de un store</strong> tiene que ser un <code>export const</code> con <code>signal(…)</code>, <code>computed(…)</code> o un valor de la lista de la vista, por la misma razón que un <code>computed</code>. Y <code>now()</code> no vale en un store: se evaluaría una vez para todo el proceso (<code>FUD0912</code>).</li>
+  <li><strong>Hay un store por página</strong>, porque el módulo se carga una vez por página.</li>
+  <li><strong>Solo lo escribe el navegador.</strong> En el servidor, un módulo se comparte entre todas las peticiones, y un store escrito allí pasaría datos de un usuario a otro.</li>
+  <li><strong>Vive lo que vive la página.</strong> Para guardarlo entre visitas, mira el ejemplo de <a href="/docs/reactivity/lifecycle#route-hooks">el ciclo de una página</a>.</li>
 </ul>
 
-<p>Un store vive lo que vive la página. Guardarlo entre visitas se escribe hoy a mano, con un <code>effect</code> y el almacenamiento del navegador; hay un ejemplo con IndexedDB en <a href="/docs/reactivity/lifecycle#route-hooks">el ciclo de vida de una ruta</a>.</p>
+<h2 id="batch-untrack"><code>batch</code>, <code>untrack</code> y <code>now</code></h2>
+
+<ul>
+  <li><code>batch(fn)</code> agrupa varias escrituras, y los efectos se ejecutan una sola vez, al final.</li>
+  <li><code>untrack(fn)</code> lee un signal sin suscribirse.</li>
+  <li><code>signal(now())</code> guarda «ahora». El servidor y el navegador leen el mismo instante, cosa que <code>new Date()</code> no conseguiría.</li>
+</ul>
 
 <h2 id="instead-of">Si vienes de otro framework</h2>
 
-<p>Si vienes de Angular, la API ya la conoces: sus signals también se leen llamándolos y se escriben con <code>set</code>, y también tiene <code>computed</code> y <code>effect</code>.</p>
+<p>Si vienes de Angular, ya conoces la API: sus signals también se leen llamándolos y se escriben con <code>set</code>.</p>
 
 <table>
   <thead>
     <tr><th scope="col">React</th><th scope="col">Vue</th><th scope="col">Fudic</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>const [n, setN] = useState(0)</code></td><td><code>const n = ref(0)</code></td><td><code>const n = signal(0)</code></td></tr>
-    <tr><td><code>setN(n + 1)</code></td><td><code>n.value++</code></td><td><code>n.set(n() + 1)</code></td></tr>
+    <tr><td><code>useState(0)</code></td><td><code>ref(0)</code></td><td><code>signal(0)</code></td></tr>
     <tr><td><code>useMemo(() =&gt; …, [a])</code></td><td><code>computed(() =&gt; …)</code></td><td><code>computed(() =&gt; …)</code></td></tr>
     <tr><td><code>useEffect(fn, [a])</code></td><td><code>watch(a, fn)</code></td><td><code>effect(fn, [a])</code></td></tr>
-    <tr><td><code>useEffect(fn)</code></td><td><code>watchEffect(fn)</code></td><td><code>effect(fn)</code></td></tr>
     <tr><td>un contexto o una librería de estado</td><td>Pinia</td><td>un módulo que exporta signals</td></tr>
   </tbody>
 </table>
 
-<p>Una diferencia de fondo: en React un cambio vuelve a ejecutar la función del componente entera. En Fudic, <code>@@code</code> se ejecuta una vez, y un cambio solo toca lo que lee el valor que ha cambiado.</p>
+<p>La diferencia de fondo: en React, un cambio vuelve a ejecutar el componente entero. En Fudic, <code>@@code</code> se ejecuta una vez.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage" target="_blank" rel="noopener"><code>sessionStorage</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" target="_blank" rel="noopener">IndexedDB</a>: dónde guardar un estado en el navegador desde un <code>effect</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: por qué un store se carga una vez por página.</li>
-  <li><a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">La propuesta de signals del TC39</a>, todavía fuera de MDN porque aún no es estándar.</li>
+  <li><a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">La propuesta de signals del TC39</a>, que aún no está en MDN porque no es estándar.</li>
 </ul>

@@ -6,11 +6,11 @@
 
 <head>
   <title>Hidratación · Fudic</title>
-  <meta name="description" content="Cómo se hidrata un componente de Fudic: solo los que lo necesitan, en su primera interacción, sin perder ningún clic, con su código descargado por tag y su estado leído del HTML.">
+  <meta name="description" content="Cómo se hidrata un componente de Fudic: solo los que lo necesitan, con su código descargado al entrar en pantalla y sin perder ningún clic.">
   <link rel="canonical" href="https://fudic.dev/docs/reactivity/hydration">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Hidratación · Fudic">
-  <meta property="og:description" content="Solo se hidrata lo que lo necesita, en su primera interacción, sin perder ningún clic.">
+  <meta property="og:description" content="Solo se hidrata lo que lo necesita, y solo se descarga lo que entra en pantalla.">
   <meta property="og:url" content="https://fudic.dev/docs/reactivity/hydration">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -29,9 +29,7 @@
         <li><a href="#when">Cuándo</a></li>
         <li><a href="#no-lost-clicks">Ningún clic se pierde</a></li>
         <li><a href="#state">El estado viaja con el HTML</a></li>
-        <li><a href="#chunks">El código, por tag</a></li>
-        <li><a href="#order">El orden: de dentro afuera</a></li>
-        <li><a href="#await">Con @@await, parte a parte</a></li>
+        <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -42,48 +40,35 @@
 
 <h2 id="what">Qué es hidratar</h2>
 
-<p>Una página de Fudic llega del servidor ya pintada: sus componentes son Declarative Shadow DOM, y el navegador los muestra sin ejecutar JavaScript (capítulo 1). Pero ese HTML todavía no responde: el botón está, y su clic no hace nada.</p>
+<p>Una página de Fudic llega del servidor ya pintada, con Declarative Shadow DOM, y se ve sin ejecutar JavaScript. Pero aún no responde: el botón está, y su clic no hace nada.</p>
 
-<p><strong>Hidratar</strong> es darle vida: cargar el código del componente, engancharlo al HTML que ya existe y dejar sus signals y sus eventos funcionando. Fudic no vuelve a pintar el componente para hidratarlo: <strong>adopta</strong> el HTML del servidor tal cual, nodo a nodo.</p>
+<p><strong>Hidratar</strong> es darle vida: cargar el código del componente y engancharlo al HTML que ya existe, sin volver a pintarlo.</p>
 
 <h2 id="which">Qué se hidrata</h2>
 
-<p>Solo lo que lo necesita. Un componente se hidrata si tiene algo que hacer en el navegador:</p>
+<p>Solo lo que tiene algo que hacer en el navegador: un componente con signals, eventos, un <code>effect</code> o un hook del ciclo de vida.</p>
 
-<ul>
-  <li>estado (un <code>signal</code>);</li>
-  <li>eventos (un <code>@@click</code>, un <code>bus:</code>);</li>
-  <li>props que cambian (las que le pasa un padre desde un signal);</li>
-  <li>un <code>effect</code> o un hook del ciclo de vida.</li>
-</ul>
-
-<p>Todo lo demás se queda en HTML y CSS para siempre: una tarjeta, un menú sin estado o un pie de página no descargan una línea de JavaScript. Y una página que no tiene nada que hidratar no carga ni el runtime de Fudic.</p>
+<p>Lo demás se queda en HTML y CSS. Una tarjeta o un pie de página no descargan JavaScript, y una página sin nada que hidratar no carga ni el runtime de Fudic.</p>
 
 <h2 id="when">Cuándo</h2>
 
-<p><strong>En su primera interacción</strong>, no al cargar la página. Hasta que alguien toca un componente, su código no se descarga. La página carga rápido porque no ejecuta nada que nadie haya pedido.</p>
+<p><strong>Cuando entra en pantalla, su código se descarga</strong>, en segundo plano y sin que el usuario haga nada. Si el componente está en el pie de la página y el usuario nunca llega hasta allí, su código no se descarga.</p>
 
-<p>Un gesto es lo que cuenta como interacción: <code>click</code>, <code>dblclick</code>, <code>auxclick</code>, <code>contextmenu</code>, <code>keydown</code>, <code>keyup</code>, <code>beforeinput</code>, <code>input</code>, <code>focusin</code> y <code>focusout</code>. Pasar el ratón por encima o hacer scroll no despierta a nadie: esos eventos se disparan cientos de veces por segundo.</p>
+<p><strong>En su primera interacción, se hidrata</strong>: un clic, una tecla o el foco. Como el código ya está descargado, responde al momento.</p>
 
-<p>Hay una excepción: el componente que <strong>tiene que estar escuchando desde el principio</strong> se hidrata al cargar la página. Es el que tiene un <code>effect</code> en su <code>@@code</code>, o un <code>beforeHydrate</code>, <code>afterHydrate</code> u <code>onConnect</code>. Un reloj que avanza solo o un componente que mide su tamaño no pueden esperar a un clic.</p>
+<p>La excepción es el componente que tiene que estar escuchando desde el principio, como un reloj que avanza solo. Si tiene un <code>effect</code> en su <code>@@code</code>, o un <code>beforeHydrate</code>, <code>afterHydrate</code> u <code>onConnect</code>, se hidrata al cargar la página.</p>
 
 <ui-note .kind="tip">
-  <p>Un <code>effect</code> o un <code>onConnect</code> tienen un coste: adelantan la descarga del componente a la carga de la página. Úsalos para lo que de verdad tiene que pasar sin que nadie toque nada; para lo demás, un handler basta.</p>
+  <p>Por eso, usa <code>effect</code> u <code>onConnect</code> solo para lo que tiene que pasar sin que nadie toque nada. Para lo demás, basta un handler.</p>
 </ui-note>
 
 <h2 id="no-lost-clicks">Ningún clic se pierde</h2>
 
-<p>Si el primer gesto llega antes que el código, Fudic no lo descarta. El runtime escucha esos gestos en el documento, en la fase de captura. Cuando uno cae en un componente que aún no está hidratado, lo guarda, descarga el código, hidrata el componente y <strong>reproduce el gesto</strong> en el elemento donde ocurrió. El handler lo recibe como si el componente hubiera estado listo desde el principio:</p>
-
-<ul>
-  <li>el contador pasa de 10 a 11 en ese primer clic, no en el segundo;</li>
-  <li>una tecla reproducida conserva su <code>key</code>, y un <code>input</code> su <code>inputType</code>;</li>
-  <li>un clic es un incremento, nunca dos: una vez hidratado, el runtime se aparta.</li>
-</ul>
+<p>Si el primer clic llega antes de que termine la descarga, Fudic lo guarda, descarga el código, hidrata el componente y repite el clic. El contador pasa de 10 a 11 en ese primer clic, no en el segundo.</p>
 
 <h2 id="state">El estado viaja con el HTML</h2>
 
-<p>Para adoptar el HTML del servidor, el componente necesita los valores con los que se pintó. El servidor los escribe una vez, al final de la página, en un bloque de datos:</p>
+<p>Para engancharse al HTML, el componente necesita los valores con los que se pintó. El servidor los escribe al final de la página:</p>
 
 <ui-code>
 <pre><code>&lt;miapp-counter&gt;
@@ -96,32 +81,19 @@
 &lt;script type="application/json" id="fud-state"&gt;[[0,1],[10]]&lt;/script&gt;</code></pre>
 </ui-code>
 
+<p>Cada instancia lee sus valores y arranca con ellos, sin recalcular nada.</p>
+
+<h2 id="details">Detalles</h2>
+
 <ul>
-  <li><strong>Cada instancia lee su tramo</strong>, así que dos contadores de la misma página arrancan cada uno en su número.</li>
-  <li><strong>Nada se recalcula</strong>: el componente hidrata con el estado del servidor, no vuelve a ejecutar lo que el servidor ya hizo.</li>
-  <li><strong>Un signal que se pasa como prop</strong> (<a href="/docs/template-syntax/components#signal-prop">una prop <code>Signal</code></a>) no viaja copiado: viaja una referencia a él, y el padre y el hijo hidratados leen el mismo objeto.</li>
+  <li><strong>El código va por tag.</strong> Cada componente es un fichero aparte. Al hidratarse el primer <code>&lt;miapp-counter&gt;</code>, todas las instancias de la página quedan listas, sin descargar nada más.</li>
+  <li><strong>Los hijos van antes que el padre.</strong> Cuando el padre se engancha, sus hijos ya responden.</li>
+  <li><strong>Con <a href="/docs/template-syntax/await"><code>@@await</code></a></strong>, la página llega en partes, y un componente se puede hidratar en cuanto llega la suya.</li>
 </ul>
-
-<h2 id="chunks">El código, por tag</h2>
-
-<p>El código de cada componente es un fichero aparte, uno por tag. Cuando el primer <code>&lt;miapp-counter&gt;</code> se hidrata, se registra el tag, y el estándar actualiza <strong>todas</strong> las instancias de la página a la vez: el segundo contador no vuelve a descargar nada.</p>
-
-<p>Con el Service Worker activado, Fudic además adelanta en segundo plano la descarga del código de los componentes que están a la vista, con prioridad baja, para que el primer clic no espere a la red. Lo explica el capítulo del Service Worker.</p>
-
-<h2 id="order">El orden: de dentro afuera</h2>
-
-<p>Cuando un componente se hidrata, los componentes de su interior que también lo necesitan se hidratan antes que él: los hijos, luego el padre. Así, cuando el padre se engancha, sus hijos ya responden, y su <code>afterHydrate</code> ve un subárbol completo.</p>
-
-<p>Con el bus de eventos pasa lo mismo, en horizontal: si un componente emite en su primer clic, Fudic hidrata antes a los que escuchan ese nombre, para que el primer evento llegue (<a href="/docs/template-syntax/events#event-bus">El bus de eventos</a>).</p>
-
-<h2 id="await">Con <code>@@await</code>, parte a parte</h2>
-
-<p>Una página con <a href="/docs/template-syntax/await"><code>@@await</code></a> llega en partes, y cada parte trae su propio estado delante. Un componente se puede hidratar en cuanto su parte está en la página, aunque lo de abajo siga sin llegar.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: por qué el componente se ve antes de hidratarse.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define" target="_blank" rel="noopener"><code>customElements.define()</code></a>: registrar un tag actualiza todas sus instancias.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture" target="_blank" rel="noopener">La fase de captura</a>: cómo el runtime oye un gesto antes que nadie.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define" target="_blank" rel="noopener"><code>customElements.define()</code></a>: registrar un tag activa todas sus instancias.</li>
 </ul>
