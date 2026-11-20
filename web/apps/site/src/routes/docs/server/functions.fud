@@ -73,7 +73,7 @@ get search
     <tr><td><code>-&gt; Person[]</code></td><td>lo que devuelve. Sin <code>-&gt;</code>, nada: responde <code>204</code></td></tr>
     <tr><td><code>use auth</code>, <code>skip csrf</code></td><td>los middlewares de esta función (<a href="/docs/server/middlewares">Middlewares y cadena</a>)</td></tr>
     <tr><td><code>query page u16</code></td><td>un argumento que viaja en la URL (<a href="#arguments">abajo</a>)</td></tr>
-    <tr><td><code>form personForm</code></td><td>recibe un formulario en vez de argumentos (capítulo 8)</td></tr>
+    <tr><td><code>form personForm</code></td><td>recibe un formulario en vez de argumentos (<a href="/docs/forms/submitting">Enviar al servidor</a>)</td></tr>
     <tr><td><code>catches 409</code>, <code>fails ana 409 "…"</code></td><td>los errores que se quedan en la página (<a href="#fails-catches">abajo</a>)</td></tr>
     <tr><td><code>invalidates /usuarios</code></td><td>las páginas cuyos datos cambia (<a href="#invalidates">abajo</a>)</td></tr>
     <tr><td><code>compress gzip 200</code></td><td>comprime lo que sube (<a href="/docs/server/middlewares#compress">Middlewares y cadena</a>)</td></tr>

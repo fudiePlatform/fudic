@@ -1,0 +1,198 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Controles form-associated · Fudic</title>
+  <meta name="description" content="Un componente de Fudic que es un campo de formulario: formassociated, ElementInternals con attachInternals(), el puente shadowrootreferencetarget para el label y el respaldo donde el navegador aún no lo tiene.">
+  <link rel="canonical" href="https://fudic.dev/docs/forms/form-associated">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Controles form-associated · Fudic">
+  <meta property="og:description" content="Componentes web que son campos de formulario de verdad: etiquetables, con valor y con validez.">
+  <meta property="og:url" content="https://fudic.dev/docs/forms/form-associated">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("forms-form-associated")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#problem">Un componente no es un campo</a></li>
+        <li><a href="#marker"><code>formassociated</code></a></li>
+        <li><a href="#internals">Lo que da <code>ElementInternals</code></a></li>
+        <li><a href="#bridge">El puente: <code>shadowrootreferencetarget</code></a></li>
+        <li><a href="#relay">El respaldo</a></li>
+        <li><a href="#outside-error">El error, fuera del componente</a></li>
+        <li><a href="#four-ways">Cuatro formas de escribir un campo</a></li>
+        <li><a href="#label">Por qué el label no va dentro</a></li>
+        <li><a href="#cost">Lo que cuesta</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Controles form-associated</h1>
+
+<p>Un control-componente es un componente que hace de campo de formulario: un <code>app-input</code> con su icono, un selector de fechas, un editor de etiquetas. La página lo usa como usaría un <code>&lt;input&gt;</code>, con su <code>&lt;label for&gt;</code> y su mensaje de error, y el componente funciona como un campo de verdad, también para el navegador y para un lector de pantalla.</p>
+
+<h2 id="problem">Un componente no es un campo</h2>
+
+<p>Para el navegador, un elemento personalizado no es un campo de formulario, aunque tenga un <code>&lt;input&gt;</code> dentro:</p>
+
+<ul>
+  <li><strong>No se puede etiquetar.</strong> Un <code>&lt;label for="ali"&gt;</code> que apunta al tag no llega al <code>&lt;input&gt;</code> de dentro: los <code>id</code> no cruzan la frontera del shadow DOM.</li>
+  <li><strong>No aporta su valor</strong> al <a href="https://developer.mozilla.org/en-US/docs/Web/API/FormData"><code>FormData</code></a> del <code>&lt;form&gt;</code> que lo contiene.</li>
+  <li><strong>No tiene validez.</strong> No hay <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:invalid"><code>:invalid</code></a>, y el <code>&lt;form&gt;</code> no sabe que es el campo que falla.</li>
+</ul>
+
+<p>El estándar tiene la respuesta: los <em>form-associated custom elements</em>. Un elemento cuya clase declara <code>static formAssociated = true</code> y llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals"><code>attachInternals()</code></a> recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals"><code>ElementInternals</code></a>, que es lo que el navegador da a sus propios campos: un valor para el formulario, una validez y unas etiquetas.</p>
+
+<h2 id="marker"><code>formassociated</code></h2>
+
+<p>En Fudic, un componente se convierte en control-componente con un marcador en su plantilla raíz:</p>
+
+<ui-code .path="src/components/app-input.fud">
+<pre><code>@@code &#123;
+  import type &#123; Control &#125; from "@@fudic/forms";
+
+  const &#123; ctrl, type &#125; = props&lt;&#123; ctrl: Control&lt;unknown&gt;; type?: string &#125;&gt;();
+&#125;
+
+&lt;app-input&gt;
+  &lt;template shadowrootmode="open" formassociated shadowrootreferencetarget="campo"&gt;
+    &lt;div class="field"&gt;
+      &lt;slot name="icon"&gt;&lt;/slot&gt;
+      &lt;input id="campo" type=@@type control=@@ctrl&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/app-input&gt;</code></pre>
+</ui-code>
+
+<p>La página le pasa el nodo del formulario con <code>control</code>, como a un <code>&lt;input&gt;</code>, y escribe su label y su mensaje fuera:</p>
+
+<ui-code .path="src/components/app-form.fud">
+<pre><code>&lt;label for="ali"&gt;Alias&lt;/label&gt;
+&lt;app-input id="ali" .type="text" control=@@userForm.alias&gt;&lt;/app-input&gt;
+&lt;app-error error=@@userForm.alias&gt;&lt;/app-error&gt;</code></pre>
+</ui-code>
+
+<p>El nodo cruza como una prop más, y el componente lo enlaza a su propio <code>&lt;input&gt;</code> con las mismas reglas de <code>control</code> (<a href="/docs/forms/binding#control">Enlazar la vista</a>). Con <code>type</code> como prop, el enlace se elige al ejecutarse: un solo <code>app-input</code> sirve para texto, números o fechas.</p>
+
+<p><code>formassociated</code> es un marcador de Fudic, no un atributo estándar, y Fudic tiene intención de proponerlo. Es un marcador de compilación por una razón del estándar: el navegador lee <code>formAssociated</code> cuando se <em>define</em> la clase, y no existe una forma declarativa de decirlo. El marcador decide de qué clase hereda el componente, y nada más. Solo tiene sentido en la plantilla raíz del componente (<code>FUD0593</code>).</p>
+
+<h2 id="internals">Lo que da <code>ElementInternals</code></h2>
+
+<p>Con el marcador, el componente hereda de <code>FudicControlElement</code>, que hace lo que el estándar pide y lo conecta al formulario:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Qué</th><th scope="col">Para qué</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>static formAssociated = true</code></td><td>que el navegador trate el elemento como un campo</td></tr>
+    <tr><td><code>attachInternals()</code>, en el constructor</td><td>es el único momento en que se puede llamar</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setFormValue"><code>setFormValue</code></a>, siguiendo al valor</td><td>que un <code>&lt;form&gt;</code> que no es de Fudic recoja el valor en su <code>FormData</code>, bajo el <code>name</code> del tag</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/setValidity"><code>setValidity</code></a>, siguiendo al error</td><td>un <code>:invalid</code> real en el tag, con el texto del error, y que el envío pueda llevar el foco a este campo</td></tr>
+    <tr><td><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus"><code>delegatesFocus</code></a> en su shadow root</td><td>que el clic en el label, o el foco en el tag, llegue al <code>&lt;input&gt;</code> de dentro</td></tr>
+  </tbody>
+</table>
+
+<p>Un control-componente sirve también fuera de un formulario de Fudic. En un <code>&lt;form&gt;</code> de otra aplicación, con un <code>name</code> en el tag, envía su valor como cualquier campo nativo.</p>
+
+<ui-note>
+  <p>Hoy el valor se entrega a <code>setFormValue</code> como texto. Para un campo de texto o un número es lo que hace un <code>&lt;input&gt;</code>, pero un <code>file</code>, una lista o un <code>bool</code> en <code>false</code> no llegan a un <code>&lt;form&gt;</code> ajeno como llegarían desde un campo nativo. Dentro de un formulario de Fudic no importa: el envío lee el modelo, no el <code>FormData</code>.</p>
+</ui-note>
+
+<h2 id="bridge">El puente: <code>shadowrootreferencetarget</code></h2>
+
+<p><code>delegatesFocus</code> lleva el clic y el foco, pero no el <em>nombre</em> ni la <em>descripción</em>: un lector de pantalla que llega al <code>&lt;input&gt;</code> no sabe que se llama «Alias». Para eso está <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md">Reference Target</a>, una propuesta del estándar que añade un atributo a la plantilla:</p>
+
+<ui-code>
+<pre><code>&lt;template shadowrootmode="open" shadowrootreferencetarget="campo"&gt;</code></pre>
+</ui-code>
+
+<p>MDN lo documenta en <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget"><code>&lt;template&gt;</code></a>. Lo que apunta al tag (el <code>&lt;label for="ali"&gt;</code>, el <code>aria-labelledby</code> de otro elemento) sigue hasta el elemento con <code>id="campo"</code> de dentro. Lo decide quien escribe el componente: el <code>&lt;input&gt;</code>, o el <code>&lt;fieldset&gt;</code> que rodea unos radios. Tiene que ser un <code>id</code> estático de esa plantilla (<code>FUD0605</code>).</p>
+
+<p>Es HTML estándar y lo lee el parser, así que funciona con el HTML del servidor y sin JavaScript, en cualquier componente, sea control-componente o no. Fudic lo lleva donde hace falta: a la plantilla que escribe el servidor, y a <code>referenceTarget</code> en el <code>attachShadow</code> del navegador. Hoy solo lo tiene Chrome.</p>
+
+<h2 id="relay">El respaldo</h2>
+
+<p>Donde no hay puente (Safari y Firefox, hoy), y para lo que el puente no lleva, <code>FudicControlElement</code> hace de respaldo con <em>element reflection</em>: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements"><code>ariaDescribedByElements</code></a>, que dejan a un elemento del shadow DOM referenciar elementos del árbol de fuera.</p>
+
+<ul>
+  <li><strong>Lo que está escrito en el tag</strong>, como el <code>aria-describedby</code> de un mensaje de fuera, un <code>aria-labelledby</code> o un <code>aria-label</code>, el puente no lo lleva en ningún navegador. El respaldo lo pasa al campo de dentro.</li>
+  <li><strong>Los labels que apuntan al tag</strong> (<a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals/labels"><code>internals.labels</code></a>), solo donde no hay puente: con puente, el label ya llega y pasarlo otra vez diría el nombre dos veces.</li>
+</ul>
+
+<p>El respaldo <em>referencia</em>, no copia: si el texto del label cambia, el nombre cambia con él, y el <code>*</code> en <code>aria-hidden</code> se queda fuera. Y suma, no pisa: lo que el campo ya decía de sí mismo va primero. El día que el puente esté en todos los navegadores, la parte de los labels se va, y el HTML no cambia.</p>
+
+<h2 id="outside-error">El error, fuera del componente</h2>
+
+<p><code>error=</code> al lado del tag de un control-componente se empareja con él: el compilador escribe el <code>aria-describedby</code> en el tag, el respaldo lo pasa al <code>&lt;input&gt;</code>, y el texto se escribe en el elemento marcado. Un envoltorio como <code>app-error</code> lo pinta con un <code>&lt;slot&gt;</code> y se oculta con <code>:host(:empty)</code>:</p>
+
+<ui-code .path="src/components/app-error.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    :host &#123; display: block; color: #b3261e; font-size: 0.85rem; &#125;
+    :host(:empty) &#123; display: none; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;app-error&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;small&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/small&gt;
+  &lt;/template&gt;
+&lt;/app-error&gt;</code></pre>
+</ui-code>
+
+<p>Al lado de un componente que <em>no</em> es <code>formassociated</code>, un <code>error=</code> es <code>FUD0597</code>: no hay campo al que pasarle la descripción.</p>
+
+<h2 id="four-ways">Cuatro formas de escribir un campo</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Forma</th><th scope="col">El nombre llega por</th><th scope="col">La descripción llega por</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Nativa: <code>&lt;label for&gt;</code> + <code>&lt;input&gt;</code> + <code>&lt;small error=&gt;</code></td><td><code>&lt;label for&gt;</code></td><td>el <code>aria-describedby</code> del compilador</td></tr>
+    <tr><td><code>&lt;label for&gt;</code> + <code>app-input</code> + <code>app-error</code></td><td>el puente, o el respaldo</td><td>el respaldo</td></tr>
+    <tr><td><code>app-label</code> + <code>app-input</code> + <code>app-error</code></td><td>igual: el <code>&lt;label&gt;</code> proyectado vive en la página</td><td>el respaldo</td></tr>
+    <tr><td><code>app-field</code>: label, input y error en un componente</td><td><code>&lt;label for&gt;</code> dentro, en el mismo árbol</td><td><code>aria-describedby</code> dentro</td></tr>
+  </tbody>
+</table>
+
+<p>En las cuatro, el clic en el label lleva al <code>&lt;input&gt;</code>, y el <code>&lt;input&gt;</code> tiene nombre y descripción.</p>
+
+<h2 id="label">Por qué el label no va dentro</h2>
+
+<p>Un <code>&lt;label&gt;</code> dentro de un shadow root solo puede apuntar dentro de ese shadow root, y ningún estándar, ni siquiera una propuesta, tiene un puente de salida. Por eso <code>app-label</code> no pinta su propio label: la página lo escribe y el componente lo muestra con un <code>&lt;slot&gt;</code>.</p>
+
+<ui-code .path="src/components/app-form.fud">
+<pre><code>&lt;app-label&gt;&lt;label for="email"&gt;Email&lt;/label&gt;&lt;/app-label&gt;
+&lt;app-input id="email" .type="email" control=@@userForm.email&gt;&lt;/app-input&gt;</code></pre>
+</ui-code>
+
+<p>La alternativa que sirve para el <em>nombre</em> es un <code>app-label</code> con su propio texto y un <code>id</code>, referenciado desde el tag con <code>aria-labelledby</code>, que el respaldo lleva. Pero entonces el clic en ese texto no lleva al <code>&lt;input&gt;</code>, porque no hay un <code>&lt;label&gt;</code> asociado: se pierde el clic.</p>
+
+<h2 id="cost">Lo que cuesta</h2>
+
+<p>Un componente normal de Fudic no carga su JavaScript hasta la primera interacción (<a href="/docs/reactivity/hydration">Hidratación</a>). Un control-componente no puede esperar: sin su clase definida no se puede etiquetar, no aporta valor a un <code>FormData</code> y no tiene validez. Por eso <code>formassociated</code> hace que se defina y se hidrate <strong>al cargar la página</strong>.</p>
+
+<p>Es poco código, pero se descarga siempre. Usa un control-componente cuando un campo lo necesite de verdad (un icono, un comportamiento propio), y un <code>&lt;input&gt;</code> nativo para lo demás: el formulario de una página puede mezclar las dos cosas.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals"><code>ElementInternals</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals"><code>attachInternals()</code></a>: los campos de formulario personalizados.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus"><code>delegatesFocus</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements"><code>ariaLabelledByElements</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaDescribedByElements"><code>ariaDescribedByElements</code></a>: <em>element reflection</em>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget"><code>shadowrootreferencetarget</code></a>, en <code>&lt;template&gt;</code>, y <a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md">la propuesta de Reference Target</a>, en el WICG.</li>
+</ul>

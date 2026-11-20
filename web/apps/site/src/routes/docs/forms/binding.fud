@@ -1,0 +1,237 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Enlazar la vista · Fudic</title>
+  <meta name="description" content="control, error y summary: los tres atributos que enlazan un formulario de Fudic con su HTML, los atributos de accesibilidad que añade el compilador y cuándo se valida cada campo.">
+  <link rel="canonical" href="https://fudic.dev/docs/forms/binding">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Enlazar la vista · Fudic">
+  <meta property="og:description" content="Tres atributos enlazan un formulario de Fudic con su HTML, accesible desde el servidor.">
+  <meta property="og:url" content="https://fudic.dev/docs/forms/binding">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("forms-binding")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#three-attributes">Tres atributos</a></li>
+        <li><a href="#control"><code>control</code></a></li>
+        <li><a href="#error"><code>error</code></a></li>
+        <li><a href="#summary"><code>summary</code></a></li>
+        <li><a href="#fields">El resumen con <code>fields</code></a></li>
+        <li><a href="#own-summary">Un resumen propio</a></li>
+        <li><a href="#validate-on">Cuándo se valida un campo</a></li>
+        <li><a href="#submit">El envío</a></li>
+        <li><a href="#required-mark">La marca de obligatorio</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Enlazar la vista</h1>
+
+<p>El formulario se declara en el <code>.fudapi</code> (<a href="/docs/forms">El formulario</a>), y la vista lo enlaza a HTML estándar: un <code>&lt;form&gt;</code>, sus <code>&lt;input&gt;</code>, sus <code>&lt;label&gt;</code>. Tú escribes el markup que quieres, y el compilador añade los atributos que hacen falta para que sea accesible, en el servidor y en el navegador por igual.</p>
+
+<h2 id="three-attributes">Tres atributos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Atributo</th><th scope="col">Va en</th><th scope="col">Hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>control=@@nodo</code></td><td>el <code>&lt;form&gt;</code>, un <code>&lt;fieldset&gt;</code> o un campo</td><td>lo enlaza a su nodo del formulario</td></tr>
+    <tr><td><code>error=@@campo</code></td><td>el elemento que dice el error de un campo</td><td>pinta el texto de su error</td></tr>
+    <tr><td><code>summary=@@formulario</code></td><td>el elemento que resume un formulario o un grupo</td><td>pinta la lista de sus errores</td></tr>
+  </tbody>
+</table>
+
+<ui-code .path="src/components/app-form.fud">
+<pre><code>&lt;form control=@@userForm&gt;
+  &lt;div class="summary" summary=@@userForm fields&gt;&lt;/div&gt;
+
+  &lt;label for="nom"&gt;Nombre &lt;span aria-hidden="true"&gt;*&lt;/span&gt;&lt;/label&gt;
+  &lt;input id="nom" type="text" control=@@userForm.name&gt;
+  &lt;small class="error" error=@@userForm.name&gt;&lt;/small&gt;
+
+  &lt;fieldset control=@@userForm.acceso&gt;
+    &lt;legend&gt;Acceso&lt;/legend&gt;
+    &lt;div class="summary" summary=@@userForm.acceso&gt;&lt;/div&gt;
+    &lt;label for="cla"&gt;Contraseña&lt;/label&gt;
+    &lt;input id="cla" type="password" control=@@userForm.acceso.clave&gt;
+    &lt;small class="error" error=@@userForm.acceso.clave&gt;&lt;/small&gt;
+    …
+  &lt;/fieldset&gt;
+
+  &lt;button type="submit"&gt;Guardar&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<p>El compilador no inventa ningún elemento. El mensaje va donde lo pone la vista y con el elemento que la vista elige. Si no hay elemento con <code>error=</code>, no hay mensaje.</p>
+
+<h2 id="control"><code>control</code></h2>
+
+<p><code>control</code> enlaza en los dos sentidos: lo que escribe el usuario llega al campo, y lo que cambia el código llega al elemento. El compilador elige cómo según el elemento:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Elemento</th><th scope="col">El campo guarda</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;input&gt;</code> de texto (<code>text</code>, <code>email</code>, <code>url</code>, <code>password</code>, <code>date</code>…) y <code>&lt;textarea&gt;</code></td><td>el texto</td></tr>
+    <tr><td><code>&lt;input type="number"&gt;</code> y <code>type="range"</code></td><td>un número, o <code>null</code> si está vacío</td></tr>
+    <tr><td><code>&lt;input type="checkbox"&gt;</code></td><td>un <code>bool</code></td></tr>
+    <tr><td>varios <code>&lt;input type="radio"&gt;</code> con el mismo nodo</td><td>el <code>value</code> del marcado: un grupo de radios es un solo campo</td></tr>
+    <tr><td><code>&lt;select&gt;</code></td><td>el <code>value</code> elegido</td></tr>
+    <tr><td><code>&lt;select multiple&gt;</code></td><td>la lista de los elegidos</td></tr>
+    <tr><td><code>&lt;input type="file"&gt;</code></td><td>el fichero, o la lista con <code>multiple</code> (<a href="/docs/forms/files">Ficheros</a>)</td></tr>
+    <tr><td>el tag de un componente</td><td>el componente recibe el nodo y lo enlaza dentro (<a href="/docs/forms/form-associated">Controles form-associated</a>)</td></tr>
+  </tbody>
+</table>
+
+<p>Algunos casos son errores de compilación. Un botón (<code>submit</code>, <code>reset</code>, <code>button</code>, <code>image</code>) no tiene valor que enlazar, y es <code>FUD0592</code>. Todo <code>control</code> necesita un <code>&lt;form control&gt;</code> por encima en la misma plantilla (<code>FUD0595</code>).</p>
+
+<h2 id="error"><code>error</code></h2>
+
+<p><code>error=@@campo</code> marca el elemento que dice el error de ese campo. El compilador le da un <code>id</code> y escribe en el campo el <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby"><code>aria-describedby</code></a> que apunta a él. Así, un lector de pantalla lee el error al llegar al campo, sin que nadie escriba ese atributo a mano. Lo que sale del servidor:</p>
+
+<ui-code>
+<pre><code>&lt;input id="nom" type="text" aria-describedby="fud-e-userForm-name"&gt;
+&lt;small class="error" id="fud-e-userForm-name"&gt;&lt;/small&gt;</code></pre>
+</ui-code>
+
+<p>Mientras no haya error, el elemento está vacío y se oculta con <code>:empty</code>. Con error, el campo lleva además <code>aria-invalid="true"</code>, que sirve también para pintarlo en CSS: <code>[aria-invalid="true"] &#123; border-color: … &#125;</code>.</p>
+
+<p><code>error=</code> es para un campo, con su único error. Ponerlo en un formulario o un grupo es <code>FUD0600</code>: para eso está <code>summary=</code>. Y si al lado no hay ningún elemento con <code>control</code> al mismo nodo, el <code>aria-describedby</code> no saldría de nada (<code>FUD0597</code>).</p>
+
+<h2 id="summary"><code>summary</code></h2>
+
+<p>Hay errores que no son de ningún campo: «las contraseñas no coinciden» es de las dos, y «el alias no puede ser tu nombre», de dos campos distintos. Son las reglas del <code>summary</code> de un formulario o un grupo (<a href="/docs/forms/validation#summary">Validación y validez</a>), y <code>summary=</code> marca dónde se pintan.</p>
+
+<p>Un resumen es una lista. Vacío, no tiene hijos, y <code>:empty</code> lo oculta. Con errores, lleva un <code>&lt;ul&gt;</code> con un <code>&lt;li&gt;</code> por error, igual byte a byte desde el servidor que desde el navegador, y un lector de pantalla lo anuncia como una lista de tantos elementos.</p>
+
+<ul>
+  <li>El compilador le pone <code>aria-live="polite"</code>, salvo que la vista ya escriba uno: es una <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions">región viva</a>, y un error que aparece en ella se anuncia sin mover el foco.</li>
+  <li>Como lleva un <code>&lt;ul&gt;</code>, no puede ir en un elemento que no admite una lista, como <code>&lt;p&gt;</code>, <code>&lt;span&gt;</code>, <code>&lt;small&gt;</code> o <code>&lt;label&gt;</code> (<code>FUD0602</code>).</li>
+  <li>En un campo es <code>FUD0601</code>: un campo tiene un error, no una lista.</li>
+</ul>
+
+<h2 id="fields">El resumen con <code>fields</code></h2>
+
+<p>Un formulario largo que falla al enviar tiene un problema: los errores están repartidos por toda la página, y el usuario no sabe cuántos son ni dónde. El patrón <a href="https://design-system.service.gov.uk/components/error-summary/"><em>error summary</em></a> del sistema de diseño del Gobierno británico lo resuelve con una caja al principio que los lista todos, y Fudic lo trae con un atributo:</p>
+
+<ui-code>
+<pre><code>&lt;div class="summary" summary=@@userForm fields&gt;&lt;/div&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Tras un envío fallido</strong>, el resumen lista, además de sus propios errores, el de cada campo, como un enlace a su campo. No antes: un resumen resume un envío, no persigue al usuario campo a campo.</li>
+  <li><strong>El foco va al resumen</strong>, y el lector lo lee entero. El compilador le pone <code>tabindex="-1"</code> para que pueda recibirlo.</li>
+  <li><strong>Pulsar un enlace</strong> lleva el foco a su campo y lo desplaza hasta la vista. Un campo sin <code>id</code> recibe uno derivado de su ruta, para poder enlazarlo.</li>
+  <li><strong>Al corregir un campo</strong>, su entrada sale de la lista en esa misma tecla.</li>
+</ul>
+
+<p>Un campo sin <code>error=</code> propio apunta con <code>aria-describedby</code> a su entrada del resumen. Uno con <code>error=</code> muestra su error en los dos sitios, que es lo que recomienda GOV.UK. Quita el <code>error=</code> si lo quieres solo en el resumen.</p>
+
+<h2 id="own-summary">Un resumen propio</h2>
+
+<p>Si el resumen tiene que ser otra cosa (una caja con título, una lista numerada), se pinta a mano con <code>$issues()</code>: lo mismo que pinta <code>fields</code>, como datos. Cada entrada trae su <code>path</code>, su <code>message</code> y, si es de un campo, el <code>href</code> a ese campo:</p>
+
+<ui-code .path="src/components/form-errores.fud">
+<pre><code>&lt;div class="caja" role="status" aria-label="Errores del formulario"&gt;
+  @@if (issues.length &gt; 0) &#123;
+    &lt;p&gt;Revisa @@issues.length @@(issues.length === 1 ? "cosa" : "cosas"):&lt;/p&gt;
+    &lt;ol&gt;
+      @@foreach (const issue of issues) key (issue.path + issue.message) &#123;
+        &lt;li&gt;
+          @@if (issue.href !== undefined) &#123;
+            &lt;a href=@@issue.href&gt;@@issue.message&lt;/a&gt;
+          &#125; else &#123;
+            @@issue.message
+          &#125;
+        &lt;/li&gt;
+      &#125;
+    &lt;/ol&gt;
+  &#125;
+&lt;/div&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/user-form.fud">
+<pre><code>&lt;form control=@@personForm&gt;
+  &lt;form-errores .issues=@@personForm.$issues()&gt;&lt;/form-errores&gt;
+  …</code></pre>
+</ui-code>
+
+<p>El componente vive dentro del <code>&lt;form&gt;</code>, y sus enlaces mueven el foco igual que los de <code>fields</code>, aunque estén en su shadow DOM. Si solo necesitas los textos, sin enlaces, están <code>$messages()</code>, con los errores del resumen, y <code>$message()</code>, con el primero.</p>
+
+<h2 id="validate-on">Cuándo se valida un campo</h2>
+
+<p>Un error que sale mientras el usuario todavía escribe por primera vez es una acusación injusta: «El email no es válido» después de la primera letra. Uno que no se va al corregir obliga a salir del campo para comprobarlo. <code>validate-on</code> elige el momento, combinando tres:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Momento</th><th scope="col">Valida</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>blur</code></td><td>al salir del campo</td></tr>
+    <tr><td><code>input</code></td><td>en cada cambio, <strong>pero solo después de haber salido del campo una vez</strong>: nunca mientras se escribe la primera vez</td></tr>
+    <tr><td><code>submit</code></td><td>solo al enviar</td></tr>
+  </tbody>
+</table>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code>form signup
+  validate-on blur
+  alias  str = ""
+    required
+    min-length 3
+  email  str = ""
+    validate-on blur input
+    required</code></pre>
+</ui-code>
+
+<p>Por defecto es <code>blur input</code>: tarde para acusar y rápido para perdonar. El error aparece cuando el usuario ha terminado con el campo, y se va, o vuelve, en la tecla que lo cambia. Se declara en el formulario, en un grupo o en un campo, y gana el más cercano. El envío valida siempre, elijas lo que elijas.</p>
+
+<h2 id="submit">El envío</h2>
+
+<p>Al pulsar enviar, el formulario valida todos sus campos antes de decidir:</p>
+
+<ul>
+  <li><strong>Si hay errores</strong>, no se envía. Todos los errores se hacen visibles, también los de los campos que el usuario no había tocado, y el foco va al resumen con <code>fields</code> o, si no hay, al primer campo que falla. El <code>@@submit</code> de la vista recibe el evento con <code>defaultPrevented</code>.</li>
+  <li><strong>Si es válido</strong> y el formulario tiene <code>form:=</code>, llama a la función de servidor (<a href="/docs/forms/submitting">Enviar al servidor</a>). Sin <code>form:=</code>, el envío es de la vista: su <code>@@submit</code>, o el envío estándar del <code>&lt;form&gt;</code> a su <code>action</code>.</li>
+</ul>
+
+<p>El compilador pone <code>novalidate</code> en un <code>&lt;form&gt;</code> enlazado. Sin él, la <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">validación del navegador</a> se ejecutaría antes del evento <code>submit</code>, pararía el envío con su burbuja y la validación del formulario no llegaría a ejecutarse. Un solo validador por formulario: el que tú has declarado.</p>
+
+<h2 id="required-mark">La marca de obligatorio</h2>
+
+<p>El <code>*</code> de un campo obligatorio va en <code>aria-hidden</code>:</p>
+
+<ui-code>
+<pre><code>&lt;label for="nom"&gt;Nombre &lt;span aria-hidden="true"&gt;*&lt;/span&gt;&lt;/label&gt;</code></pre>
+</ui-code>
+
+<p>Es una marca visual, no parte del nombre. Sin <code>aria-hidden</code>, un lector de pantalla dice «Nombre asterisco».</p>
+
+<ui-note>
+  <p>Todo lo de esta página sale ya en el HTML del servidor: los <code>id</code>, los <code>aria-describedby</code>, el <code>aria-live</code>, el <code>novalidate</code> y los errores que el servidor conoce. Un formulario se lee y es accesible antes de que cargue una sola línea de JavaScript.</p>
+</ui-note>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/label"><code>&lt;label&gt;</code></a> y su atributo <code>for</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby"><code>aria-describedby</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid"><code>aria-invalid</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-hidden"><code>aria-hidden</code></a>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions">Regiones vivas</a>: <code>aria-live</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation">Validación del HTML</a> y el atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form#novalidate"><code>novalidate</code></a>.</li>
+</ul>

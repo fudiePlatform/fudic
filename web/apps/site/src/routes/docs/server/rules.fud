@@ -45,7 +45,7 @@
 <p>Se usan en dos sitios:</p>
 
 <ul>
-  <li><strong>En los campos de un formulario</strong>, con el texto de su error. Es su uso principal, y los formularios tienen su capítulo (capítulo 8).</li>
+  <li><strong>En los campos de un formulario</strong>, con el texto de su error. Es su uso principal (<a href="/docs/forms/validation">Validación y validez</a>).</li>
   <li><strong>En los argumentos de una función</strong>, solo las del catálogo (<a href="/docs/server/types#arg-rules">Tipos</a>).</li>
 </ul>
 
@@ -175,7 +175,7 @@ rule alias-taken
 
 <p>Un parámetro de tipo <code>pattern</code> recibe el nombre de un patrón del proyecto, como el de la regla <code>pattern</code>. Con varios <code>fails</code>, <code>check</code> devuelve <code>true</code> o el código que falla.</p>
 
-<p>El texto que acompaña a una regla en el campo es el que se pinta. El texto por defecto de cada código para todo el proyecto se declara con <code>messages</code>, que se explica con los formularios.</p>
+<p>El texto que acompaña a una regla en el campo es el que se pinta. El texto por defecto de cada código para todo el proyecto se declara con <code>messages</code>, que se explica con los formularios (<a href="/docs/forms/validation#messages">Los textos</a>).</p>
 
 <h2 id="scope">Campo, grupo o formulario</h2>
 
@@ -187,7 +187,7 @@ rule alias-taken
   <li><strong><code>on form</code></strong>: el formulario entero.</li>
 </ul>
 
-<p>Las de grupo y de formulario van en el <code>summary</code> del formulario, no en un campo (<code>FUD1098</code>). Los formularios, sus grupos y sus <code>summary</code> son del capítulo 8.</p>
+<p>Las de grupo y de formulario van en el <code>summary</code> del formulario, no en un campo (<code>FUD1098</code>). Los formularios, sus grupos y sus <code>summary</code> están en <a href="/docs/forms/validation#summary">Validación y validez</a>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

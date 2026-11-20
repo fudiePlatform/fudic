@@ -200,6 +200,50 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
+/* A flow: the steps of a round trip as an ordered list, one box per step and the side that runs it
+   on top. A list and not a picture, so a screen reader reads it in order and it reflows on a phone. */
+
+.flow {
+  display: grid;
+  gap: var(--guide-space-3);
+  padding: 0;
+  list-style: none;
+  counter-reset: flow;
+}
+
+.flow > li {
+  position: relative;
+  margin: 0;
+  padding: var(--guide-space-3) var(--guide-space-4);
+  background: var(--guide-raised);
+  border-inline-start: 3px solid var(--guide-line);
+  border-radius: var(--guide-radius-sm);
+  counter-increment: flow;
+}
+
+.flow > li::before {
+  content: counter(flow) " · ";
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-muted);
+}
+
+.flow > li.server {
+  border-inline-start-color: var(--guide-accent);
+}
+
+.flow .side {
+  display: inline;
+  font-size: var(--guide-text-sm);
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flow > li.server .side {
+  color: var(--guide-accent);
+}
+
 /* Footer */
 
 .site-footer {

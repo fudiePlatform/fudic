@@ -91,6 +91,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con las cuatro páginas del capítulo 4 (`docs/styles/…`), el 2026-11-19.
 - **Y otra vez** con las dieciocho páginas de los capítulos 5, 6 y 7 (`docs/server/…`,
   `docs/routing/…`, `docs/service-worker/…`), el 2026-11-20.
+- **Y otra vez** con las siete páginas del capítulo 8 (`docs/forms/…`), el 2026-11-20. Esta vez
+  con la ruta relativa no revienta, pero escribe el mismo `href` frágil y el `<title>` «Binding».
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

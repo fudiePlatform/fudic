@@ -88,6 +88,18 @@
           <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Formularios</span>
+        <ol>
+          <li><a href="/docs/forms" aria-current=@(current === "forms" ? "page" : false)>El formulario</a></li>
+          <li><a href="/docs/forms/binding" aria-current=@(current === "forms-binding" ? "page" : false)>Enlazar la vista</a></li>
+          <li><a href="/docs/forms/validation" aria-current=@(current === "forms-validation" ? "page" : false)>Validación y validez</a></li>
+          <li><a href="/docs/forms/submitting" aria-current=@(current === "forms-submitting" ? "page" : false)>Enviar al servidor</a></li>
+          <li><a href="/docs/forms/events" aria-current=@(current === "forms-events" ? "page" : false)>Resultado y error</a></li>
+          <li><a href="/docs/forms/files" aria-current=@(current === "forms-files" ? "page" : false)>Ficheros</a></li>
+          <li><a href="/docs/forms/form-associated" aria-current=@(current === "forms-form-associated" ? "page" : false)>Controles form-associated</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

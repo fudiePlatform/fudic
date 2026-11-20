@@ -216,7 +216,7 @@ save of routes/usuarios must be implemented in src/server: src/browser/usuarios.
     <tr><td><code>rule</code>, <code>pattern</code></td><td>una validación y una expresión regular con nombre</td><td><a href="/docs/server/rules">Reglas y patrones</a></td></tr>
     <tr><td><code>pipe</code></td><td>un formato para la vista</td><td><a href="/docs/server/pipes">Pipes</a></td></tr>
     <tr><td><code>load</code>, <code>paths</code>, <code>layout</code></td><td>los datos de una página</td><td><a href="/docs/routing/data">Los datos de la página</a></td></tr>
-    <tr><td><code>form</code>, <code>messages</code></td><td>un formulario y los textos de sus errores</td><td>Formularios (capítulo 8)</td></tr>
+    <tr><td><code>form</code>, <code>messages</code></td><td>un formulario y los textos de sus errores</td><td><a href="/docs/forms">Formularios</a></td></tr>
   </tbody>
 </table>
 

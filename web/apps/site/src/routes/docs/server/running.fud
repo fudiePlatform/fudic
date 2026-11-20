@@ -121,14 +121,14 @@ fudic preview</code></pre>
 <pre><code>&#123;
   "serve": &#123;
     "trustProxy": true,
-    "uploads": &#123; "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": 100 &#125;
+    "uploads": &#123; "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "2mb" &#125;
   &#125;
 &#125;</code></pre>
 </ui-code>
 
 <ul>
   <li><strong><code>trustProxy</code></strong>: detrás de un proxy, la URL pública (la que ve el usuario) sale de <code>Forwarded</code>, o de <code>X-Forwarded-Proto</code> y <code>X-Forwarded-Host</code>. Actívalo solo detrás de un proxy en el que confíes: sin proxy, esas cabeceras las escribe cualquiera. <code>csrf</code> compara el <code>Origin</code> con esa URL pública.</li>
-  <li><strong><code>uploads</code></strong>: los límites de una subida: el tamaño de cada fichero, cuántos ficheros y cuántos argumentos.</li>
+  <li><strong><code>uploads</code></strong>: los límites de una subida: el tamaño de cada fichero (10 MB por defecto), cuántos ficheros (20) y el tamaño del resto de datos de la llamada (1 MB). Ver <a href="/docs/forms/files#limits">Ficheros</a>.</li>
 </ul>
 
 <p>Un valor con la forma equivocada es un error (<code>FUD1488</code>). La configuración completa de <code>fudic.json</code> está en el capítulo 14.</p>
