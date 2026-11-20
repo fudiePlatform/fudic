@@ -1,16 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Eventos · Fudic</title>
-  <meta name="description" content="Eventos en Fudic: handlers, $event y $value, escuchar en el host o en el shadow root, delegación en listas y el bus de eventos.">
+  <meta name="description" content="Eventos en Fudic: handlers, $event y $value, delegación en listas y el bus de eventos.">
   <link rel="canonical" href="https://fudic.dev/docs/template-syntax/events">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Eventos · Fudic">
-  <meta property="og:description" content="Eventos en Fudic: handlers, $event y $value, escuchar en el host o en el shadow root, delegación en listas y el bus de eventos.">
+  <meta property="og:description" content="Handlers, $value, delegación en listas y el bus de eventos en Fudic.">
   <meta property="og:url" content="https://fudic.dev/docs/template-syntax/events">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -25,14 +24,8 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#listen">Escuchar un evento</a></li>
-        <li><a href="#value"><code>$value</code>: el valor del control</a></li>
-        <li><a href="#where-it-listens">Dónde escucha cada handler</a></li>
-        <li><a href="#delegation">Eventos en una lista: delegación</a>
-          <ul>
-            <li><a href="#named-handlers">Dos botones con el mismo evento</a></li>
-          </ul>
-        </li>
-        <li><a href="#announce">Avisar desde un componente</a></li>
+        <li><a href="#value">$value: el valor del control</a></li>
+        <li><a href="#delegation">Eventos en una lista</a></li>
         <li><a href="#event-bus">El bus de eventos</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
@@ -44,99 +37,41 @@
 
 <h2 id="listen">Escuchar un evento</h2>
 
-<p><code>@@</code> delante del nombre de un evento conecta ese evento del elemento con una función:</p>
+<p><code>@@</code> delante del nombre de un evento lo conecta con una función de <code>@@code</code>:</p>
 
 <ui-code>
-<pre><code>&lt;button type="button" @@click=@@save&gt;Guardar&lt;/button&gt;</code></pre>
+<pre><code>&lt;button type="button" @@click=@@save&gt;Guardar&lt;/button&gt;
+&lt;button type="button" @@click=@@remove(item.id)&gt;Borrar&lt;/button&gt;
+&lt;input @@keydown=@@onKey($event)&gt;</code></pre>
 </ui-code>
 
-<p>A la derecha puede ir una de tres cosas:</p>
+<ul>
+  <li>Con <code>@@save</code>, la función recibe el evento; con <code>@@remove(item.id)</code>, lo que le pasas. <code>$event</code> es el evento.</li>
+  <li>Vale cualquier evento del DOM y cualquier evento propio con guion.</li>
+  <li>Los handlers son TypeScript completo, porque solo se ejecutan en el navegador.</li>
+  <li>No hay modificadores como <code>.prevent</code>: el handler llama a <code>preventDefault()</code> cuando lo necesita, como en cualquier código del DOM.</li>
+</ul>
 
-<table>
-  <thead>
-    <tr><th scope="col">Forma</th><th scope="col">Ejemplo</th><th scope="col">Qué recibe la función</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Una referencia</td><td><code>@@click=@@save</code></td><td>el evento del DOM</td></tr>
-    <tr><td>Una llamada</td><td><code>@@click=@@remove(item.id)</code></td><td>los argumentos que escribes</td></tr>
-    <tr><td>Una función flecha</td><td><code>@@click=@@(() =&gt; count.set(0))</code></td><td>lo que declare la flecha</td></tr>
-  </tbody>
-</table>
-
-<p>En una llamada, <code>$event</code> es el evento:</p>
-
-<ui-code>
-<pre><code>&lt;input @@keydown=@@onKey($event, item.id)&gt;</code></pre>
-</ui-code>
-
-<ui-code>
-<pre><code>function onKey(event: KeyboardEvent, id: number) &#123;
-  if (event.key === "Enter") save(id);
-&#125;</code></pre>
-</ui-code>
-
-<p>Vale cualquier evento del DOM (<code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>, <code>pointerenter</code>…) y cualquier evento propio con guion (<code>@@item-picked</code>).</p>
-
-<ui-note>
-  <p>Los handlers son <strong>TypeScript completo</strong>: pueden usar cualquier API del navegador, <code>await</code>, imports… La lista cerrada de la vista no se les aplica, porque nunca se ejecutan en el servidor.</p>
-</ui-note>
-
-<p>No hay modificadores como <code>.prevent</code> o <code>.stop</code>: el handler llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener"><code>preventDefault()</code></a> o a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation" target="_blank" rel="noopener"><code>stopPropagation()</code></a> cuando lo necesita, como en cualquier código del DOM. Y los atributos <code>onclick="…"</code> de HTML no se admiten: un handler siempre es una función de <code>@@code</code>.</p>
+<p id="where-it-listens">En un componente, un <code>@@click</code> en su propio tag escucha en el host (<a href="/docs/template-syntax/components#host">El host</a>).</p>
 
 <h2 id="value"><code>$value</code>: el valor del control</h2>
 
-<p>En un <code>&lt;input&gt;</code>, un <code>&lt;select&gt;</code> o un <code>&lt;textarea&gt;</code>, <code>$value</code> es su valor en el momento del evento, ya con su tipo:</p>
+<p>En un <code>&lt;input&gt;</code>, un <code>&lt;select&gt;</code> o un <code>&lt;textarea&gt;</code>, <code>$value</code> es su valor, ya con su tipo:</p>
 
 <ui-code>
-<pre><code>&lt;input type="search" @@input=@@search($value)&gt;          @@* string *@@
-&lt;input type="checkbox" @@change=@@setActive($value)&gt;    @@* boolean *@@
-&lt;input type="number" @@input=@@setAge($value)&gt;          @@* number | null: empty is null *@@</code></pre>
+<pre><code>&lt;input type="search" @@input=@@search($value)&gt;         @@* string *@@
+&lt;input type="checkbox" @@change=@@setActive($value)&gt;   @@* boolean *@@
+&lt;input type="number" @@input=@@setAge($value)&gt;         @@* number, or null if empty *@@</code></pre>
 </ui-code>
 
-<table>
-  <thead>
-    <tr><th scope="col">Control</th><th scope="col"><code>$value</code></th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>checkbox</code></td><td><code>boolean</code></td></tr>
-    <tr><td><code>number</code></td><td><code>number | null</code> (vacío es <code>null</code>)</td></tr>
-    <tr><td><code>range</code></td><td><code>number</code></td></tr>
-    <tr><td><code>file</code></td><td><code>File | null</code>, o <code>readonly File[]</code> con <code>multiple</code></td></tr>
-    <tr><td><code>&lt;select multiple&gt;</code></td><td><code>string[]</code></td></tr>
-    <tr><td>cualquier otro campo</td><td><code>string</code></td></tr>
-  </tbody>
-</table>
+<p>Así no hace falta escribir <code>(event.target as HTMLInputElement).checked</code>.</p>
 
-<p>Así no hace falta escribir <code>(event.target as HTMLInputElement).checked</code> en cada handler.</p>
+<h2 id="delegation">Eventos en una lista</h2>
 
-<h2 id="where-it-listens">Dónde escucha cada handler</h2>
-
-<p>Un <code>@@evento</code> escucha en el elemento donde está escrito. En un componente hay dos sitios especiales:</p>
-
-<ul>
-  <li><strong>El propio tag del componente</strong>: escucha en el host, como un <code>@@HostListener</code> de Angular. Oye lo que pasa en el componente (en su tag, en su shadow DOM y en el contenido de sus slots), nunca lo que pasa fuera de él, y puede anular un evento antes de que llegue a la página.</li>
-  <li><strong>El <code>&lt;template shadowrootmode&gt;</code></strong>: escucha en el shadow root, y oye todo lo que pasa dentro.</li>
-</ul>
-
-<p>Qué oye cada uno, y cómo se combina con los atributos del host, está en <a href="/docs/template-syntax/components#host">El host: atributos y eventos del propio tag</a>.</p>
-
-<h2 id="delegation">Eventos en una lista: delegación</h2>
-
-<p>Un <code>@@click</code> dentro de un <code>@@foreach</code> añade un listener por fila: cien filas, cien listeners, y dos más cada vez que entra una. Fudic lo avisa (<code>FUD1380</code>) y propone <strong>delegar</strong>: un solo listener en un elemento que envuelve la lista, y una marca en cada fila.</p>
+<p>Un <code>@@click</code> dentro de un <code>@@foreach</code> pone un listener por fila. Es mejor <strong>delegar</strong>: un solo listener en la lista, y una marca en cada fila. Fudic te avisa si no lo haces (<code>FUD1380</code>).</p>
 
 <ui-code>
-<pre><code>@@code &#123;
-  import &#123; signal &#125; from "@@fudic/core";
-  import type &#123; Task &#125; from "fudic:components/miapp-tasks/miapp-tasks";
-
-  const tasks = signal&lt;readonly Task[]&gt;([]);
-
-  function remove(task: Task) &#123;
-    tasks.set(tasks().filter(t =&gt; t.id !== task.id));
-  &#125;
-&#125;
-
-&lt;ul @@click=@@remove(task)&gt;
+<pre><code>&lt;ul @@click=@@remove(task)&gt;
   @@foreach (const task of tasks()) key (task.id) &#123;
     &lt;li&gt;
       @@task.title
@@ -147,111 +82,41 @@
 </ui-code>
 
 <ul>
-  <li><strong><code>delegate:task</code></strong> marca el botón como el que entrega la fila <code>task</code>. El nombre es el de la variable del bucle.</li>
-  <li><strong><code>@@remove(task)</code></strong> en el <code>&lt;ul&gt;</code> recibe esa fila: el objeto, con su tipo, no un índice ni un <code>data-id</code>. También puedes pasar solo lo que necesitas: <code>@@remove(task.id, task.title)</code>.</li>
-  <li><strong>El handler solo se llama desde una fila marcada.</strong> Un clic en el título o en el hueco entre filas no lo dispara.</li>
-  <li><strong><code>delegate:task="click"</code></strong> dice a qué eventos sirve la marca, separados por espacios. Sin valor, sirve a todos.</li>
-</ul>
-
-<p>La marca no deja rastro en el HTML: no escribe ningún atributo. Y la lista puede crecer o reordenarse sin añadir ni quitar un solo listener.</p>
-
-<ui-note>
-  <p>La delegación es un patrón clásico del DOM, posible porque los eventos <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling" target="_blank" rel="noopener">burbujean</a> hasta sus ancestros. Lo que añade Fudic es la marca: sin ella, cada handler tendría que buscar la fila con <code>closest()</code> y reconstruirla desde un <code>data-*</code>.</p>
-</ui-note>
-
-<h3 id="named-handlers">Dos botones con el mismo evento</h3>
-
-<p>Si una fila tiene dos botones, <em>Ver</em> y <em>Borrar</em>, los dos son un <code>click</code>. Para separarlos, cada handler lleva un nombre detrás del evento, y cada botón pide el suyo:</p>
-
-<ui-code>
-<pre><code>&lt;tbody @@click.view=@@view(user) @@click.remove=@@remove(user)&gt;
-  @@foreach (const user of users()) key (user.id) &#123;
-    &lt;tr&gt;
-      &lt;td&gt;@@user.name&lt;/td&gt;
-      &lt;td&gt;
-        &lt;button type="button" delegate:user="click.view"&gt;Ver&lt;/button&gt;
-        &lt;button type="button" delegate:user="click.remove"&gt;Borrar&lt;/button&gt;
-      &lt;/td&gt;
-    &lt;/tr&gt;
-  &#125;
-&lt;/tbody&gt;</code></pre>
-</ui-code>
-
-<p>El <code>click</code> de <em>Ver</em> nunca llega a <code>remove</code>. Sigue habiendo un listener por handler en el <code>&lt;tbody&gt;</code>, tenga las filas que tenga.</p>
-
-<h2 id="announce">Avisar desde un componente</h2>
-
-<p>Un componente avisa a quien lo usa de dos formas:</p>
-
-<ul>
-  <li><strong>A su padre, y solo a él</strong>: con una prop que es una función (<a href="/docs/template-syntax/components#function-prop">Componentes</a>).</li>
-  <li><strong>A cualquiera que escuche en la página</strong>: con el bus de eventos.</li>
+  <li><code>delegate:task</code> marca el botón, y <code>remove</code> recibe la fila (<code>task</code>) de ese botón, con su tipo.</li>
+  <li>Un clic fuera de un botón marcado no llama a <code>remove</code>.</li>
+  <li id="named-handlers">Si una fila tiene dos botones con el mismo evento, dale un nombre a cada handler: <code>@@click.view</code> y <code>@@click.remove</code> en la lista, y <code>delegate:task="click.view"</code> en el botón.</li>
 </ul>
 
 <h2 id="event-bus">El bus de eventos</h2>
 
-<p><code>emit(nombre, dato)</code>, de <code>@@fudic/dom</code>, anuncia un evento desde el componente:</p>
+<p>Para que un componente avise a su padre, se le pasa una función (<a href="/docs/template-syntax/components#function-prop">Componentes</a>). Para avisar a cualquiera de la página, está el bus: <code>emit</code> lo anuncia y <code>bus:</code> lo recibe.</p>
 
 <ui-code .path="src/components/miapp-products/miapp-products.fud">
 <pre><code>@@code &#123;
   import &#123; emit &#125; from "@@fudic/dom";
-  import type &#123; Product &#125; from "fudic:components/miapp-products/miapp-products";
-
-  const &#123; products = [] &#125; = props&lt;&#123; products?: readonly Product[] &#125;&gt;();
 
   function add(product: Product) &#123;
     emit("cart-add", product);
   &#125;
-&#125;
-
-&lt;miapp-products&gt;
-  &lt;template shadowrootmode="open"&gt;
-    &lt;ul @@click=@@add(product)&gt;
-      @@foreach (const product of products) key (product.id) &#123;
-        &lt;li&gt;@@product.name &lt;button type="button" delegate:product="click"&gt;Añadir&lt;/button&gt;&lt;/li&gt;
-      &#125;
-    &lt;/ul&gt;
-  &lt;/template&gt;
-&lt;/miapp-products&gt;</code></pre>
+&#125;</code></pre>
 </ui-code>
 
-<p>Cualquier componente de la página lo recibe con <code>bus:nombre</code>, en cualquier elemento:</p>
-
 <ui-code .path="src/components/miapp-cart/miapp-cart.fud">
-<pre><code>@@code &#123;
-  import &#123; signal &#125; from "@@fudic/core";
-  import type &#123; Product &#125; from "fudic:components/miapp-products/miapp-products";
-
-  const items = signal&lt;readonly Product[]&gt;([]);
-
-  function added(product: Product) &#123;
-    items.set([...items(), product]);
-  &#125;
-&#125;
-
-&lt;miapp-cart&gt;
-  &lt;template shadowrootmode="open"&gt;
-    &lt;span bus:cart-add=@@added&gt;Carrito (@@items().length)&lt;/span&gt;
-  &lt;/template&gt;
-&lt;/miapp-cart&gt;</code></pre>
+<pre><code>&lt;span bus:cart-add=@@added&gt;Carrito (@@items().length)&lt;/span&gt;</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>El handler recibe el dato</strong>, no el evento: <code>added</code> recibe el producto. Si necesitas el evento, <code>$event</code> sigue ahí: <code>bus:cart-add=@@added($event.detail)</code>.</li>
-  <li><strong>Está tipado.</strong> El tipo del dato es el que declara el parámetro del receptor, y un <code>emit</code> que manda otra cosa se subraya en el editor.</li>
-  <li><strong>Lo oyen todos los receptores</strong> de la página: emisor y receptores no tienen que conocerse ni estar uno dentro del otro.</li>
-  <li><strong>Ningún evento se pierde.</strong> Si el componente que emite se despierta con ese mismo clic, Fudic hidrata antes a los que escuchan, así que el primer «Añadir» ya llega al carrito.</li>
-  <li><strong>El receptor se da de baja</strong> cuando su componente sale de la página.</li>
+  <li><strong>El handler recibe el dato</strong> (aquí, el producto), con su tipo.</li>
+  <li><strong>Emisor y receptores no se conocen</strong>, ni tienen que estar uno dentro del otro.</li>
+  <li><strong>El primer evento no se pierde</strong>, aunque el receptor aún no esté hidratado.</li>
 </ul>
 
-<p>Por debajo es el estándar: <code>emit</code> lanza un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> con <code>bubbles</code> y <code>composed</code>, para que cruce los shadow roots hasta el documento, y <code>bus:</code> lo escucha ahí. Lo que añade Fudic es el tipo, la baja automática y que el primer evento no se pierda.</p>
+<p>Por debajo es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar que cruza los shadow roots hasta el documento.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Events" target="_blank" rel="noopener">Introducción a los eventos</a>: qué es un evento y cómo se escucha.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling" target="_blank" rel="noopener">Burbujeo de eventos</a>, y en concreto la <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling#event_delegation" target="_blank" rel="noopener">delegación</a>.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>Event.composed</code></a>: qué eventos salen de un shadow root.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling#event_delegation" target="_blank" rel="noopener">Delegación de eventos</a>: un listener para toda una lista.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a>: eventos propios con un dato.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener"><code>Event.preventDefault()</code></a>: cancelar lo que el navegador haría por defecto.</li>
 </ul>

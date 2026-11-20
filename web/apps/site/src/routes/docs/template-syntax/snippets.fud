@@ -1,16 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="component" href="@web/ui/ui-code.fud">
-<link rel="component" href="@web/ui/ui-note.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Snippets · Fudic</title>
-  <meta name="description" content="Snippets en Fudic: markup con nombre y parámetros que se expande al compilar, sin JavaScript ni shadow DOM, y cuándo usarlos en lugar de un componente.">
+  <meta name="description" content="Snippets en Fudic: un trozo de markup con nombre y parámetros que se expande al compilar, sin JavaScript ni shadow DOM.">
   <link rel="canonical" href="https://fudic.dev/docs/template-syntax/snippets">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Snippets · Fudic">
-  <meta property="og:description" content="Snippets en Fudic: markup con nombre y parámetros que se expande al compilar, sin JavaScript ni shadow DOM, y cuándo usarlos en lugar de un componente.">
+  <meta property="og:description" content="Markup con nombre y parámetros, sin JavaScript ni shadow DOM.">
   <meta property="og:url" content="https://fudic.dev/docs/template-syntax/snippets">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -24,16 +23,8 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#declare-and-use">Declarar y usar</a>
-          <ul>
-            <li><a href="#default-parameters">Parámetros con valor por defecto</a></li>
-          </ul>
-        </li>
-        <li><a href="#where-to-declare">Dónde se declara</a>
-          <ul>
-            <li><a href="#namespaces">Dos ficheros con el mismo nombre: <code>as</code></a></li>
-          </ul>
-        </li>
+        <li><a href="#declare-and-use">Declarar y usar</a></li>
+        <li><a href="#where-to-declare">Compartirlos</a></li>
         <li><a href="#snippet-or-component">¿Snippet o componente?</a></li>
       </ul>
     </details>
@@ -42,112 +33,44 @@
 
 <h1>Snippets</h1>
 
-<p>Un snippet es un trozo de markup con nombre y parámetros, que se escribe una vez y se usa donde haga falta. No es un componente: no tiene tag propio, ni shadow DOM, ni una línea de JavaScript. El compilador lo expande donde se llama y desaparece. El HTML que llega al navegador es el mismo que si lo hubieras escrito a mano en cada sitio.</p>
+<p>Un snippet es un trozo de markup con nombre y parámetros, para no repetirlo. No es un componente: el compilador lo copia donde se usa, y al navegador llega el mismo HTML que si lo hubieras escrito a mano.</p>
 
 <h2 id="declare-and-use">Declarar y usar</h2>
 
+<p>Se declara con <code>@@snippet</code> y se usa con <code>@@render</code>:</p>
+
 <ui-code>
 <pre><code>@@snippet row(label: string, value: string) &#123;
-  &lt;div class="row"&gt;
-    &lt;dt&gt;@@label&lt;/dt&gt;
-    &lt;dd&gt;@@value&lt;/dd&gt;
-  &lt;/div&gt;
-&#125;</code></pre>
-</ui-code>
+  &lt;dt&gt;@@label&lt;/dt&gt;
+  &lt;dd&gt;@@value&lt;/dd&gt;
+&#125;
 
-<p>Se declara con <code>@@snippet</code>, su nombre y sus parámetros tipados, y se usa con <code>@@render</code>:</p>
-
-<ui-code>
-<pre><code>&lt;dl&gt;
+&lt;dl&gt;
   @@render row("Plan", "Básico")
   @@render row("Precio", @@plan.price)
-  @@render row("Renueva", @@(plan.renews | longDate))
 &lt;/dl&gt;</code></pre>
 </ui-code>
 
-<p>Los argumentos se escriben igual que el valor de una prop:</p>
+<p>Un texto fijo va tal cual, y un valor, con <code>@@</code>. Un parámetro puede tener valor por defecto (<code>tone: string = "info"</code>), y al usarlo se le puede dar por su nombre (<code>tone: "warning"</code>).</p>
 
-<ul>
-  <li><strong>Un literal</strong> va tal cual: <code>"Básico"</code>, <code>3</code>, <code>true</code>.</li>
-  <li><strong>Lo que lee el scope</strong> va con <code>@@</code>: <code>@@plan.price</code>, o <code>@@( … )</code> para una expresión.</li>
-</ul>
+<h2 id="where-to-declare">Compartirlos</h2>
 
-<h3 id="default-parameters">Parámetros con valor por defecto</h3>
-
-<p>Un parámetro puede tener valor por defecto. Al llamar, se le puede dar valor por su nombre:</p>
-
-<ui-code>
-<pre><code>@@snippet note(text: string, tone: "info" | "warning" = "info") &#123;
-  &lt;p class=@@tone&gt;@@text&lt;/p&gt;
-&#125;
-
-@@render note("Los cambios se guardan solos.")
-@@render note("Esta acción no se puede deshacer.", tone: "warning")</code></pre>
-</ui-code>
-
-<h2 id="where-to-declare">Dónde se declara</h2>
-
-<p><strong>En el mismo fichero</strong>, para lo que solo usa esa pieza. En un componente, los snippets van al final, después del tag. En una ruta, en cualquier sitio.</p>
-
-<p><strong>En un fichero de snippets</strong>, para compartirlos entre piezas. Es un <code>.fud</code> en <code>src/snippets/</code> que solo contiene declaraciones <code>@@snippet</code>:</p>
-
-<ui-code>
-<pre><code>npx fudic g snippet ui priceTag</code></pre>
-</ui-code>
-
-<ui-code .path="src/snippets/ui.fud">
-<pre><code>&lt;link rel="component" href="../components/miapp-badge/miapp-badge.fud"&gt;
-
-@@snippet priceTag(price: number, onSale: boolean = false) &#123;
-  &lt;span class="price"&gt;@@price €&lt;/span&gt;
-  @@if (onSale) &#123;
-    &lt;miapp-badge .tone="new"&gt;Oferta&lt;/miapp-badge&gt;
-  &#125;
-&#125;</code></pre>
-</ui-code>
-
-<p>Quien lo usa lo enlaza con <code>&lt;link rel="snippet"&gt;</code>:</p>
+<p>Un snippet que solo usa un fichero se declara en ese fichero. Para compartirlo, va en un fichero de snippets en <code>src/snippets/</code>, que crea <code>fudic g snippet ui priceTag</code>, y se enlaza con <code>&lt;link rel="snippet"&gt;</code>:</p>
 
 <ui-code .path="src/routes/pricing.fud">
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
 &lt;link rel="snippet" href="../snippets/ui.fud"&gt;
 
-&lt;h1&gt;Precios&lt;/h1&gt;
-@@render priceTag(9)
-@@render priceTag(19, onSale: true)</code></pre>
+@@render priceTag(9)</code></pre>
 </ui-code>
 
-<p>Un fichero de snippets enlaza los componentes que usan sus cuerpos, y quien llama a un snippet se los lleva sin enlazarlos él. Si un snippet no se llama, sus componentes no se cargan.</p>
-
-<h3 id="namespaces">Dos ficheros con el mismo nombre: <code>as</code></h3>
-
-<p>Si dos ficheros declaran un snippet con el mismo nombre, uno de los dos se enlaza con un espacio de nombres:</p>
-
-<ui-code>
-<pre><code>&lt;link rel="snippet" href="../snippets/ui.fud"&gt;
-&lt;link rel="snippet" href="../snippets/fields.fud" as="fields"&gt;
-
-@@render priceTag(9)
-@@render fields.priceTag("price", "Precio")</code></pre>
-</ui-code>
+<p id="namespaces">Si dos ficheros tienen un snippet con el mismo nombre, enlaza uno con un prefijo: <code>&lt;link rel="snippet" href="…" as="fields"&gt;</code>, y úsalo como <code>@@render fields.priceTag(…)</code>.</p>
 
 <h2 id="snippet-or-component">¿Snippet o componente?</h2>
 
-<table>
-  <thead>
-    <tr><th scope="col">Necesitas…</th><th scope="col">Usa</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>No repetir un trozo de markup</td><td>un snippet</td></tr>
-    <tr><td>Estado, eventos o comportamiento</td><td>un componente</td></tr>
-    <tr><td>Estilos encapsulados, que la página no pise</td><td>un componente</td></tr>
-    <tr><td>Recibir contenido con <code>&lt;slot&gt;</code></td><td>un componente</td></tr>
-    <tr><td>Cero coste: ni JavaScript, ni shadow DOM, ni un elemento de más</td><td>un snippet</td></tr>
-  </tbody>
-</table>
+<ul>
+  <li><strong>Un snippet</strong> para no repetir markup, sin coste: ni JavaScript ni shadow DOM.</li>
+  <li><strong>Un componente</strong> si necesitas estado, eventos, estilos propios o slots.</li>
+</ul>
 
-<p>Un snippet no tiene estilos propios: su markup se pinta donde se llama y toma los estilos de ese sitio. Llamado desde una ruta, los de la página; llamado dentro de la plantilla de un componente, los de ese componente.</p>
-
-<ui-note .kind="important">
-  <p>Por la misma razón, un snippet que pinta un encabezado (<code>h1</code> a <code>h6</code>) solo se llama desde una ruta o un layout. Llamado dentro de la plantilla de un componente, el encabezado acabaría en su shadow DOM, y los encabezados nunca van ahí (<a href="/docs/template-syntax/components#slots">Componentes</a>).</p>
-</ui-note>
+<p>Un snippet no tiene estilos: toma los del sitio donde se usa. Por eso, uno que pinta un encabezado solo se usa en una ruta o un layout, nunca dentro de un componente.</p>
