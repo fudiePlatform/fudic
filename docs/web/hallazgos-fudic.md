@@ -408,3 +408,16 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   `validity interacted | rules`) y se titula «5 · Formularios». El README de `@fudic/forms` habla de
   las reglas de un grupo como «its second argument», del API de builders que ya no es pública.
 - **Qué debería hacer.** Ponerlos al día con el `.fudapi`.
+
+## 28. `FUD1552` sobre el runtime, que lleva la versión en la URL
+
+- **Qué pasó.** Al escribir el capítulo 11, `pnpm build` en `web/apps/site` (worktree
+  `web-publica`) avisa: `immutable on /_fudic/** keeps the old /_fudic/0.0.1-689426ec/core/effect.js
+  in the browser: its name has no hash`. Pero esa URL no cambia nunca: si cambia el runtime, cambia
+  el segmento de versión. Pedro no lo ve con build y preview en su copia, así que falta saber qué
+  lo dispara aquí.
+- **Por qué pasa, en el código.** `checkAssets` (`packages/vite/src/headers.ts`) decide si un
+  fichero tiene hash solo por su nombre (`isHashedName`: `-` y ocho caracteres al final). Los
+  ficheros de `/_fudic/<versión>/` no lo tienen en el nombre, sino en el directorio.
+- **Qué debería hacer.** Contar como con hash lo que cuelga de `/_fudic/<versión>/`. Y reproducirlo
+  en la copia de Pedro para ver por qué allí no sale.
