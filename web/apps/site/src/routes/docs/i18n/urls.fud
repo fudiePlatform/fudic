@@ -1,0 +1,126 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Idiomas y URLs · Fudic</title>
+  <meta name="description" content="Idiomas y URLs en Fudic: cada página vive bajo el prefijo de su idioma, / redirige según Accept-Language, los enlaces reciben el prefijo, y cada versión enlaza a las demás con hreflang.">
+  <link rel="canonical" href="https://fudic.dev/docs/i18n/urls">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Idiomas y URLs · Fudic">
+  <meta property="og:description" content="Cada página vive bajo el prefijo de su idioma.">
+  <meta property="og:url" content="https://fudic.dev/docs/i18n/urls">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("i18n-urls")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#prefix">Un prefijo por idioma</a></li>
+        <li><a href="#redirect">La página sin prefijo</a></li>
+        <li><a href="#links">Enlaces y selector de idioma</a></li>
+        <li><a href="#html">lang y dir</a></li>
+        <li><a href="#alternates">Las otras versiones de una página</a></li>
+        <li><a href="#testing">Probarlo</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Idiomas y URLs</h1>
+
+<p>Con dos idiomas o más, cada página existe una vez por idioma, bajo su prefijo: <code>/es/about</code> y <code>/en/about</code>. El idioma está en la URL, así que un enlace, un buscador o una caché siempre saben qué versión es.</p>
+
+<h2 id="prefix">Un prefijo por idioma</h2>
+
+<p>Las rutas no se tocan: <code>src/routes/about.fud</code> sigue siendo <code>/about</code>, y Fudic la sirve como <code>/es/about</code> y <code>/en/about</code>. Una ruta con parámetros también: <code>/blog/:slug</code> es <code>/es/blog/:slug</code> y <code>/en/blog/:slug</code>.</p>
+
+<p>Con un solo idioma no hay prefijo, y las URL son las de siempre.</p>
+
+<h2 id="redirect">La página sin prefijo</h2>
+
+<p><code>/</code>, o <code>/about</code> sin prefijo, redirige a la misma página en el idioma que el navegador prefiere. El navegador lo dice en la cabecera estándar <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept-Language" target="_blank" rel="noopener"><code>Accept-Language</code></a>, y Fudic elige el que mejor encaja: el mismo idioma y región, después el mismo idioma, y si no, el primero de <code>locales</code>.</p>
+
+<p>En una página estática no hay servidor que mire la cabecera: la versión sin prefijo es un HTML que lleva al primer idioma. Una URL con prefijo nunca redirige.</p>
+
+<h2 id="links">Enlaces y selector de idioma</h2>
+
+<p>Un enlace que empieza por <code>/</code> recibe el prefijo de la página en que está. En una página en inglés, <code>&lt;a href="/about"&gt;</code> va a <code>/en/about</code>, así que los enlaces se escriben una vez para todos los idiomas.</p>
+
+<p>Un enlace que ya lleva un prefijo se queda como está. Así se escribe un selector de idioma:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;nav translate="no"&gt;
+  &lt;a href="/es/" lang="es"&gt;Español&lt;/a&gt;
+  &lt;a href="/en/" lang="en"&gt;English&lt;/a&gt;
+&lt;/nav&gt;</code></pre>
+</ui-code>
+
+<p>El nombre de cada idioma va en su idioma, con su <code>lang</code>, y bajo <code>translate="no"</code> para que no se traduzca.</p>
+
+<h2 id="html"><code>lang</code> y <code>dir</code></h2>
+
+<p>Si el <code>&lt;html&gt;</code> del layout no escribe <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>, Fudic pone el del idioma de la página. Con él, el lector de pantalla pronuncia bien y el navegador elige las comillas, las mayúsculas y la separación de palabras de ese idioma.</p>
+
+<p>En un idioma que se escribe de derecha a izquierda, como el árabe o el hebreo, añade también <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/dir" target="_blank" rel="noopener"><code>dir="rtl"</code></a>. Si el layout escribe uno de los dos, manda el layout.</p>
+
+<h2 id="alternates">Las otras versiones de una página</h2>
+
+<p>Cada versión de una página lleva en su <code>&lt;head&gt;</code> un enlace a sí misma y uno a cada versión, con su idioma:</p>
+
+<ui-code>
+<pre><code>&lt;link rel="canonical" href="https://example.com/en/about"&gt;
+&lt;link rel="alternate" hreflang="es" href="https://example.com/es/about"&gt;
+&lt;link rel="alternate" hreflang="en" href="https://example.com/en/about"&gt;
+&lt;link rel="alternate" hreflang="x-default" href="https://example.com/about"&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Un buscador enseña a cada persona la versión de su idioma</strong>, y no cuenta las demás como contenido duplicado (<a href="https://developers.google.com/search/docs/specialty/international/localized-versions" target="_blank" rel="noopener">las versiones localizadas, según Google</a>).</li>
+  <li><strong><code>x-default</code></strong> es la página sin prefijo, la que redirige según el idioma.</li>
+  <li><strong>Las URL son absolutas</strong>, sobre el <code>site</code> de <code>fudic.json</code>. En <code>fudic dev</code>, sobre el origen de cada petición.</li>
+</ul>
+
+<h2 id="testing">Probarlo</h2>
+
+<p>Un criterio del <code>.fudspec</code> puede decir qué idioma habla el navegador, con <code>locale</code>. El workbench lo ejecuta en un navegador de verdad, así que se prueba la redirección real:</p>
+
+<ui-code .path="src/routes/index.fudspec">
+<pre><code>page /
+
+criterion an-english-browser-lands-in-english
+  given
+    locale en
+  then
+    url /en
+    attribute html lang "en"</code></pre>
+</ui-code>
+
+<p><code>fudic spec</code> lo ejecuta junto al resto de criterios, y en VS Code el workbench (Ctrl+K V) lo repite en cada guardado.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>No reciben prefijo</strong> los enlaces que empiezan por <code>//</code> o por <code>/_fudic/</code>, ni los que acaban en un fichero, como <code>/guide.pdf</code>. Un <code>action</code> de <code>&lt;form&gt;</code> sigue la misma regla que un enlace.</li>
+  <li><strong><code>paths()</code> se llama una vez por idioma</strong>, y puede devolver slugs distintos en cada uno leyendo <code>locale</code> (<a href="/docs/i18n/code#content">El contenido de los datos</a>).</li>
+  <li><strong>La página de error también existe por idioma</strong>, y una página que falla pinta la de su idioma (<a href="/docs/routing/error-page">La página de error</a>).</li>
+  <li><strong>Construir con dos idiomas o más sin <code>site</code></strong> para el build con <code>FUD1027</code>.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept-Language" target="_blank" rel="noopener"><code>Accept-Language</code></a>: los idiomas que prefiere el navegador.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: el idioma de la página.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/dir" target="_blank" rel="noopener"><code>dir</code></a>: la dirección del texto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#alternate" target="_blank" rel="noopener"><code>rel="alternate"</code></a>: otra versión de la página, con <code>hreflang</code>.</li>
+</ul>

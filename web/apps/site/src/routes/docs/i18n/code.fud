@@ -1,0 +1,114 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Textos en el código · Fudic</title>
+  <meta name="description" content="Textos en el código en Fudic: t() marca los textos de una prop o de un módulo TypeScript, los del .fudapi se traducen solos, y el contenido de los datos se elige con locale.">
+  <link rel="canonical" href="https://fudic.dev/docs/i18n/code">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Textos en el código · Fudic">
+  <meta property="og:description" content="t() marca los textos que el compilador no puede distinguir de un valor.">
+  <meta property="og:url" content="https://fudic.dev/docs/i18n/code">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("i18n-code")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#t">t()</a></li>
+        <li><a href="#props">En una prop</a></li>
+        <li><a href="#typescript">En TypeScript</a></li>
+        <li><a href="#fudapi">Los textos del .fudapi</a></li>
+        <li><a href="#content">El contenido de los datos</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Textos en el código</h1>
+
+<p>Donde el compilador no puede saber si un string es un texto o un valor, se marca con <code>t()</code>: en una prop y en el código TypeScript. Los textos del <code>.fudapi</code> se traducen sin marcar nada, y el contenido que llega de los datos se elige por idioma con <code>locale</code>.</p>
+
+<h2 id="t"><code>t()</code></h2>
+
+<p><code>t()</code> recibe el texto en el idioma del código y devuelve el del idioma de la página. Viene de <code>@@fudic/i18n</code>, y el compilador la sustituye por el texto traducido: en el navegador no queda ninguna llamada.</p>
+
+<h2 id="props">En una prop</h2>
+
+<p>El valor de una prop puede ser un texto, como un título, o un valor, como <code>"highlight"</code>. El compilador no lo traduce si no se marca:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>@@code &#123;
+  import &#123; t &#125; from "@@fudic/i18n";
+&#125;
+
+&lt;app-card .title=@@t("Acerca de") .variant="highlight"&gt;&lt;/app-card&gt;</code></pre>
+</ui-code>
+
+<p>El título se traduce; <code>"highlight"</code> sigue igual en todos los idiomas.</p>
+
+<h2 id="typescript">En TypeScript</h2>
+
+<p>En un módulo <code>.ts</code> de la app, <code>t()</code> funciona igual. Un hueco se escribe <code>&#123;nombre&#125;</code> y su valor va en el segundo argumento:</p>
+
+<ui-code .path="src/services/posts.ts">
+<pre><code>import &#123; t &#125; from "@@fudic/i18n";
+
+export function notFound(slug: string): string &#123;
+  return t("No hay ninguna entrada llamada &#123;slug&#125;", &#123; slug &#125;);
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>El primer argumento es siempre un string escrito tal cual.</strong> Una variable no vale: el comando que extrae los textos lee el código sin ejecutarlo.</li>
+  <li><strong>Cada hueco necesita su clave</strong> en el objeto del segundo argumento.</li>
+  <li><strong>El módulo se compila una vez por idioma</strong>, como un componente, así que el servidor que pinta una página en inglés recibe el texto en inglés.</li>
+</ul>
+
+<h2 id="fudapi">Los textos del <code>.fudapi</code></h2>
+
+<p>Los textos de las reglas de un formulario y el <code>detail</code> de un <code>fails</code> también son mensajes, y no se marcan:</p>
+
+<ui-code .path="src/forms/user.fudapi">
+<pre><code>form userForm
+  alias  str = ""
+    required              "Elige un alias."
+    min-length 3          "Al menos &#123;n&#125; caracteres."</code></pre>
+</ui-code>
+
+<p>El navegador pinta «Elige un alias.» o «Choose an alias.» según la página (<a href="/docs/forms/validation#messages">Los textos de la validación</a>). El servidor nunca manda textos, solo códigos, así que no hay nada que traducir en él.</p>
+
+<h2 id="content">El contenido de los datos</h2>
+
+<p>El título de un artículo no es interfaz: es contenido, y llega de los datos en cada idioma. Para elegirlo, <code>locale</code> es el idioma de la página que se está pintando:</p>
+
+<ui-code .path="src/services/posts.ts">
+<pre><code>import &#123; locale &#125; from "@@fudic/core";
+
+const POSTS: Record&lt;string, &#123; title: Record&lt;string, string&gt; &#125;&gt; = &#123;
+  hello: &#123; title: &#123; es: "Hola, mundo", en: "Hello, world" &#125; &#125;,
+&#125;;
+
+export function titleOf(slug: string): string &#123;
+  return POSTS[slug]?.title[locale] ?? slug;
+&#125;</code></pre>
+</ui-code>
+
+<p>Igual que <code>t()</code>, <code>locale</code> no es una variable que cambie: el compilador escribe en su lugar <code>"es"</code> o <code>"en"</code>. Un <code>load</code> o un <code>paths</code> que lo lee devuelve los datos de su idioma (<a href="/docs/routing/data">Los datos de la página</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>En la vista, <code>t()</code> es legal pero sobra</strong>: el texto que se pinta ya se traduce solo.</li>
+  <li><strong>Un mensaje de <code>t()</code> no lleva etiquetas</strong>, porque devuelve un string. Puede llevar plurales (<a href="/docs/i18n/catalogs#plural">Plurales</a>).</li>
+  <li><strong><code>FUD1020</code></strong> es el error de un <code>t()</code> cuyo texto no es un string escrito tal cual, o al que le falta la clave de un hueco.</li>
+</ul>

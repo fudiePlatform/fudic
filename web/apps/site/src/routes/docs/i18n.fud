@@ -1,0 +1,127 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Traducir una app · Fudic</title>
+  <meta name="description" content="Traducir una app en Fudic: el texto se traduce al compilar, cada idioma tiene su propio HTML y una página sin JavaScript sigue sin JavaScript. Qué se traduce solo y por qué la unidad es la frase.">
+  <link rel="canonical" href="https://fudic.dev/docs/i18n">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Traducir una app · Fudic">
+  <meta property="og:description" content="El texto se traduce al compilar: cada idioma tiene su propio HTML.">
+  <meta property="og:url" content="https://fudic.dev/docs/i18n">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("i18n")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#compiled">Se traduce al compilar</a></li>
+        <li><a href="#locales">Declarar los idiomas</a></li>
+        <li><a href="#what">Lo que se traduce solo</a></li>
+        <li><a href="#sentence">La unidad es la frase</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Traducir una app</h1>
+
+<p>En Fudic, el texto de una página se traduce al compilar. Cada idioma tiene su propio HTML con el texto ya dentro, y el texto que la vista pinta se traduce sin marcarlo.</p>
+
+<h2 id="compiled">Se traduce al compilar</h2>
+
+<p>En React, Vue o Angular, una traducción suele ser una búsqueda en una tabla mientras se pinta: la página descarga la tabla y el código que la lee. En Fudic, cada componente y cada página se compilan una vez por idioma, con el texto traducido como una constante más. De ahí salen cuatro cosas:</p>
+
+<ul>
+  <li><strong>Una página sin JavaScript sigue sin JavaScript</strong> en todos sus idiomas.</li>
+  <li><strong>El navegador descarga solo su idioma</strong>, nunca las traducciones de los demás.</li>
+  <li><strong>El servidor, el Service Worker y el navegador escriben el mismo texto</strong>, así que la hidratación no cambia nada.</li>
+  <li><strong>Ningún módulo guarda el idioma en una variable</strong>: no hay un idioma que cambiar mientras la página está abierta. Cambiar de idioma es ir a otra URL (<a href="/docs/i18n/urls">Idiomas y URLs</a>).</li>
+</ul>
+
+<p>El precio es tiempo de build y espacio en <code>dist</code>, que crecen con cada idioma. El usuario no paga nada.</p>
+
+<h2 id="locales">Declarar los idiomas</h2>
+
+<p>Toda app tiene un idioma: el de <code>fudic new --locale</code>, o inglés si no se dijo otro. Para traducirla a más, se añade el módulo con sus idiomas:</p>
+
+<ui-code>
+<pre><code>fudic add i18n --locales es,en</code></pre>
+</ui-code>
+
+<p>Instala <code>@@fudic/i18n</code> y escribe la lista en <code>fudic.json</code>:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "kind": "app",
+  "locales": ["es", "en"],
+  "site": "https://example.com"
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>El primero es el idioma en que está escrito el código.</strong> Los textos de los <code>.fud</code> están en español, y el inglés es una traducción.</li>
+  <li><strong><code>site</code> es el origen en que se publica la app.</strong> Con dos idiomas o más el build lo necesita para escribir las URL absolutas de cada versión (<a href="/docs/i18n/urls#alternates">Las otras versiones de una página</a>).</li>
+</ul>
+
+<h2 id="what">Lo que se traduce solo</h2>
+
+<p>Todo lo que la vista pinta como texto es un mensaje que traducir, sin marcar nada:</p>
+
+<ul>
+  <li><strong>El texto</strong> que tiene al menos una letra. Un número o un signo suelto no se traduce.</li>
+  <li><strong>Los atributos que lee una persona</strong>: <code>title</code>, <code>alt</code>, <code>placeholder</code>, <code>aria-label</code> y los demás de la lista del estándar HTML y de ARIA.</li>
+  <li><strong>Los textos fijos de una expresión que se pinta</strong>: los dos lados de <code>@@(done ? "Hecho" : "Pendiente")</code>.</li>
+</ul>
+
+<ui-code .path="src/components/app-search/app-search.fud">
+<pre><code>&lt;app-search&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;input type="search" placeholder="Buscar en la tienda" aria-label="Buscar"&gt;
+    &lt;p translate="no"&gt;Fudic Store&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/app-search&gt;</code></pre>
+</ui-code>
+
+<p>Aquí se traducen el <code>placeholder</code> y el <code>aria-label</code>. El nombre de la tienda no, porque está bajo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/translate" target="_blank" rel="noopener"><code>translate="no"</code></a>, el atributo estándar que también respetan los traductores del navegador.</p>
+
+<p>Tampoco se traducen el CSS, los <code>&lt;script&gt;</code>, <code>@@raw</code>, los comentarios ni el valor de una prop: un string que se pasa a un componente puede ser un texto o un valor, y ahí se marca con <code>t()</code> (<a href="/docs/i18n/code">Textos en el código</a>).</p>
+
+<h2 id="sentence">La unidad es la frase</h2>
+
+<p>Un mensaje no es cada trozo de texto, sino la frase entera, con lo que lleva dentro:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Hola &lt;b&gt;@@user.name&lt;/b&gt;, tienes @@count mensajes&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Es un solo mensaje:</p>
+
+<ui-code>
+<pre><code>Hola &lt;0&gt;&#123;name&#125;&lt;/0&gt;, tienes &#123;count&#125; mensajes</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Cada expresión es un hueco</strong> con nombre: <code>@@user.name</code> es <code>&#123;name&#125;</code>.</li>
+  <li><strong>Cada elemento de la frase es una etiqueta numerada</strong>: <code>&lt;b&gt;</code> es <code>&lt;0&gt;…&lt;/0&gt;</code>. Sus atributos no viajan: quien traduce mueve la etiqueta, no la reescribe.</li>
+  <li><strong>El orden lo decide la traducción.</strong> <code>&#123;count&#125; messages for &lt;0&gt;&#123;name&#125;&lt;/0&gt;</code> es igual de válida, y la página se compila en ese orden.</li>
+</ul>
+
+<p>Traducir trozo a trozo obliga a que todos los idiomas pongan las palabras en el mismo orden, y no lo hacen. La frase corta en un elemento de bloque, en un componente o en un <code>@@if</code>; los elementos de texto, como <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code> o <code>&lt;code&gt;</code>, van dentro.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/translate" target="_blank" rel="noopener"><code>translate</code></a>: qué no se traduce.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: el idioma de un documento o de un trozo.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>: lo que el estándar de JavaScript sabe de cada idioma, y en lo que se apoyan los pipes.</li>
+</ul>

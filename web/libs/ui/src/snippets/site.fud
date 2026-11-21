@@ -100,6 +100,15 @@
           <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Internacionalización</span>
+        <ol>
+          <li><a href="/docs/i18n" aria-current=@(current === "i18n" ? "page" : false)>Traducir una app</a></li>
+          <li><a href="/docs/i18n/code" aria-current=@(current === "i18n-code" ? "page" : false)>Textos en el código</a></li>
+          <li><a href="/docs/i18n/catalogs" aria-current=@(current === "i18n-catalogs" ? "page" : false)>Los catálogos</a></li>
+          <li><a href="/docs/i18n/urls" aria-current=@(current === "i18n-urls" ? "page" : false)>Idiomas y URLs</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }
