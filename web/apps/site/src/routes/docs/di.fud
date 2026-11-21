@@ -1,0 +1,136 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Servicios · Fudic</title>
+  <meta name="description" content="Servicios en Fudic: una clase que varios componentes comparten sin pasarla por props, pedida con inject() y sin constructores con parámetros. Tokens para lo que no es una clase.">
+  <link rel="canonical" href="https://fudic.dev/docs/di">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Servicios · Fudic">
+  <meta property="og:description" content="Una clase que varios componentes comparten, pedida con inject().">
+  <meta property="og:url" content="https://fudic.dev/docs/di">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("di")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#service">Un servicio</a></li>
+        <li><a href="#inject">Pedirlo con inject()</a></li>
+        <li><a href="#service-in-service">Un servicio que usa otro</a></li>
+        <li><a href="#tokens">Lo que no es una clase: tokens</a></li>
+        <li><a href="#options">Opcional y uno por petición</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Servicios</h1>
+
+<p>Un servicio es un objeto que varios componentes comparten sin pasárselo de prop en prop: un carrito, un registro de lo que pasa, el cliente de una API. Se registra una vez y cada componente lo pide con <code>inject()</code>.</p>
+
+<h2 id="service">Un servicio</h2>
+
+<p>Un servicio es una clase normal de TypeScript. <code>Service</code> la registra en la raíz, así que toda la página comparte una sola instancia:</p>
+
+<ui-code .path="src/services/logger.ts">
+<pre><code>import &#123; Service &#125; from "@@fudic/di";
+
+export class Logger &#123;
+  readonly entries: string[] = [];
+
+  log(message: string): void &#123;
+    this.entries.push(message);
+  &#125;
+&#125;
+Service(Logger);</code></pre>
+</ui-code>
+
+<ui-note>
+  <p><code>Service</code> es un decorador estándar de JavaScript (<a href="https://github.com/tc39/proposal-decorators" target="_blank" rel="noopener">la propuesta de decoradores</a> del TC39, en fase 3), y se podrá escribir <code>@@Service</code> encima de la clase. Hoy las herramientas de build aún no transforman los decoradores estándar, así que se llama como una función, debajo de la clase. Es la misma función.</p>
+</ui-note>
+
+<h2 id="inject">Pedirlo con <code>inject()</code></h2>
+
+<p>Un componente lo pide en su <code>@@code</code>:</p>
+
+<ui-code .path="src/components/app-log/app-log.fud">
+<pre><code>@@code &#123;
+  import &#123; inject &#125; from "@@fudic/di";
+  import &#123; Logger &#125; from "../../services/logger";
+
+  const logger = inject(Logger);
+&#125;
+
+&lt;app-log&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;p&gt;@@logger.entries.length entradas&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/app-log&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Nadie escribe un constructor con parámetros</strong>, ni mantiene su orden. Se pide lo que se usa, donde se usa.</li>
+  <li><strong>Inyectar hace que el componente se hidrate</strong>: usa un objeto que también vive en el navegador (<a href="/docs/reactivity/hydration">Hidratación</a>). Un componente que no inyecta nada sigue sin JavaScript.</li>
+  <li><strong>Una página sin <code>inject</code> no descarga nada de <code>@@fudic/di</code>.</strong></li>
+</ul>
+
+<h2 id="service-in-service">Un servicio que usa otro</h2>
+
+<p>Dentro de un servicio, <code>inject()</code> va en un campo de la clase:</p>
+
+<ui-code .path="src/services/cart.ts">
+<pre><code>import &#123; inject, Service &#125; from "@@fudic/di";
+import &#123; Logger &#125; from "./logger";
+
+export class Cart &#123;
+  readonly log = inject(Logger);
+  readonly lines: string[] = [];
+
+  add(line: string): void &#123;
+    this.lines.push(line);
+    this.log.log(`added $&#123;line&#125;`);
+  &#125;
+&#125;
+Service(Cart);</code></pre>
+</ui-code>
+
+<p>Funciona porque el campo se inicializa mientras Fudic construye el servicio. Un <code>inject()</code> suelto en lo más alto de un módulo lanza un error: no sabría de qué página pedirlo. En el servidor también vale dentro de un handler (<a href="/docs/di/server#request">Un contenedor por petición</a>).</p>
+
+<h2 id="tokens">Lo que no es una clase: tokens</h2>
+
+<p>Una URL, un número o una configuración no tienen clase con la que pedirlos. Se crea un token, que lleva su tipo:</p>
+
+<ui-code .path="src/services/config.ts">
+<pre><code>import &#123; provide, token &#125; from "@@fudic/di";
+
+export const API_URL = token&lt;string&gt;("api-url");
+
+provide(API_URL, () =&gt; "https://api.example.com");</code></pre>
+</ui-code>
+
+<p><code>inject(API_URL)</code> devuelve un <code>string</code>. Dos tokens con el mismo nombre son distintos: lo que cuenta es el objeto, no el texto. <code>provide</code> registra en la raíz, como <code>Service</code>, pero con la función que crea el valor.</p>
+
+<h2 id="options">Opcional y uno por petición</h2>
+
+<ul>
+  <li><strong><code>inject(X, &#123; optional: true &#125;)</code></strong> devuelve <code>undefined</code> si nadie registró <code>X</code>, en vez de lanzar un error.</li>
+  <li><strong><code>provide(X, factory, &#123; transient: true &#125;)</code></strong> crea una instancia nueva cada vez que se pide, en vez de compartir una.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un ciclo</strong>, un servicio que acaba pidiéndose a sí mismo, lanza un error que nombra la cadena entera: <code>Panel -&gt; Cart -&gt; Panel</code>.</li>
+  <li><strong><code>FUD0680</code></strong> sale en el editor cuando un componente inyecta una clase que nadie registra: ni su módulo ni ningún componente por encima.</li>
+</ul>

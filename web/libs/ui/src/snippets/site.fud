@@ -109,6 +109,14 @@
           <li><a href="/docs/i18n/urls" aria-current=@(current === "i18n-urls" ? "page" : false)>Idiomas y URLs</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Inyección de dependencias</span>
+        <ol>
+          <li><a href="/docs/di" aria-current=@(current === "di" ? "page" : false)>Servicios</a></li>
+          <li><a href="/docs/di/providers" aria-current=@(current === "di-providers" ? "page" : false)>Dueños y subárboles</a></li>
+          <li><a href="/docs/di/server" aria-current=@(current === "di-server" ? "page" : false)>Servidor y navegador</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

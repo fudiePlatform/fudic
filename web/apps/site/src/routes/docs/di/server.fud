@@ -1,0 +1,123 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Servidor y navegador · Fudic</title>
+  <meta name="description" content="Servicios en el servidor y en el navegador con Fudic: un contenedor por petición, valores que viajan con publish() en vez de instancias, y servicios falsos en las pruebas.">
+  <link rel="canonical" href="https://fudic.dev/docs/di/server">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Servidor y navegador · Fudic">
+  <meta property="og:description" content="Un contenedor por petición, y valores que viajan en vez de instancias.">
+  <meta property="og:url" content="https://fudic.dev/docs/di/server">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("di-server")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#both-sides">El mismo código a los dos lados</a></li>
+        <li><a href="#request">Un contenedor por petición</a></li>
+        <li><a href="#publish">Viajan valores, no instancias</a></li>
+        <li><a href="#testing">Otro servicio en las pruebas</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Servidor y navegador</h1>
+
+<p>Un servicio se escribe una vez y se usa en el servidor y en el navegador. En el servidor cada petición tiene sus propias instancias, y lo que el navegador necesita para construir las suyas viaja como un valor, nunca como un objeto.</p>
+
+<h2 id="both-sides">El mismo código a los dos lados</h2>
+
+<p>El <code>@@code</code> de un componente corre en el servidor, que pinta el HTML, y en el navegador, cuando se hidrata. <code>inject(Cart)</code> se ejecuta en los dos, y cada lado crea su <code>Cart</code>. Lo que cambia es quién crea la raíz: una petición en el servidor y una página en el navegador.</p>
+
+<p>Cada navegación crea una página nueva y, con ella, una raíz nueva. Un servicio vive lo que vive la página.</p>
+
+<h2 id="request">Un contenedor por petición</h2>
+
+<p>En el servidor, un handler pide sus servicios con el mismo <code>inject()</code>:</p>
+
+<ui-code .path="src/server/users.ts">
+<pre><code>import &#123; inject &#125; from "@@fudic/di";
+import &#123; search &#125; from "fudic:routes/users";
+import &#123; Users &#125; from "../services/users";
+
+search.handle((ctx) =&gt; inject(Users).find(ctx.args.q));</code></pre>
+</ui-code>
+
+<p>Cada petición tiene su propio contenedor raíz, que la sigue a través de cada <code>await</code>. Dos visitantes a la vez nunca comparten una instancia: un servicio puede guardar datos de quien lo pide sin que el otro los vea.</p>
+
+<p>Es lo contrario de una variable en un módulo, que en el servidor comparten todas las peticiones del proceso.</p>
+
+<h2 id="publish">Viajan valores, no instancias</h2>
+
+<p>El <code>Cart</code> del servidor pintó tres líneas. El del navegador nace vacío, y al primer cambio pintaría cero. Para que nazca igual, el servidor publica el valor del que se construye, bajo un token:</p>
+
+<ui-code .path="src/services/cart.ts">
+<pre><code>export const LINES = token&lt;readonly string[]&gt;("lines");
+
+export class Cart &#123;
+  readonly lines: string[] = [...(inject(LINES, &#123; optional: true &#125;) ?? [])];
+  …
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/cart.ts">
+<pre><code>import &#123; publish &#125; from "@@fudic/di";
+import &#123; load &#125; from "fudic:routes/cart";
+import &#123; LINES &#125; from "../services/cart";
+
+load.handle(() =&gt; &#123;
+  const lines = ["apples", "pears", "plums"];
+  publish(LINES, lines);
+  return &#123; lines &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Solo cruza lo que se publica</strong>, como JSON dentro de la página. El <code>Cart</code> del navegador inyecta <code>LINES</code> y nace con las mismas tres líneas.</li>
+  <li><strong>Lo que no se publica se queda en el servidor.</strong> Una conexión a la base de datos o una clave nunca llegan al navegador por inyectarlas.</li>
+  <li><strong>El nombre del token es la clave</strong> en la página, así que no se puede repetir en una misma ruta.</li>
+</ul>
+
+<p>El <code>load</code> y los handlers se explican en <a href="/docs/routing/data">Los datos de la página</a> y <a href="/docs/server/functions">Funciones de servidor</a>.</p>
+
+<h2 id="testing">Otro servicio en las pruebas</h2>
+
+<p>Un criterio del <code>.fudspec</code> puede cambiar un servicio por otro, sin tocar el código. El fixture da nombre a cada grupo de servicios:</p>
+
+<ui-code .path="src/flows/sign-up.fixture.ts">
+<pre><code>import type &#123; FlowFixtures &#125; from "@@fudic/spec";
+import &#123; Users &#125; from "../services/users";
+import &#123; MemoryUsers &#125; from "../services/memory-users";
+
+const ana = &#123; id: 1, name: "Ana" &#125;;
+const luis = &#123; id: 2, name: "Luis" &#125;;
+
+export default &#123;
+  services: &#123;
+    "two-people": [&#123; provide: Users, use: () =&gt; new MemoryUsers([ana, luis]) &#125;],
+  &#125;,
+&#125; satisfies FlowFixtures;</code></pre>
+</ui-code>
+
+<ui-code .path="src/flows/sign-up.fudspec">
+<pre><code>flow sign-up
+
+criterion signing-in-opens-the-account
+  given
+    services two-people
+    url /sign-in
+  …</code></pre>
+</ui-code>
+
+<p>El servicio de la prueba se registra en la raíz, en el servidor y en el navegador, y gana a <code>Service</code>. <code>fudic spec</code> lo ejecuta en un navegador de verdad, y en VS Code el workbench (Ctrl+K V) lo repite en cada guardado.</p>

@@ -1,0 +1,94 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Dueños y subárboles · Fudic</title>
+  <meta name="description" content="Dueños y subárboles en Fudic: un componente que hace provide() es el dueño de un servicio para todo lo que tiene debajo, sin hidratarse, y cada descendiente recibe su instancia.">
+  <link rel="canonical" href="https://fudic.dev/docs/di/providers">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Dueños y subárboles · Fudic">
+  <meta property="og:description" content="Un componente que hace provide() es el dueño de un servicio para su subárbol.">
+  <meta property="og:url" content="https://fudic.dev/docs/di/providers">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("di-providers")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#owner">Un componente dueño</a></li>
+        <li><a href="#resolution">Cómo se encuentra un servicio</a></li>
+        <li><a href="#no-hydration">El dueño no se hidrata</a></li>
+        <li><a href="#lifetime">Quién puede pedir qué</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Dueños y subárboles</h1>
+
+<p>Un componente que hace <code>provide()</code> es el dueño de ese servicio para todo lo que tiene debajo. Cada descendiente que lo inyecta recibe la instancia de su dueño, no una global, así que dos partes de la página pueden tener cada una la suya.</p>
+
+<h2 id="owner">Un componente dueño</h2>
+
+<p>Dos carritos en la misma página, el de la compra y el de la lista de deseos, cada uno con sus líneas. Aquí <code>Cart</code> no lleva <code>Service</code>: lo provee cada componente que lo necesita para su parte de la página.</p>
+
+<ui-code .path="src/components/app-shop/app-shop.fud">
+<pre><code>@@code &#123;
+  import &#123; provide &#125; from "@@fudic/di";
+  import &#123; Cart &#125; from "../../services/cart";
+
+  provide(Cart, () =&gt; new Cart());
+&#125;
+
+&lt;app-shop&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;app-cart-lines&gt;&lt;/app-cart-lines&gt;
+    &lt;app-cart-total&gt;&lt;/app-cart-total&gt;
+  &lt;/template&gt;
+&lt;/app-shop&gt;</code></pre>
+</ui-code>
+
+<p><code>app-cart-lines</code> y <code>app-cart-total</code> hacen <code>inject(Cart)</code> y reciben el mismo carrito, el de su <code>app-shop</code>. Otro <code>app-shop</code> en la página tendría el suyo.</p>
+
+<p>Es el modelo de inyectores por elemento de Angular, sin la inyección por constructor.</p>
+
+<h2 id="resolution">Cómo se encuentra un servicio</h2>
+
+<p><code>inject(X)</code> sube desde el componente que lo pide:</p>
+
+<ol class="flow">
+  <li>Si un componente por encima provee <code>X</code>, el más cercano es el dueño y su instancia es la respuesta.</li>
+  <li>Si no, llega a la raíz, donde están los que registran <code>Service</code> y <code>provide</code> en un módulo.</li>
+  <li>Si nadie lo registra, es un error que nombra lo que se pidió.</li>
+</ol>
+
+<p>La instancia se crea la primera vez que alguien la pide, y la comparten todos los que están debajo de su dueño.</p>
+
+<h2 id="no-hydration">El dueño no se hidrata</h2>
+
+<p>Proveer no hidrata: <code>app-shop</code> no inyecta nada, así que sigue sin JavaScript y no descarga su código. Solo se hidratan <code>app-cart-lines</code> y <code>app-cart-total</code>, que inyectan (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+
+<p>Por eso Fudic no busca al dueño subiendo por el DOM: el elemento de <code>app-shop</code> está en la página, pero nunca ejecutó una línea en el navegador. El servidor anota en la página quién es dueño de quién, y el navegador reconstruye los contenedores a partir de esa nota.</p>
+
+<h2 id="lifetime">Quién puede pedir qué</h2>
+
+<p>La instancia se crea en el contenedor de su dueño, y desde ahí solo ve lo que hay por encima. Un servicio de la raíz que inyecta <code>Cart</code> no lo encuentra, aunque lo pida desde dentro de un <code>app-shop</code>: el error llega al momento.</p>
+
+<p>Así nadie depende de algo que vive menos que él. Un servicio de toda la página que guardara el carrito de un <code>app-shop</code> lo seguiría usando cuando ese <code>app-shop</code> ya no exista.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un componente que no provee ni inyecta</strong> no crea contenedor: sus hijos ven el de su dueño más cercano.</li>
+  <li><strong>Un <code>provide</code> en el <code>@@code</code> de un componente</strong> registra para ese componente y su subárbol; uno en un módulo <code>.ts</code>, en la raíz.</li>
+  <li><strong><code>FUD0684</code></strong> sale en el editor cuando un componente provee el mismo token dos veces: la segunda reemplazaría a la primera.</li>
+</ul>
