@@ -1,0 +1,81 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Medir con Lighthouse · Fudic</title>
+  <meta name="description" content="Medir una app de Fudic con Lighthouse: sobre el build y no sobre fudic dev, en móvil y en escritorio, y lo que llevó a esta documentación a 100/100/100/100.">
+  <link rel="canonical" href="https://fudic.dev/docs/performance/lighthouse">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Medir con Lighthouse · Fudic">
+  <meta property="og:description" content="Cómo se mide, y lo que llevó a esta documentación a 100/100/100/100.">
+  <meta property="og:url" content="https://fudic.dev/docs/performance/lighthouse">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("performance-lighthouse")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#this-site">Esta documentación</a></li>
+        <li><a href="#how">Cómo se mide</a></li>
+        <li><a href="#inp">El INP, interactuando</a></li>
+        <li><a href="#what-moved">Lo que movió la nota</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Medir con Lighthouse</h1>
+
+<p>Lighthouse mide una página en cuatro apartados: rendimiento, accesibilidad, buenas prácticas y SEO. Esta documentación está hecha con Fudic y saca 100 en los cuatro, en móvil y en escritorio.</p>
+
+<h2 id="this-site">Esta documentación</h2>
+
+<ul>
+  <li><strong>Lighthouse</strong>: 100/100/100/100 en móvil y en escritorio.</li>
+  <li><strong>LCP</strong>: 0,13 s en escritorio. Es cuándo se ve lo más grande de la página.</li>
+  <li><strong>INP</strong>: 16 ms, entre 8 y 32 según la interacción. Es lo que tarda la página en responder a un clic o una tecla; por debajo de 200 ms se considera bueno.</li>
+</ul>
+
+<h2 id="how">Cómo se mide</h2>
+
+<ol class="flow">
+  <li><strong>Construye la app</strong> y sírvela con <code>fudic preview</code>. <code>fudic dev</code> no vale: sirve el código sin empaquetar y recompila en cada petición.</li>
+  <li><strong>Abre la página en una ventana de incógnito</strong>, para que las extensiones del navegador no cuenten.</li>
+  <li><strong>En las herramientas de Chrome, la pestaña Lighthouse</strong>: elige móvil o escritorio y analiza.</li>
+</ol>
+
+<p>El móvil es el difícil: Lighthouse simula un teléfono lento y una red 4G mala, y cada kilobyte se nota. En escritorio la red simulada es rápida.</p>
+
+<p>Lighthouse también se ejecuta en la terminal, con <a href="https://github.com/GoogleChrome/lighthouse" target="_blank" rel="noopener">su CLI</a>, que sirve para repetir la medida tras cada cambio y comparar.</p>
+
+<h2 id="inp">El INP, interactuando</h2>
+
+<p>Lighthouse carga la página y no toca nada, así que no puede medir el INP. Se mide usándola: en la pestaña Performance de Chrome, las métricas en vivo enseñan el INP de cada clic mientras navegas por la página.</p>
+
+<p>En Fudic el primer clic sobre un componente es el que lo hidrata, así que es el que conviene medir.</p>
+
+<h2 id="what-moved">Lo que movió la nota</h2>
+
+<p>Lo que Fudic no decide es lo que pone cada app. En esta documentación, tres cosas:</p>
+
+<ul>
+  <li><strong>Las fuentes.</strong> Fueron lo que más pesaba en móvil: cuatro ficheros, 192 KB. Ahora es una sola fuente variable, recortada a los caracteres del sitio (23 KB) y precargada con <code>&lt;link rel="preload"&gt;</code> desde el layout, para que llegue con el HTML y no después del CSS.</li>
+  <li><strong>Un solo componente al cargar.</strong> El índice lateral es lo único que arranca sin que nadie lo toque. Bloquear todo el JavaScript de la página no cambia la nota.</li>
+  <li><strong>Los textos de los enlaces.</strong> La auditoría de SEO penaliza enlaces como «aquí», «más» o «empezar», que no dicen adónde van. El menú dice «Empezar con Fudic».</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Largest_contentful_paint" target="_blank" rel="noopener">LCP</a> e <a href="https://developer.mozilla.org/en-US/docs/Glossary/Interaction_to_next_paint" target="_blank" rel="noopener">INP</a>: las dos métricas que más se notan.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload" target="_blank" rel="noopener"><code>rel=preload</code></a>: descargar una fuente antes de que el CSS la pida.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a>: cómo se declara una fuente propia.</li>
+</ul>

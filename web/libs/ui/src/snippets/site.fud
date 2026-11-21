@@ -117,6 +117,14 @@
           <li><a href="/docs/di/server" aria-current=@(current === "di-server" ? "page" : false)>Servidor y navegador</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Rendimiento</span>
+        <ol>
+          <li><a href="/docs/performance" aria-current=@(current === "performance" ? "page" : false)>Qué la hace rápida</a></li>
+          <li><a href="/docs/performance/caching" aria-current=@(current === "performance-caching" ? "page" : false)>Las cachés del navegador</a></li>
+          <li><a href="/docs/performance/lighthouse" aria-current=@(current === "performance-lighthouse" ? "page" : false)>Medir con Lighthouse</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

@@ -1,0 +1,85 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Qué la hace rápida · Fudic</title>
+  <meta name="description" content="Qué hace rápida una página de Fudic: HTML y CSS estándar, JavaScript solo donde algo se toca, el CSS justo, early hints y el runtime en piezas que cada página pide.">
+  <link rel="canonical" href="https://fudic.dev/docs/performance">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Qué la hace rápida · Fudic">
+  <meta property="og:description" content="Una página de Fudic es HTML y CSS; el JavaScript llega solo donde algo se toca.">
+  <meta property="og:url" content="https://fudic.dev/docs/performance">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("performance")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#this-page">Lo que descarga esta página</a></li>
+        <li><a href="#html">HTML primero</a></li>
+        <li><a href="#javascript">JavaScript solo donde se toca</a></li>
+        <li><a href="#css">El CSS justo</a></li>
+        <li><a href="#early-hints">Antes de que llegue el HTML</a></li>
+        <li><a href="#runtime">El runtime, en piezas</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Qué la hace rápida</h1>
+
+<p>Una página de Fudic es HTML y CSS estándar, y el JavaScript llega solo donde algo se toca. La rapidez no sale de optimizar después, sino de lo que la página no tiene que descargar ni ejecutar.</p>
+
+<h2 id="this-page">Lo que descarga esta página</h2>
+
+<p>La página que estás leyendo, comprimida:</p>
+
+<ul>
+  <li><strong>HTML</strong>: 8 KB, con todo el texto y los componentes ya pintados.</li>
+  <li><strong>CSS</strong>: 3 KB, en dos hojas.</li>
+  <li><strong>Una fuente</strong>: 23 KB, recortada a los caracteres que usa el sitio.</li>
+  <li><strong>JavaScript</strong>: 12 KB, para un solo componente, el índice lateral, que marca la sección que lees mientras bajas.</li>
+</ul>
+
+<p>Sin ese índice, la página no descargaría JavaScript.</p>
+
+<h2 id="html">HTML primero</h2>
+
+<p>El servidor, o el build si la página es estática, envía el HTML entero, con cada componente ya pintado dentro de su shadow DOM gracias a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. El navegador pinta según llega, sin esperar a ningún script, y eso es lo que mide el LCP: cuándo se ve lo más grande de la página.</p>
+
+<h2 id="javascript">JavaScript solo donde se toca</h2>
+
+<p>En React, Vue o Angular la página arranca entera en el navegador antes de responder. En Fudic, un componente sin estado ni eventos no tiene JavaScript, y uno interactivo se hidrata la primera vez que alguien lo toca, sin perder ese primer clic (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+
+<p>Solo arranca al cargar lo que tiene que hacer algo sin que nadie lo toque: un reloj, o este índice, que sigue el scroll. Por eso el navegador tiene poco que ejecutar cuando el usuario hace clic, y responde enseguida: es lo que mide el INP.</p>
+
+<h2 id="css">El CSS justo</h2>
+
+<p>Cada página recibe solo el CSS de los componentes que pinta, ya podado, y la hoja compartida de un componente se descarga una vez aunque aparezca muchas veces (<a href="/docs/styles/delivery">Cómo llega el CSS</a>).</p>
+
+<p>Como los componentes llegan pintados con su CSS, nada aparece después empujando el contenido: es lo que mide el CLS.</p>
+
+<h2 id="early-hints">Antes de que llegue el HTML</h2>
+
+<p>Fudic sabe en el build qué CSS y qué módulos necesita cada página, y el servidor lo anuncia con una respuesta estándar <code>103 Early Hints</code> antes de tener el HTML. Cuando llega la página, sus hojas y su JavaScript ya se están descargando (<a href="/docs/routing/early-hints">Early hints</a>).</p>
+
+<h2 id="runtime">El runtime, en piezas</h2>
+
+<p>El código de Fudic que llega al navegador no es un fichero único: son piezas pequeñas, y cada página pide solo las que usa. Una página sin formularios no descarga nada de formularios. Las piezas llevan la versión en la URL y se quedan en caché para siempre (<a href="/docs/performance/caching#runtime">Las cachés del navegador</a>).</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Largest_contentful_paint" target="_blank" rel="noopener">LCP</a>: cuándo se pinta lo más grande de la página.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Interaction_to_next_paint" target="_blank" rel="noopener">INP</a>: cuánto tarda la página en responder a una interacción.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/CLS" target="_blank" rel="noopener">CLS</a>: cuánto se mueve el contenido mientras carga.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a>: lo que conviene ir descargando.</li>
+</ul>

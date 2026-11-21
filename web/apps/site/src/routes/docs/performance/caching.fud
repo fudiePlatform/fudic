@@ -1,0 +1,122 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Las cachés del navegador · Fudic</title>
+  <meta name="description" content="Las cachés del navegador en Fudic: la caché HTTP de los ficheros con hash, configurada en assets.headers; el runtime versionado y compartido; el Service Worker; y la bfcache para volver atrás sin recargar.">
+  <link rel="canonical" href="https://fudic.dev/docs/performance/caching">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Las cachés del navegador · Fudic">
+  <meta property="og:description" content="La caché HTTP, el runtime versionado, el Service Worker y la bfcache.">
+  <meta property="og:url" content="https://fudic.dev/docs/performance/caching">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("performance-caching")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#http">La caché HTTP</a></li>
+        <li><a href="#headers">Configurarla: assets.headers</a></li>
+        <li><a href="#runtime">El runtime de Fudic</a></li>
+        <li><a href="#service-worker">Con Service Worker</a></li>
+        <li><a href="#bfcache">Volver atrás sin recargar: la bfcache</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Las cachés del navegador</h1>
+
+<p>Lo más rápido es lo que no se descarga otra vez. El navegador tiene varias cachés estándar, y Fudic deja cada fichero listo para que la use: con un nombre que cambia cuando cambia su contenido, y con las cabeceras que dicen cuánto guardarlo.</p>
+
+<h2 id="http">La caché HTTP</h2>
+
+<p>El navegador guarda cada fichero tanto como diga su cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>. Hay dos casos:</p>
+
+<ul>
+  <li><strong>Un fichero con hash en el nombre</strong>, como <code>docs-yCBtJ0qT.css</code>, no cambia nunca: si cambia su contenido, cambia su nombre. Se puede guardar un año con <code>immutable</code>, y el navegador ni pregunta.</li>
+  <li><strong>Un fichero sin hash</strong>, como un favicon o el HTML, puede cambiar con el mismo nombre. Con <code>no-cache</code>, el navegador lo guarda pero pregunta al servidor si sigue valiendo antes de usarlo.</li>
+</ul>
+
+<p>El build pone hash a todo el CSS, el JavaScript, las fuentes y las imágenes que importa la app.</p>
+
+<h2 id="headers">Configurarla: <code>assets.headers</code></h2>
+
+<p>Las cabeceras de los ficheros estáticos se escriben en <code>assets.headers</code>, en la raíz de la app, por ruta:</p>
+
+<ui-code .path="assets.headers">
+<pre><code>/**
+  Cache-Control: no-cache
+
+/assets/**
+  Cache-Control: public, max-age=31536000, immutable
+
+/_fudic/**
+  Cache-Control: public, max-age=31536000, immutable
+
+/fudic-main-*.js
+  Cache-Control: public, max-age=31536000, immutable</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Por defecto, <code>no-cache</code></strong>: lo que no tiene hash se comprueba siempre.</li>
+  <li><strong><code>/assets/**</code></strong> es lo que emite el build con hash.</li>
+  <li><strong><code>/_fudic/**</code></strong> es el runtime de Fudic, que lleva la versión en la URL.</li>
+  <li><strong><code>/fudic-main-*.js</code></strong> es el arranque de cada página, también con hash.</li>
+</ul>
+
+<p>Gana la ruta más concreta, cabecera a cabecera. El mismo fichero sirve en <code>fudic dev</code>, en la preview y en el servidor de Fudic.</p>
+
+<h2 id="runtime">El runtime de Fudic</h2>
+
+<p>El código de Fudic se publica en piezas, cada una en una URL con la versión dentro:</p>
+
+<ui-code>
+<pre><code>/_fudic/0.0.1/core/signal.js
+/_fudic/0.0.1/core/hydrate.js
+/_fudic/0.0.1/forms/bind-form.js</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Cada página pide solo sus piezas</strong>, y, sin Service Worker, las anuncia con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>modulepreload</code></a> para que se descarguen en paralelo.</li>
+  <li><strong>No cambian nunca</strong>: una versión nueva de Fudic es una URL nueva.</li>
+  <li><strong>Se comparten entre apps.</strong> Dos apps del mismo origen con la misma versión piden la misma URL, y el navegador la descarga una vez. Con versiones distintas, cada una tiene la suya y no se estorban.</li>
+</ul>
+
+<h2 id="service-worker">Con Service Worker</h2>
+
+<p>Con Service Worker, las páginas, sus datos y sus ficheros salen de su caché, también sin red (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>). El runtime tiene una caché aparte para todo el origen, que guarda cada pieza la primera vez que una página la pide, nunca antes. Las demás apps del origen la usan también, y se borra sola cuando ninguna app la ha usado en treinta días.</p>
+
+<h2 id="bfcache">Volver atrás sin recargar: la bfcache</h2>
+
+<p>Al pulsar «atrás», el navegador puede devolver la página tal como estaba, sin pedirla ni ejecutarla otra vez: es la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>, la caché de ida y vuelta. Es la navegación más rápida que existe, pero el navegador descarta una página que escucha <code>unload</code>.</p>
+
+<p>Fudic nunca la escucha. Los hooks de una ruta siguen a <code>pagehide</code> y <code>pageshow</code>: <code>onDisconnect</code> al irse, y <code>onConnect</code> otra vez al volver de la bfcache (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>). Una página de Fudic entra en la bfcache salvo que tu propio código lo impida.</p>
+
+<p>Para comprobarlo, Chrome tiene en la pestaña Application de sus herramientas una prueba, <em>Back/forward cache</em>, que dice si la página entra y, si no, por qué.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un <code>immutable</code> o un <code>max-age</code> de un día o más sobre un fichero sin hash</strong> es un aviso del build, <code>FUD1552</code>: cuando cambie, el navegador seguirá usando el viejo.</li>
+  <li><strong>Una respuesta que leyó la sesión</strong> sale con <code>private, no-store</code>, y el Service Worker no la guarda (<a href="/docs/server/session">Sesión y cookies</a>).</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching" target="_blank" rel="noopener">La caché HTTP</a>: cómo decide el navegador qué guarda y cuánto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: <code>immutable</code>, <code>max-age</code>, <code>no-cache</code> y <code>no-store</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>: la página que vuelve con «atrás».</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event" target="_blank" rel="noopener"><code>pageshow</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event" target="_blank" rel="noopener"><code>pagehide</code></a>: los eventos de ir y volver.</li>
+</ul>
