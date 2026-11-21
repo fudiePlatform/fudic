@@ -1,5 +1,6 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
@@ -23,6 +24,7 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#this-page">Lo que descarga esta página</a></li>
+        <li><a href="#ttfb">El primer byte, cuanto antes</a></li>
         <li><a href="#html">HTML primero</a></li>
         <li><a href="#javascript">JavaScript solo donde se toca</a></li>
         <li><a href="#css">El CSS justo</a></li>
@@ -50,6 +52,27 @@
 </ul>
 
 <p>Sin ese índice, la página no descargaría JavaScript.</p>
+
+<h2 id="ttfb">El primer byte, cuanto antes</h2>
+
+<p>El TTFB es lo que tarda en llegar el primer byte de la respuesta. Nada de la página puede pintarse ni descargarse antes, así que todo lo demás se suma detrás. Fudic no espera a tener la página entera para empezar a enviarla: la escribe en stream, en los tres modos (<a href="/docs/routing/rendering">Cuándo se pinta</a>).</p>
+
+<ul>
+  <li><strong><code>ssg</code></strong>: la página ya está pintada en el build, y el servidor la envía sin ejecutar nada.</li>
+  <li><strong><code>ssr</code></strong>: el servidor envía el principio en cuanto lo tiene, sin esperar al final de la página.</li>
+  <li><strong><code>sw</code></strong>: el Service Worker pinta la página en el navegador y la entrega en stream igual que el servidor, sin pasar por la red.</li>
+</ul>
+
+<p>Un dato lento no retrasa el primer byte. Con <code>@@await</code>, la página sale con lo que ya tiene, y cada bloque se escribe en su sitio cuando llega su dato, sin JavaScript (<a href="/docs/template-syntax/await"><code>@@await</code></a>):</p>
+
+<ui-code .path="src/routes/dashboard.fud">
+<pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
+@@await data.summary &#123;
+  &lt;p&gt;@@data.summary.active de @@data.summary.total activos&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>El <code>&lt;h1&gt;</code> sale con el primer byte, y el navegador empieza a pintar y a descargar el CSS mientras el servidor sigue esperando el resumen.</p>
 
 <h2 id="html">HTML primero</h2>
 

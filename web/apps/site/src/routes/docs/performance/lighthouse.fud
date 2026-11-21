@@ -40,6 +40,7 @@
 
 <ul>
   <li><strong>Lighthouse</strong>: 100/100/100/100 en móvil y en escritorio.</li>
+  <li><strong>TTFB</strong>: 2,47 ms hasta el primer byte, y 0,39 ms para descargar el resto, con <code>fudic preview</code> en local. Es lo que pone el servidor, sin la red de por medio (<a href="/docs/performance#ttfb">El primer byte, cuanto antes</a>).</li>
   <li><strong>LCP</strong>: 0,13 s en escritorio. Es cuándo se ve lo más grande de la página.</li>
   <li><strong>INP</strong>: 16 ms, entre 8 y 32 según la interacción. Es lo que tarda la página en responder a un clic o una tecla; por debajo de 200 ms se considera bueno.</li>
 </ul>
