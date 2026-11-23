@@ -25,8 +25,8 @@ describe('fudic.docs in package.json', () => {
 });
 
 describe('docsUrl', () => {
-  it('is the base plus the code as the anchor', () => {
-    expect(docsUrl('FUD0051')).toBe(`${pkg.fudic?.docs as string}#FUD0051`);
-    expect(new URL(docsUrl('FUD0725')).hash).toBe('#FUD0725');
+  it('is the base plus the code as its query parameter', () => {
+    expect(docsUrl('FUD0051')).toBe(`${pkg.fudic?.docs as string}?code=FUD0051`);
+    expect(new URL(docsUrl('FUD0725')).searchParams.get('code')).toBe('FUD0725');
   });
 });

@@ -52,6 +52,12 @@ describe('withRequest', () => {
     expect(out.url.href).toBe('https://app.example/a?q=1');
     expect(out.request).toBe(request);
   });
+
+  it("a context made from the path alone: the query string is the request's", () => {
+    const request = new Request('https://app.example/a?code=FUD0010');
+    const out = withRequest(edgeContext('/a', '/a', 'n'), request);
+    expect(out.url.searchParams.get('code')).toBe('FUD0010');
+  });
 });
 
 describe('drainStream / openStream', () => {

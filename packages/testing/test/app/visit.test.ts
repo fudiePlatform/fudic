@@ -23,6 +23,11 @@ describe('criterion 21: a route, through the routing of the plugin', () => {
     expect(page.document.documentElement.lang).toBe('en');
   });
 
+  test('the query string reaches load in ctx.url, and does not change the route', async () => {
+    const page = await visit('/tags/uno?suffix=-dos');
+    expect(page.getByRole('heading', { level: 1 })).toHaveTextContent('Tag uno-dos');
+  });
+
   test('the page replaces the whole document', async () => {
     const page = await visit('/blog/y');
     expect(page.document).toBe(document);

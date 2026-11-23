@@ -299,8 +299,8 @@ describe('a route (step 8)', () => {
     const response = await server.fetch(navigate('/blog/hola?x=1'));
     const html = await response!.text();
     const nonce = nonceOf(response!.headers.get('content-security-policy'));
-    // The render's URL is the path, as before SDD-81: `load` reads the query from `ctx.request`.
-    expect(html).toBe(`<html><head><title>/blog/hola</title></head><body nonce="${nonce}">http://app.test/blog/hola</body></html>`);
+    // The render's URL is the one asked, query string included: `load` reads `ctx.url.searchParams`.
+    expect(html).toBe(`<html><head><title>/blog/hola</title></head><body nonce="${nonce}">http://app.test/blog/hola?x=1</body></html>`);
   });
 
   it('what load wrote goes out, and fudic’s own headers win over it', async () => {

@@ -36,6 +36,12 @@ export interface Visited extends Harness {
   readonly status: number;
 }
 
+/** The query string of `url`, `?` included; empty when it has none. */
+function searchOf(url: string): string {
+  const at = url.indexOf('?');
+  return at === -1 ? '' : url.slice(at);
+}
+
 /** The path of `url` inside the app: its query dropped and `base` stripped, as `vite dev` reads it. */
 function pathnameOf(url: string, base: string): string {
   const path = url.split('?')[0]!;
@@ -69,7 +75,7 @@ async function answer(url: string, options: VisitOptions): Promise<Answer> {
   // The request a browser would send for it: what carries the criterion of the fixture.
   const request = cookie === undefined ? undefined : new Request(new URL(url, location.origin), { headers: { cookie } });
   try {
-    return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, pathname, options.data, undefined, request), status: 200, page: rb };
+    return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, `${pathname}${searchOf(url)}`, options.data, undefined, request), status: 200, page: rb };
   } catch (error) {
     const failure = classifyError(error, true);
     if (failure.kind === 'error' && failure.unexpected) unexpected = error;

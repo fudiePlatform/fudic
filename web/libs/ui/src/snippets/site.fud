@@ -180,6 +180,12 @@
           <li><a href="/docs/tools/format" aria-current=@(current === "tools-format" ? "page" : false)>El formateador</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Referencia</span>
+        <ol>
+          <li><a href="/docs/reference/diagnostics" aria-current=@(current === "reference-diagnostics" ? "page" : false)>Diagnósticos</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

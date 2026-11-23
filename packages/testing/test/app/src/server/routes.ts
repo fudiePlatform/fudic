@@ -29,7 +29,8 @@ loadRoto.handle(() => {
   throw new Error('the load broke');
 });
 
-loadTag.handle((ctx) => ({ tag: ctx.params.tag }));
+// `?suffix=` is read from `ctx.url`: the query string reaches `load` as the browser asked it.
+loadTag.handle((ctx) => ({ tag: `${ctx.params.tag}${ctx.url.searchParams.get('suffix') ?? ''}` }));
 
 // The third entry names no param of `/tags/:tag`: no URL can be made of it.
 pathsTag.handle(() => ['uno', { tag: 'dos' }, { other: 'x' }] as never);

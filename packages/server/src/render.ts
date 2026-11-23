@@ -58,7 +58,10 @@ export function withRequest(ctx: RenderContext, request: Request | undefined, re
   if (request === undefined) return served;
   // The URL on the request's own origin: what a page writes as an absolute URL of itself
   // (SDD-58 §4.7) is where it was asked — the public one behind a trusted proxy (SDD-81 §3.12).
-  const url = new URL(`${ctx.url.pathname}${ctx.url.search}`, new URL(request.url).origin);
+  // The query string is the request's when the context was made from the path alone, as a page
+  // and its data endpoint make it: `load` reads `ctx.url.searchParams`.
+  const asked = new URL(request.url);
+  const url = new URL(`${ctx.url.pathname}${ctx.url.search || asked.search}`, asked.origin);
   const out: RenderContext & { readonly request: Request } = { ...served, url, request };
   return out;
 }

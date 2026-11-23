@@ -260,6 +260,29 @@ a[target="_blank"]::after {
   color: var(--guide-accent);
 }
 
+/* The diagnostics search: the label, the field and its button on one line, wrapping on a phone. */
+
+.diagnostic-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--guide-space-3);
+  margin-block: var(--guide-space-5);
+}
+
+.diagnostic-search input {
+  flex: 1 1 12rem;
+  font-family: var(--guide-font-mono);
+}
+
+.diagnostic .severity {
+  font-size: var(--guide-text-sm);
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* Footer */
 
 .site-footer {

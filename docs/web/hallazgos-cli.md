@@ -101,6 +101,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con las cuatro páginas del capítulo Editores (`docs/editors/…`), el 2026-11-23.
 - **Y otra vez** con las 31 páginas del capítulo Herramientas (`docs/cli/…`, `docs/tools/format`), el
   2026-11-23: mismo `href` frágil, corregido a mano, y títulos como «Error-page».
+- **Y otra vez** con la página de diagnósticos de Referencia (`docs/reference/diagnostics`), el
+  2026-11-23: sin `--layout` escribe `../../../layouts/_layout.fud`, corregido a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -188,6 +190,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió en la web.** Las salidas citadas en la documentación no copian esa línea.
 - **Qué debería hacer.** Publicar con la dirección pública del catálogo de diagnósticos, o no
   imprimir el enlace mientras no exista.
+- **Resuelto (Referencia), el 2026-11-23.** `fudic.docs` es `https://fudic.dev/docs/reference/diagnostics`
+  y `docsUrl()` pone el código en la query (`?code=FUD0443`): la página se pinta en el servidor y
+  un ancla no le llegaría.
 
 ## 15. `fudic --version` enseña la ayuda entera
 
@@ -218,3 +223,13 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `(in .)`.
 - **Cómo se resolvió en la web.** La página de `fudic accept` no cita la salida; lo dice en prosa.
 - **Qué debería hacer.** `(in .)`, como los demás.
+
+## 19. `fudic g api` añade `@fudic/http` con versión fija dentro de un workspace
+
+- **Qué pasó.** En `web/apps/site`, `fudic g api src/routes/docs/reference/diagnostics.fud`
+  (2026-11-23) añadió `"@fudic/http": "0.0.1"` al `package.json`, al principio de
+  `dependencies` y no en orden. El resto de dependencias `@fudic/*` del proyecto son
+  `workspace:*`: con `0.0.1` pnpm la busca en el registry, la misma situación del hallazgo 2.
+- **Cómo se resolvió.** Se cambió a mano por `workspace:*`, en su sitio por orden alfabético.
+- **Qué debería hacer.** Escribir la dependencia como las demás `@fudic/*` del proyecto
+  (`workspace:*` dentro de un workspace) y en orden.

@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@fudic/core": "workspace:*",
+    "@fudic/diagnostics": "workspace:*",
     "@fudic/dom": "workspace:*",
+    "@fudic/http": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*",
     "@web/ui": "workspace:*",

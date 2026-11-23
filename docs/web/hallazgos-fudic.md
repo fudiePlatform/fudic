@@ -527,3 +527,22 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   (`fudic-workbench run --pass-with-no-specs`) que sí deja `fudic new`. Con
   `pnpm exec fudic-workbench run` los 29 criterios pasan.
 - **Qué debería hacer.** Añadir el script `spec` al ejemplo, para que se pruebe como cualquier app.
+
+## 37. `load` no ve la query string de una página `ssr`
+
+- **Qué pasó.** Al hacer la página de diagnósticos de Referencia (2026-11-23), una página
+  `load ssr` que lee `ctx.url.searchParams.get('code')`. Con `/docs/reference/diagnostics?code=FUD0010`,
+  `ctx.url` llega como `http://localhost/docs/reference/diagnostics`, sin la query: en la preview
+  y en `visit` de `@fudic/testing`. `server.ts` pasa a `renderPage` solo el `pathname`, y
+  `withRequest` monta la URL con él (`packages/server/src/render.ts`). Un test lo fija a
+  propósito (`packages/server/test/server.test.ts`, «rendered as it comes»), con el comentario
+  «`load` reads the query from `ctx.request`»; pero `request` no está en el tipo del `ctx` de
+  `load` (`PageContext`, `ServerContext` de `@fudic/http`), así que solo se llega con un cast.
+  `visit` también quita la query antes de pintar (`pathnameOf` en `packages/testing/src/visit.ts`).
+- **Dónde lo dice la web.** Los datos de la página (`/docs/routing/data#ctx`): «Además de
+  `params`, trae `url` (con su query string)».
+- **Qué debería hacer.** Que `ctx.url` de `load` lleve la query de la petición, o que `request`
+  esté en el tipo de su `ctx`.
+- **Resuelto el 2026-11-23**, con el visto bueno de Pedro: `withRequest` toma la query de la
+  petición cuando el contexto se hizo solo con la ruta, y `visit` pasa la query a la página. Un
+  test en cada paquete; los dos siguen al 100 %. Lo que dice la web pasa a ser verdad.

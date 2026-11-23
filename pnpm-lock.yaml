@@ -1223,9 +1223,15 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../../../packages/core
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../../../packages/diagnostics
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../packages/dom
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../../../packages/http
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../packages/ssr

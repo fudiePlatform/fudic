@@ -97,7 +97,7 @@ interface DiagnosticBase {
   readonly message: string;
 }
 
-/** Public explanation of a code: `${DOCS_BASE}#FUD0050` (§3.5). */
+/** Public explanation of a code: `${DOCS_BASE}?code=FUD0050` (§3.5). */
 export function docsUrl(code: FudCode): string;
 
 /** A place in a source file: the compiler, the editor. Span REQUIRED (LSP invariant). */
@@ -222,7 +222,7 @@ export const DOCS_BASE: string;
 ```json
 {
   "name": "@fudic/diagnostics",
-  "fudic": { "docs": "http://localhost:8080/diagnostic" }
+  "fudic": { "docs": "https://fudic.dev/docs/reference/diagnostics" }
 }
 ```
 
@@ -231,7 +231,9 @@ que funciona igual en `src` y en `dist`, porque el `package.json` está siempre 
 paquete publicado. Ningún fichero de `src` contiene la URL. Cambiar de web es cambiar ese campo y
 volver a construir.
 
-De momento `http://localhost:8080/diagnostic`; cada despliegue lo cambia ahí. Un test falla si el
+Hoy `https://fudic.dev/docs/reference/diagnostics`, una página que se pinta en el servidor: el
+código va en el parámetro `code` de la query, porque un ancla `#` nunca llega al servidor. Cada
+despliegue cambia la dirección ahí. Un test falla si el
 campo falta, está vacío o no es una URL absoluta.
 
 ---
@@ -407,7 +409,7 @@ SDD-12 se anotan. Estas renumeraciones son los únicos tests de código o severi
 10. En el editor, un diagnóstico `FUD` lleva `codeDescription.href` igual a `docsUrl(code)`.
 11. Sobre cualquier diagnóstico `FUD`, la bombilla ofrece «Explain FUDnnnn», y la acción abre
     su `.md` en la vista previa de markdown, también desde el `.vsix` instalado.
-12. `docsUrl` de cualquier código es `fudic.docs` del `package.json` + `#FUDnnnn`. Ningún fichero de
+12. `docsUrl` de cualquier código es `fudic.docs` del `package.json` + `?code=FUDnnnn`. Ningún fichero de
     `src` contiene la URL, y un test falla si el campo falta, está vacío o no es una URL absoluta.
 
 **Podado.**
