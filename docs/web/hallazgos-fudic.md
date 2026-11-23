@@ -669,12 +669,13 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
     por los criterios.
   - **Una ejecución parcial pasa por el estado de la pieza.** Tras ejecutar un solo criterio,
     `fudic_status` dice `spec: "fail 0/1"` para una pieza que tiene nueve.
-  - **El agente no empezó por `fudic_status`** aunque las `instructions` y `AGENTS.md` lo piden:
-    su primera llamada fue `fudic_symbols { kind: "tokens" }`. Por eso tampoco acordó los tokens
-    con la persona: los dio por buenos porque existían.
+  - **El agente no acordó los tokens con la persona**, aunque la guía (`workflow`) lo pide antes
+    del primer componente: llamó a `fudic_symbols { kind: "tokens" }`, vio que la guía de estilos
+    ya los tenía y los dio por buenos. `next` no lo recordó: su primer `fudic_status` apuntaba a
+    los criterios de la ruta `/`, no a los tokens.
 - **Cómo se resolvió en la web.** La página cuenta la conversación tal como fue, y «Cuando el
   modelo se desvía» usa el último punto como ejemplo.
 - **Qué debería hacer.** Comparar con lo aprobado aunque no esté en git (o decir en `expired` que
   no hay diff y por qué); que el `next` de `fudic_spec_run` nombre lo que falta de verdad; decidir
-  si una ejecución parcial cuenta para el estado; y que la primera respuesta de cualquier
-  herramienta, si `fudic_status` no se ha llamado en la sesión, lo recuerde en su `next`.
+  si una ejecución parcial cuenta para el estado; y que `next` pida acordar los tokens antes del
+  primer componente si nadie los ha aprobado.
