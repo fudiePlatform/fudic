@@ -11,7 +11,7 @@
   "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/vscode#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "url": "https://github.com/fudiePlatform/fudic.git",
     "directory": "packages/vscode"
   },
   "bugs": {
