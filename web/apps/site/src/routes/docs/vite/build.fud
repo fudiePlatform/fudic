@@ -1,0 +1,96 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El build y la preview · Fudic</title>
+  <meta name="description" content="El build de Fudic comprueba los tipos de todo el proyecto, prerenderiza las páginas ssg y deja el servidor listo; fudic preview lo sirve igual que producción.">
+  <link rel="canonical" href="https://fudic.dev/docs/vite/build">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El build y la preview · Fudic">
+  <meta property="og:description" content="Qué hace el build de Fudic y cómo se prueba antes de desplegar.">
+  <meta property="og:url" content="https://fudic.dev/docs/vite/build">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("vite-build")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#types">Primero, los tipos</a></li>
+        <li><a href="#steps">Qué hace el build</a></li>
+        <li><a href="#preview">La preview</a></li>
+        <li><a href="#source-maps">Del JavaScript a tu <code>.fud</code></a></li>
+        <li><a href="#languages">Hoy Node, mañana otros lenguajes</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El build y la preview</h1>
+
+<p><code>pnpm build</code> ejecuta <code>vite build</code>: comprueba los tipos de todo el proyecto, prerenderiza las páginas <code>ssg</code> y deja el servidor listo para desplegar. <code>fudic preview</code> sirve el resultado igual que producción.</p>
+
+<h2 id="types">Primero, los tipos</h2>
+
+<p>El build comprueba los tipos de todo el proyecto, también los de un componente que aún no usa ninguna página: lo mismo que marca el editor. La comprobación corre en paralelo mientras se empaqueta, así que no alarga el build.</p>
+
+<p>Si hay errores, los enseña todos, cada uno con su fichero, su línea y el trozo de código, y falla una sola vez, con la cuenta:</p>
+
+<ui-code>
+<pre><code>the typecheck failed: 2 errors in 2 files</code></pre>
+</ui-code>
+
+<p>Así ves la lista entera en el primer intento, y no un error por build.</p>
+
+<h2 id="steps">Qué hace el build</h2>
+
+<ol class="flow">
+  <li><strong>Compila</strong> cada <code>.fud</code> que alcanza una ruta, con sus componentes y sus layouts, y cada idioma de la app.</li>
+  <li><strong>Empaqueta</strong> el JavaScript del navegador: un fichero por componente, solo lo que se usa en cada página y el runtime de Fudic en piezas.</li>
+  <li><strong>Construye el servidor</strong> en <code>.fudic/edge/server.mjs</code>: las rutas, los contratos del <code>.fudapi</code> y sus handlers (<a href="/docs/server/running">El servidor</a>).</li>
+  <li><strong>Construye el Service Worker</strong>, en su propio build, si hay <code>sw.json</code>.</li>
+  <li><strong>Prerenderiza</strong> las páginas <code>ssg</code>: ejecuta su <code>load</code> y escribe su HTML, una por cada valor de <code>paths</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</li>
+</ol>
+
+<p>Lo que queda en <code>dist</code>, fichero a fichero, está en <a href="/docs/configuration/generated#dist">Lo que genera Fudic</a>.</p>
+
+<p>Un error que solo se ve al pintar, como un <code>load</code> que lanza, también para el build, con la ruta que falló.</p>
+
+<h2 id="preview">La preview</h2>
+
+<ui-code>
+<pre><code>pnpm build
+fudic preview                # port 4173</code></pre>
+</ui-code>
+
+<p><code>fudic preview</code> ejecuta el <code>server.mjs</code> del build con las páginas prerenderizadas de <code>dist</code>, igual que lo hará el servidor de producción. Manda las cabeceras, la CSP con su nonce y registra el Service Worker.</p>
+
+<p>Es donde se prueba lo que en desarrollo no está, y donde se mide el rendimiento (<a href="/docs/performance/lighthouse">Medir con Lighthouse</a>).</p>
+
+<p>El secreto con el que se firman la sesión y el token de <code>csrf</code> sale de <code>FUDIC_SECRET</code>. Si no está, la preview se inventa uno en cada arranque. En producción hay que darlo siempre.</p>
+
+<h2 id="source-maps">Del JavaScript a tu <code>.fud</code></h2>
+
+<p>El JavaScript que sale de un <code>.fud</code> lleva su source map, que apunta a la línea del <code>.fud</code>. Un error en el navegador, o un punto de parada en las herramientas de desarrollo, te lleva a tu fichero y no al código generado.</p>
+
+<p>En el build, depende de <code>build.sourcemap</code> de Vite, como el resto del JavaScript (<a href="/docs/vite#vite-config">Lo que lee de Vite</a>). En desarrollo, siempre.</p>
+
+<h2 id="languages">Hoy Node, mañana otros lenguajes</h2>
+
+<p>Hoy el build deja un servidor de Node. La vista y el <code>.fudapi</code> están diseñados para traducirse a C#, Java, Go, Rust y Python; cuando lleguen, la misma app se desplegará sin Node. En el navegador, siempre TypeScript (<a href="/docs/server/running#other">Otros entornos y otros lenguajes</a>).</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Source_map" target="_blank" rel="noopener">Source map</a>: cómo el navegador lleva el código servido a tu fichero.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: el formato de todo lo que sale del build.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching" target="_blank" rel="noopener">Caché HTTP</a>: por qué cada fichero lleva un hash en el nombre.</li>
+</ul>

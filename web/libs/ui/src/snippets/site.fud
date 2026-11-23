@@ -156,6 +156,14 @@
           <li><a href="/docs/configuration/generated" aria-current=@(current === "configuration-generated" ? "page" : false)>Lo que genera Fudic</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Plugin de Vite</span>
+        <ol>
+          <li><a href="/docs/vite" aria-current=@(current === "vite" ? "page" : false)>El plugin</a></li>
+          <li><a href="/docs/vite/dev" aria-current=@(current === "vite-dev" ? "page" : false)>En desarrollo</a></li>
+          <li><a href="/docs/vite/build" aria-current=@(current === "vite-build" ? "page" : false)>El build y la preview</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

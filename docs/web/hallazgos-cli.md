@@ -93,6 +93,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `docs/routing/…`, `docs/service-worker/…`), el 2026-11-20.
 - **Y otra vez** con las siete páginas del capítulo 8 (`docs/forms/…`), el 2026-11-20. Esta vez
   con la ruta relativa no revienta, pero escribe el mismo `href` frágil y el `<title>` «Binding».
+- **Y otra vez** con las tres páginas del capítulo Plugin de Vite (`docs/vite/…`), el 2026-11-23:
+  mismo `href` frágil, corregido a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

@@ -1,0 +1,113 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El plugin de Vite · Fudic</title>
+  <meta name="description" content="&#64;fudic/vite: Vite sirve y empaqueta, Fudic compila los .fud. Sin opciones basta; con ellas se cambia la carpeta de rutas, el modo por defecto o el prerender.">
+  <link rel="canonical" href="https://fudic.dev/docs/vite">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El plugin de Vite · Fudic">
+  <meta property="og:description" content="Vite sirve y empaqueta, Fudic compila los .fud.">
+  <meta property="og:url" content="https://fudic.dev/docs/vite">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("vite")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Vite sirve, Fudic compila</a></li>
+        <li><a href="#vite-config">Lo que lee de Vite</a></li>
+        <li><a href="#options">Las opciones</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El plugin</h1>
+
+<p><a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> es el servidor de desarrollo y el empaquetador de una app de Fudic. <code>@@fudic/vite</code> es el plugin que le enseña los <code>.fud</code>: los compila, encuentra las rutas, prerenderiza las páginas y construye el servidor y el Service Worker.</p>
+
+<h2 id="what">Vite sirve, Fudic compila</h2>
+
+<p><code>fudic new</code> deja este <code>vite.config.ts</code>, y no hace falta nada más:</p>
+
+<ui-code .path="vite.config.ts">
+<pre><code>import &#123; defineConfig &#125; from "vite";
+import &#123; fudic &#125; from "@@fudic/vite";
+
+export default defineConfig(&#123;
+  plugins: [fudic()],
+&#125;);</code></pre>
+</ui-code>
+
+<p>Vite nunca lee un <code>.fud</code>: lo hace el compilador de Fudic. A Vite le llega JavaScript estándar, que resuelve, empaqueta y nombra con un hash como cualquier otro módulo. Por eso los demás plugins de Vite siguen funcionando.</p>
+
+<h2 id="vite-config">Lo que lee de Vite</h2>
+
+<p>Lo que ya es de Vite no se repite en las opciones de Fudic. El plugin lo lee de la configuración de Vite:</p>
+
+<ul>
+  <li><strong><code>base</code></strong>: la URL bajo la que se sirve la app. Llega a cada enlace, a cada fichero y al Service Worker.</li>
+  <li><strong><code>build.outDir</code></strong>: dónde se escribe el build, <code>dist</code> por defecto.</li>
+  <li><strong><code>build.sourcemap</code> y <code>build.minify</code></strong>: valen también para el Service Worker, que tiene su propio build.</li>
+  <li><strong><code>build.target</code></strong>: si no lo pones, sale de tu Baseline (<a href="/docs/configuration/baseline#build">El <code>build.target</code> de Vite</a>).</li>
+</ul>
+
+<p>Una app servida bajo <code>/admin/</code>:</p>
+
+<ui-code .path="vite.config.ts">
+<pre><code>export default defineConfig(&#123;
+  base: "/admin/",
+  plugins: [fudic()],
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>fudic dev</code> lee ese <code>base</code> para servir cada app del workspace en su sitio: <code>/</code> una y <code>/admin/</code> otra, en el mismo puerto.</p>
+
+<h2 id="options">Las opciones</h2>
+
+<ui-code .path="vite.config.ts">
+<pre><code>fudic(&#123;
+  routesDir: "pages",
+  prerender: true,
+  paramFallback: "notFound",
+  defaults: &#123;
+    "/admin": &#123; mode: "ssr" &#125;,
+    "/drafts/:id": &#123; mode: "exclude" &#125;,
+  &#125;,
+&#125;)</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>routesDir</code></strong>: la carpeta de las páginas, relativa al proyecto. Por defecto, <code>src/routes</code> (<a href="/docs/routing">Rutas por carpetas</a>).</li>
+  <li><strong><code>prerender</code></strong>: con <code>false</code>, el build no escribe ninguna página. Las que serían <code>ssg</code> se pintan cuando alguien las pide, y el build acaba antes. Por defecto, <code>true</code>.</li>
+  <li><strong><code>paramFallback</code></strong>: qué pasa con un valor que <code>paths</code> no dio. Con <code>"lazy"</code>, por defecto, se pinta cuando alguien lo pide. Con <code>"notFound"</code>, responde la página de error con un <code>404</code> (<a href="/docs/routing/rendering#paths">Los modos</a>).</li>
+  <li><strong><code>defaults</code></strong>: el modo de una ruta que no declara ninguno, por su patrón. Además de <code>ssg</code>, <code>ssr</code> y <code>sw</code>, admite <code>exclude</code>, que deja la ruta fuera del build.</li>
+</ul>
+
+<p><code>defaults</code> no manda sobre la página: si su <code>.fudapi</code> declara un modo en la línea de <code>load</code>, gana ese (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>). Sirve para fijar el modo de un grupo de rutas sin tocarlas una a una.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong><code>manifestUrl</code></strong>: dónde se publica el manifiesto de rutas. Por defecto, <code>fudic-routes.json</code> bajo el <code>base</code>. Tiene que ser absoluta, porque la página y el Service Worker la leen desde sitios distintos (<code>FUD0365</code>).</li>
+  <li><strong><code>sw: false</code></strong> construye la app sin Service Worker, como si no tuviera <code>sw.json</code>. Con <strong><code>edgeDir</code></strong>, que por defecto es <code>.fudic/edge</code>, ese segundo build escribe su servidor en otra carpeta y no pisa el del primero. Sirve para comparar las dos formas de la misma app.</li>
+  <li>Una ruta que declara su modo y además está en <code>defaults</code> da un aviso, <code>FUD0397</code>: la entrada de <code>defaults</code> no hace nada.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: lo que Vite recibe de cada <code>.fud</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/base" target="_blank" rel="noopener"><code>&lt;base&gt;</code></a>: el elemento estándar para la URL base de un documento. El <code>base</code> de Vite no lo usa: reescribe cada URL en el build.</li>
+</ul>

@@ -46,51 +46,95 @@ export default defineConfig({
 });
 ```
 
-## SSG modes
+## Modes
 
-Three modes, and the page is the one that decides (`strategy()`); the filesystem facts
-only fill in when it declares nothing:
+Three modes, and the page is the one that decides, on the `load` line of its `.fudapi`; the
+filesystem facts only fill in when it declares nothing:
 
-- **`ssg`** — data is build-known → prerendered. The build runs the route's chunk and
-  writes its HTML (`/about` → `about/index.html`) and the browser fetches the file.
-- **`sw`** — rendered locally by the Service Worker from its linked chunk, with the data
-  coming from the endpoint the plugin generates for `@server load`.
-- **`ssr`** — always the server. Never inferred: declare it for session or permissions.
+- **`ssg`** — rendered once, by the build. The build runs `load` and writes the page's HTML
+  (`/about` → `about/index.html`), which the server sends as it is.
+- **`ssr`** — rendered by the server on every request. Never inferred: declare it for session
+  or permissions.
+- **`sw`** — rendered by the Service Worker from its linked chunk, with the data coming from
+  the endpoint the plugin generates for `load`. Without a Service Worker, the server renders it.
 
 ```
-@code {
-  @server {
-    import { strategy } from '@fudic/core';
-    strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });
-  }
-}
+load sw ttl 5m cache-first
+  posts  Post[]
 ```
+
+Declared nothing: no `load` is `ssg`; params with `paths` are `ssg`, one page per value;
+anything else is `sw`.
 
 **No `sw.json` at the project root, no Service Worker**: every route is then served by the
 server, which is an explicit decision rather than a silent default.
 
-A page declares its data with a `@server` region:
+A page declares its data in its `.fudapi`, and the app implements it in `src/server`:
 
 ```
-@code {
-  @server {
-    export function load(ctx) { return db.get(ctx.params.id); }
-    export function paths() { return db.allIds(); } // optional: enumerate for prerender
-  }
-}
+// src/routes/blog/[slug].fudapi
+load
+  title  str
+  body   str
+
+paths
+```
+
+```ts
+// src/server/blog.ts
+import { load, paths } from 'fudic:routes/blog/[slug]';
+
+load.handle(async (ctx) => await getPost(ctx.params.slug));
+paths.handle(async () => await listSlugs()); // enumerate for prerender
 ```
 
 ## Options
 
+Everything Vite already owns — `base`, `build.outDir`, `build.sourcemap`, `build.minify`,
+`build.target` — is read from Vite's config and is not an option here. The Service Worker's
+own build inherits the same output options.
+
 ```ts
 interface FudicOptions {
-  routesDir?: string;                              // default ROUTES_DIR ('src/routes')
-  manifestUrl?: string;                            // default `${base}fudic-routes.json`
-  prerender?: boolean;                             // default true
-  paramFallback?: 'lazy' | 'notFound';             // default 'lazy'
-  routes?: Record<string, { mode: 'static' | 'incremental' | 'exclude' }>;
+  routesDir?: string;                                    // default ROUTES_DIR ('src/routes')
+  manifestUrl?: string;                                  // default `${base}fudic-routes.json`
+  prerender?: boolean;                                   // default true
+  paramFallback?: 'lazy' | 'notFound';                   // default 'lazy'
+  defaults?: Record<string, { mode: 'ssg' | 'ssr' | 'sw' | 'exclude' }>;
+  sw?: boolean;                                          // default true
+  edgeDir?: string;                                      // default '.fudic/edge'
 }
 ```
+
+- **`routesDir`** — the directory of the pages, relative to the project root.
+- **`manifestUrl`** — where the route manifest is published. Absolute (`FUD0365`): the page and
+  the Service Worker load it from different places.
+- **`prerender`** — `false` writes no page at build time: the routes that would be `ssg` are
+  rendered on demand, and the build finishes sooner.
+- **`paramFallback`** — a value `paths` did not give: `'lazy'` renders it on demand,
+  `'notFound'` answers the error page with a `404`.
+- **`defaults`** — the mode of a route that declares none, keyed by its pattern (`'/admin'`,
+  `'/drafts/:id'`). `exclude` leaves the route out of the build. The page always wins; a route
+  that declares a mode and is also listed here gets `FUD0397`.
+- **`sw`** — `false` builds the project without a Service Worker, as if it had no `sw.json`.
+- **`edgeDir`** — where the server bundle is written and the preview reads it. A second build of
+  the same root (with `sw: false`, to compare) names its own.
+
+Three more are for tools, not apps: `liveCheck` (dev's live typecheck, off in `@fudic/testing`),
+`serverReload` (reload on a server-graph edit, off in the workbench) and `sourceLocations`
+(`data-fud-src` on every element in dev, on in the workbench).
+
+## Dev, build and preview
+
+- **`fudic dev`** runs each app's Vite and renders every page on every request, whatever its
+  mode. It checks the types live: a page whose graph has an error is not served, and the overlay
+  shows the error with the position the editor marks. `.fudapi`, the three `.headers` and the
+  catalogs are re-read without a restart.
+- **`vite build`** typechecks the whole project in a child process while it bundles, prints
+  every problem and fails once with the count. It emits the browser chunks, the server
+  (`.fudic/edge/server.mjs`), the Service Worker in its own build and the prerendered pages.
+- **`fudic preview`** runs that `server.mjs` with `createServer` of `@fudic/server`, as an
+  adapter does in production. Without `FUDIC_SECRET` it signs with a secret of its own.
 
 ## Client chunks
 
@@ -123,10 +167,7 @@ rules. What the prerendered page does carry is the `data-fud-id` of every hydrat
 instance and the three JSON blocks (`fud-state`, `fud-tree`, `fud-bus`) at the end of its
 body — written by the render, so the prerender and the Service Worker produce the same bytes.
 
-## Status
-
-Slice 1 (this package) targets SSR / zero-JS pages served through the three-thread shell,
-plus the client chunks above.
+## Under the hood
 
 `transform` emits a Source Map v3: the compiler anchors each verbatim source slice
 (interpolation, `@if`/`@foreach` headers) to its `.fud` offset, so a runtime error in the
@@ -137,8 +178,9 @@ linked through Vite: the emit rewrites them to ES imports, so Vite resolves, has
 emits each asset (absolute/`data:`/`<a href>`/dynamic refs are left untouched). `srcset`
 (a multi-URL list) is the one remaining asset follow-up.
 
-The `@server` region (typed `load`/`paths`) is served through the `?server` module,
-type-stripped to plain JS by Vite's Oxc transform.
+A page's `load` and `paths` are declared in its `.fudapi` and implemented in `src/server`;
+the generated `fudic:` modules and the handlers are type-stripped to plain JS by Vite's Oxc
+transform.
 
 `vite dev` is the edge: it serves the manifest (every route `ssr` — Vite serves ESM
 untransformed, so there is nothing to link in dev), the generated `/_fudic/data/…`
@@ -257,26 +299,24 @@ fn fill(value: &str, nonce: &str) -> String { value.replace("{nonce}", nonce) }
 
 ## The two bootstraps
 
-A page opts into the shell by referencing the main-thread bootstrap in its `<head>`:
+Nobody writes them by hand: the compiler puts them in the page's `<head>` when it needs them.
 
-```html
-<script type="module" src="/fudic-main.js"></script>
-```
+- **`fudic-boot-<build>.js`** registers the Service Worker and tells it where the user is — the
+  single warm trigger, which pulls that route's chunk and its dependencies into the cache behind
+  the navigation already in flight. Every page, when the app has a `sw.json`.
+- **`fudic-main-<hash>-<build>.js`** is the coordinator of a page that hydrates: it names the
+  runtime pieces that page needs. There is one per combination of pieces, not one per app.
 
-It registers the Service Worker and tells it where the user is — the single warm trigger,
-which is what pulls that route's chunk and its dependencies into the cache behind the
-navigation already in flight. The plugin emits `fudic-sw.js` and `fudic-main.js` with
-stable, root-level names (a Service Worker under `assets/` would be scoped to `assets/`,
-and a hashed name cannot be written by hand). Everything else keeps Vite's content hash.
+The Service Worker, `fudic-sw.js`, has its own build and a stable, root-level name (a Service
+Worker under `assets/` would be scoped to `assets/`). Everything else keeps Vite's content hash.
 Configure `build.rollupOptions.output` and those names become yours to keep.
 
 Until the router is ready and its template warm, the Service Worker does not intercept:
 the network answers, which is exactly right for a prerendered route.
 
-A param route with `@server paths()` prerenders one file per enumerated id
-(`customer/1/index.html`…); `paramFallback:'lazy'` lets the Service Worker render unknown
-ids locally, `'notFound'` leaves them a 404. A literal `src`/`url()` to a missing file raises
+A param route with `paths` prerenders one file per enumerated value
+(`customer/1/index.html`…); `paramFallback: 'lazy'` renders unknown values on demand,
+`'notFound'` answers them a 404. A literal `src`/`url()` to a missing file raises
 `FUD0363` and stays a literal — the build does not abort.
 
-Out of scope (SDD-19 §7): the hydration RUNTIME of SDD-17 — the capturer that reads
-`data-fud-id` and the three maps and lifts an instance — and `srcset` multi-URL linking.
+Out of scope: `srcset` multi-URL linking.
