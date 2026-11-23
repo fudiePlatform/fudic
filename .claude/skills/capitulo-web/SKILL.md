@@ -1,12 +1,14 @@
 ---
 name: capitulo-web
-description: Escribe o reescribe un capítulo de la documentación de la web pública de Fudic (web/apps/site/src/routes/docs) con su guía de estilo. Úsalo cuando Pedro pida hacer, revisar o rehacer un tema o capítulo de la web.
+description: Escribe o reescribe un capítulo de la web pública de Fudic con su guía de estilo, tanto de la Documentación (web/apps/site, /docs) como de la sección MCP (web/apps/mcp, /mcp). Úsalo cuando Pedro pida hacer, revisar o rehacer un tema, un capítulo o un grupo de páginas de la web.
 ---
 
 # Escribir un capítulo de la web pública
 
-Argumento: el tema o capítulo (`Internacionalización`, `/docs/security`, `capítulo 9`…). Si no
-viene, pregunta cuál. El índice de capítulos y su estado está en `docs/web/README.md` §5.2.
+Argumento: el tema o capítulo (`Internacionalización`, `/docs/security`, `capítulo 9`…), o un
+grupo de la sección MCP (`Dirigir un modelo`, `/mcp/tools`…). Si no viene, pregunta cuál. El índice
+de la Documentación y su estado está en `docs/web/README.md` §5.2; el de la sección MCP, en
+`docs/web/mcp/README.md` §3. Si es del MCP, lee también §5 de esta guía: todo lo demás vale igual.
 
 ## Cómo se habla con Pedro
 
@@ -120,8 +122,11 @@ Una página nueva se añade al menú en `web/libs/ui/src/snippets/site.fud`, en 
 1. `pnpm build` en `web/apps/site`. Tiene que acabar en `✓ built`, sin errores ni avisos
    nuevos (`FUD1552` de `assets.headers` es antiguo).
 2. Enlaces internos con ancla:
-   `node .claude/skills/capitulo-web/scripts/anchors.cjs web` desde la raíz del repo. Tiene que
-   decir `broken: 0`. Si renombras o quitas un `id`, busca antes quién lo enlaza.
+   `node .claude/skills/capitulo-web/scripts/anchors.cjs web` desde la raíz del repo. Revisa las
+   dos apps (`/docs` y `/mcp`, y los enlaces de una a otra), las rutas con parámetro y que cada
+   código de `/docs/reference/diagnostics/FUDnnnn` exista en el catálogo. Tiene que decir
+   `broken: 0`, y la primera parte de la línea, qué apps ha leído. Si renombras o quitas un `id`,
+   busca antes quién lo enlaza.
 3. Cada URL externa nueva, con `curl` (200).
 4. Cada fragmento de `.fudapi` que no salga del código, con el validador real.
 5. Una línea en el registro de `docs/web/README.md` §8, y el estado del capítulo en §5.2.
@@ -130,3 +135,41 @@ Una página nueva se añade al menú en `web/libs/ui/src/snippets/site.fud`, en 
 
 Al entregar, di a Pedro en pocas líneas qué páginas hay, qué idea abre cada una y qué has dejado
 fuera.
+
+## 5. Si es la sección MCP
+
+El plan está en `docs/web/mcp/README.md`: léelo entero antes de proponer, sobre todo §1 (qué se
+cuenta) y §2 (cómo dirigir un modelo). Todo lo anterior vale igual, con estas diferencias:
+
+1. **Dónde vive.** La app es `web/apps/mcp`, subapp del mismo dominio en `fudic.dev/mcp`. Las
+   páginas se crean con `fudic g page` desde `web/apps/mcp`. El índice, el estado y el registro
+   son los de `docs/web/mcp/README.md` (§3 y su registro), no los del README general.
+2. **URLs y menú.** La canónica y `og:url` son `https://fudic.dev/mcp/…`. El menú no es
+   `docsNav`: es el snippet del MCP en `web/libs/ui/src/snippets/site.fud`. Sin componentes
+   propios: se usan los de `ui` (`ui-code`, `ui-note`, `ui-toc`…); si falta uno, se añade a `ui`.
+3. **El código que se lee** es `packages/mcp`: `src/server.ts`, `src/project-tools.ts` y
+   `src/file-tools.ts` (las herramientas), `src/instructions.ts` (lo que el servidor manda al
+   modelo), `src/phases.ts` (las fases), `guide/` (lo que lee el modelo) y su README. Lo que
+   genera la CLI, en `packages/cli/templates/agent/`.
+4. **El estándar, al final.** En vez de «El estándar, en MDN», `<h2 id="standard">El estándar</h2>`
+   con la especificación de MCP (modelcontextprotocol.io) y, donde toque, `AGENTS.md` (agents.md)
+   o MCP Apps. Las mismas reglas: tres o cuatro enlaces, cada uno con su frase.
+5. **Nada inventado.** Cada llamada y cada respuesta de una herramienta, copiadas de una ejecución
+   real contra un proyecto de prueba (como la salida de `--dry-run` en las páginas de la CLI). Cada
+   configuración de un entorno (Claude Code, VS Code, Cursor, Antigravity, Windsurf, Codex,
+   Gemini CLI), comprobada contra su documentación oficial al escribirla y, donde se pueda,
+   conectándolo de verdad. Lo que no funcione tal como lo deja `fudic new`, a los hallazgos.
+6. **El chat se cuenta, su conexión no.** Se cuenta lo que ve quien usa un chat: las herramientas
+   de ficheros, la pieza dibujada en la conversación, la app en una URL. Cómo llega el chat al
+   proyecto (el túnel, el secreto de la URL, los puertos, la puerta con cookie) no se detalla, ni
+   con comandos: cambiará cuando la infraestructura esté montada. Basta con decir que existe y que
+   se explicará entonces.
+7. **Enlaza, no repitas.** Donde se hable de un `.fudspec`, un `.fudapi`, un diagnóstico o un
+   comando de la CLI, se enlaza su página de `/docs`. La sección MCP explica cómo construir con un
+   modelo, no Fudic otra vez.
+8. **Una excepción a «sin tutoriales».** «Una conversación de principio a fin» cuenta una historia
+   a propósito: una conversación real, con sus capturas, de la petición a la primera pieza `done`.
+   Las demás páginas siguen las reglas de §2.
+9. **Las herramientas, como los comandos de la CLI.** Una página de grupo en el menú y, fuera de
+   él, una por herramienta, que marca la del grupo en el menú: qué hace, sus argumentos, una
+   llamada y su respuesta reales, cuándo la usa el modelo y sus códigos (en Detalles).
