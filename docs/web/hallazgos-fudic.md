@@ -361,7 +361,22 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   - `FUD1340` pone de ejemplo `on date i64`, y `i64` no es un tipo (da `FUD1080`).
   - `FUD1097` dice que una regla necesita `runs both` o `runs server`, y no cita `runs remote`.
   - El comentario de `packages/transport/src/bootstrap.ts:28` cita `FUD0721`, que hoy es `FUD0726`.
-- **Qué debería hacer.** Actualizar los `.md` y los mensajes.
+- **Vuelto a comprobar** el 2026-11-23, con el capítulo Plugin de Vite. Todo lo que aún habla de
+  `strategy()`, para no tener que buscarlo otra vez:
+  - `FUD0397` y `FUD0398` lo dicen también en el mensaje, no solo en el `.md`
+    (`FUD0397.ts:6`, `FUD0398.ts:6`), y en el título de `catalog.generated.ts:81`.
+  - `FUD0392`, que faltaba: el `.md` habla del `ttl` «in `strategy()`», y el mensaje y su variante
+    se llaman `strategy().data.ttl` y `where: 'strategy'` (`FUD0392.ts:8,9,29`). Hoy el `ttl` va en
+    la línea de `load`.
+  - `FUD0393` y `FUD0394` están retirados y lo explican: esos están bien.
+  - Comentarios de `@fudic/vite`: `mode.ts:8`, `options.ts:17` y `swconfig.ts:4`.
+  - `@fudic/core` sigue exportando `strategy()` y sus tipos (`packages/core/src/strategy.ts`,
+    `index.ts:62`), y el comentario de `element.ts:39` lo cita. Nadie lo lee ya: es API pública
+    muerta.
+  - El README de `@fudic/vite` contaba `strategy()`, la región `@server` y la opción `routes`.
+    Este quedó arreglado en el mismo commit del capítulo.
+- **Qué debería hacer.** Actualizar los `.md` y los mensajes. Quitar `strategy()` de
+  `@fudic/core` o marcarlo como retirado.
 
 ## 23. Nombres de parámetro y palabras clave en el `.fudapi`
 
