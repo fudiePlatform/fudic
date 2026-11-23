@@ -67,6 +67,11 @@
 
 <p>Cada componente se distingue de un tag nativo también en el color: <code>&lt;app-card&gt;</code> y <code>&lt;article&gt;</code> no se pintan igual.</p>
 
+<figure>
+  <img src="../../../images/editor-hover.webp" width="1260" height="458" style="aspect-ratio: 1260 / 458" loading="lazy" decoding="async" alt="La tarjeta de ciclo-demo al pasar el ratón por su tag: su descripción, las props name y state con su tipo, su valor por defecto y su documentación, y el token --radius-box que lee.">
+  <figcaption>La tarjeta de un componente: su descripción, sus props y los tokens que lee.</figcaption>
+</figure>
+
 <h2 id="css">CSS y tokens</h2>
 
 <p>Dentro del <code>&lt;style&gt;</code> de un <code>.fud</code> funciona el completado estándar de CSS. Tras <code>var(--</code>, además, los tokens de tus hojas y de las de tus librerías, con su valor:</p>
@@ -80,6 +85,11 @@
 
 <p>Al pasar el ratón por un token, de dónde viene; <kbd>F12</kbd> abre la hoja que lo declara. En el markup funciona Emmet: <code>ul&gt;li*3</code> y <kbd>Tab</kbd>.</p>
 
+<figure>
+  <img src="../../../images/editor-tokens.webp" width="800" height="287" style="aspect-ratio: 800 / 287" loading="lazy" decoding="async" alt="Dentro de un style, al escribir color: var( se abre la lista de tokens del proyecto: --brand, --line, --pad-box, --pad-field, --radius, --radius-box y --surface.">
+  <figcaption>Los tokens del proyecto, al escribir <code>var(</code>.</figcaption>
+</figure>
+
 <h2 id="fudapi">En un <code>.fudapi</code></h2>
 
 <ul>
@@ -89,9 +99,21 @@
   <li><strong>Al pasar el ratón</strong> por una regla, un <code>catches</code> o un fichero, qué hace; <kbd>F12</kbd> y las referencias funcionan de un contrato a otro.</li>
 </ul>
 
+<figure>
+  <img src="../../../images/editor-fudapi.webp" width="1020" height="602" style="aspect-ratio: 1020 / 602" loading="lazy" decoding="async" alt="Un .fudapi con sus enlaces: en la primera línea Types, Server, Browser y Regenerate; encima de load, login, logout y search, implemented in src/server/usuarios.ts.">
+  <figcaption>Lo que genera el contrato, arriba, y quién implementa cada declaración.</figcaption>
+</figure>
+
 <h2 id="fudspec">En un <code>.fudspec</code></h2>
 
 <p><kbd>Ctrl+K V</kbd> abre el workbench al lado del editor: el componente o la página, sus criterios ejecutados en un navegador de verdad en cada guardado y <em>Live</em> para tocarlo a mano (<a href="/docs/testing/workbench">El workbench</a>). El mismo botón está en la barra del editor de un <code>.fud</code>.</p>
+
+<p>Encima de la primera línea, <strong>Run all</strong> y <strong>Run failing</strong>, y encima de cada criterio, <strong>Run</strong>: ejecutan todos, los que fallan o ese, en el workbench.</p>
+
+<figure>
+  <img src="../../../images/editor-fudspec.webp" width="1010" height="724" style="aspect-ratio: 1010 / 724" loading="lazy" decoding="async" alt="El .fudspec de app-card con sus enlaces: Run all y Run failing sobre la línea component, y Run encima de cada uno de sus tres criterios.">
+  <figcaption>Ejecutar los criterios desde el propio <code>.fudspec</code>.</figcaption>
+</figure>
 
 <p>Al escribir, completa los tags, las rutas, los pasos con sus parámetros y los nombres del fixture. Si un criterio nombra un paso o un fixture que no existe, la bombilla lo crea.</p>
 
@@ -115,7 +137,12 @@
   <li>Un aviso que quieres callar: <strong>Silence FUDnnnn on this line</strong>, y después <strong>Write the reason</strong> (<a href="/docs/configuration/diagnostics">Diagnósticos</a>).</li>
 </ul>
 
-<p>Si hay varios arreglos posibles, eliges tú. Si ninguno es seguro, no aparece ninguno.</p>
+<p>Junto a los arreglos, <strong>Explain FUDnnnn</strong> abre la explicación del código en el propio editor. Si hay varios arreglos posibles, eliges tú. Si ninguno es seguro, no aparece ninguno.</p>
+
+<figure>
+  <img src="../../../images/editor-quick-fix.webp" width="1020" height="260" style="aspect-ratio: 1020 / 260" loading="lazy" decoding="async" alt="Un site-nav subrayado en rojo porque falta su enlace. La bombilla ofrece Explain FUD0191 y Add link rel component for site-nav.">
+  <figcaption>Un componente sin su <code>&lt;link&gt;</code>: la explicación del código y el arreglo.</figcaption>
+</figure>
 
 <h2 id="format">Formato</h2>
 

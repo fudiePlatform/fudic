@@ -23,3 +23,6 @@ rolldown.config.ts
 **/*.ts
 **/*.map
 **/tsconfig.tsbuildinfo
+
+# The README images are served from the repository, not from the package.
+images/**

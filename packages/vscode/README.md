@@ -37,6 +37,10 @@ not in a generated file you have never seen.
 - **Folding and colour.** `@code`, `@if` and `@foreach` fold by their structure. Colour arrives with the first frame and
   is refined by the server: a component tag never looks like a native one.
 
+![The card of ciclo-demo on hover: its description, its props with type, default and doc, and the token it reads](images/editor-hover.webp)
+
+![Completion of the project's tokens after var(](images/editor-tokens.webp)
+
 ## IntelliSense in a `.fudapi`
 
 - Completion of every declaration and clause, and of the types of the project.
@@ -45,14 +49,20 @@ not in a generated file you have never seen.
   `not implemented`. One click opens it.
 - Hover on rules, `catches` and files; go to definition and references across contracts.
 
+![A .fudapi with its CodeLens: what it generates on line 1, and the handler of each declaration](images/editor-fudapi.webp)
+
 ## IntelliSense in a `.fudspec`
 
 - **`Ctrl+K V`** opens the workbench beside the editor: the component or page, its criteria run
   in a real browser on every save, and *Live* to try it by hand. The same button is in the editor
   title of a `.fud`.
+- **Run all · Run failing** over the first line and **Run** over each criterion, straight from
+  the file.
 - Completion of component tags, routes, terms with their parameters and fixture names.
 - Quick fixes that create what a criterion names and does not exist yet: a term module, a
   fixture, a fixture entry.
+
+![A .fudspec with Run all, Run failing and a Run over each criterion](images/editor-fudspec.webp)
 
 ## `.headers` and `fudic.json`
 
@@ -62,7 +72,12 @@ and explains itself.
 
 ## Quick fixes
 
-The light bulb repairs what it can repair safely. Some of them:
+The light bulb repairs what it can repair safely, and `Explain FUDnnnn` opens the explanation of
+the code in the editor.
+
+![A site-nav without its link: Explain FUD0191 and Add link rel="component" for site-nav](images/editor-quick-fix.webp)
+
+Some of the repairs:
 
 - `Add <link rel="component"> for <app-card>`
 - `Add key (item.id)` on a `@foreach`
