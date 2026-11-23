@@ -114,6 +114,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `site` en todo el repo (ver el nº 5).
 - **Qué debería hacer.** Lo que dice su ayuda: dentro de una app, solo esa app. Es la misma causa
   que el nº 2 y el nº 5.
+- **Vuelto a comprobar (capítulo 13, Pruebas), el 2026-11-23.** `fudic dev` hace lo mismo: desde
+  `web/apps/site` arrancó las 18 apps del repo («fudic dev — 18 apps on one port»), y la web no
+  respondía en `/docs/…`. Con `--project site`, una sola.
 
 ## 9. `fudic new` escribe un `assets.headers` que deja sin caché lo que emite Fudic
 

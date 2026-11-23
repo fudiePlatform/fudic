@@ -448,3 +448,22 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   que pase trabajando, pero sí con herramientas o agentes que escriben por partes.
 - **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher, o esperar a que
   deje de cambiar antes de ejecutar.
+
+## 32. La regla de `img` de la guía hace que Chrome avise de cada imagen con `loading="lazy"`
+
+- **Qué pasó.** Al poner la captura del workbench (capítulo Pruebas), Chrome 157 da en DevTools
+  `LazyLoadImageIssue` («specifies loading="lazy" without explicit width and height dimensions or
+  aspect ratio styling»), aunque el `<img>` lleva `width="760" height="564"`. Aislado con páginas
+  mínimas: lo provoca `height: auto` de `:where(img)` (`img.css` de la guía, la misma regla en la
+  plantilla `packages/cli/templates/guide/img.css`). Sin esa línea no avisa, y sin `loading="lazy"`
+  tampoco. Es un falso positivo: el navegador sí reserva el hueco (`aspect-ratio` calculado
+  `auto 760 / 564`), así que no hay salto de layout. Pero cualquier app hecha con `fudic new` que
+  use `loading="lazy"` verá el aviso.
+- **Lo que no sirve.** `aspect-ratio: auto attr(width type(<number>)) / …` sigue avisando, y sin
+  `auto` lo calla, pero `attr()` con tipo no está en Baseline (`FUD1526` en el build) y deforma una
+  imagen cuyos atributos no sean su proporción real.
+- **Cómo se resolvió en la web.** La imagen lleva `style="aspect-ratio: 760 / 564"`, además de
+  `width` y `height`. Comprobado por el protocolo de DevTools: sin aviso.
+- **Qué debería hacer.** Decidir. O el compilador escribe esa `aspect-ratio` en un `<img>` con
+  `loading="lazy"` y `width`/`height` literales, o se documenta que Chrome avisa y no hay salto.
+  Cuando `attr()` con tipo entre en Baseline, la guía puede ponerlo en `img.css`.

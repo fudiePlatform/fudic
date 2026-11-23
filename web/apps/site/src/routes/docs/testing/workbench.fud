@@ -59,7 +59,7 @@
 <p>Al guardar, el workbench lo ejecuta:</p>
 
 <figure>
-  <img src="../../../images/workbench.webp" width="760" height="564" loading="lazy" alt="El workbench de app-tabs: dos de tres criterios pasan. La tarjeta de marks-the-tab, en rojo, enseña el clic en Tab B, el paso que falla, aria-selected esperado true y obtenido ninguno, y dos capturas, antes y después del clic, con un recuadro en la pestaña que se pulsó.">
+  <img src="../../../images/workbench.webp" width="760" height="564" style="aspect-ratio: 760 / 564" loading="lazy" alt="El workbench de app-tabs: dos de tres criterios pasan. La tarjeta de marks-the-tab, en rojo, enseña el clic en Tab B, el paso que falla, aria-selected esperado true y obtenido ninguno, y dos capturas, antes y después del clic, con un recuadro en la pestaña que se pulsó.">
   <figcaption>Un criterio en rojo: el paso que falla, lo esperado contra lo obtenido y lo que vio el navegador.</figcaption>
 </figure>
 
