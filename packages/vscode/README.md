@@ -34,8 +34,7 @@ not in a generated file you have never seen.
 - **HTML and CSS.** The standard HTML and CSS services, Emmet included (`ul>li*3`).
 - **Errors as you type.** The same diagnostics the build gives, with a link to each code's page.
 - **Formatting.** Markup, directives, embedded TypeScript and CSS in one pass, on save.
-- **Editor conveniences.** `Ctrl+/` writes `@* … *@`, never a `//` that would not compile.
-  `@code`, `@if` and `@foreach` fold by their structure. Colour arrives with the first frame and
+- **Folding and colour.** `@code`, `@if` and `@foreach` fold by their structure. Colour arrives with the first frame and
   is refined by the server: a component tag never looks like a native one.
 
 ## IntelliSense in a `.fudapi`
@@ -119,7 +118,6 @@ Each one is offered only where it fits: `@RenderBody` in a layout, `props` in a 
 |---|---|
 | `Fudic: Open Workbench` (`Ctrl+K V`) | The workbench of the active `.fud` or `.fudspec`. |
 | `Fudic: Format Document` | Formats the active file. |
-| `Fudic: Toggle Comment` (`Ctrl+/`) | `@* … *@` in a `.fud`. |
 | `Fudic: Show API Types` | The types the active `.fudapi` generates. |
 | `Fudic: Show API Server Module` | The server module it generates. |
 | `Fudic: Show API Browser Module` | The browser module it generates. |

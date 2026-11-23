@@ -104,7 +104,6 @@
   <tbody>
     <tr><td><strong>Fudic: Open Workbench</strong> (<kbd>Ctrl+K V</kbd>)</td><td>El workbench del <code>.fud</code> o el <code>.fudspec</code> abierto.</td></tr>
     <tr><td><strong>Fudic: Format Document</strong></td><td>Formatea el fichero abierto.</td></tr>
-    <tr><td><strong>Fudic: Toggle Comment</strong> (<kbd>Ctrl+/</kbd>)</td><td>Comenta con <code>@@* … *@@</code> en un <code>.fud</code>.</td></tr>
     <tr><td><strong>Fudic: Show API Types</strong></td><td>Los tipos que genera el <code>.fudapi</code> abierto.</td></tr>
     <tr><td><strong>Fudic: Show API Server Module</strong></td><td>El módulo de servidor que genera.</td></tr>
     <tr><td><strong>Fudic: Show API Browser Module</strong></td><td>El módulo del navegador que genera.</td></tr>

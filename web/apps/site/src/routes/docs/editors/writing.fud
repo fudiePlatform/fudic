@@ -119,7 +119,7 @@
 
 <h2 id="format">Formato</h2>
 
-<p>La extensión formatea los <code>.fud</code>, los <code>.fudapi</code> y los <code>.fudspec</code> al guardar: el markup, las directivas, el TypeScript y el CSS de dentro, de una pasada. Es el mismo formateador que usa la CLI. <kbd>Ctrl+/</kbd> comenta con <code>@@* … *@@</code>, nunca con un <code>//</code> que no compilaría.</p>
+<p>La extensión formatea los <code>.fud</code>, los <code>.fudapi</code> y los <code>.fudspec</code> al guardar: el markup, las directivas, el TypeScript y el CSS de dentro, de una pasada. Es el mismo formateador que usa la CLI.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
