@@ -679,3 +679,20 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   no hay diff y por qué); que el `next` de `fudic_spec_run` nombre lo que falta de verdad; decidir
   si una ejecución parcial cuenta para el estado; y que `next` pida acordar los tokens antes del
   primer componente si nadie los ha aprobado.
+
+## 48. El aspecto aprobado no caduca al cambiar la guía de estilos
+
+- **Qué pasó.** Al escribir «Aprobar, caducar y reabrir» de la sección MCP (2026-11-23), se
+  calcularon con `lookFiles` (`packages/mcp/src/look-hash.ts:46-51`) los ficheros del aspecto de
+  `<tienda-button>`, en el proyecto de la conversación grabada. Salen el `.fud`, el `.fudapi`, el
+  fixture y `src/guide/base.css`, la única hoja de `globalStyles`. No salen `src/guide/tokens.css`
+  ni `src/guide/button.css`, la pieza de la guía que el botón adopta. Cambiar un color de los
+  tokens o la regla de `button` cambia cómo se ve el botón, y su aspecto aprobado sigue valiendo.
+  - De paso: salen también `src/components/tienda-button/@fudic/terms` y `…/@fudic/testing`. Son
+    los imports de paquete del fixture resueltos como rutas relativas; no existen y el hash los
+    salta.
+- **Cómo se resolvió en la web.** La página dice qué entra en el hash (la vista, lo que enlaza e
+  importa, las hojas globales) sin prometer nada de los tokens.
+- **Qué debería hacer.** Meter en el hash las piezas de la guía que el componente adopta
+  (`shadowrootadoptedstylesheets`) y la hoja de tokens, y no resolver como ruta un import de
+  paquete.
