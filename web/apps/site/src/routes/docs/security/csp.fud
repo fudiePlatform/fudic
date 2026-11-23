@@ -1,0 +1,133 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>La CSP · Fudic</title>
+  <meta name="description" content="La Content Security Policy de Fudic: estricta, con un nonce nuevo en cada respuesta y strict-dynamic. Fudic pone el nonce en sus scripts, y el build y el editor dicen qué le falta a la política y qué le sobra.">
+  <link rel="canonical" href="https://fudic.dev/docs/security/csp">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="La CSP · Fudic">
+  <meta property="og:description" content="Una CSP estricta con nonce, que el editor comprueba contra lo que Fudic pone en la página.">
+  <meta property="og:url" content="https://fudic.dev/docs/security/csp">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("security-csp")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué es una CSP</a></li>
+        <li><a href="#template">La de la plantilla</a></li>
+        <li><a href="#nonce">El nonce</a></li>
+        <li><a href="#origin">Añadir un origen</a></li>
+        <li><a href="#checks">Lo que falta y lo que sobra</a></li>
+        <li><a href="#dev">En desarrollo</a></li>
+        <li><a href="#service-worker">El Service Worker</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>La CSP</h1>
+
+<p>La plantilla trae una CSP estricta: solo se ejecutan los scripts que llevan el nonce de esa respuesta. Fudic pone un nonce nuevo en cada respuesta y en sus propios scripts, y como el build sabe qué mete en la página, te dice qué le falta a la política y qué le sobra.</p>
+
+<h2 id="what">Qué es una CSP</h2>
+
+<p>La <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP" target="_blank" rel="noopener">Content Security Policy</a> es una cabecera estándar que dice al navegador de dónde puede cargar cada cosa: scripts, estilos, imágenes. Lo que no permite no se carga, aunque esté en el HTML. Si alguien consigue colar un script en tu página, la CSP es lo que impide que se ejecute.</p>
+
+<h2 id="template">La de la plantilla</h2>
+
+<ui-code .path="page.headers">
+<pre><code>Content-Security-Policy:
+  default-src 'self'
+  script-src 'nonce-&#123;nonce&#125;' 'strict-dynamic' 'unsafe-inline' https:
+  style-src 'self' 'unsafe-inline'
+  img-src 'self' data:
+  object-src 'none'
+  base-uri 'none'
+  frame-ancestors 'none'
+  require-trusted-types-for 'script'
+  trusted-types fudic</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>script-src</code></strong>: solo los scripts con el nonce y, por <code>'strict-dynamic'</code>, los que ellos carguen. <code>'unsafe-inline'</code> y <code>https:</code> solo cuentan en navegadores antiguos sin nonces: uno que entiende el nonce los ignora.</li>
+  <li><strong><code>style-src</code></strong>: las hojas del propio origen y los estilos en línea, que usan los componentes (<a href="/docs/styles#style-attribute">El CSS de un componente</a>).</li>
+  <li><strong><code>default-src</code> e <code>img-src</code></strong>: todo lo demás, del propio origen; las imágenes, también en <code>data:</code>.</li>
+  <li><strong><code>object-src</code>, <code>base-uri</code> y <code>frame-ancestors</code></strong> a <code>'none'</code>: sin plugins, sin un <code>&lt;base&gt;</code> que cambie a dónde apuntan los enlaces y sin que otra web meta la tuya en un marco.</li>
+  <li><strong><code>require-trusted-types-for</code> y <code>trusted-types</code></strong>: el HTML solo entra por una política con nombre (<a href="/docs/security/trusted-types">HTML seguro</a>).</li>
+</ul>
+
+<p>Es la política que pide Lighthouse en su auditoría de buenas prácticas.</p>
+
+<h2 id="nonce">El nonce</h2>
+
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce" target="_blank" rel="noopener">nonce</a> es un valor al azar que cambia en cada respuesta. En <code>page.headers</code> se escribe <code>'nonce-&#123;nonce&#125;'</code>, y Fudic lo rellena en la cabecera y en el atributo <code>nonce</code> de cada script que pone: el runtime, el import map y el polyfill de estilos. Un script colado no sabe el nonce, así que no se ejecuta.</p>
+
+<p>También una página pintada en el build lleva un nonce nuevo en cada visita: el servidor, o el Service Worker, lo pone al responder.</p>
+
+<p>Un <code>&lt;script&gt;</code> que escribas en el <code>&lt;head&gt;</code> de una página o de un layout recibe el nonce igual, venga de donde venga:</p>
+
+<ui-code .path="src/routes/support.fud">
+<pre><code>&lt;head&gt;
+  &lt;title&gt;Support&lt;/title&gt;
+  &lt;script type="module" src="https://widgets.example.com/chat.js"&gt;&lt;/script&gt;
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<p>No hace falta tocar <code>script-src</code>: con <code>'strict-dynamic'</code>, lo que cuenta es el nonce y no el host. Lo que ese script pida después con <code>fetch</code> sí sigue a <code>connect-src</code>, que aquí es <code>default-src 'self'</code>: si llama a su servidor, añade su host.</p>
+
+<h2 id="origin">Añadir un origen</h2>
+
+<p>Un origen de fuera es un host más al final de su directiva. Para las imágenes de un CDN:</p>
+
+<ui-code .path="page.headers">
+<pre><code>  img-src 'self' data: https://images.example.com</code></pre>
+</ui-code>
+
+<h2 id="checks">Lo que falta y lo que sobra</h2>
+
+<p>Cada pieza de Fudic declara qué pone en la página: un script, un estilo en línea, la política de Trusted Types. El build junta lo que de verdad ha puesto, lee la política como la lee el navegador y avisa de tres cosas, en el build y en el editor:</p>
+
+<ul>
+  <li><strong>Lo que la política bloquea</strong> y Fudic necesita: si quitas <code>'nonce-&#123;nonce&#125;'</code> de <code>script-src</code>, es un error que nombra lo que dejaría de cargar, como el runtime. La bombilla del editor lo vuelve a poner.</li>
+  <li><strong>Lo que la debilita</strong>: <code>'unsafe-eval'</code>, un host en <code>script-src</code> sin <code>'strict-dynamic'</code>, <code>'unsafe-inline'</code> sin nonce, o que falte <code>object-src</code>, <code>base-uri</code> o <code>frame-ancestors</code>.</li>
+  <li><strong>Lo que ya nada necesita</strong>: si dejas de usar todo lo que pinta HTML, <code>trusted-types fudic</code> sobra. La bombilla lo quita.</li>
+</ul>
+
+<p>Un navegador ignora lo que la propia política hace inútil, y el editor también: <code>'unsafe-inline'</code> junto a un nonce no es un aviso.</p>
+
+<h2 id="dev">En desarrollo</h2>
+
+<p><code>fudic dev</code> no manda la CSP de las páginas: el cliente de Vite que recarga la página no lleva nonce. La política se prueba con la preview del build, que la manda igual que en producción.</p>
+
+<h2 id="service-worker">El Service Worker</h2>
+
+<p>Un Service Worker no hereda la política de la página: tiene la suya en <code>sw.headers</code>, con el <code>'unsafe-eval'</code> que necesita para cargar el código de cada ruta (<a href="/docs/service-worker/configuration#sw-headers">Configuración</a>). Ese permiso vale solo dentro del Service Worker, y en <code>page.headers</code> es un aviso.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un nonce escrito a mano</strong>, como <code>'nonce-abc123'</code>, es un error, <code>FUD1546</code>: un nonce que no cambia no protege nada. También lo es <code>&#123;nonce&#125;</code> fuera de la CSP de <code>page.headers</code>.</li>
+  <li><strong>Los códigos</strong> de los tres casos de arriba son <code>FUD1545</code> (bloquea), <code>FUD1547</code> (debilita) y <code>FUD1556</code> (sobra). Una directiva que no existe es <code>FUD1544</code>: el navegador la ignora.</li>
+  <li><strong>Un <code>&lt;script type="application/ld+json"&gt;</code></strong> no lleva nonce: el navegador no lo ejecuta, y la política no lo mira.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP" target="_blank" rel="noopener">Content Security Policy</a>: la guía, con la CSP estricta basada en nonces.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy" target="_blank" rel="noopener"><code>Content-Security-Policy</code></a>: todas las directivas.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src" target="_blank" rel="noopener"><code>script-src</code></a>: el nonce y <code>'strict-dynamic'</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce" target="_blank" rel="noopener"><code>nonce</code></a>: el atributo que lleva cada script.</li>
+</ul>

@@ -1,0 +1,124 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Las cabeceras · Fudic</title>
+  <meta name="description" content="Las cabeceras de seguridad en Fudic: tres ficheros de texto en la raíz de la app, page.headers, sw.headers y assets.headers, que el editor comprueba mientras escribes. Referrer-Policy, COOP, HSTS y Permissions-Policy.">
+  <link rel="canonical" href="https://fudic.dev/docs/security/headers">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Las cabeceras · Fudic">
+  <meta property="og:description" content="Las cabeceras de seguridad, en tres ficheros de texto que el editor comprueba.">
+  <meta property="og:url" content="https://fudic.dev/docs/security/headers">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("security-headers")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#files">Tres ficheros</a></li>
+        <li><a href="#format">El formato</a></li>
+        <li><a href="#page">Lo que trae page.headers</a></li>
+        <li><a href="#add">Añadir una cabecera</a></li>
+        <li><a href="#fudic">Las que pone Fudic</a></li>
+        <li><a href="#early-hints">En el 103</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Las cabeceras</h1>
+
+<p>Las cabeceras de seguridad no se escriben en código: viven en tres ficheros de texto en la raíz de la app. El editor los comprueba mientras escribes, y el servidor y el Service Worker los leen tal cual.</p>
+
+<h2 id="files">Tres ficheros</h2>
+
+<ul>
+  <li><strong><code>page.headers</code></strong>: las cabeceras de cada página. Las manda el servidor y las pone también el Service Worker cuando pinta una página él.</li>
+  <li><strong><code>sw.headers</code></strong>: las del propio Service Worker, que tiene su política aparte (<a href="/docs/service-worker/configuration#sw-headers">Configuración</a>).</li>
+  <li><strong><code>assets.headers</code></strong>: las de los ficheros estáticos, por ruta. Casi siempre, cuánto guardarlos en caché (<a href="/docs/performance/caching#headers">Las cachés del navegador</a>).</li>
+</ul>
+
+<p><code>fudic new</code> crea los tres. Si borras uno, vale su plantilla, no «sin cabeceras». Un fichero con errores no vuelve a la plantilla: el editor y el build dicen dónde está el error.</p>
+
+<p>Son texto y no código de Node. El servidor de Fudic hoy está implementado en TypeScript; los de C#, Java, Go, Rust y Python están diseñados para leer los mismos ficheros.</p>
+
+<h2 id="format">El formato</h2>
+
+<ui-code .path="page.headers">
+<pre><code># The headers of every page.
+
+Referrer-Policy: strict-origin-when-cross-origin
+Content-Security-Policy:
+  default-src 'self'
+  object-src 'none'</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>Nombre: valor</code></strong>, desde la primera columna.</li>
+  <li><strong>Una línea sangrada continúa</strong> la cabecera de arriba. Fudic las une con el separador de esa cabecera: <code>; </code> en la CSP, <code>, </code> en <code>Cache-Control</code>.</li>
+  <li><strong><code>#</code></strong> empieza un comentario, en su propia línea.</li>
+</ul>
+
+<p>En <code>assets.headers</code>, una ruta en la primera columna abre un bloque y sus cabeceras van sangradas debajo. Gana la ruta más concreta, cabecera a cabecera, y un valor vacío no envía esa cabecera.</p>
+
+<h2 id="page">Lo que trae <code>page.headers</code></h2>
+
+<p>Además de la CSP, que tiene su página (<a href="/docs/security/csp">La CSP</a>), la plantilla trae tres cabeceras:</p>
+
+<ui-code .path="page.headers">
+<pre><code>Referrer-Policy: strict-origin-when-cross-origin
+Cross-Origin-Opener-Policy: same-origin
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>Referrer-Policy</code></strong>: a otra web solo le dice de qué origen viene el usuario, no la página. Dentro de tu web sí manda la ruta, y Fudic la usa para saber a dónde vuelve <code>back</code> en la <a href="/docs/routing/error-page#data">página de error</a>.</li>
+  <li><strong><code>Cross-Origin-Opener-Policy</code></strong>: una ventana de otra web que abras desde la tuya, o que abra la tuya, no tiene acceso a ella por <code>window.opener</code>.</li>
+  <li id="hsts"><strong><code>Strict-Transport-Security</code></strong>: durante dos años, el navegador solo entra por HTTPS, también en los subdominios. Con <code>preload</code>, puedes apuntar el dominio en la <a href="https://hstspreload.org/" target="_blank" rel="noopener">lista de precarga</a> que traen los navegadores, y así ni la primera visita va por HTTP. Fudic solo la manda en las respuestas por HTTPS.</li>
+</ul>
+
+<h2 id="add">Añadir una cabecera</h2>
+
+<p>Una cabecera nueva es una línea más. Por ejemplo, <code>Permissions-Policy</code> apaga la cámara y la ubicación para la página y para todo lo que cargue:</p>
+
+<ui-code .path="page.headers">
+<pre><code>Permissions-Policy: camera=(), geolocation=()</code></pre>
+</ui-code>
+
+<p>El editor conoce las cabeceras de seguridad más habituales: comprueba su valor, completa los que son de una lista cerrada y avisa de lo que debilita la página. Una cabecera que no conoce también vale: de ella solo comprueba el nombre.</p>
+
+<h2 id="fudic">Las que pone Fudic</h2>
+
+<p>Algunas cabeceras las pone Fudic en cada respuesta, y escribirlas en un <code>.headers</code> es un error: <code>Content-Type</code>, <code>Content-Length</code>, <code>Location</code>, <code>Set-Cookie</code> y, en las páginas, <code>Link</code>. Las cookies se ponen desde el servidor (<a href="/docs/server/session">Sesión y cookies</a>).</p>
+
+<h2 id="early-hints">En el 103</h2>
+
+<p>La respuesta <code>103</code> que se adelanta a la página lleva solo la CSP y <code>Referrer-Policy</code>, con el mismo nonce que la página: son las que deciden si el navegador puede descargar lo que se le anuncia (<a href="/docs/routing/early-hints">Early hints</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>En el editor</strong>, una línea que no se entiende es <code>FUD1540</code>, un nombre no válido o repetido <code>FUD1541</code>, una cabecera de Fudic <code>FUD1542</code> y un valor que la cabecera no admite <code>FUD1543</code>.</li>
+  <li><strong>Un <code>Referrer-Policy</code></strong> que no manda la ruta (<code>no-referrer</code>, <code>origin</code>, <code>strict-origin</code>) deja vacío <code>back</code>: <code>FUD1549</code>.</li>
+  <li><strong><code>preload</code></strong> sin un <code>max-age</code> de un año o más, o sin <code>includeSubDomains</code>, no entra en la lista: <code>FUD1550</code>.</li>
+  <li><strong>En una librería</strong>, que nadie sirve, un <code>.headers</code> no se aplica a nada, y tampoco un <code>sw.headers</code> en una app sin <code>sw.json</code>: <code>FUD1554</code>.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy" target="_blank" rel="noopener"><code>Referrer-Policy</code></a>: qué cuenta el navegador de la página de la que vienes.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy" target="_blank" rel="noopener"><code>Cross-Origin-Opener-Policy</code></a>: las ventanas que comparten, o no, su contexto.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" target="_blank" rel="noopener"><code>Strict-Transport-Security</code></a>: solo HTTPS, y la lista de precarga.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy" target="_blank" rel="noopener"><code>Permissions-Policy</code></a>: qué funciones del navegador puede usar la página.</li>
+</ul>

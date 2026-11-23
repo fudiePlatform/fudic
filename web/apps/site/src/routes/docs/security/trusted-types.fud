@@ -1,0 +1,103 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>HTML seguro · Fudic</title>
+  <meta name="description" content="HTML seguro en Fudic: una expresión siempre escribe texto, el HTML solo entra por &#64;raw con trustedHtml, y los Trusted Types estándar hacen que el navegador rechace cualquier otra vía. El editor avisa de un innerHTML con texto.">
+  <link rel="canonical" href="https://fudic.dev/docs/security/trusted-types">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="HTML seguro · Fudic">
+  <meta property="og:description" content="Texto por defecto, HTML solo a propósito, y Trusted Types para cerrar las demás vías.">
+  <meta property="og:url" content="https://fudic.dev/docs/security/trusted-types">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("security-trusted-types")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#text">Una expresión escribe texto</a></li>
+        <li><a href="#raw">HTML a propósito: @@raw</a></li>
+        <li><a href="#trusted-types">Trusted Types</a></li>
+        <li><a href="#editor">El aviso del editor</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>HTML seguro</h1>
+
+<p>Una expresión siempre escribe texto. El HTML solo entra por <code>@@raw</code>, con un valor que marcas tú, y los Trusted Types estándar hacen que el navegador rechace cualquier otra vía.</p>
+
+<h2 id="text">Una expresión escribe texto</h2>
+
+<ui-code .path="src/components/app-comment/app-comment.fud">
+<pre><code>&lt;p class="body"&gt;@@comment.body&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Si alguien escribe <code>&lt;img src=x onerror=…&gt;</code> en un comentario, la página lo enseña tal cual, como texto, y nada se ejecuta. Es igual en el servidor y en el navegador: no hay que acordarse de escapar.</p>
+
+<h2 id="raw">HTML a propósito: <code>@@raw</code></h2>
+
+<p>Para escribir un valor como HTML, por ejemplo un artículo que viene de un CMS, está <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>). Solo escribe HTML si el valor viene marcado con <code>trustedHtml(…)</code>; si no, lo escribe como texto, igual que una expresión.</p>
+
+<ul>
+  <li><strong>La marca va en el valor</strong>, no en la plantilla: quien crea el valor es quien responde de él.</li>
+  <li><strong>La marca no viaja en JSON</strong>: nada que llegue en una petición o en la respuesta de una función de servidor llega marcado.</li>
+  <li><strong>Fudic no limpia ese HTML.</strong> Si viene de tus usuarios, límpialo antes de marcarlo.</li>
+</ul>
+
+<h2 id="trusted-types">Trusted Types</h2>
+
+<p>Con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types</a>, el navegador rechaza un texto en <code>innerHTML</code>, <code>insertAdjacentHTML</code>, <code>eval</code> y el resto de sitios donde un texto se convierte en código. Solo acepta un objeto creado por una política, y la CSP dice qué políticas valen. La de la plantilla lo activa:</p>
+
+<ui-code .path="page.headers">
+<pre><code>  require-trusted-types-for 'script'
+  trusted-types fudic</code></pre>
+</ui-code>
+
+<p>Fudic tiene una sola política, <code>fudic</code>, y su runtime solo pinta HTML en dos sitios, que pasan por ella: <code>@@raw</code> y el <a href="/docs/forms/binding#summary">resumen de errores</a> de un formulario, que escapa cada mensaje. La usa también para la URL del Service Worker al registrarlo. Cualquier otra vía, en tu código o en una librería, la rechaza el navegador. En un navegador que aún no tiene Trusted Types, todo funciona igual, sin esa última barrera.</p>
+
+<h2 id="editor">El aviso del editor</h2>
+
+<p>El editor avisa antes de que lo haga el navegador. En el código que va al navegador, un texto en <code>innerHTML</code> es un aviso:</p>
+
+<ui-code .path="src/lib/notice.ts">
+<pre><code>export function notify(message: string): void &#123;
+  const box = document.querySelector("#notice")!;
+  box.innerHTML = message; // warning: Trusted Types will block this
+&#125;</code></pre>
+</ui-code>
+
+<p>Hay tres salidas, según lo que sea <code>message</code>:</p>
+
+<ul>
+  <li><strong>Es texto</strong>: <code>box.textContent = message</code>. Es lo más habitual.</li>
+  <li><strong>Es HTML de tu app</strong>: píntalo desde un componente con <code>@@raw</code> y <code>trustedHtml</code>.</li>
+  <li><strong>Lo pinta una librería</strong> con su propia política: añade su nombre a <code>trusted-types</code>, detrás de <code>fudic</code>. Su documentación dice cómo se llama.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>El aviso es <code>FUD1555</code></strong>. Mira el <code>@@code</code> de los <code>.fud</code> y los módulos que carga el navegador, nunca <code>src/server</code>, y solo si <code>page.headers</code> pide Trusted Types.</li>
+  <li><strong>Lo que decide es el tipo</strong>: un objeto <code>TrustedHTML</code> de una política tuya no da aviso, y un campo <code>innerHTML</code> de un objeto tuyo tampoco.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types API</a>: políticas y objetos de confianza.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/require-trusted-types-for" target="_blank" rel="noopener"><code>require-trusted-types-for</code></a>: la directiva que los activa.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/trusted-types" target="_blank" rel="noopener"><code>trusted-types</code></a>: qué políticas valen.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent" target="_blank" rel="noopener"><code>textContent</code></a>: escribir texto, sin HTML.</li>
+</ul>

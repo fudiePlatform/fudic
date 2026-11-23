@@ -117,7 +117,7 @@ Content-Security-Policy:
 
 <p>Sin él, el Service Worker se instala pero no pinta ninguna página, y todas las navegaciones van al servidor. El build avisa (<code>FUD1548</code>).</p>
 
-<p>El formato del fichero (una cabecera por línea, continuaciones sangradas, <code>#</code> para comentarios) es el mismo de <code>page.headers</code> y <code>assets.headers</code>, y los tres se explican en Seguridad (capítulo 12). Un <code>sw.headers</code> sin <code>sw.json</code> es un aviso (<code>FUD1554</code>): sobra.</p>
+<p>El formato del fichero (una cabecera por línea, continuaciones sangradas, <code>#</code> para comentarios) es el mismo de <code>page.headers</code> y <code>assets.headers</code>, y los tres se explican en <a href="/docs/security/headers">Las cabeceras</a>. Un <code>sw.headers</code> sin <code>sw.json</code> es un aviso (<code>FUD1554</code>): sobra.</p>
 
 <h2 id="diagnostics">Lo que se comprueba</h2>
 

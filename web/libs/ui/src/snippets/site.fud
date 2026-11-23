@@ -125,6 +125,15 @@
           <li><a href="/docs/performance/lighthouse" aria-current=@(current === "performance-lighthouse" ? "page" : false)>Medir con Lighthouse</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Seguridad</span>
+        <ol>
+          <li><a href="/docs/security" aria-current=@(current === "security" ? "page" : false)>Lo que trae de serie</a></li>
+          <li><a href="/docs/security/headers" aria-current=@(current === "security-headers" ? "page" : false)>Las cabeceras</a></li>
+          <li><a href="/docs/security/csp" aria-current=@(current === "security-csp" ? "page" : false)>La CSP</a></li>
+          <li><a href="/docs/security/trusted-types" aria-current=@(current === "security-trusted-types" ? "page" : false)>HTML seguro</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }
