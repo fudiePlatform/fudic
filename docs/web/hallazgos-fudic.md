@@ -491,3 +491,20 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   única aparición de `isr` en los paquetes.
 - **Qué debería hacer.** Ofrecer `ssg`, `ssr` y `sw`. Mejor aún, que no proponga ninguno por
   defecto, porque sin modo se deduce.
+
+## 34. Quitar la orden «Fudic: Toggle Comment» de la extensión
+
+- **Qué pasó.** La extensión registra `fudic.toggleComment` con `Ctrl+/` (`Cmd+/`) en un `.fud`,
+  que escribe `@* … *@`. Comentar es estándar y la gente sabe hacerlo; el capítulo de la sintaxis
+  ya explica cómo se comenta HTML, JS y CSS, y que `@* *@` es el comentario que no llega al
+  navegador. Una orden propia para eso sobra. Decisión de Pedro, 2026-11-23: se quita.
+- **Cómo se resolvió en la web.** Editores no la nombra; el README de la extensión, tampoco.
+- **Qué hay que quitar.**
+  - `packages/vscode/package.json`: la orden (línea 151) y su atajo (línea 186).
+  - `packages/vscode/src/comment.ts` y `src/commands/comment.ts`, y su registro en
+    `src/commands/index.ts`, `src/commands/deps.ts`, `src/extension.ts`, `src/ports.ts` y
+    `src/vscode-shape.ts` (lo que solo exista para ella).
+  - Sus tests: `test/comment.test.ts`, `test/commands/comment.test.ts` y lo que la nombra en
+    `test/commands/commands.test.ts`, `test/commands/_deps.ts`, `test/extension.test.ts`,
+    `test/manifest.test.ts`, `test/vscode-shape.test.ts` y `test/acceptance/criteria.test.ts`.
+  - Comprobar que `language-configuration.json` sigue dando a `Ctrl+/` el comentario de VS Code.
