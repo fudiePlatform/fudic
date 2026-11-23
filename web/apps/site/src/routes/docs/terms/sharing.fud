@@ -33,7 +33,7 @@
 
 <h1>Sustituir y compartir</h1>
 
-<p>Cada proyecto tiene sus términos en su carpeta <code>fudic/terms</code>, y gana a los de serie: un término con el mismo nombre sustituye al de Fudic en ese proyecto. Entre proyectos no se comparten términos, pero sí el código que usan.</p>
+<p>Cada proyecto tiene sus términos en su carpeta <code>fudic/terms</code>, y esos términos ganan a los de serie: un término con el mismo nombre sustituye al de Fudic en ese proyecto. Entre proyectos no se comparten términos, pero sí el código que usan.</p>
 
 <h2 id="lookup">Dónde se buscan</h2>
 
@@ -42,7 +42,7 @@
   <li><strong><code>@@fudic/terms</code></strong>, los que trae Fudic.</li>
 </ol>
 
-<p>Gana el primero que tiene <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>, entero: no se mezclan. Cada app y cada librería de un workspace es un proyecto, con su carpeta: los términos de una librería sirven a los <code>.fudspec</code> de esa librería.</p>
+<p>Gana el primer sitio que tiene <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>, y gana entero: un término no mezcla partes de los dos. Cada app y cada librería de un workspace es un proyecto con su carpeta. Los términos de una librería solo sirven a los <code>.fudspec</code> de esa librería.</p>
 
 <h2 id="replace">Sustituir uno de serie</h2>
 
@@ -69,7 +69,7 @@ export async function run(ctx, &#123; target, expected &#125;) &#123;
 export const selfTest = [&#123; args: &#123; target: 'h1', expected: 'shop' &#125;, expect: 'pass' &#125;];</code></pre>
 </ui-code>
 
-<p>Desde ese momento, cada <code>text</code> de los <code>.fudspec</code> del proyecto usa el tuyo, y el editor enlaza al tuyo. Los de serie, para copiarlos de modelo, están en <code>node_modules/@@fudic/terms/terms</code>.</p>
+<p>Desde ese momento, cada <code>text</code> de los <code>.fudspec</code> del proyecto usa el tuyo, y el editor enlaza al tuyo. Si quieres partir de uno de serie, los tienes en <code>node_modules/@@fudic/terms/terms</code>.</p>
 
 <h2 id="share">Entre proyectos</h2>
 
@@ -88,4 +88,4 @@ export async function run(ctx, &#123; count &#125;) &#123;
 export const selfTest = [];</code></pre>
 </ui-code>
 
-<p><code>meta</code> se queda en cada proyecto, literal, porque es lo que lee su editor.</p>
+<p><code>meta</code> se escribe literal en cada proyecto, porque es lo que lee el editor.</p>

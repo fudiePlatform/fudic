@@ -35,7 +35,7 @@
 
 <h1>Estilos, idiomas y servidor</h1>
 
-<p>Los campos de <code>fudic.json</code> que deciden qué CSS reciben los componentes, en qué idiomas sale la app y cómo se sirve. Cada uno con su valor por defecto y un enlace a la página que lo explica a fondo.</p>
+<p>Estos campos de <code>fudic.json</code> deciden qué CSS reciben los componentes, en qué idiomas sale la app y cómo se sirve. Cada uno trae su valor por defecto y un enlace a la página que lo explica a fondo.</p>
 
 <h2 id="styles">Estilos</h2>
 
@@ -51,7 +51,7 @@
   <li><strong><code>globalStyles</code></strong>: las hojas que adoptan todos los componentes del proyecto, en el orden escrito y delante de las suyas. Cada una lleva un nombre y una ruta desde la raíz del proyecto. Pon aquí muy poco, porque llega a todos (<a href="/docs/styles/shared#styles">Hojas para los componentes</a>).</li>
   <li><strong><code>styles</code></strong>: las hojas que un componente puede adoptar si las nombra en el <code>shadowrootadoptedstylesheets</code> de su <code>&lt;template&gt;</code>. Se aplican después de las globales y antes del CSS del propio componente.</li>
   <li><strong><code>css</code></strong>: cómo llega el CSS de los componentes. <code>"inline"</code>, por defecto, lo escribe dentro del HTML, una vez por página; <code>"link"</code> lo entrega como ficheros, con un <code>&lt;link rel="stylesheet"&gt;</code> (<a href="/docs/styles/delivery#inline-or-link">Dentro del HTML o como fichero</a>).</li>
-  <li><strong><code>guide</code></strong>: solo en la librería que es la guía de estilos. <code>sheet</code> es la hoja de entrada, que reciben todas las páginas de la app que la usa, y <code>icon</code>, opcional, el favicon de esas páginas (<a href="/docs/styles/guide">La guía de estilos</a>).</li>
+  <li><strong><code>guide</code></strong>: solo en la librería que es la guía de estilos. <code>sheet</code> es la hoja de entrada, que reciben todas las páginas de la app que usa esa librería. <code>icon</code> es el favicon de esas páginas, y es opcional (<a href="/docs/styles/guide">La guía de estilos</a>).</li>
 </ul>
 
 <ui-code .path="libs/guide/fudic.json">
@@ -62,7 +62,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>El nombre de una hoja es como la nombra el HTML: letras, números y <code>_</code>, sin guion. El guion queda para los componentes, y así una hoja nunca se confunde con la de un componente.</p>
+<p>El nombre de una hoja es el que usa el HTML para referirse a ella: letras, números y <code>_</code>, sin guion. El guion queda para los componentes, y así una hoja nunca se confunde con la de un componente.</p>
 
 <h2 id="locales">Idiomas y publicación</h2>
 
@@ -94,7 +94,7 @@
 
 <ul>
   <li><strong><code>earlyHints</code></strong>: si el servidor envía las pistas de cada página en un <code>103 Early Hints</code> antes de la respuesta. Por defecto, <code>true</code> (<a href="/docs/routing/early-hints">Early hints</a>).</li>
-  <li><strong><code>serve.trustProxy</code></strong>: detrás de un proxy, la URL pública de cada petición sale de las cabeceras <code>Forwarded</code> y <code>X-Forwarded-*</code>. Por defecto no se leen. Actívalo solo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</li>
+  <li><strong><code>serve.trustProxy</code></strong>: con <code>true</code>, la URL pública de cada petición sale de las cabeceras <code>Forwarded</code> y <code>X-Forwarded-*</code> que añade el proxy. Por defecto no se leen. Actívalo solo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</li>
   <li><strong><code>serve.uploads.maxFileSize</code></strong>: el fichero más grande que acepta una subida. Por defecto, 10 MB (<a href="/docs/forms/files#limits">Los límites del servidor</a>).</li>
   <li><strong><code>serve.uploads.maxFiles</code></strong>: cuántos ficheros acepta una llamada. Por defecto, 20.</li>
   <li><strong><code>serve.uploads.maxArgs</code></strong>: lo que pueden ocupar los demás argumentos de una llamada con ficheros. Por defecto, 1 MB.</li>
@@ -110,7 +110,7 @@
   <li>Las etiquetas de <code>locales</code> se normalizan: <code>"EN-us"</code> se lee <code>"en-US"</code>, y dos formas de la misma etiqueta cuentan como repetida. Una lista vacía no vale: si se escribe el campo, tiene que decir qué idiomas.</li>
   <li>En una librería, <code>locales</code> no se usa: sus textos salen en los idiomas de la app que la compila.</li>
   <li><code>site</code> se guarda como lo escribe <code>URL.origin</code>: host en minúsculas, sin puerto por defecto y sin <code>/</code> final.</li>
-  <li>Un campo de <code>serve</code> mal escrito, o uno que no existe, es un error que lo nombra (<a href="/docs/reference/diagnostics/FUD1488"><code>FUD1488</code></a>): un error de tipeo que dejara el valor por defecto sin avisar se descubriría en producción.</li>
+  <li>Un campo de <code>serve</code> mal escrito, o uno que no existe, es un error que lo nombra (<a href="/docs/reference/diagnostics/FUD1488"><code>FUD1488</code></a>). Así una errata no deja el valor por defecto sin avisar, algo que solo se descubriría en producción.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

@@ -70,10 +70,10 @@
   <li><code>&lt;link rel="component"&gt;</code>: los componentes que usa.</li>
   <li><code>@@code</code>: su código, en TypeScript. Opcional.</li>
   <li><code>&lt;head&gt;</code>: sus estilos (<a href="/docs/styles">El CSS de un componente</a>). Opcional.</li>
-  <li>Su tag, envolviendo un <code>&lt;template shadowrootmode&gt;</code>. Todo lo que pinta va dentro.</li>
+  <li>Su tag, que envuelve un <code>&lt;template shadowrootmode&gt;</code>. Todo lo que pinta va dentro.</li>
 </ul>
 
-<p>Un componente puede ser solo la parte 4: HTML y CSS, sin JavaScript.</p>
+<p>Un componente puede ser solo su tag con el <code>&lt;template&gt;</code>: HTML y CSS, sin JavaScript.</p>
 
 <h2 id="props">Props</h2>
 
@@ -102,9 +102,9 @@
 </ui-code>
 
 <ul>
-  <li><strong>Sin <code>?</code> es obligatoria</strong>, y con <code>?</code>, opcional, con su valor por defecto en la desestructuración.</li>
-  <li><strong>El comentario <code>/** … */</code></strong> de cada prop lo enseña el editor al escribir el tag.</li>
-  <li id="reactive-prop"><strong>Si el padre pasa un signal leído</strong> (<code>.text=@@status()</code>), el hijo se actualiza cuando cambia.</li>
+  <li><strong>Sin <code>?</code> es obligatoria.</strong> Con <code>?</code> es opcional, y su valor por defecto se pone en la desestructuración.</li>
+  <li><strong>El comentario <code>/** … */</code></strong> de cada prop aparece en el editor al escribir el tag.</li>
+  <li id="reactive-prop"><strong>Si el padre pasa el valor de un signal</strong> (<code>.text=@@status()</code>), el hijo se actualiza cuando ese signal cambia.</li>
 </ul>
 
 <h3 id="signal-prop">Para que el hijo cambie un valor del padre</h3>
@@ -177,11 +177,11 @@
 &lt;/miapp-switch&gt;</code></pre>
 </ui-code>
 
-<p>El servidor pinta el host con su <code>role</code> y su <code>aria-checked</code>, así que el switch se anuncia bien antes de cargar ningún script. Al pulsarlo, <code>aria-checked</code> se actualiza solo.</p>
+<p>El servidor pinta el host con su <code>role</code> y su <code>aria-checked</code>, así que los lectores de pantalla anuncian bien el switch antes de que cargue ningún script. Al pulsarlo, <code>aria-checked</code> se actualiza solo.</p>
 
 <ul>
   <li><strong>Un atributo con <code>true</code></strong> se escribe vacío, y con <code>false</code>, se quita. ARIA espera el texto <code>"true"</code> o <code>"false"</code>: escríbelo con un ternario, como arriba.</li>
-  <li><strong>El estilo del host</strong> sale de sus atributos, con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host()</code></a>: <code>:host([aria-checked="true"])</code>.</li>
+  <li><strong>El estilo del host</strong> depende de sus atributos y se escribe con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host()</code></a>, por ejemplo <code>:host([aria-checked="true"])</code>.</li>
   <li id="host-or-shadow-root"><strong>Un <code>@@click</code> en el host</strong> oye lo que pasa dentro del componente, y puede pararlo con <code>stopPropagation()</code> antes de que llegue a la página. Uno en el <code>&lt;template&gt;</code> oye solo lo de dentro.</li>
 </ul>
 

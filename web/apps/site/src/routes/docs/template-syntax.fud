@@ -49,7 +49,7 @@
 
 <h2 id="why-razor">Por qué Razor</h2>
 
-<p>Esta forma de escribir plantillas se llama <strong>Razor</strong>. No es de Fudic: Microsoft la creó en 2010 y es la de ASP.NET Core y Blazor desde entonces. Angular adoptó en 2023 la misma idea para su control de flujo (<code>@@if</code>, <code>@@for</code>).</p>
+<p>Esta forma de escribir plantillas se llama <strong>Razor</strong>. No es de Fudic: Microsoft la creó en 2010 y desde entonces es la sintaxis de ASP.NET Core y Blazor. Angular adoptó en 2023 la misma idea para su control de flujo (<code>@@if</code>, <code>@@for</code>).</p>
 
 <p>Fudic la elige porque el HTML sigue siendo HTML. No hay directivas escondidas en atributos (<code>v-if</code>, <code>*ngIf</code>), ni HTML convertido en JavaScript (el <code>className</code> de JSX). La <code>@@</code> marca dónde entra el código, y en ningún sitio más.</p>
 
@@ -77,10 +77,10 @@
 
 <h2 id="pieces">Las cuatro piezas</h2>
 
-<p>Todo es un fichero <code>.fud</code>, y el compilador sabe qué es cada uno por cómo empieza:</p>
+<p>Las cuatro son ficheros <code>.fud</code>. El compilador distingue cada pieza por cómo empieza:</p>
 
 <ul>
-  <li><strong>Componente</strong>: su tag envolviendo un <code>&lt;template shadowrootmode&gt;</code>, el Declarative Shadow DOM estándar.</li>
+  <li><strong>Componente</strong>: empieza con su propio tag, que envuelve un <code>&lt;template shadowrootmode&gt;</code>. Es Declarative Shadow DOM estándar.</li>
   <li><strong>Ruta</strong>: empieza con <code>&lt;link rel="layout"&gt;</code>. Es una página, y su URL sale de dónde está el fichero.</li>
   <li><strong>Layout</strong>: empieza con <code>&lt;!DOCTYPE html&gt;</code>. Es el documento en el que se pinta cada ruta.</li>
   <li><strong>Snippet</strong>: declara <code>@@snippet nombre(…)</code>. Es un trozo de markup que se repite, sin JavaScript.</li>
@@ -104,7 +104,7 @@
 
 <h2 id="view-fills-gaps">La vista rellena huecos</h2>
 
-<p>En la plantilla se pueden leer valores, compararlos, combinarlos y recorrer listas, pero no llamar a cualquier función de JavaScript:</p>
+<p>En la plantilla se pueden leer valores, compararlos, combinarlos y recorrer listas, pero solo se pueden llamar las funciones de una lista cerrada:</p>
 
 <ui-code>
 <pre><code>&lt;p&gt;@@(items().filter(i =&gt; i.done).length) hechas&lt;/p&gt;   ✓
@@ -115,9 +115,9 @@
 
 <h2 id="polyglot-views">Vistas políglotas</h2>
 
-<p>La razón de esa lista es que una vista de Fudic se pueda pintar en servidores de otros lenguajes. Hoy el servidor es Node. C#, Java, Go, Rust y Python están diseñados.</p>
+<p>Esa limitación existe para que una vista de Fudic se pueda pintar en servidores escritos en otros lenguajes. Hoy el servidor es Node. Los de C#, Java, Go, Rust y Python ya están diseñados.</p>
 
-<p>Por eso en la vista solo entra lo que se traduce a los seis lenguajes con el mismo resultado: <code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code> y <code>.length</code> sí; <code>find</code> no. Lo que no existe igual en todos, como formatear una fecha o una moneda, lo pone Fudic con un catálogo de pipes escrito para cada lenguaje.</p>
+<p>En la vista solo entra lo que da el mismo resultado en los seis lenguajes: <code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code> y <code>.length</code> sí; <code>find</code> no. Para lo que cada lenguaje hace a su manera, como formatear una fecha o una moneda, Fudic trae un catálogo de pipes escrito para cada lenguaje.</p>
 
 <p>Esta línea de un <code>.fud</code>:</p>
 

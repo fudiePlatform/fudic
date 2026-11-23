@@ -39,7 +39,7 @@
 
 <h1>La CSP</h1>
 
-<p>La plantilla trae una CSP estricta: solo se ejecutan los scripts que llevan el nonce de esa respuesta. Fudic pone un nonce nuevo en cada respuesta y en sus propios scripts, y como el build sabe qué mete en la página, te dice qué le falta a la política y qué le sobra.</p>
+<p>La plantilla trae una CSP estricta: solo se ejecutan los scripts que llevan el nonce de esa respuesta. Fudic pone un nonce nuevo en cada respuesta y en sus propios scripts. Como el build sabe qué mete en la página, avisa de qué le falta a la política y de qué le sobra.</p>
 
 <h2 id="what">Qué es una CSP</h2>
 
@@ -63,7 +63,7 @@
 <ul>
   <li><strong><code>script-src</code></strong>: solo los scripts con el nonce y, por <code>'strict-dynamic'</code>, los que ellos carguen. <code>'unsafe-inline'</code> y <code>https:</code> solo cuentan en navegadores antiguos sin nonces: uno que entiende el nonce los ignora.</li>
   <li><strong><code>style-src</code></strong>: las hojas del propio origen y los estilos en línea, que usan los componentes (<a href="/docs/styles#style-attribute">El CSS de un componente</a>).</li>
-  <li><strong><code>default-src</code> e <code>img-src</code></strong>: todo lo demás, del propio origen; las imágenes, también en <code>data:</code>.</li>
+  <li><strong><code>default-src</code> e <code>img-src</code></strong>: todo lo demás solo puede venir del propio origen, y las imágenes pueden venir también de <code>data:</code>.</li>
   <li><strong><code>object-src</code>, <code>base-uri</code> y <code>frame-ancestors</code></strong> a <code>'none'</code>: sin plugins, sin un <code>&lt;base&gt;</code> que cambie a dónde apuntan los enlaces y sin que otra web meta la tuya en un marco.</li>
   <li><strong><code>require-trusted-types-for</code> y <code>trusted-types</code></strong>: el HTML solo entra por una política con nombre (<a href="/docs/security/trusted-types">HTML seguro</a>).</li>
 </ul>
@@ -85,11 +85,11 @@
 &lt;/head&gt;</code></pre>
 </ui-code>
 
-<p>No hace falta tocar <code>script-src</code>: con <code>'strict-dynamic'</code>, lo que cuenta es el nonce y no el host. Lo que ese script pida después con <code>fetch</code> sí sigue a <code>connect-src</code>, que aquí es <code>default-src 'self'</code>: si llama a su servidor, añade su host.</p>
+<p>No hace falta tocar <code>script-src</code>: con <code>'strict-dynamic'</code>, lo que cuenta es el nonce y no el host. Lo que ese script pida después con <code>fetch</code> sí depende de <code>connect-src</code>. La plantilla no la escribe, así que vale lo que dice <code>default-src 'self'</code>: si el script llama a su propio servidor, añade el host de ese servidor.</p>
 
 <h2 id="origin">Añadir un origen</h2>
 
-<p>Un origen de fuera es un host más al final de su directiva. Para las imágenes de un CDN:</p>
+<p>Para permitir un origen de fuera, añade su host al final de la directiva que le toca. Para las imágenes de un CDN:</p>
 
 <ui-code .path="page.headers">
 <pre><code>  img-src 'self' data: https://images.example.com</code></pre>
@@ -97,7 +97,7 @@
 
 <h2 id="checks">Lo que falta y lo que sobra</h2>
 
-<p>Cada pieza de Fudic declara qué pone en la página: un script, un estilo en línea, la política de Trusted Types. El build junta lo que de verdad ha puesto, lee la política como la lee el navegador y avisa de tres cosas, en el build y en el editor:</p>
+<p>Cada pieza de Fudic declara qué pone en la página: un script, un estilo en línea, la política de Trusted Types. El build junta lo que de verdad se ha puesto, lee la política como la lee el navegador y avisa de tres cosas, que el editor también enseña:</p>
 
 <ul>
   <li><strong>Lo que la política bloquea</strong> y Fudic necesita: si quitas <code>'nonce-&#123;nonce&#125;'</code> de <code>script-src</code>, es un error que nombra lo que dejaría de cargar, como el runtime. La bombilla del editor lo vuelve a poner.</li>
@@ -105,7 +105,7 @@
   <li><strong>Lo que ya nada necesita</strong>: si dejas de usar todo lo que pinta HTML, <code>trusted-types fudic</code> sobra. La bombilla lo quita.</li>
 </ul>
 
-<p>Un navegador ignora lo que la propia política hace inútil, y el editor también: <code>'unsafe-inline'</code> junto a un nonce no es un aviso.</p>
+<p>El navegador ignora lo que la propia política deja sin efecto, y el editor también lo ignora: <code>'unsafe-inline'</code> junto a un nonce no da aviso.</p>
 
 <h2 id="dev">En desarrollo</h2>
 

@@ -35,6 +35,8 @@
 
 <h1>Eventos</h1>
 
+<p>Un evento se escucha con <code>@@</code> delante de su nombre, y su handler es TypeScript completo. Esta página explica también cómo escuchar en una lista y cómo avisar a toda la página con el bus.</p>
+
 <h2 id="listen">Escuchar un evento</h2>
 
 <p><code>@@</code> delante del nombre de un evento lo conecta con una función de <code>@@code</code>:</p>
@@ -46,7 +48,7 @@
 </ui-code>
 
 <ul>
-  <li>Con <code>@@save</code>, la función recibe el evento; con <code>@@remove(item.id)</code>, lo que le pasas. <code>$event</code> es el evento.</li>
+  <li>Con <code>@@save</code>, la función recibe el evento. Con <code>@@remove(item.id)</code>, recibe lo que le pasas, y <code>$event</code> es el evento.</li>
   <li>Vale cualquier evento del DOM y cualquier evento propio con guion.</li>
   <li>Los handlers son TypeScript completo, porque solo se ejecutan en el navegador.</li>
   <li>No hay modificadores como <code>.prevent</code>: el handler llama a <code>preventDefault()</code> cuando lo necesita, como en cualquier código del DOM.</li>
@@ -89,7 +91,7 @@
 
 <h2 id="event-bus">El bus de eventos</h2>
 
-<p>Para que un componente avise a su padre, se le pasa una función (<a href="/docs/template-syntax/components#function-prop">Componentes</a>). Para avisar a cualquiera de la página, está el bus: <code>emit</code> lo anuncia y <code>bus:</code> lo recibe.</p>
+<p>Para que un componente avise a su padre, se le pasa una función (<a href="/docs/template-syntax/components#function-prop">Componentes</a>). Para avisar a cualquiera de la página, está el bus: <code>emit</code> anuncia un evento y <code>bus:</code> lo recibe.</p>
 
 <ui-code .path="src/components/miapp-products/miapp-products.fud">
 <pre><code>@@code &#123;

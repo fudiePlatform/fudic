@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate layout</code></h1>
 
-<p>Crea un layout en <code>src/layouts</code>, el marco en el que se escriben las páginas de debajo, y su test unitario.</p>
+<p>Crea un layout en <code>src/layouts</code>, y su test unitario. Un layout es el marco en el que se escriben las páginas que tiene debajo.</p>
 
 <ui-code>
 <pre><code>fudic generate layout &lt;name&gt;</code></pre>
@@ -72,7 +72,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -106,7 +106,7 @@ fudic g l docs --sections nav,aside</code></pre>
 
 <h2 id="details">Detalles</h2>
 
-<p>En una librería, las apps que lo usan lo enlazan por el nombre del paquete: <code>&lt;link rel="layout" href="@@shop/ui/layouts/main.fud"&gt;</code>.</p>
+<p>Si el layout está en una librería, las apps que lo usan lo enlazan por el nombre del paquete: <code>&lt;link rel="layout" href="@@shop/ui/layouts/main.fud"&gt;</code>.</p>
 
 <h2 id="guide">En la guía</h2>
 

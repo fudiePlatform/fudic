@@ -36,6 +36,8 @@
 
 <h1>Expresiones y control de flujo</h1>
 
+<p>Una expresión escribe un valor en la plantilla, y el control de flujo decide qué se pinta y cuántas veces. Las dos usan la <code>@@</code>.</p>
+
 <h2 id="write-a-value">Escribir un valor</h2>
 
 <p><code>@@</code> seguido de un nombre escribe su valor. Para una operación, se usan paréntesis:</p>
@@ -76,7 +78,7 @@
   </tbody>
 </table>
 
-<p id="no-truthiness">Las dos últimas filas son porque una condición tiene que ser un booleano: <code>""</code> o <code>0</code> no cuentan como falso, ya que cada lenguaje lo decide de una forma.</p>
+<p id="no-truthiness">Las dos últimas filas se deben a que una condición tiene que ser un booleano. <code>""</code> y <code>0</code> no cuentan como falso, porque cada lenguaje lo decide de una forma distinta.</p>
 
 <p>Un cálculo largo se escribe en <code>@@code</code>, con un <a href="/docs/reactivity#computed"><code>computed</code></a>, y la plantilla solo lo lee.</p>
 

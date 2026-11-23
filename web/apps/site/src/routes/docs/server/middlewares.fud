@@ -40,18 +40,24 @@
 
 <p>Un middleware es código que envuelve a una llamada: hace algo antes, la deja seguir con <code>next</code> y puede hacer algo después. Sirve para lo que se repite en muchas funciones, como comprobar la sesión o decidir qué hacer con un error.</p>
 
-<p>En Fudic tiene dos mitades, y puede tener una, las dos o ninguna:</p>
+<p>En Fudic, un middleware puede tener una mitad de cliente, una de servidor, las dos o ninguna:</p>
 
 <ul>
   <li><strong>La de cliente</strong> se ejecuta en el navegador, alrededor de la petición: puede poner una cabecera o decidir qué hacer con la respuesta.</li>
   <li><strong>La de servidor</strong> se ejecuta alrededor del handler: puede rechazar la llamada o dejarle algo en el <code>ctx</code>.</li>
 </ul>
 
-<p>Envuelven a las funciones de servidor y también al <code>load</code> de las páginas.</p>
+<p>Los middlewares envuelven a las funciones de servidor y también al <code>load</code> de las páginas.</p>
 
 <h2 id="chain">La cadena</h2>
 
-<p>Los middlewares de una llamada forman su <strong>cadena</strong>, en tres niveles: la global, en <code>src/http.fudapi</code>; la de un fichero, en el <code>chain</code> de ese <code>.fudapi</code>; y la de una función, con <code>use</code> y <code>skip</code>.</p>
+<p>Los middlewares de una llamada forman su <strong>cadena</strong>, que tiene tres niveles:</p>
+
+<ul>
+  <li>la global, en <code>src/http.fudapi</code>;</li>
+  <li>la de un fichero, en el <code>chain</code> de ese <code>.fudapi</code>;</li>
+  <li>la de una función, con <code>use</code> y <code>skip</code>.</li>
+</ul>
 
 <ui-code .path="src/http.fudapi">
 <pre><code>chain
@@ -68,7 +74,7 @@
   id  i32</code></pre>
 </ui-code>
 
-<p id="use-skip">El primero de la lista es el de más fuera. <code>use</code> añade uno al final, <code>skip</code> quita uno heredado, y <code>skip *</code>, todos. Fudic no pone ninguno por su cuenta: la cadena es la que está escrita.</p>
+<p id="use-skip">El primero de la lista es el más externo, el que envuelve a todos los demás. <code>use</code> añade uno al final, <code>skip</code> quita uno heredado, y <code>skip *</code>, todos. Fudic no pone ninguno por su cuenta: la cadena es la que está escrita.</p>
 
 <h2 id="declare">Escribir uno</h2>
 
@@ -94,7 +100,7 @@ middleware auth
 
 <p id="adds">Una función con <code>use auth</code> lee <code>ctx.user</code> con su tipo, y una sin él no lo ve.</p>
 
-<p id="params">Un middleware puede recibir parámetros, declarados con su tipo. Quien lo usa los escribe debajo del <code>use</code>, como <code>routes</code> en el ejemplo de la cadena, y la implementación los recibe en un tercer argumento.</p>
+<p id="params">Un middleware puede recibir parámetros, declarados con su tipo. Quien lo usa los escribe debajo del <code>use</code>, como <code>routes</code> en el ejemplo de la cadena. La implementación los recibe en un tercer argumento.</p>
 
 <h2 id="catalog">Los que trae Fudic</h2>
 
@@ -102,7 +108,7 @@ middleware auth
 
 <h3 id="csrf"><code>csrf</code></h3>
 
-<p>Protege de una web ajena que llama a tus funciones con las cookies del usuario (<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">CSRF</a>). En el navegador pone una cabecera que otra web no puede poner, y en el servidor rechaza con <code>403</code> una llamada que no es <code>get</code> y le falta, o que viene de otro sitio. <code>fudic add http</code> lo deja en la cadena global.</p>
+<p>Protege de una web ajena que llama a tus funciones con las cookies del usuario (<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">CSRF</a>). En el navegador pone una cabecera que otra web no puede poner, y en el servidor rechaza con <code>403</code> dos tipos de llamada: la que no es <code>get</code> y no lleva esa cabecera, y la que viene de otro sitio. <code>fudic add http</code> lo deja en la cadena global.</p>
 
 <p>Con <code>token true</code> debajo, la cabecera lleva además un token firmado, que necesita un secreto en <code>FUDIC_SECRET</code>.</p>
 
@@ -116,7 +122,7 @@ middleware auth
   <li>Una redirección se sigue.</li>
 </ul>
 
-<p>Deja pasar a quien llamó los errores de un formulario y los que la función declara en <code>catches</code>. Sin <code>error-pages</code>, todo error llega a quien llamó.</p>
+<p><code>error-pages</code> no toca los errores de un formulario ni los que la función declara en <code>catches</code>: llegan a quien llamó. Sin <code>error-pages</code>, todo error llega a quien llamó.</p>
 
 <h3 id="json"><code>json</code></h3>
 
@@ -125,7 +131,7 @@ middleware auth
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li id="compress"><code>compress gzip 200</code>, en la cadena o en una función, comprime lo que sube el navegador cuando pasa de 200 bytes, y solo si sale más pequeño. <code>compress off</code> lo quita. Un formulario con ficheros nunca se comprime.</li>
+  <li id="compress"><code>compress gzip 200</code>, en la cadena o en una función, comprime lo que sube el navegador cuando pasa de 200 bytes. Solo lo manda comprimido si sale más pequeño. <code>compress off</code> lo quita. Un formulario con ficheros nunca se comprime.</li>
   <li>Un middleware puede declarar sus propios <code>fails</code>, como una función.</li>
   <li>Una librería añade los suyos igual, en su carpeta <code>fudapi/</code>.</li>
 </ul>

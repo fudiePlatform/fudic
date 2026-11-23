@@ -32,7 +32,7 @@
 
 <h1>La referencia</h1>
 
-<p>Cada export que usa una app, con su firma, qué hace y sus opciones. La guía explica cómo se usa cada cosa; esta parte dice exactamente qué hay. Cada entrada enlaza a la página de la guía que la explica.</p>
+<p>La referencia recoge cada export que usa una app: su firma, qué hace y sus opciones. La guía explica cómo se usa cada cosa; esta parte dice exactamente qué hay. Cada entrada enlaza a la página de la guía que la explica.</p>
 
 <p>Solo están los paquetes que importa quien hace una app. El compilador, el plugin de Vite, el language server y el resto son piezas internas: los usa Fudic, no tu código.</p>
 

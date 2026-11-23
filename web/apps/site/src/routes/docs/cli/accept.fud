@@ -5,11 +5,11 @@
 
 <head>
   <title>fudic accept · Fudic</title>
-  <meta name="description" content="fudic accept apunta en el .fudlog que el cliente aceptó una pieza, y etiqueta el commit.">
+  <meta name="description" content="fudic accept deja constancia en el .fudlog de que el cliente aceptó una pieza, y etiqueta el commit.">
   <link rel="canonical" href="https://fudic.dev/docs/cli/accept">
   <meta property="og:type" content="article">
   <meta property="og:title" content="fudic accept · Fudic">
-  <meta property="og:description" content="fudic accept apunta en el .fudlog que el cliente aceptó una pieza, y etiqueta el commit.">
+  <meta property="og:description" content="fudic accept deja constancia en el .fudlog de que el cliente aceptó una pieza, y etiqueta el commit.">
   <meta property="og:url" content="https://fudic.dev/docs/cli/accept">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -35,7 +35,7 @@
 
 <h1><code>fudic accept</code></h1>
 
-<p>Apunta en el <code>.fudlog</code> de una pieza que el cliente la aceptó, y etiqueta el commit en el que estás como <code>accepted/&lt;name&gt;/&lt;date&gt;</code>.</p>
+<p>Apunta que el cliente aceptó una pieza en el <code>.fudlog</code> de esa pieza. Además, etiqueta el commit en el que estás como <code>accepted/&lt;name&gt;/&lt;date&gt;</code>.</p>
 
 <ui-code>
 <pre><code>fudic accept &lt;piece&gt; "&lt;text&gt;"</code></pre>
@@ -64,7 +64,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

@@ -43,12 +43,12 @@
 <h2 id="files">Tres ficheros</h2>
 
 <ul>
-  <li><strong><code>page.headers</code></strong>: las cabeceras de cada página. Las manda el servidor y las pone también el Service Worker cuando pinta una página él.</li>
+  <li><strong><code>page.headers</code></strong>: las cabeceras de cada página. Las manda el servidor, y también el Service Worker cuando es él quien pinta la página.</li>
   <li><strong><code>sw.headers</code></strong>: las del propio Service Worker, que tiene su política aparte (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>).</li>
   <li><strong><code>assets.headers</code></strong>: las de los ficheros estáticos, por ruta. Casi siempre, cuánto guardarlos en caché (<a href="/docs/performance/caching#headers">Las cachés del navegador</a>).</li>
 </ul>
 
-<p><code>fudic new</code> crea los tres. Si borras uno, vale su plantilla, no «sin cabeceras». Un fichero con errores no vuelve a la plantilla: el editor y el build dicen dónde está el error.</p>
+<p><code>fudic new</code> crea los tres. Si borras uno, Fudic usa su plantilla y la app no se queda sin cabeceras. Un fichero con errores, en cambio, no vuelve a la plantilla: el editor y el build dicen dónde está el error.</p>
 
 <p>Son texto y no código de Node. El servidor de Fudic hoy está implementado en TypeScript; los de C#, Java, Go, Rust y Python están diseñados para leer los mismos ficheros.</p>
 
@@ -69,7 +69,7 @@ Content-Security-Policy:
   <li><strong><code>#</code></strong> empieza un comentario, en su propia línea.</li>
 </ul>
 
-<p>En <code>assets.headers</code>, una ruta en la primera columna abre un bloque y sus cabeceras van sangradas debajo. Gana la ruta más concreta, cabecera a cabecera, y un valor vacío no envía esa cabecera.</p>
+<p>En <code>assets.headers</code>, una ruta en la primera columna abre un bloque y sus cabeceras van sangradas debajo. Si varias rutas casan, gana la más concreta, cabecera a cabecera. Una cabecera con el valor vacío no se envía.</p>
 
 <h2 id="page">Lo que trae <code>page.headers</code></h2>
 
@@ -82,8 +82,8 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
 </ui-code>
 
 <ul>
-  <li><strong><code>Referrer-Policy</code></strong>: a otra web solo le dice de qué origen viene el usuario, no la página. Dentro de tu web sí manda la ruta, y Fudic la usa para saber a dónde vuelve <code>back</code> en la <a href="/docs/routing/error-page#data">página de error</a>.</li>
-  <li><strong><code>Cross-Origin-Opener-Policy</code></strong>: una ventana de otra web que abras desde la tuya, o que abra la tuya, no tiene acceso a ella por <code>window.opener</code>.</li>
+  <li><strong><code>Referrer-Policy</code></strong>: con ella, el navegador solo le dice a otra web de qué origen viene el usuario, no de qué página. Dentro de tu web sí manda la ruta, y Fudic la usa para saber a dónde vuelve <code>back</code> en la <a href="/docs/routing/error-page#data">página de error</a>.</li>
+  <li><strong><code>Cross-Origin-Opener-Policy</code></strong>: una ventana de otra web que abras desde la tuya, o que abra la tuya, no puede tocar tu página por <code>window.opener</code>.</li>
   <li id="hsts"><strong><code>Strict-Transport-Security</code></strong>: durante dos años, el navegador solo entra por HTTPS, también en los subdominios. Con <code>preload</code>, puedes apuntar el dominio en la <a href="https://hstspreload.org/" target="_blank" rel="noopener">lista de precarga</a> que traen los navegadores, y así ni la primera visita va por HTTP. Fudic solo la manda en las respuestas por HTTPS.</li>
 </ul>
 
@@ -111,7 +111,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
   <li><strong>En el editor</strong>, una línea que no se entiende es <a href="/docs/reference/diagnostics/FUD1540"><code>FUD1540</code></a>, un nombre no válido o repetido <a href="/docs/reference/diagnostics/FUD1541"><code>FUD1541</code></a>, una cabecera de Fudic <a href="/docs/reference/diagnostics/FUD1542"><code>FUD1542</code></a> y un valor que la cabecera no admite <a href="/docs/reference/diagnostics/FUD1543"><code>FUD1543</code></a>.</li>
   <li><strong>Un <code>Referrer-Policy</code></strong> que no manda la ruta (<code>no-referrer</code>, <code>origin</code>, <code>strict-origin</code>) deja vacío <code>back</code>: <a href="/docs/reference/diagnostics/FUD1549"><code>FUD1549</code></a>.</li>
   <li><strong><code>preload</code></strong> sin un <code>max-age</code> de un año o más, o sin <code>includeSubDomains</code>, no entra en la lista: <a href="/docs/reference/diagnostics/FUD1550"><code>FUD1550</code></a>.</li>
-  <li><strong>En una librería</strong>, que nadie sirve, un <code>.headers</code> no se aplica a nada, y tampoco un <code>sw.headers</code> en una app sin <code>sw.json</code>: <a href="/docs/reference/diagnostics/FUD1554"><code>FUD1554</code></a>.</li>
+  <li><strong>Un <code>.headers</code> no se aplica a nada</strong> en una librería, porque nadie la sirve, ni un <code>sw.headers</code> en una app sin <code>sw.json</code>: <a href="/docs/reference/diagnostics/FUD1554"><code>FUD1554</code></a>.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

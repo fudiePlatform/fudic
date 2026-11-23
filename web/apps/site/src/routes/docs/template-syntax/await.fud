@@ -6,11 +6,11 @@
 
 <head>
   <title>@@await · Fudic</title>
-  <meta name="description" content="@@await en Fudic: la página sale en cuanto llega lo rápido, y cada bloque se pinta cuando llega su dato, sin JavaScript. Y el estándar que lo emitirá: template for.">
+  <meta name="description" content="@@await en Fudic: la página sale en cuanto llegan los datos rápidos, y cada bloque se pinta cuando llega su dato, sin JavaScript. Y el estándar que lo emitirá: template for.">
   <link rel="canonical" href="https://fudic.dev/docs/template-syntax/await">
   <meta property="og:type" content="article">
   <meta property="og:title" content="@@await · Fudic">
-  <meta property="og:description" content="La página sale en cuanto llega lo rápido, y cada bloque se pinta cuando llega su dato.">
+  <meta property="og:description" content="La página sale en cuanto llegan los datos rápidos, y cada bloque se pinta cuando llega su dato.">
   <meta property="og:url" content="https://fudic.dev/docs/template-syntax/await">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -37,11 +37,11 @@
 
 <h1><code>@@await</code></h1>
 
-<p>Una página que espera a todos sus datos no envía nada hasta que termina la consulta más lenta. Con <code>@@await</code>, la página sale en cuanto tiene lo rápido, y cada bloque se pinta en su sitio cuando llega su dato, sin JavaScript.</p>
+<p>Una página que espera a todos sus datos no envía nada hasta que termina la consulta más lenta. Con <code>@@await</code>, la página sale en cuanto tiene los datos rápidos, y cada bloque se pinta en su sitio cuando llega su dato, sin JavaScript.</p>
 
 <h2 id="later-fields">Cómo se usa</h2>
 
-<p>En el <code>.fudapi</code> de la página, un campo marcado con <code>later</code> es uno que llega después (<a href="/docs/routing/data">Los datos de la página</a>):</p>
+<p>En el <code>.fudapi</code> de la página, un campo marcado con <code>later</code> llega después (<a href="/docs/routing/data">Los datos de la página</a>):</p>
 
 <ui-code .path="src/routes/dashboard.fudapi">
 <pre><code>load ssr
@@ -76,14 +76,14 @@
 
 <p>Las promesas arrancan todas a la vez, pero los bloques se pintan en el orden del documento: uno espera al anterior. Pon lo más lento al final.</p>
 
-<p>No hay rama de «Cargando…»: quitarla al llegar el dato necesitaría JavaScript. Si quieres que el hueco no salte, resérvalo con CSS (una altura mínima).</p>
+<p>No hay rama de «Cargando…»: quitarla al llegar el dato necesitaría JavaScript. Para que la página no salte cuando llegue el dato, resérvale el hueco con CSS, por ejemplo con una altura mínima.</p>
 
 <h2 id="status">Errores y status</h2>
 
 <p>En cuanto sale el primer byte, la respuesta ya es un <code>200</code> y no se puede cambiar. Por eso:</p>
 
 <ul>
-  <li><strong>Lo que decide si la página existe</strong> (no encontrada, sin permiso, redirigir) se resuelve en <code>load</code>, antes de devolver nada.</li>
+  <li><strong>Lo que decide si la página existe</strong> (si no se encuentra, si falta permiso o si hay que redirigir) se resuelve en <code>load</code>, antes de devolver nada.</li>
   <li><strong>Lo que falla en un campo <code>later</code></strong> va al <code>@@catch</code> de su bloque. Sin <code>@@catch</code>, el bloque no pinta nada y la página sigue.</li>
 </ul>
 
@@ -91,11 +91,11 @@
 
 <p>Solo en el cuerpo de una ruta (<a href="/docs/reference/diagnostics/FUD1322"><code>FUD1322</code></a>). Un componente recibe el valor ya resuelto, como una prop, así que no sabe si llegó antes o después.</p>
 
-<p id="hydration">Cada bloque trae sus datos de hidratación, así que sus componentes responden en cuanto llega, aunque el resto siga en camino.</p>
+<p id="hydration">Cada bloque trae sus datos de hidratación, así que sus componentes responden en cuanto llega el bloque, aunque el resto siga en camino.</p>
 
 <h2 id="template-for">El estándar: <code>&lt;template for&gt;</code></h2>
 
-<p>Para pintar cada bloque en cuanto llega, sin esperar al anterior, otros frameworks lo envían al final y lo mueven con un script. Fudic no lo hace, porque el estándar ya trae la pieza: el atributo <a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for" target="_blank" rel="noopener"><code>for</code></a> de <code>&lt;template&gt;</code>. El navegador coloca el contenido en su hueco, llegue cuando llegue:</p>
+<p>Otros frameworks pintan cada bloque en cuanto llega, sin esperar al anterior: lo envían al final y lo mueven a su sitio con un script. Fudic no usa ese script, porque el estándar ya trae la pieza: el atributo <a href="https://html.spec.whatwg.org/multipage/scripting.html#attr-template-for" target="_blank" rel="noopener"><code>for</code></a> de <code>&lt;template&gt;</code>. El navegador coloca el contenido en su hueco, llegue cuando llegue:</p>
 
 <ui-code>
 <pre><code>&lt;section&gt;
@@ -108,7 +108,7 @@
 </ui-code>
 
 <ui-note .kind="important">
-  <p>Ya está en el estándar, y Chrome y Edge traen el soporte inicial. Cuando esté en todos los navegadores, Fudic lo emitirá por debajo de <code>@@await</code>, y tu vista no cambiará. Hasta entonces, pinta en orden, que funciona en cualquier navegador.</p>
+  <p><code>&lt;template for&gt;</code> ya está en el estándar, y Chrome y Edge traen el soporte inicial. Cuando esté en todos los navegadores, Fudic lo emitirá por debajo de <code>@@await</code>, y tu vista no cambiará. Hasta entonces, Fudic pinta los bloques en orden, que funciona en cualquier navegador.</p>
 </ui-note>
 
 <h2 id="mdn">El estándar, en MDN</h2>

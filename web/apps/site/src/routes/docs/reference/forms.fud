@@ -35,7 +35,7 @@
 
 <h1><code>@@fudic/forms</code></h1>
 
-<p>El formulario que declara un <code>.fudapi</code> llega ya hecho, desde <code>fudic:forms/&lt;id&gt;</code>: es un objeto con sus campos por nombre y una API que empieza por <code>$</code>. De <code>@@fudic/forms</code> solo se importan tipos. Guía: <a href="/docs/forms">El formulario</a>.</p>
+<p>El formulario que declara un <code>.fudapi</code> llega ya hecho y se importa de <code>fudic:forms/&lt;id&gt;</code>. Es un objeto con sus campos por nombre y una API cuyos miembros empiezan por <code>$</code>. De <code>@@fudic/forms</code> solo se importan tipos. Guía: <a href="/docs/forms">El formulario</a>.</p>
 
 <ui-code .path="src/components/user-editor.fud">
 <pre><code>@@code &#123;
@@ -52,7 +52,7 @@
 
 <ul>
   <li><strong><code>$value()</code></strong>: el valor entero, por nombre.</li>
-  <li><strong><code>$positional()</code></strong>: el valor como array, en el orden en que se declaró; un grupo es un array dentro. <code>undefined</code> sale <code>null</code>.</li>
+  <li><strong><code>$positional()</code></strong>: el valor como array, en el orden en que se declaró; cada grupo es un array anidado. Un <code>undefined</code> sale como <code>null</code>.</li>
   <li><strong><code>$fields()</code></strong>: los nombres de los campos, en orden.</li>
   <li><strong><code>$schema</code></strong>: la declaración tal cual. No es reactiva.</li>
 </ul>
@@ -60,7 +60,7 @@
 <h3 id="write">Escribir</h3>
 
 <ul>
-  <li><strong><code>$set(value)</code></strong>: lo escribe entero, por nombre o en array. Es una carga: el valor nuevo pasa a ser el de partida, así que nada queda modificado ni tocado, y se limpian los errores. Un campo que falta o sobra lanza un error antes de escribir nada.</li>
+  <li><strong><code>$set(value)</code></strong>: lo escribe entero, por nombre o en array. Cuenta como una carga: el valor nuevo pasa a ser el de partida, así que ningún campo queda modificado ni tocado. También limpia los errores. Un campo que falta o sobra lanza un error antes de escribir nada.</li>
   <li><strong><code>$patch(value)</code></strong>: escribe solo lo que trae, a cualquier profundidad. Los campos que cambia quedan modificados.</li>
   <li><strong><code>$reset()</code></strong>: vuelve a los valores declarados y limpia errores, tocados, modificados, el resumen y <code>$submitted</code>.</li>
   <li><strong><code>$touch()</code></strong>: marca como tocados todos los campos.</li>
@@ -70,7 +70,7 @@
 
 <ul>
   <li><strong><code>$validate(options?)</code></strong>: ejecuta las reglas, publica los errores y resuelve si es válido. <a href="#validate-options"><code>ValidateOptions</code></a>.</li>
-  <li><strong><code>$valid()</code></strong>: si se cumplen todas las reglas, según el <code>validity</code> de cada campo. No publica nada: es para la vista, no lo que decide el envío.</li>
+  <li><strong><code>$valid()</code></strong>: si se cumplen todas las reglas, según el <code>validity</code> de cada campo. No publica nada: sirve a la vista, pero no decide el envío.</li>
   <li><strong><code>$pending()</code></strong>: si alguna regla asíncrona no ha contestado.</li>
   <li><strong><code>$errors()</code></strong>: los errores de la última validación, por ruta (<code>"access.password"</code>), o <code>null</code>.</li>
   <li><strong><code>$setErrors(errors, summary?)</code></strong>: publica errores que vienen de fuera, por ruta. Una ruta que no existe se ignora; <code>null</code> lo limpia todo.</li>
@@ -80,8 +80,8 @@
 
 <ul>
   <li><strong><code>$summary()</code></strong>: el error del propio formulario, el de sus reglas de resumen, o <code>null</code>.</li>
-  <li><strong><code>$message()</code></strong> y <strong><code>$messages()</code></strong>: el primer texto de ese resumen, o <code>""</code>, y todos.</li>
-  <li><strong><code>$issues()</code></strong>: sus textos y, después de un envío, el error visible de cada campo, en orden. Cada uno es un <a href="#issue"><code>Issue</code></a>. Es lo que pinta un resumen con <code>fields</code>.</li>
+  <li><strong><code>$message()</code></strong> y <strong><code>$messages()</code></strong>: <code>$message()</code> devuelve el primer texto de ese resumen, o <code>""</code>, y <code>$messages()</code> los devuelve todos.</li>
+  <li><strong><code>$issues()</code></strong>: los textos del resumen y, después de un envío, el error visible de cada campo, en orden. Cada uno es un <a href="#issue"><code>Issue</code></a>. Es lo que pinta un resumen con <code>fields</code>.</li>
 </ul>
 
 <h3 id="send">El envío</h3>
@@ -101,7 +101,7 @@
 
 <h2 id="control">Un campo</h2>
 
-<p><code>Control&lt;T&gt;</code>. El que genera el <code>.fudapi</code> es un <code>TypedControl&lt;T&gt;</code>, que además dice su tipo. Guía: <a href="/docs/forms#state">El formulario</a>.</p>
+<p>Un campo es un <code>Control&lt;T&gt;</code>. El que genera el <code>.fudapi</code> es un <code>TypedControl&lt;T&gt;</code>, que además dice su tipo. Guía: <a href="/docs/forms#state">El formulario</a>.</p>
 
 <ul>
   <li><strong><code>name()</code></strong>: lee el valor. Es la única forma de leerlo.</li>
@@ -113,7 +113,7 @@
   <li><strong><code>touch()</code></strong>: lo marca como tocado.</li>
   <li><strong><code>reset(v?)</code></strong>: vuelve al valor declarado, o a <code>v</code>, que pasa a ser el de partida.</li>
   <li><strong><code>validate(options?)</code></strong>: valida solo este campo.</li>
-  <li><strong><code>validateOn()</code></strong>: cuándo valida, el suyo o el de su formulario.</li>
+  <li><strong><code>validateOn()</code></strong>: cuándo valida: con su propio <code>validate-on</code> o con el de su formulario.</li>
   <li><strong><code>type</code></strong>: <code>"str"</code>, <code>"bool"</code>, <code>"date"</code>, <code>"file"</code>, <code>"file[]"</code>, <code>"arr"</code> o uno de los numéricos (<code>"u8"</code>, <code>"i32"</code>, <code>"f64"</code>…). En un <code>arr</code>, <code>of</code> dice el tipo de cada elemento.</li>
 </ul>
 
@@ -154,13 +154,13 @@ type ErrorMap = Readonly&lt;Record&lt;string, Errors&gt;&gt;;     // &#123; "acc
 <pre><code>type Messages = Readonly&lt;Record&lt;string, (value: unknown) =&gt; string&gt;&gt;</code></pre>
 </ui-code>
 
-<p>De cada regla, su frase. Se escriben en el bloque <code>messages</code> del <code>.fudapi</code> (<a href="/docs/forms/validation#messages">Validación y validez</a>).</p>
+<p>Cada regla tiene su frase. Se escriben en el bloque <code>messages</code> del <code>.fudapi</code> (<a href="/docs/forms/validation#messages">Validación y validez</a>).</p>
 
 <h3 id="validate-options"><code>ValidateOptions</code></h3>
 
 <ul>
   <li><strong><code>server</code></strong>: si se ejecutan también las reglas que solo corren en el servidor. Por defecto, no.</li>
-  <li><strong><code>ctx</code></strong>: el <code>ctx</code> de la petición, que recibe una regla del servidor.</li>
+  <li><strong><code>ctx</code></strong>: el <code>ctx</code> de la petición, que se pasa a las reglas del servidor.</li>
 </ul>
 
 <h3 id="constants"><code>DEFAULT_CATCHES</code>, <code>SERVER_RULE</code> y <code>errorText</code></h3>
@@ -178,7 +178,7 @@ type ErrorMap = Readonly&lt;Record&lt;string, Errors&gt;&gt;;     // &#123; "acc
 <ul>
   <li><strong><code>control=@@node</code></strong>: en un <code>&lt;form&gt;</code>, el formulario; en un <code>&lt;input&gt;</code>, un <code>&lt;textarea&gt;</code> o un <code>&lt;select&gt;</code>, un campo, según su <code>type</code>; en un <code>&lt;fieldset&gt;</code> u otro elemento, un grupo; en un componente, se le pasa el control.</li>
   <li><strong><code>error=@@control</code></strong>: el elemento que muestra el error del campo. Fudic le pone un <code>id</code> y enlaza el campo con <code>aria-describedby</code> y <code>aria-invalid</code>.</li>
-  <li><strong><code>summary=@@form</code></strong>: el elemento que muestra el resumen como lista, con <code>aria-live="polite"</code>. Con <strong><code>fields</code></strong>, también el error de cada campo, enlazado, y recibe el foco tras un envío fallido.</li>
+  <li><strong><code>summary=@@form</code></strong>: el elemento que muestra el resumen como lista, con <code>aria-live="polite"</code>. Con <strong><code>fields</code></strong>, muestra también el error de cada campo, enlazado, y recibe el foco tras un envío fallido.</li>
   <li><strong><code>form:=@@fn</code></strong>: en el <code>&lt;form control&gt;</code>, envía a una función de servidor en vez de navegar.</li>
   <li><strong><code>@@fudic:result</code></strong> y <strong><code>@@fudic:error</code></strong>: los eventos que lanza ese envío, con <code>bubbles</code> y <code>composed</code> (<a href="/docs/forms/events">Resultado y error</a>).</li>
   <li><strong><code>formassociated</code></strong> y <strong><code>shadowrootreferencetarget</code></strong>: en el <code>&lt;template&gt;</code> raíz de un componente que hace de campo (<a href="/docs/forms/form-associated">Controles form-associated</a>).</li>

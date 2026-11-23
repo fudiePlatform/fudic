@@ -35,7 +35,7 @@
 
 <h1><code>fudic generate pipe</code></h1>
 
-<p>Crea un pipe en <code>src/pipes</code>: su contrato en <code>&lt;name&gt;.fudapi</code>, su única implementación en <code>&lt;name&gt;.ts</code>, que importan la vista, el servidor y el navegador, y su test unitario. Una vista lo usa como <code>@@(value | name)</code>.</p>
+<p>Crea un pipe en <code>src/pipes</code>: su contrato en <code>&lt;name&gt;.fudapi</code>, su implementación en <code>&lt;name&gt;.ts</code> y su test unitario. La implementación es única: la importan la vista, el servidor y el navegador. Una vista lo usa como <code>@@(value | name)</code>.</p>
 
 <ui-code>
 <pre><code>fudic generate pipe &lt;name&gt;</code></pre>
@@ -66,7 +66,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

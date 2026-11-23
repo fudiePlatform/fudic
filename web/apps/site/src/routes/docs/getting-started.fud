@@ -75,7 +75,7 @@
   <li><strong>El HTML llega pintado.</strong> Cada componente sale del servidor como <a href="#declarative-shadow-dom">Declarative Shadow DOM</a>, que el navegador muestra mientras lee la página.</li>
   <li><strong>El JavaScript llega solo donde hace falta.</strong> Un componente sin estado ni eventos se queda en HTML y CSS. El que los tiene descarga su código cuando entra en pantalla y se activa al primer clic.</li>
   <li><strong>100/100/100/100 en <a href="https://developer.chrome.com/docs/lighthouse/overview" target="_blank" rel="noopener">Lighthouse</a>, de serie.</strong> Rendimiento, accesibilidad, buenas prácticas y SEO, sin optimizar nada al final.</li>
-  <li><strong>Tu servidor, en tu lenguaje.</strong> Hoy el servidor de Fudic es Node. Pero las vistas y los contratos con el servidor están pensados para traducirse a C#, Java, Go, Rust y Python, y cuando lleguen podrás desplegar sin Node.</li>
+  <li><strong>Tu servidor, en tu lenguaje.</strong> Hoy el servidor de Fudic es Node. Pero las vistas y los contratos con el servidor están pensados para traducirse a C#, Java, Go, Rust y Python. Cuando lleguen esos servidores, podrás desplegar sin Node.</li>
 </ul>
 
 <ui-note>
@@ -112,7 +112,7 @@ npx fudic dev</code></pre>
 
 <p>La CLI crea <code>&lt;miapp-counter&gt;</code> en <code>src/components/</code>, con su test, y lo enlaza desde la página de inicio. El nombre lleva el prefijo de la app porque el estándar exige un guion en todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a>.</p>
 
-<p id="component-shape">Ábrelo. Es el esqueleto de cualquier componente: su tag envolviendo un <code>&lt;template shadowrootmode&gt;</code>, y sus estilos en un <code>&lt;style&gt;</code>.</p>
+<p id="component-shape">Ábrelo. Es el esqueleto de cualquier componente: su tag, que envuelve un <code>&lt;template shadowrootmode&gt;</code>, y sus estilos, en un <code>&lt;style&gt;</code>.</p>
 
 <h2 id="bring-it-to-life">3. Dale vida</h2>
 
@@ -150,7 +150,7 @@ npx fudic dev</code></pre>
   <li><code>@@code</code> es TypeScript, y <code>props</code> declara lo que el componente recibe: un <code>start</code> que, si no llega, vale 0.</li>
   <li><code>signal(start)</code> es un valor que avisa cuando cambia. Se lee con <code>n()</code> y se cambia con <code>n.set(…)</code>.</li>
   <li><code>@@click=@@inc</code> conecta el clic con la función, y <code>@@n()</code> escribe el valor, que se actualiza solo.</li>
-  <li><code>&lt;style&gt;</code> es CSS que solo afecta al componente. <code>shadowrootadoptedstylesheets</code> le da a su botón el aspecto del resto de la app (<a href="/docs/styles">El CSS de un componente</a>).</li>
+  <li><code>&lt;style&gt;</code> es CSS que solo afecta al componente. <code>shadowrootadoptedstylesheets</code> le da a su botón el aspecto del resto de la app. Lo explica <a href="/docs/styles">El CSS de un componente</a>.</li>
 </ul>
 
 <h2 id="use-it">4. Úsalo en la página</h2>
@@ -197,11 +197,11 @@ npx fudic dev</code></pre>
   <li><strong><code>fud-state</code></strong> guarda los valores con los que se pintó, para que el componente se active sin recalcular nada.</li>
 </ul>
 
-<p>Pulsa el botón: el 10 pasa a 11. Aunque lo pulses antes de que llegue el código, el clic no se pierde (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+<p>Pulsa el botón: el 10 pasa a 11. Aunque lo pulses antes de que llegue el código, el clic no se pierde. Lo explica <a href="/docs/reactivity/hydration">Hidratación</a>.</p>
 
 <h2 id="check-it-works">Pruébalo</h2>
 
-<p>Junto al componente, la CLI creó un <code>.fudspec</code>: sus <strong>criterios de aceptación</strong>, escritos en pasos que se leen como frases. Escribe lo que tiene que pasar:</p>
+<p>Junto al componente, la CLI creó un <code>.fudspec</code>: sus <strong>criterios de aceptación</strong>, escritos en pasos que se leen como frases. Escribe en él lo que tiene que pasar:</p>
 
 <ui-code .path="src/components/miapp-counter/miapp-counter.fudspec">
 <pre><code>component miapp-counter
@@ -221,7 +221,7 @@ criterion suma-uno-al-pulsar
     text output "11"</code></pre>
 </ui-code>
 
-<p><code>props diez</code> son las props con las que se monta, y van en su fixture, al lado:</p>
+<p><code>props diez</code> son las props con las que se monta el componente. Están en su fixture, al lado del <code>.fudspec</code>:</p>
 
 <ui-code .path="src/components/miapp-counter/miapp-counter.fixture.ts">
 <pre><code>export default &#123;
@@ -232,12 +232,12 @@ criterion suma-uno-al-pulsar
 <p>Ahora, con el <code>.fud</code> abierto en VS Code, pulsa <strong>Ctrl+K V</strong>. Al lado del editor se abre el <strong>workbench</strong>:</p>
 
 <ul>
-  <li><strong>Ves el componente.</strong> Cada criterio es una tarjeta con sus pasos, su veredicto y una captura de lo que vio un navegador de verdad, con un recuadro en cada elemento que tocó un paso.</li>
-  <li><strong>Verde o rojo en cada guardado.</strong> Guardas el componente o el criterio, y se vuelven a ejecutar. Los que fallan salen primero, con lo que se esperaba frente a lo que hubo.</li>
+  <li><strong>Ves el componente.</strong> Cada criterio es una tarjeta con sus pasos, su veredicto y una captura de lo que vio un navegador de verdad. En la captura, cada elemento que tocó un paso lleva un recuadro.</li>
+  <li><strong>Verde o rojo en cada guardado.</strong> Cada vez que guardas el componente o un criterio, los criterios se vuelven a ejecutar. Los que fallan salen primero, con lo que se esperaba frente a lo que hubo.</li>
   <li><strong>Lo puedes tocar.</strong> <em>Live</em> abre el componente vivo, para pulsarlo tú.</li>
 </ul>
 
-<p>Los mismos criterios se ejecutan desde la terminal, y en la integración continua: <code>npx fudic spec</code>. Y para probar el código por dentro, la CLI creó también un test unitario, que se ejecuta con <code>npx fudic test</code>.</p>
+<p>Los mismos criterios se ejecutan con <code>npx fudic spec</code>, en la terminal o en la integración continua. Y para probar el código por dentro, la CLI creó también un test unitario, que se ejecuta con <code>npx fudic test</code>.</p>
 
 <h2 id="inside-the-app">Qué hay dentro</h2>
 
@@ -255,10 +255,10 @@ criterion suma-uno-al-pulsar
     └── browser/      el código que solo corre en el navegador</code></pre>
 </ui-code>
 
-<p id="page-and-layout">Una página es un <code>.fud</code> en <code>src/routes/</code>, y su URL sale de dónde está. Enlaza un layout, que es el documento completo con su <code>&lt;html&gt;</code> y su <code>&lt;head&gt;</code> (<a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>).</p>
+<p id="page-and-layout">Una página es un <code>.fud</code> en <code>src/routes/</code>, y su URL sale de dónde está. Enlaza un layout, que es el documento completo con su <code>&lt;html&gt;</code> y su <code>&lt;head&gt;</code>. Lo explica <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>.</p>
 
 <ui-note .kind="important">
-  <p>No cambies el <code>id</code> de <code>fudic.json</code> cuando la app ya tenga visitas: el Service Worker nombra sus cachés con él, y las del id viejo se quedarían para siempre en el navegador de quien la visitó.</p>
+  <p>No cambies el <code>id</code> de <code>fudic.json</code> cuando la app ya tenga visitas. El Service Worker nombra sus cachés con ese <code>id</code>. Si cambia, las cachés del <code>id</code> viejo se quedan para siempre en el navegador de cada visitante.</p>
 </ui-note>
 
 <h2 id="declarative-shadow-dom">Qué es Declarative Shadow DOM</h2>
@@ -267,7 +267,7 @@ criterion suma-uno-al-pulsar
 
 <p>Durante años, ese árbol solo se podía crear con JavaScript. Hasta que el script cargaba, el componente era un hueco en blanco, y un servidor no podía enviarlo pintado.</p>
 
-<p><strong>Declarative Shadow DOM</strong> lo escribe directamente en el HTML, con un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode" target="_blank" rel="noopener"><code>&lt;template shadowrootmode&gt;</code></a>. El navegador lo pinta mientras lee la página, sin JavaScript. Está en Chrome, Edge, Safari y Firefox desde 2024, y es exactamente a lo que compila cada <code>.fud</code>.</p>
+<p><strong>Declarative Shadow DOM</strong> lo escribe directamente en el HTML, con un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode" target="_blank" rel="noopener"><code>&lt;template shadowrootmode&gt;</code></a>. El navegador lo pinta mientras lee la página, sin JavaScript. Está en Chrome, Edge, Safari y Firefox desde 2024. Cada <code>.fud</code> compila exactamente a eso.</p>
 
 <h2 id="why-fudic">Por qué existe Fudic</h2>
 
@@ -276,7 +276,7 @@ criterion suma-uno-al-pulsar
 <p>Hoy esas piezas existen, y Fudic nace para usarlas:</p>
 
 <ul>
-  <li><strong>El estándar primero.</strong> Lo que el navegador ya hace, Fudic no lo reinventa. Lo que está en camino, como <code>shadowrootadoptedstylesheets</code>, lo cubre con un polyfill pequeño que sobrará cuando llegue (<a href="/docs/styles#one-copy">Una copia por página</a>).</li>
+  <li><strong>El estándar primero.</strong> Lo que el navegador ya hace, Fudic no lo reinventa. Lo que está en camino, como <code>shadowrootadoptedstylesheets</code>, lo cubre con un polyfill pequeño que sobrará cuando llegue. Lo explica <a href="/docs/styles#one-copy">Una copia por página</a>.</li>
   <li><strong>Componentes web pintados en el servidor</strong>, siempre, no como opción avanzada.</li>
   <li><strong>100/100/100/100 en Lighthouse</strong>, de serie.</li>
   <li><strong>Sin atarte a Node.</strong> Muchas empresas no quieren poner Node en producción, y no deberían tener que hacerlo para pintar HTML.</li>
@@ -287,8 +287,8 @@ criterion suma-uno-al-pulsar
 <p>Hoy, una app de Fudic se despliega en Node. Pero todo lo que ejecuta el servidor está diseñado para no depender de él:</p>
 
 <ul>
-  <li><strong>La vista</strong> solo admite lo que se puede traducir con el mismo resultado a otros lenguajes, así que el mismo <code>.fud</code> se podrá pintar en un servidor de C#, Java, Go, Rust o Python (<a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>).</li>
-  <li><strong>El contrato con el servidor</strong>, el <code>.fudapi</code>, no es código de ningún lenguaje, y el formato en que viajan las llamadas está documentado. Cualquier backend que lo cumpla sirve a la misma página (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</li>
+  <li><strong>La vista</strong> solo admite lo que se puede traducir a otros lenguajes con el mismo resultado. Así, el mismo <code>.fud</code> se podrá pintar en un servidor de C#, Java, Go, Rust o Python. Lo explica <a href="/docs/template-syntax#polyglot-views">Vistas políglotas</a>.</li>
+  <li><strong>El contrato con el servidor</strong>, el <code>.fudapi</code>, no es código de ningún lenguaje, y el formato en que viajan las llamadas está documentado. Cualquier backend que cumpla el contrato sirve a la misma página. Lo explica <a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>.</li>
 </ul>
 
 <p>Cuando esos servidores lleguen, podrás desplegar sin Node, en .NET o en la JVM, sin tocar una línea de tus páginas. Lo que corre en el navegador seguirá siendo TypeScript, como en cualquier web.</p>

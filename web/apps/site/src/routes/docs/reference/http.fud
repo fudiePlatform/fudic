@@ -57,7 +57,7 @@ save.handle((ctx: SaveCtx) =&gt; R | Promise&lt;R&gt;)</code></pre>
 <ul>
   <li><strong><code>load</code></strong>: los datos de la página. Un campo <code>later</code> se devuelve como promesa. Guía: <a href="/docs/routing/data">Los datos de la página</a>.</li>
   <li><strong><code>paths</code></strong>: los valores del parámetro que el build pinta como páginas.</li>
-  <li><strong><code>layout</code></strong>: las props del layout. Recibe lo que devolvió <code>load</code>, o <code>undefined</code> si la ruta no tiene, o la <a href="#error-page"><code>ErrorPage</code></a> en <code>_error.fud</code>.</li>
+  <li><strong><code>layout</code></strong>: las props del layout. Recibe lo que devolvió <code>load</code>; <code>undefined</code> si la ruta no tiene <code>load</code>; o la <a href="#error-page"><code>ErrorPage</code></a> en <code>_error.fud</code>.</li>
   <li><strong>Una función</strong>: su <code>ctx.args</code> son los argumentos, <code>ctx.query</code> los de la query y, con <code>form</code>, <code>ctx.form</code> el formulario ya validado. Guía: <a href="/docs/server/functions#handler">Funciones</a>.</li>
 </ul>
 
@@ -74,7 +74,7 @@ save.handle(async (ctx) =&gt; &#123;
 
 <h2 id="ctx">El <code>ctx</code></h2>
 
-<p><code>ServerContext</code>, lo que recibe cada handler y cada mitad de servidor de un middleware:</p>
+<p>Un middleware tiene una mitad para el servidor y otra para el navegador. <code>ServerContext</code> es lo que recibe cada handler y la mitad de servidor de cada middleware:</p>
 
 <ul>
   <li><strong><code>params</code></strong>: los parámetros de la ruta. El tipo generado los nombra, <code>ctx.params.slug</code>.</li>
@@ -87,9 +87,9 @@ save.handle(async (ctx) =&gt; &#123;
   <li><strong><code>side</code></strong>: <code>"server"</code>.</li>
 </ul>
 
-<p>Leer la sesión hace privada la respuesta: cualquier lectura de <code>ctx.cookies</code>, o de las cabeceras <code>cookie</code> o <code>authorization</code>, la manda con <code>Cache-Control: private, no-store</code>, salvo que el handler ponga la suya.</p>
+<p>Leer la sesión hace privada la respuesta. Cualquier lectura de <code>ctx.cookies</code>, o de las cabeceras <code>cookie</code> o <code>authorization</code>, la envía con <code>Cache-Control: private, no-store</code>, salvo que el handler ponga su propia cabecera <code>Cache-Control</code>.</p>
 
-<p><code>ClientContext</code> es el de la mitad del navegador de un middleware: lo mismo sin <code>params</code>, <code>cookies</code> ni <code>response</code>, con <code>headers</code> que se pueden cambiar antes de enviar, <code>catches</code>, los status que la función deja a quien llama, y <code>base</code>, la de la app.</p>
+<p><code>ClientContext</code> es el <code>ctx</code> de la mitad del navegador de un middleware. Tiene lo mismo, salvo <code>params</code>, <code>cookies</code> y <code>response</code>. Sus <code>headers</code> se pueden cambiar antes de enviar, y añade <code>catches</code>, con los status que la función deja a quien llama, y <code>base</code>, la de la app.</p>
 
 <h2 id="middlewares">Los middlewares</h2>
 
@@ -158,7 +158,7 @@ log.server(async (ctx, next) =&gt; &#123;
 <pre><code>redirect(location: string, status: 301 | 302 | 303 | 307 | 308 = 303): Redirect</code></pre>
 </ui-code>
 
-<p>Desde <code>load</code> o <code>layout</code>, es una redirección de verdad, con <code>Location</code>. Desde una función, viaja en el problema y la sigue el middleware <code>error-pages</code>; sin él, quien llama recibe el <code>Redirect</code>. Las cookies que se pusieron antes salen con ella.</p>
+<p>Desde <code>load</code> o <code>layout</code>, es una redirección de verdad, con <code>Location</code>. Lanzada desde una función, la redirección viaja en el problema y la sigue el middleware <code>error-pages</code>. Sin ese middleware, quien llama recibe el <code>Redirect</code>. Las cookies puestas antes salen con la redirección.</p>
 
 <h3 id="http-error"><code>HttpError</code>, <code>ValidationError</code> y <code>Redirect</code></h3>
 
@@ -215,7 +215,7 @@ deleteCookie(ctx: ServerContext, name: string, options?: &#123; path?; domain?; 
   <li><strong><code>partitioned</code></strong>: por defecto, <code>false</code>.</li>
 </ul>
 
-<p>Lanza un <code>TypeError</code> con un nombre que no vale, con <code>sameSite: "none"</code> o <code>partitioned</code> sin <code>secure</code>, y con un <code>__Host-</code> que lleva <code>domain</code> o un <code>path</code> que no es <code>/</code>.</p>
+<p>Lanza un <code>TypeError</code> en tres casos: un nombre que no vale; <code>sameSite: "none"</code> o <code>partitioned</code> sin <code>secure</code>; y un nombre <code>__Host-</code> con <code>domain</code> o con un <code>path</code> distinto de <code>/</code>.</p>
 
 <h2 id="details">Detalles</h2>
 

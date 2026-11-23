@@ -65,7 +65,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -92,7 +92,7 @@ dry run — nothing written
 
 <h2 id="details">Detalles</h2>
 
-<p>Hay una por proyecto, y <code>fudic new</code> ya la crea. En un proyecto que ya tiene la suya, no escribe nada y lo dice.</p>
+<p>Cada proyecto tiene una sola guía, y <code>fudic new</code> ya la crea. Si el proyecto ya tiene la suya, el comando no escribe nada y avisa.</p>
 
 <h2 id="guide">En la guía</h2>
 

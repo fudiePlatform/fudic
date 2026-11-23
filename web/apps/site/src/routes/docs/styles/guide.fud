@@ -24,7 +24,6 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#what">Qué es</a></li>
         <li><a href="#pieces">Una hoja por elemento</a></li>
         <li><a href="#where">Siempre pierde</a></li>
         <li><a href="#tokens">Modo oscuro</a></li>
@@ -37,11 +36,9 @@
 
 <h1>La guía de estilos</h1>
 
-<h2 id="what">Qué es</h2>
-
 <p>La guía de estilos es el aspecto de partida de una app: colores, espacios, una fuente, un favicon y el estilo de cada elemento HTML (encabezados, enlaces, botones, tablas, formularios…). <code>fudic new</code> la crea con el proyecto.</p>
 
-<p>Es una librería del workspace, y una app la usa con solo depender de ella. Su <code>fudic.json</code> dice cuál es su hoja de entrada y su favicon:</p>
+<p>Es una librería del workspace, y una app la usa con solo depender de ella. El <code>fudic.json</code> de la guía dice cuál es su hoja de entrada y su favicon:</p>
 
 <ui-code .path="libs/guide/fudic.json">
 <pre><code>{

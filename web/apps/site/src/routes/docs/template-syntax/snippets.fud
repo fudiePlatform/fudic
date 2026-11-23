@@ -51,11 +51,11 @@
 &lt;/dl&gt;</code></pre>
 </ui-code>
 
-<p>Un texto fijo va tal cual, y un valor, con <code>@@</code>. Un parámetro puede tener valor por defecto (<code>tone: string = "info"</code>), y al usarlo se le puede dar por su nombre (<code>tone: "warning"</code>).</p>
+<p>Al usar el snippet, un texto fijo se pasa tal cual y un valor se pasa con <code>@@</code>. Un parámetro puede tener valor por defecto (<code>tone: string = "info"</code>), y se le puede pasar un valor por su nombre (<code>tone: "warning"</code>).</p>
 
 <h2 id="where-to-declare">Compartirlos</h2>
 
-<p>Un snippet que solo usa un fichero se declara en ese fichero. Para compartirlo, va en un fichero de snippets en <code>src/snippets/</code>, que crea <code>fudic g snippet ui priceTag</code>, y se enlaza con <code>&lt;link rel="snippet"&gt;</code>:</p>
+<p>Un snippet que solo usa un fichero se declara en ese fichero. Para compartirlo, va en un fichero de snippets en <code>src/snippets/</code>, que se crea con <code>fudic g snippet ui priceTag</code>. Después se enlaza con <code>&lt;link rel="snippet"&gt;</code>:</p>
 
 <ui-code .path="src/routes/pricing.fud">
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;

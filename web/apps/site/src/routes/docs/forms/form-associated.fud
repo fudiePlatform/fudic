@@ -43,7 +43,7 @@
 
 <p>Para el navegador, un componente con un <code>&lt;input&gt;</code> dentro no es un campo: un <code>&lt;label for&gt;</code> no llega al <code>&lt;input&gt;</code> de dentro, su valor no entra en el formulario y no tiene <code>:invalid</code>.</p>
 
-<p>El estándar lo resuelve con los <em>form-associated custom elements</em>: un elemento que llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals" target="_blank" rel="noopener"><code>attachInternals()</code></a> recibe lo mismo que el navegador da a sus campos: un valor para el formulario, una validez y unas etiquetas.</p>
+<p>El estándar lo resuelve con los <em>form-associated custom elements</em>. Un elemento que llama a <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals" target="_blank" rel="noopener"><code>attachInternals()</code></a> recibe lo mismo que el navegador da a sus campos: un valor para el formulario, una validez y unas etiquetas.</p>
 
 <h2 id="marker"><code>formassociated</code></h2>
 
@@ -78,7 +78,7 @@
 
 <h2 id="bridge">El label: <code>shadowrootreferencetarget</code></h2>
 
-<p>Para que un lector de pantalla diga «Alias» al llegar al <code>&lt;input&gt;</code>, el label tiene que atravesar el componente. Lo hace <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget" target="_blank" rel="noopener"><code>shadowrootreferencetarget</code></a>: lo que apunta al tag sigue hasta el elemento de dentro con ese <code>id</code>.</p>
+<p>Para que un lector de pantalla diga «Alias» al llegar al <code>&lt;input&gt;</code>, el label tiene que atravesar el componente. Lo hace <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootreferencetarget" target="_blank" rel="noopener"><code>shadowrootreferencetarget</code></a>: toda referencia que apunta al tag del componente sigue hasta el elemento de dentro que tiene ese <code>id</code>.</p>
 
 <ui-note>
   <p>Es una propuesta del estándar, y hoy solo la tiene Chrome. En los demás navegadores, Fudic hace de respaldo con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaLabelledByElements" target="_blank" rel="noopener"><code>ariaLabelledByElements</code></a> y <code>ariaDescribedByElements</code>, que también son estándar. Cuando esté en todos, el respaldo se irá y tu HTML no cambiará.</p>
@@ -97,7 +97,7 @@
 
 <h2 id="cost">Lo que cuesta</h2>
 
-<p>Un componente normal se hidrata en su primera interacción (<a href="/docs/reactivity/hydration">Hidratación</a>). Uno con <code>formassociated</code> no puede esperar, porque sin su código no es un campo, así que se hidrata al cargar la página. Úsalo cuando un campo lo necesite de verdad, y un <code>&lt;input&gt;</code> nativo para lo demás.</p>
+<p>Un componente normal se hidrata en su primera interacción (<a href="/docs/reactivity/hydration">Hidratación</a>). Uno con <code>formassociated</code> se hidrata al cargar la página: sin su código no es un campo, así que no puede esperar. Úsalo solo cuando un campo lo necesite de verdad. Para lo demás, usa un <code>&lt;input&gt;</code> nativo.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

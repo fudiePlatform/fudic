@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate api</code></h1>
 
-<p>Da su servidor a una ruta o a un componente que ya existe: el <code>.fudapi</code> a su lado, su handler en <code>src/server</code> y el <code>&lt;link rel="server"&gt;</code> en su sitio.</p>
+<p>Da su servidor a una ruta o a un componente que ya existe. Escribe el <code>.fudapi</code> al lado de la pieza y el handler en <code>src/server</code>, y añade el <code>&lt;link rel="server"&gt;</code> al <code>.fud</code>.</p>
 
 <ui-code>
 <pre><code>fudic generate api &lt;piece&gt;</code></pre>
@@ -49,7 +49,7 @@
     <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>&lt;piece&gt;</code></td><td>El <code>.fud</code> de una ruta o de un componente, o la carpeta de un componente, relativo al proyecto: <code>src/components/shop-cart</code> o <code>src/routes/about.fud</code>.</td></tr>
+    <tr><td><code>&lt;piece&gt;</code></td><td>La pieza, con su camino relativo al proyecto: el <code>.fud</code> de una ruta o de un componente, o la carpeta de un componente. Por ejemplo, <code>src/components/shop-cart</code> o <code>src/routes/about.fud</code>.</td></tr>
   </tbody>
 </table>
 
@@ -66,7 +66,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

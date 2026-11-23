@@ -59,7 +59,7 @@
 &lt;/miapp-card&gt;</code></pre>
 </ui-code>
 
-<p>Ese <code>.title</code> solo afecta al componente, y ningún <code>.title</code> de la página le afecta a él. Lo consigue el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">shadow DOM</a>: el <code>&lt;template shadowrootmode&gt;</code> crea un shadow root, y el CSS de dentro no sale y el de fuera no entra.</p>
+<p>Ese <code>.title</code> solo afecta al componente, y ningún <code>.title</code> de la página le afecta a él. Lo consigue el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">shadow DOM</a>: el <code>&lt;template shadowrootmode&gt;</code> crea un shadow root. El CSS de dentro no sale de él, y el de fuera no entra.</p>
 
 <h2 id="boundary">Lo que cruza la frontera</h2>
 
@@ -73,7 +73,7 @@
   <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part" target="_blank" rel="noopener"><code>::part()</code></a></strong> estiliza, desde fuera, los elementos que el componente marca con <code>part</code>.</li>
 </ul>
 
-<p>Un ejemplo con dos de ellas. El componente marca su barra con <code>part="bar"</code> y lee su ancho de <code>--progress</code>; la página le da forma y valor:</p>
+<p>Este ejemplo usa dos de ellas. El componente marca su barra con <code>part="bar"</code> y lee su ancho de <code>--progress</code>. La página le da forma con <code>::part()</code> y valor con <code>--progress</code>:</p>
 
 <ui-code .path="src/routes/index.fud">
 <pre><code>&lt;head&gt;
@@ -107,7 +107,7 @@
 <p>Esta es la pieza que el estándar aún no tiene, y Fudic la cubre con un polyfill: un script pequeño en el <code>&lt;head&gt;</code>.</p>
 
 <ui-note>
-  <p>El polyfill sigue la primera propuesta para compartir hojas sin JavaScript. Parte de los <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import/with#css_modules_type_css" target="_blank" rel="noopener">módulos CSS</a>, estándar desde 2021 (<a href="https://github.com/whatwg/html/pull/4898" target="_blank" rel="noopener">whatwg/html#4898</a>). En 2024, Microsoft propuso <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/835b07e7b2dfb785b8be7389ff3768bdebd8bec8/ShadowDOM/explainer.md" target="_blank" rel="noopener">declarar el módulo en la página</a> con <code>specifier</code> y adoptarlo con <code>shadowrootadoptedstylesheets</code>, y la llevó al WHATWG (<a href="https://github.com/whatwg/html/issues/10673" target="_blank" rel="noopener">whatwg/html#10673</a>). Cuando el estándar quede definido, Fudic seguirá su forma, y cuando los navegadores lo traigan, quitará el polyfill.</p>
+  <p>El polyfill sigue la primera propuesta para compartir hojas sin JavaScript. Parte de los <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import/with#css_modules_type_css" target="_blank" rel="noopener">módulos CSS</a>, estándar desde 2021 (<a href="https://github.com/whatwg/html/pull/4898" target="_blank" rel="noopener">whatwg/html#4898</a>). En 2024, Microsoft propuso <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/835b07e7b2dfb785b8be7389ff3768bdebd8bec8/ShadowDOM/explainer.md" target="_blank" rel="noopener">declarar el módulo en la página</a> con <code>specifier</code> y adoptarlo con <code>shadowrootadoptedstylesheets</code>. Llevó la propuesta al WHATWG (<a href="https://github.com/whatwg/html/issues/10673" target="_blank" rel="noopener">whatwg/html#10673</a>). Cuando el estándar quede definido, Fudic seguirá su forma, y cuando los navegadores lo traigan, quitará el polyfill.</p>
 </ui-note>
 
 <p>Si prefieres no usar el polyfill, <code>css: "link"</code> en <code>fudic.json</code> entrega cada hoja como un fichero, con un <code>&lt;link rel="stylesheet"&gt;</code> estándar (<a href="/docs/styles/delivery#inline-or-link">Cómo llega el CSS</a>).</p>
@@ -116,7 +116,7 @@
 
 <p>En el markup, la <code>@@</code> abre una expresión. En el <code>&lt;style&gt;</code>, no: allí solo puede empezar una at-rule de CSS, como <code>@@media</code>. Escribir una expresión es un error (<a href="/docs/reference/diagnostics/FUD0132"><code>FUD0132</code></a>).</p>
 
-<p>Lo que cambia con el estado va en el markup, eligiendo entre reglas que el <code>&lt;style&gt;</code> ya tiene, con <code>class:</code> (<a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a>). Como el CSS no cambia, Fudic sabe al compilar qué reglas usa cada página y envía solo esas (<a href="/docs/styles/delivery#pruning">Solo el CSS que se usa</a>).</p>
+<p>Lo que cambia con el estado va en el markup: <code>class:</code> elige entre reglas que el <code>&lt;style&gt;</code> ya tiene (<a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a>). Como el CSS no cambia, Fudic sabe al compilar qué reglas usa cada página y envía solo esas (<a href="/docs/styles/delivery#pruning">Solo el CSS que se usa</a>).</p>
 
 <h2 id="style-attribute">El atributo <code>style</code></h2>
 

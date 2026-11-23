@@ -5,11 +5,11 @@
 
 <head>
   <title>fudic preview · Fudic</title>
-  <meta name="description" content="fudic preview sirve el build de cada app en un solo puerto: lo que desplegarías.">
+  <meta name="description" content="fudic preview sirve el build de cada app en un solo puerto, que es lo que desplegarías.">
   <link rel="canonical" href="https://fudic.dev/docs/cli/preview">
   <meta property="og:type" content="article">
   <meta property="og:title" content="fudic preview · Fudic">
-  <meta property="og:description" content="fudic preview sirve el build de cada app en un solo puerto: lo que desplegarías.">
+  <meta property="og:description" content="fudic preview sirve el build de cada app en un solo puerto, que es lo que desplegarías.">
   <meta property="og:url" content="https://fudic.dev/docs/cli/preview">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -33,7 +33,7 @@
 
 <h1><code>fudic preview</code></h1>
 
-<p>Lo mismo que <code>fudic dev</code>, con el build de cada app: lo que desplegarías. Antes hay que construir con <code>pnpm build</code>.</p>
+<p>Hace lo mismo que <code>fudic dev</code>, pero sirve el build de cada app, que es lo que desplegarías. Antes hay que construir con <code>pnpm build</code>.</p>
 
 <ui-code>
 <pre><code>fudic preview</code></pre>
@@ -51,7 +51,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

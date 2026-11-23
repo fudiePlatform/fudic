@@ -41,7 +41,7 @@
 
 <h2 id="what">Qué es</h2>
 
-<p>Todo lo que una ruta o un componente necesita del servidor (sus datos, las funciones a las que llama, sus formularios) se declara en un fichero hermano con extensión <code>.fudapi</code>. Es el <strong>contrato</strong> entre el navegador y el servidor: qué se puede pedir, con qué argumentos y qué se recibe.</p>
+<p>Una ruta o un componente declara todo lo que necesita del servidor en un fichero <code>.fudapi</code> que va a su lado: sus datos, las funciones a las que llama y sus formularios. Ese fichero es el <strong>contrato</strong> entre el navegador y el servidor: qué se puede pedir, con qué argumentos y qué se recibe.</p>
 
 <h2 id="why">Por qué existe</h2>
 
@@ -100,7 +100,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 &lt;/ul&gt;</code></pre>
 </ui-code>
 
-<p id="link"><code>data</code> y <code>search</code> llegan tipados del contrato: el editor marca un <code>p.nombre</code> antes de compilar. Si el <code>@@code</code> necesita un tipo, se importa: <code>import type &#123; Person &#125; from "fudic:routes/usuarios"</code>.</p>
+<p id="link"><code>data</code> y <code>search</code> llegan tipados del contrato: el editor marca como error un <code>p.nombre</code>, que <code>Person</code> no tiene, antes de compilar. Si el <code>@@code</code> necesita un tipo, se importa: <code>import type &#123; Person &#125; from "fudic:routes/usuarios"</code>.</p>
 
 <h2 id="declarations">Todo lo que se declara</h2>
 
@@ -125,7 +125,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 
 <h2 id="implement">Implementarlo</h2>
 
-<p>Cada <code>.fudapi</code> se convierte en un módulo, <code>fudic:</code> más su ruta dentro de <code>src/</code> sin extensión: <code>src/routes/usuarios.fudapi</code> es <code>fudic:routes/usuarios</code>. Exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
+<p>Cada <code>.fudapi</code> se convierte en un módulo que se llama <code>fudic:</code> seguido de su ruta dentro de <code>src/</code>, sin extensión. Así, <code>src/routes/usuarios.fudapi</code> es <code>fudic:routes/usuarios</code>. El módulo exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
 
 <ul>
   <li>una función, <code>load</code>, <code>paths</code> o <code>layout</code>: <code>search.handle(fn)</code>, en <code>src/server</code>;</li>
@@ -135,7 +135,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
   <li><code>type</code>, <code>enum</code>, <code>form</code> y <code>pattern</code> no se implementan: son solo declaración.</li>
 </ul>
 
-<p>Los nombres en kebab-case del contrato son camelCase en TypeScript: <code>alias-taken</code> es <code>aliasTaken</code>. Fudic carga todos los ficheros de <code>src/server</code>, así que sus nombres son libres. Implementar algo dos veces, o en la carpeta equivocada, para el build.</p>
+<p>Los nombres en kebab-case del contrato son camelCase en TypeScript: <code>alias-taken</code> es <code>aliasTaken</code>. Fudic carga todos los ficheros de <code>src/server</code>, así que sus nombres son libres. Implementar algo dos veces, o en la carpeta equivocada, detiene el build.</p>
 
 <ui-note>
   <p><code>src/server</code> nunca llega al navegador. Lo que importa un handler (la base de datos, los secretos) se queda en el servidor.</p>
@@ -160,7 +160,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
   <li>Los nombres van en kebab-case (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>).</li>
 </ul>
 
-<p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/usuarios.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code>, la cadena global.</p>
+<p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/usuarios.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code> crea la cadena global.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

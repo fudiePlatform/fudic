@@ -36,7 +36,7 @@
 
 <h1>Uno de cada bloque</h1>
 
-<p>Una tienda con carrito, y un criterio que dice lo que tiene que pasar en el idioma de la tienda. Tres términos lo hacen posible, uno por bloque, y cada uno usa la parte del <code>ctx</code> que le toca.</p>
+<p>En una tienda con carrito, un criterio dice lo que tiene que pasar en el idioma de la tienda. Tres términos lo hacen posible, uno por bloque, y cada uno usa la parte del <code>ctx</code> que le toca.</p>
 
 <h2 id="criterion">El criterio</h2>
 
@@ -52,7 +52,7 @@ criterion adding-a-book
     cart-has 1</code></pre>
 </ui-code>
 
-<p>Mientras los términos no existen, el editor subraya cada línea con <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a>, y su bombilla ofrece crear el fichero. También se crean con la CLI:</p>
+<p>Mientras los términos no existen, el editor subraya cada línea con <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a>, y la bombilla de cada línea ofrece crear el fichero. También se crean con la CLI:</p>
 
 <ui-code>
 <pre><code>fudic g term given signed-in-as --param user:token
@@ -114,7 +114,7 @@ export const selfTest = [&#123; args: &#123; product: 'The Hobbit' &#125;, expec
 <ul>
   <li><strong>La referencia vive aquí</strong>, no en cada criterio: si el botón cambia de texto, se cambia una línea.</li>
   <li><strong><code>ctx.act</code></strong> espera a la petición que añade al carrito, al código que pinta el resultado y a que el componente se hidrate si era el primer gesto.</li>
-  <li><strong>Si no hay ese producto</strong>, <code>click</code> espera y acaba lanzando: el criterio para con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>, en el paso que falló.</li>
+  <li><strong>Si no hay ese producto</strong>, <code>click</code> espera y acaba lanzando: el criterio se detiene con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>, en el paso que falló.</li>
 </ul>
 
 <h2 id="then"><code>then cart-has</code></h2>
@@ -140,8 +140,8 @@ export const selfTest = [&#123; args: &#123; count: 1 &#125;, expect: 'pass' &#1
 
 <ul>
   <li><strong><code>count</code> llega como número</strong>: su tipo es <code>number</code>.</li>
-  <li><strong>No espera</strong>: si el carrito aún no se ha pintado, devuelve <code>pass: false</code> y Fudic lo vuelve a leer hasta 5 segundos.</li>
-  <li><strong><code>evidence</code> en texto</strong>, para que el workbench pueda compararlos.</li>
+  <li><strong>No espera</strong>: si el carrito aún no se ha pintado, devuelve <code>pass: false</code> y Fudic lo vuelve a leer durante 5 segundos como máximo.</li>
+  <li><strong><code>evidence</code> en texto</strong>: <code>expected</code> y <code>actual</code> como cadenas, para que el workbench pueda compararlos.</li>
 </ul>
 
 <h2 id="failing">Cuando falla</h2>

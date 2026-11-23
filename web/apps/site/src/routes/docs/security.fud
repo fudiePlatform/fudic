@@ -46,12 +46,12 @@
 <ul>
   <li><strong>Una expresión siempre escribe texto.</strong> Un <code>&lt;script&gt;</code> en un comentario se ve como texto, no se ejecuta.</li>
   <li><strong>Los Trusted Types estándar</strong> hacen que el navegador rechace cualquier HTML que no pase por una política con nombre (<a href="/docs/security/trusted-types">HTML seguro</a>).</li>
-  <li><strong>La Content Security Policy</strong> solo deja ejecutar los scripts que llevan el nonce de esa respuesta, aunque alguien consiga meter uno (<a href="/docs/security/csp">La CSP</a>).</li>
+  <li><strong>La Content Security Policy</strong> solo deja ejecutar los scripts que llevan el nonce de esa respuesta, un valor al azar que cambia cada vez. Un script que alguien consiga colar no lo lleva, y no se ejecuta (<a href="/docs/security/csp">La CSP</a>).</li>
 </ul>
 
 <h2 id="csrf">Llamadas desde otra web: CSRF</h2>
 
-<p>En un ataque <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">CSRF</a> una web ajena llama a tus funciones de servidor y el navegador añade solo las cookies del usuario. El middleware <code>csrf</code> rechaza esas llamadas, y <code>fudic add http</code> lo deja en la cadena global (<a href="/docs/server/middlewares#csrf">Middlewares y cadena</a>).</p>
+<p>En un ataque <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">CSRF</a> una web ajena llama a tus funciones de servidor y el navegador añade por su cuenta las cookies del usuario. El middleware <code>csrf</code> rechaza esas llamadas, y <code>fudic add http</code> lo deja en la cadena global (<a href="/docs/server/middlewares#csrf">Middlewares y cadena</a>).</p>
 
 <h2 id="session">La sesión</h2>
 
@@ -59,7 +59,7 @@
 
 <h2 id="framing">Tu página dentro de otra</h2>
 
-<p>En el <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/Clickjacking" target="_blank" rel="noopener">clickjacking</a> otra web carga la tuya en un <code>&lt;iframe&gt;</code> invisible y el usuario pulsa tus botones creyendo que pulsa los suyos. La política de la plantilla trae <code>frame-ancestors 'none'</code>, y ninguna web puede meter la tuya en un marco. Con <code>Cross-Origin-Opener-Policy</code>, una ventana de otra web que abra la tuya tampoco puede tocarla (<a href="/docs/security/headers#page">Las cabeceras</a>).</p>
+<p>En el <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/Clickjacking" target="_blank" rel="noopener">clickjacking</a> otra web carga la tuya en un <code>&lt;iframe&gt;</code> invisible y el usuario pulsa tus botones creyendo que pulsa los suyos. La CSP de la plantilla trae <code>frame-ancestors 'none'</code>, así que ninguna web puede meter la tuya en un marco. Con <code>Cross-Origin-Opener-Policy</code>, una ventana de otra web que abra la tuya tampoco puede tocarla (<a href="/docs/security/headers#page">Las cabeceras</a>).</p>
 
 <h2 id="https">Solo por HTTPS</h2>
 
@@ -67,11 +67,11 @@
 
 <h2 id="proxy">Detrás de un proxy</h2>
 
-<p>Detrás de un proxy, la URL pública viaja en la cabecera <code>Forwarded</code>, que cualquier cliente puede inventarse. Fudic no la lee salvo que lo actives con <code>serve.trustProxy</code>, y solo debes activarlo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>). Es la URL contra la que <code>csrf</code> decide si una llamada viene de otro sitio.</p>
+<p>Detrás de un proxy, la URL pública viaja en la cabecera <code>Forwarded</code>, que cualquier cliente puede inventarse. Con esa URL decide <code>csrf</code> si una llamada viene de otro sitio. Fudic no lee la cabecera salvo que actives <code>serve.trustProxy</code>, y solo debes activarlo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</p>
 
 <h2 id="uploads">Subidas</h2>
 
-<p>Una subida tiene límites, de serie 10 MB por fichero y 20 ficheros por llamada. Si un fichero pasa uno, el servidor deja de leer y responde <code>413</code>, así que nadie le llena la memoria o el disco (<a href="/docs/forms/files#limits">Ficheros</a>).</p>
+<p>Una subida tiene límites: de serie, 10 MB por fichero y 20 ficheros por llamada. Si una subida pasa de uno de ellos, el servidor deja de leer y responde <code>413</code>, así que nadie puede llenarle la memoria o el disco (<a href="/docs/forms/files#limits">Ficheros</a>).</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

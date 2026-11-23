@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate page</code></h1>
 
-<p>Crea la página que responde a una ruta, en <code>src/routes</code>, enlazada al layout más cercano, y su test unitario.</p>
+<p>Crea en <code>src/routes</code> la página que responde a una ruta, y su test unitario. La página enlaza el layout más cercano.</p>
 
 <ui-code>
 <pre><code>fudic generate page &lt;route&gt;</code></pre>
@@ -64,8 +64,8 @@
   <tbody>
     <tr><td><code>--project &lt;name&gt;</code></td><td>La app donde se crea. Por defecto, en la que estás.</td></tr>
     <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta para las rutas. Por defecto, <code>src/routes</code>.</td></tr>
-    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Este layout en vez del más cercano. El de una librería, por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
-    <tr><td><code>--server</code></td><td>Con un <code>load</code> declarado en su <code>.fudapi</code> e implementado en <code>src/server</code>. Añade <code>@@fudic/http</code> al proyecto si no lo tiene.</td></tr>
+    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Usa este layout en vez del más cercano. Uno de una librería se pasa por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
+    <tr><td><code>--server</code></td><td>Crea la página con un <code>load</code>, declarado en su <code>.fudapi</code> e implementado en <code>src/server</code>. Añade <code>@@fudic/http</code> al proyecto si no lo tiene.</td></tr>
     <tr><td><code>--sections &lt;a,b&gt;</code></td><td>Rellena solo esas secciones del layout. Por defecto, todas.</td></tr>
     <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
@@ -73,7 +73,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -101,7 +101,7 @@ dry run — nothing written
 
 <h2 id="details">Detalles</h2>
 
-<p>Toda página enlaza un layout. Si no hay ninguno que enlazar, no escribe nada y dice cómo crearlo, <code>fudic g layout _layout</code>, o cómo elegir uno con <code>--layout</code>.</p>
+<p>Toda página enlaza un layout. Si no hay ninguno que enlazar, no escribe nada. Dice cómo crear uno, con <code>fudic g layout _layout</code>, o cómo elegir uno con <code>--layout</code>.</p>
 
 <h2 id="guide">En la guía</h2>
 

@@ -34,7 +34,7 @@
 
 <h1><code>fudic spec</code></h1>
 
-<p>Ejecuta en un navegador los criterios <code>.fudspec</code> del proyecto en el que estás, de sus componentes, sus páginas y sus flujos, o los de todos los proyectos desde la raíz del workspace.</p>
+<p>Ejecuta en un navegador los criterios <code>.fudspec</code> del proyecto en el que estás: los de sus componentes, sus páginas y sus flujos. Desde la raíz del workspace, ejecuta los de todos los proyectos.</p>
 
 <ui-code>
 <pre><code>fudic spec</code></pre>
@@ -51,7 +51,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -63,7 +63,7 @@ fudic spec --project ui</code></pre>
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li>Desde la raíz, un proyecto detrás de otro, porque cada uno abre un navegador. No para en el primero que falla.</li>
+  <li>Desde la raíz, ejecuta los proyectos uno detrás de otro, porque cada uno abre un navegador. No se detiene en el primero que falla.</li>
   <li>Mientras escribes, los mismos criterios se ejecutan en el workbench del editor en cada guardado. <code>fudic spec</code> es para la terminal y la integración continua.</li>
 </ul>
 

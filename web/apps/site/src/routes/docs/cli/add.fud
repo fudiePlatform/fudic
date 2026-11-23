@@ -35,7 +35,7 @@
 
 <h1><code>fudic add</code></h1>
 
-<p>Añade a un proyecto que ya tienes un módulo opcional de Fudic, o una librería del workspace, y lo instala.</p>
+<p>Añade un módulo opcional de Fudic, o una librería del workspace, a un proyecto que ya tienes. También lo instala.</p>
 
 <ui-code>
 <pre><code>fudic add &lt;module&gt;</code></pre>
@@ -48,7 +48,7 @@
     <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>&lt;module&gt;</code></td><td><code>di</code> (servicios), <code>forms</code>, <code>http</code> (una cadena para las funciones de servidor, en <code>src/http.fudapi</code>), <code>i18n</code> (traducciones) o el nombre de una librería del workspace.</td></tr>
+    <tr><td><code>&lt;module&gt;</code></td><td>Un módulo o el nombre de una librería del workspace. Los módulos son <code>di</code>, para los servicios; <code>forms</code>; <code>http</code>, una cadena para las funciones de servidor en <code>src/http.fudapi</code>; e <code>i18n</code>, para las traducciones.</td></tr>
   </tbody>
 </table>
 
@@ -59,13 +59,13 @@
     <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería a la que se añade. Por defecto, la que tiene la carpeta en la que estás.</td></tr>
     <tr><td><code>--locales &lt;a,b&gt;</code></td><td>Con <code>i18n</code>, los idiomas de la app. El primero es el idioma en el que está escrito el código.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

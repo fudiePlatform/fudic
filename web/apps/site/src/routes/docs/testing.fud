@@ -63,7 +63,7 @@ criterion switches-tab
   <li><strong>Cada línea es un paso</strong>: <code>click</code>, <code>type</code>, <code>press</code> para actuar; <code>text</code>, <code>visible</code>, <code>count</code>, <code>focused</code> para comprobar. Fudic trae unos cincuenta, y puedes escribir los tuyos (<a href="/docs/terms">Términos propios</a>).</li>
 </ul>
 
-<p>El segundo criterio vale aunque el componente aún no se haya hidratado: el primer clic nunca se pierde (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+<p>El segundo criterio pasa aunque el componente aún no se haya hidratado: el primer clic nunca se pierde (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
 
 <h2 id="references">Nombrar un elemento</h2>
 
@@ -80,7 +80,7 @@ criterion switches-tab
 
 <h2 id="fixture">Las props de cada caso</h2>
 
-<p>Si el componente tiene props, cada caso se escribe en un fixture, al lado, con su nombre:</p>
+<p>Si el componente tiene props, cada caso se escribe con su nombre en un fixture, un fichero TypeScript junto al componente:</p>
 
 <ui-code .path="src/components/app-card/app-card.fixture.ts">
 <pre><code>import type &#123; $Props &#125; from "./app-card.fud";
@@ -107,17 +107,17 @@ export default &#123;
 
 <h2 id="create">Crearlo</h2>
 
-<p><code>fudic g component</code> ya crea el <code>.fudspec</code> y su fixture junto al componente. Para uno que no los tiene:</p>
+<p><code>fudic g component</code> ya crea el <code>.fudspec</code> y su fixture junto al componente. Para un componente que no los tiene:</p>
 
 <ui-code>
 <pre><code>fudic g spec app-card</code></pre>
 </ui-code>
 
-<p>El editor comprueba cada línea mientras escribes: un paso que no existe, un argumento que no le toca o un caso que el fixture no tiene.</p>
+<p>El editor comprueba cada línea mientras escribes y marca un paso que no existe, un argumento que no le toca o un caso que el fixture no tiene.</p>
 
 <h2 id="run">Ejecutarlo: <code>fudic spec</code></h2>
 
-<p>Mientras trabajas, el <a href="/docs/testing/workbench">workbench</a> los ejecuta en cada guardado. Desde la terminal, <code>fudic spec</code> ejecuta todos los del proyecto:</p>
+<p>Mientras trabajas, el <a href="/docs/testing/workbench">workbench</a> ejecuta los criterios en cada guardado. Desde la terminal, <code>fudic spec</code> ejecuta todos los del proyecto:</p>
 
 <ui-code>
 <pre><code>app-card
@@ -129,13 +129,13 @@ export default &#123;
 2 criteria · 1 pass · 1 fail · 0 error · 2.4 s · chrome</code></pre>
 </ui-code>
 
-<p>Solo acaba bien si pasan todos, así que sirve tal cual como paso de CI. Usa el Chrome del sistema, o Edge, que viene con Windows.</p>
+<p><code>fudic spec</code> solo termina con éxito si pasan todos, así que sirve tal cual como paso de CI. Usa el Chrome del sistema, o Edge, que viene con Windows.</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
   <li><strong>Una referencia, un elemento.</strong> Si encuentra varios, el criterio no da veredicto y te dice cuántos: <a href="/docs/reference/diagnostics/FUD1203"><code>FUD1203</code></a>. Solo <code>count</code> admite varios, o ninguno.</li>
-  <li><strong>Un <code>then</code> que no se cumple</strong>, como un texto que nunca llega, se reintenta durante 5 segundos y el criterio falla con su evidencia. Un gesto sobre un elemento que nunca aparece para el criterio con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>.</li>
+  <li><strong>Un <code>then</code> que no se cumple</strong>, como un texto que nunca llega, se reintenta durante 5 segundos y el criterio falla con su evidencia. Un gesto sobre un elemento que nunca aparece detiene el criterio con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>.</li>
   <li><strong><code>fudic fmt</code></strong> ordena también los <code>.fudspec</code>: sangría de dos en dos y una línea en blanco entre criterios.</li>
 </ul>
 

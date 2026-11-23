@@ -37,7 +37,7 @@
 
 <h1>Las cachés del navegador</h1>
 
-<p>Lo más rápido es lo que no se descarga otra vez. El navegador tiene varias cachés estándar, y Fudic deja cada fichero listo para que la use: con un nombre que cambia cuando cambia su contenido, y con las cabeceras que dicen cuánto guardarlo.</p>
+<p>Lo más rápido es lo que no se descarga otra vez. El navegador tiene varias cachés estándar, y Fudic deja cada fichero listo para que las aproveche: con un nombre que cambia cuando cambia su contenido, y con las cabeceras que dicen cuánto guardarlo.</p>
 
 <h2 id="http">La caché HTTP</h2>
 
@@ -75,7 +75,7 @@
   <li><strong><code>/fudic-main-*.js</code></strong> es el arranque de cada página, también con hash.</li>
 </ul>
 
-<p>Gana la ruta más concreta, cabecera a cabecera. El mismo fichero sirve en <code>fudic dev</code>, en la preview y en el servidor de Fudic.</p>
+<p>Si varios patrones casan con un fichero, cada cabecera sale del patrón más concreto que la define. El mismo <code>assets.headers</code> vale en <code>fudic dev</code>, en la preview y en el servidor de Fudic.</p>
 
 <h2 id="runtime">El runtime de Fudic</h2>
 
@@ -88,22 +88,22 @@
 </ui-code>
 
 <ul>
-  <li><strong>Cada página pide solo sus piezas</strong>, y, sin Service Worker, las anuncia con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>modulepreload</code></a> para que se descarguen en paralelo.</li>
+  <li><strong>Cada página pide solo sus piezas</strong>. Si no hay Service Worker, las anuncia con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>modulepreload</code></a> para que se descarguen en paralelo.</li>
   <li><strong>No cambian nunca</strong>: una versión nueva de Fudic es una URL nueva.</li>
   <li><strong>Se comparten entre apps.</strong> Dos apps del mismo origen con la misma versión piden la misma URL, y el navegador la descarga una vez. Con versiones distintas, cada una tiene la suya y no se estorban.</li>
 </ul>
 
 <h2 id="service-worker">Con Service Worker</h2>
 
-<p>Con Service Worker, las páginas, sus datos y sus ficheros salen de su caché, también sin red (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>). El runtime tiene una caché aparte para todo el origen, que guarda cada pieza la primera vez que una página la pide, nunca antes. Las demás apps del origen la usan también, y se borra sola cuando ninguna app la ha usado en treinta días.</p>
+<p>Con Service Worker, las páginas, sus datos y sus ficheros salen de su caché, también sin red (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>). El runtime tiene una caché aparte, compartida por todo el origen. Guarda cada pieza la primera vez que una página la pide, nunca antes. Las demás apps del origen la usan también, y se borra sola cuando ninguna app la ha usado en treinta días.</p>
 
 <h2 id="bfcache">Volver atrás sin recargar: la bfcache</h2>
 
 <p>Al pulsar «atrás», el navegador puede devolver la página tal como estaba, sin pedirla ni ejecutarla otra vez: es la <a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>, la caché de ida y vuelta. Es la navegación más rápida que existe, pero el navegador descarta una página que escucha <code>unload</code>.</p>
 
-<p>Fudic nunca la escucha. Los hooks de una ruta siguen a <code>pagehide</code> y <code>pageshow</code>: <code>onDisconnect</code> al irse, y <code>onConnect</code> otra vez al volver de la bfcache (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>). Una página de Fudic entra en la bfcache salvo que tu propio código lo impida.</p>
+<p>Fudic nunca la escucha. Los hooks del ciclo de vida de una ruta responden a <code>pagehide</code> y <code>pageshow</code>: <code>onDisconnect</code> al irse, y <code>onConnect</code> otra vez al volver de la bfcache (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>). Una página de Fudic entra en la bfcache salvo que tu propio código lo impida.</p>
 
-<p>Para comprobarlo, Chrome tiene en la pestaña Application de sus herramientas una prueba, <em>Back/forward cache</em>, que dice si la página entra y, si no, por qué.</p>
+<p>Para comprobarlo, en la pestaña Application de sus herramientas Chrome tiene una prueba, <em>Back/forward cache</em>, que dice si la página entra y, si no, por qué.</p>
 
 <h2 id="details">Detalles</h2>
 

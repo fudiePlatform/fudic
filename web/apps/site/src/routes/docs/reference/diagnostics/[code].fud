@@ -8,11 +8,11 @@
 
 <head>
   <title>@(data.found ? data.code + " · Fudic" : "Diagnóstico no encontrado · Fudic")</title>
-  <meta name="description" content=@(data.found ? "What " + data.code + " means in Fudic and how to fix it." : "No hay ningún diagnóstico de Fudic con ese código.")>
+  <meta name="description" content=@(data.found ? "Qué significa " + data.code + " en Fudic y cómo se arregla." : "No hay ningún diagnóstico de Fudic con ese código.")>
   <link rel="canonical" href=@("https://fudic.dev/docs/reference/diagnostics/" + data.code)>
   <meta property="og:type" content="article">
   <meta property="og:title" content=@(data.code + " · Fudic")>
-  <meta property="og:description" content="What this Fudic diagnostic means and how to fix it.">
+  <meta property="og:description" content="Qué significa este diagnóstico de Fudic y cómo se arregla.">
   <meta property="og:site_name" content="Fudic">
 </head>
 

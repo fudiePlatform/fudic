@@ -25,7 +25,7 @@
       <summary>En esta página</summary>
       <ul>
         <li><a href="#translate">fudic translate</a></li>
-        <li><a href="#file">Un fichero por fichero</a></li>
+        <li><a href="#file">Un catálogo por fichero fuente</a></li>
         <li><a href="#plural">Plurales</a></li>
         <li><a href="#missing">Lo que falta</a></li>
         <li><a href="#changed">Un texto que cambia</a></li>
@@ -39,7 +39,7 @@
 
 <h1>Los catálogos</h1>
 
-<p>Las traducciones viven en <code>src/locales</code>, en un JSON por fichero fuente y por idioma. Los escribe <code>fudic translate</code>; quien traduce rellena <code>translation</code>, y el build solo los lee.</p>
+<p>Las traducciones viven en <code>src/locales</code>, en un JSON por fichero fuente y por idioma. Los escribe <code>fudic translate</code>, y quien traduce rellena el campo <code>translation</code> de cada mensaje. El build solo los lee.</p>
 
 <h2 id="translate"><code>fudic translate</code></h2>
 
@@ -51,7 +51,7 @@
 
 <p>Es un comando aparte: <code>fudic dev</code> y el build no extraen nada ni escriben ningún catálogo. Se ejecuta cuando hay textos nuevos que traducir.</p>
 
-<h2 id="file">Un fichero por fichero</h2>
+<h2 id="file">Un catálogo por fichero fuente</h2>
 
 <p>Los mensajes de <code>src/components/app-cart.fud</code> en inglés están en <code>src/locales/en/components/app-cart.json</code>. Dos personas que traducen componentes distintos nunca tocan el mismo fichero.</p>
 
@@ -69,8 +69,8 @@
 </ui-code>
 
 <ul>
-  <li><strong><code>source</code></strong> es el texto en el idioma del código, y <strong><code>translation</code></strong> su traducción. Es lo único que se edita.</li>
-  <li><strong>La clave sale del texto</strong> y del componente en que está, así que el mismo texto dos veces en un componente se traduce una vez.</li>
+  <li><strong><code>source</code></strong> es el texto en el idioma del código, y <strong><code>translation</code></strong> su traducción. <code>translation</code> es lo único que se edita.</li>
+  <li><strong>La clave sale del texto</strong> y del componente en que está, así que un texto repetido en el mismo componente se traduce una sola vez.</li>
   <li><strong><code>where</code> es el fichero, no la línea</strong>: mover un texto no cambia el catálogo.</li>
 </ul>
 
@@ -93,7 +93,7 @@
   <li><strong>El idioma del código también tiene catálogo.</strong> Es donde «&#123;n&#125; cafés» se convierte en un plural en español: el código dice qué se pinta, y el catálogo cómo se dice.</li>
 </ul>
 
-<p>Un texto sin plural sale ya escrito en el HTML. Uno con plural en un componente que se hidrata necesita elegir en el navegador: entonces, y solo entonces, la página descarga la pieza de <code>@@fudic/i18n</code> que lo hace.</p>
+<p>Un texto sin plural sale ya escrito en el HTML. Un texto con plural dentro de un componente que se hidrata tiene que elegir su forma en el navegador. Solo en ese caso la página descarga la pieza de <code>@@fudic/i18n</code> que hace esa elección.</p>
 
 <ui-note>
   <p>El estándar aún no tiene un formateador de mensajes. <a href="https://github.com/tc39/proposal-intl-messageformat" target="_blank" rel="noopener"><code>Intl.MessageFormat</code></a> es la propuesta del TC39 para añadirlo, sobre MessageFormat 2 de Unicode.</p>
@@ -117,7 +117,7 @@
 
 <h2 id="editor">En el editor</h2>
 
-<p>En VS Code, el hover sobre un texto de un <code>.fud</code> enseña sus traducciones, una línea por idioma, y <code>—</code> donde falta. Lee los catálogos cada vez que cambian.</p>
+<p>En VS Code, el hover sobre un texto de un <code>.fud</code> enseña sus traducciones, una línea por idioma, y <code>—</code> donde falta. El editor vuelve a leer los catálogos cada vez que cambian.</p>
 
 <h2 id="details">Detalles</h2>
 

@@ -36,9 +36,11 @@
 
 <h1>Cómo llega el CSS</h1>
 
+<p>Fudic envía a cada página solo el CSS que usa. El CSS de los componentes puede ir dentro del HTML o en ficheros aparte.</p>
+
 <h2 id="pruning">Solo el CSS que se usa</h2>
 
-<p>Una guía de estilos cubre todos los elementos, y una página usa unos pocos. En el build, Fudic quita de cada página las reglas que no casan con nada de lo que pinta y las variables CSS que nadie nombra.</p>
+<p>Una guía de estilos cubre todos los elementos, y una página usa unos pocos. En el build, Fudic quita de cada página las reglas que no casan con nada de lo que pinta y las custom properties que nadie nombra.</p>
 
 <p>Una página solo recibe entre el 20 % y el 30 % de la guía.</p>
 
@@ -49,13 +51,13 @@
 <ul>
   <li>Todo el markup de una página está en sus <code>.fud</code>, con todas las ramas de <code>@@if</code> y <code>@@foreach</code>.</li>
   <li>Las clases que cambian con el estado se escriben con <code>class:</code>, así que su nombre está en el código.</li>
-  <li>El <code>&lt;style&gt;</code> no admite expresiones, así que toda variable CSS aparece escrita con su nombre.</li>
+  <li>El <code>&lt;style&gt;</code> no admite expresiones, así que toda custom property aparece escrita con su nombre.</li>
 </ul>
 
 <p>Si hay duda, la regla se queda: Fudic puede enviar una regla de más, nunca una de menos.</p>
 
 <ui-note>
-  <p>Lo que un script hace a mano, como <code>classList.add()</code>, no lo ve el compilador, y su regla puede no llegar. Escribe esas clases en la plantilla, con <code>class:</code>.</p>
+  <p>El compilador no ve lo que un script hace a mano, como <code>classList.add()</code>, así que la regla de esa clase puede no llegar. Escribe esas clases en la plantilla, con <code>class:</code>.</p>
 </ui-note>
 
 <h2 id="inline-or-link">Dentro del HTML o como fichero</h2>
@@ -63,7 +65,7 @@
 <p>El campo <code>css</code> de <code>fudic.json</code> decide cómo llega el CSS de los componentes:</p>
 
 <ul>
-  <li><strong><code>"inline"</code></strong>, por defecto: va dentro del HTML, una vez por página, y lo adopta el polyfill (<a href="/docs/styles#one-copy">Una copia por página</a>). La página se pinta con su estilo sin esperar a ninguna petición, pero el CSS no se guarda en la caché.</li>
+  <li><strong><code>"inline"</code></strong>, por defecto: va dentro del HTML, una vez por página, y los componentes lo adoptan con el polyfill (<a href="/docs/styles#one-copy">Una copia por página</a>). La página se pinta con su estilo sin esperar a ninguna petición, pero el CSS no se guarda en la caché.</li>
   <li><strong><code>"link"</code></strong>: cada hoja es un fichero, enlazado con un <code>&lt;link rel="stylesheet"&gt;</code> dentro de cada componente. Es HTML estándar y no necesita polyfill. Los ficheros se guardan en la caché, a cambio de más peticiones en la primera visita.</li>
 </ul>
 
@@ -76,7 +78,7 @@
 &lt;/app-counter&gt;</code></pre>
 </ui-code>
 
-<p>La hoja de la página que enlazas tú con <code>&lt;link rel="stylesheet"&gt;</code> es un fichero en los dos casos.</p>
+<p>En los dos casos, la hoja de la página que enlazas con <code>&lt;link rel="stylesheet"&gt;</code> es un fichero.</p>
 
 <h2 id="details">Detalles</h2>
 

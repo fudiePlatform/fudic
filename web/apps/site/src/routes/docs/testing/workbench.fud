@@ -40,7 +40,7 @@
 
 <h2 id="open">Abrirlo</h2>
 
-<p>Abre en VS Code el <code>.fud</code> de un componente, o su <code>.fudspec</code>, y pulsa <kbd>Ctrl+K V</kbd> (<kbd>Cmd+K V</kbd> en un Mac). También está el icono de vista previa de la barra del editor y la orden <em>Fudic: Open Workbench</em>.</p>
+<p>Abre en VS Code el <code>.fud</code> de un componente, o su <code>.fudspec</code>, y pulsa <kbd>Ctrl+K V</kbd> (<kbd>Cmd+K V</kbd> en un Mac). También lo abren el icono de vista previa de la barra del editor y la orden <em>Fudic: Open Workbench</em>.</p>
 
 <p>Necesita la extensión de Fudic para VS Code y un navegador: usa el Chrome del sistema, o Edge, que viene con Windows. Lo demás ya lo instaló <code>fudic new</code>. Funciona igual con un <code>.fudspec</code> de página o de flujo (<a href="/docs/testing/pages-and-flows">Páginas y flujos</a>).</p>
 
@@ -80,11 +80,11 @@
 
 <h2 id="live">Live: tocarlo</h2>
 
-<p><strong>Live</strong> abre la página del criterio viva, en el estado en que la dejó: puedes pulsar, escribir y mirarla con las herramientas del navegador. Es el componente de verdad, no una captura.</p>
+<p><strong>Live</strong> abre viva la página del criterio, en el estado en que la dejó el último paso: puedes pulsar, escribir y mirarla con las herramientas del navegador. Es el componente de verdad, no una captura.</p>
 
 <h2 id="controls">Mientras trabajas</h2>
 
-<p>Guardar el <code>.fud</code>, un componente que enlaza, el <code>.fudspec</code>, el fixture o un paso propio vuelve a ejecutar los criterios.</p>
+<p>Los criterios se vuelven a ejecutar al guardar el <code>.fud</code>, un componente que enlaza, el <code>.fudspec</code>, el fixture o un paso propio.</p>
 
 <ul>
   <li><strong><kbd>r</kbd></strong> los ejecuta todos, y <strong><kbd>f</kbd></strong> solo los que fallaron.</li>
@@ -103,5 +103,5 @@
   <li><strong>Un solo proceso</strong> sirve todos los componentes del proyecto: abrir el segundo no arranca nada. Al cerrar la última pestaña se para, y el navegador con él.</li>
   <li><strong>«Open in browser»</strong> abre la misma página del workbench en tu navegador.</li>
   <li><strong>Si un elemento falla</strong>, el informe dice también la línea del <code>.fud</code> que lo escribió.</li>
-  <li><strong>Un layout no se abre</strong>, ni una ruta sin su <code>.fudspec</code>: <a href="/docs/reference/diagnostics/FUD0970"><code>FUD0970</code></a>. Sin navegador, <a href="/docs/reference/diagnostics/FUD0975"><code>FUD0975</code></a>.</li>
+  <li><strong>El workbench no abre un layout</strong> ni una ruta sin su <code>.fudspec</code>: <a href="/docs/reference/diagnostics/FUD0970"><code>FUD0970</code></a>. Sin navegador, <a href="/docs/reference/diagnostics/FUD0975"><code>FUD0975</code></a>.</li>
 </ul>

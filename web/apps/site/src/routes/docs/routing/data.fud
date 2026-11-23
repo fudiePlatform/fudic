@@ -81,9 +81,9 @@ load.handle(async () =&gt; (&#123; title: "Blog", posts: await listPosts() &#125
 </ui-code>
 
 <ul>
-  <li><strong><code>load</code> siempre se ejecuta en el servidor.</strong> Cuándo (en el build o en cada petición) lo decide su modo: <code>load ssr</code>, <code>load ssg</code> o <code>load sw</code> (<a href="/docs/routing/rendering">Los modos</a>).</li>
+  <li><strong><code>load</code> siempre se ejecuta en el servidor.</strong> Su modo decide si se ejecuta en el build o en cada petición: <code>load ssr</code>, <code>load ssg</code> o <code>load sw</code> (<a href="/docs/routing/rendering">Los modos</a>).</li>
   <li><strong><code>data</code> no se escribe.</strong> Lo que cambia en el navegador va en un signal que arranca con él: <code>signal(data.posts)</code>.</li>
-  <li><strong>Al navegador solo viaja lo que lee su código.</strong> Lo que solo pinta la vista ya está en el HTML.</li>
+  <li><strong>Al navegador solo viajan los datos que lee el código de la página.</strong> Lo que solo pinta la vista ya está en el HTML.</li>
   <li><strong>Los middlewares lo envuelven</strong>: con <code>use auth</code> en su <code>load</code>, la página no se pinta sin sesión.</li>
 </ul>
 
@@ -115,7 +115,7 @@ load.handle(async (ctx) =&gt; &#123;
 
 <h2 id="later">Lo que tarda</h2>
 
-<p>Un campo marcado con <code>later</code> no retiene la página: el handler lo devuelve como una promesa, la página sale con lo demás, y <a href="/docs/template-syntax/await"><code>@@await</code></a> pinta ese trozo cuando llega.</p>
+<p>Un campo marcado con <code>later</code> no retiene la página. El handler lo devuelve como una promesa y la página sale con lo demás. Cuando el campo llega, <a href="/docs/template-syntax/await"><code>@@await</code></a> pinta ese trozo.</p>
 
 <ui-code .path="src/routes/dashboard.fudapi">
 <pre><code>load ssr
@@ -167,7 +167,7 @@ layout</code></pre>
   user  str</code></pre>
 </ui-code>
 
-<p>El navegador los pide a <code>/_fudic/data/&lt;ruta&gt;</code>, en el formato binario de Fudic: primero los datos de <code>load</code>, y después uno por cada campo <code>later</code>, según llegan (<a href="/docs/server/functions#wire">Cómo viaja</a>).</p>
+<p>El navegador los pide a <code>/_fudic/data/&lt;ruta&gt;</code>, en el formato binario de Fudic: primero los datos de <code>load</code>, y después un bloque por cada campo <code>later</code>, según llegan (<a href="/docs/server/functions#wire">Cómo viaja</a>).</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

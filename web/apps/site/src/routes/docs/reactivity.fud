@@ -40,7 +40,7 @@
 
 <p>Cuando algo cambia, un componente de Fudic no se vuelve a pintar entero: solo se actualiza lo que lee el valor que ha cambiado. No hay DOM virtual. La pieza que lo hace posible es el <strong>signal</strong>.</p>
 
-<p>Los signals aún no son parte de JavaScript: hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta en el TC39</a>, el comité que lo mantiene. Mientras llega, Fudic trae los suyos en <code>@@fudic/core</code>.</p>
+<p>Los signals aún no son parte de JavaScript: hay una <a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">propuesta en el TC39</a>, el comité que mantiene JavaScript. Mientras llega, Fudic trae los suyos en <code>@@fudic/core</code>.</p>
 
 <h2 id="signal"><code>signal</code>: un valor que avisa</h2>
 
@@ -79,7 +79,7 @@
 <pre><code>const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
 </ui-code>
 
-<p id="computed-syntax">Si la plantilla lo lee, el servidor también lo calcula, y ese servidor puede no ser Node (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso se escribe con lo mismo que una expresión de la plantilla: una flecha sin llaves y la <a href="/docs/template-syntax/expressions#the-closed-list">lista de operaciones de la vista</a>. Un <code>find</code>, por ejemplo, da error (<a href="/docs/reference/diagnostics/FUD1140"><code>FUD1140</code></a>); se escribe <code>filter(…)[0]</code>.</p>
+<p id="computed-syntax">Si la plantilla lee un <code>computed</code>, el servidor también lo calcula, y ese servidor puede no ser Node (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso se escribe como una expresión de la plantilla: una flecha sin llaves y la <a href="/docs/template-syntax/expressions#the-closed-list">lista de operaciones de la vista</a>. Un <code>find</code>, por ejemplo, da error (<a href="/docs/reference/diagnostics/FUD1140"><code>FUD1140</code></a>); en su lugar se escribe <code>filter(…)[0]</code>.</p>
 
 <p>Un <code>computed</code> que la plantilla no lee es TypeScript libre.</p>
 
@@ -114,7 +114,7 @@
 <ul>
   <li>un signal es su valor inicial;</li>
   <li>un <code>computed</code> se calcula una vez;</li>
-  <li>un <code>effect</code> no se ejecuta, así que puede usar <code>document</code> o <code>window</code> sin comprobar dónde está.</li>
+  <li>un <code>effect</code> no se ejecuta, así que puede usar <code>document</code> o <code>window</code> sin comprobar si está en el navegador.</li>
 </ul>
 
 <p>El navegador recibe la página con esos valores y no los vuelve a calcular.</p>
@@ -151,7 +151,7 @@ export function add(name: string): void {
 <ul>
   <li><strong>Hay un store por página</strong>, porque el módulo se carga una vez por página.</li>
   <li><strong>Solo lo escribe el navegador.</strong> En el servidor, un módulo se comparte entre todas las peticiones, y un store escrito allí pasaría datos de un usuario a otro.</li>
-  <li><strong>Vive lo que vive la página.</strong> Para guardarlo entre visitas, mira el ejemplo de <a href="/docs/reactivity/lifecycle#route-hooks">el ciclo de una página</a>.</li>
+  <li><strong>Vive lo que vive la página.</strong> Para guardarlo entre visitas, mira el ejemplo del <a href="/docs/reactivity/lifecycle#route-hooks">ciclo de una página</a>.</li>
 </ul>
 
 <h2 id="batch-untrack"><code>batch</code>, <code>untrack</code> y <code>now</code></h2>

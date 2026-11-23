@@ -35,7 +35,7 @@
 
 <h1><code>fudic generate showcase</code></h1>
 
-<p>Escribe una página por componente, con un bloque por cada caso de su fixture, y un índice. En un workspace, en una app que usa la librería; en una app sola, en <code>src/routes/showcase</code>.</p>
+<p>Escribe una página por componente, con un bloque por cada caso de su fixture, y un índice. En un workspace, las páginas van en una app que usa la librería. En una app sola, van en <code>src/routes/showcase</code>.</p>
 
 <ui-code>
 <pre><code>fudic generate showcase [&lt;library&gt;]</code></pre>
@@ -59,12 +59,12 @@
     <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>--app &lt;name&gt;</code></td><td>La app que la enseña. Por defecto, <code>showcase</code>. Si no existe, la crea.</td></tr>
+    <tr><td><code>--app &lt;name&gt;</code></td><td>La app que enseña la librería. Por defecto, <code>showcase</code>. Si esa app no existe, la crea.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -77,7 +77,7 @@ fudic g showcase</code></pre>
 
 <ul>
   <li>Ejecuta los fixtures para saber qué enseñar, así que necesita las dependencias del proyecto instaladas.</li>
-  <li>Se vuelve a ejecutar cada vez que cambia un fixture: reescribe sus propias páginas.</li>
+  <li>El comando se vuelve a ejecutar cada vez que cambia un fixture, y reescribe las páginas que generó.</li>
 </ul>
 
 <h2 id="guide">En la guía</h2>

@@ -24,7 +24,6 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#what">Qué es hidratar</a></li>
         <li><a href="#which">Qué se hidrata</a></li>
         <li><a href="#when">Cuándo</a></li>
         <li><a href="#no-lost-clicks">Ningún clic se pierde</a></li>
@@ -37,8 +36,6 @@
 }
 
 <h1>Hidratación</h1>
-
-<h2 id="what">Qué es hidratar</h2>
 
 <p>Una página de Fudic llega del servidor ya pintada, con Declarative Shadow DOM, y se ve sin ejecutar JavaScript. Pero aún no responde: el botón está, y su clic no hace nada.</p>
 

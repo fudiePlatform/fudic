@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate lib</code></h1>
 
-<p>Crea una librería en el workspace, en <code>libs/</code>: componentes que usan tus apps, con lo necesario para probarlos. No se sirve.</p>
+<p>Crea una librería en <code>libs/</code>, dentro del workspace. Una librería tiene componentes que tus apps usan, con lo necesario para probarlos. No se sirve.</p>
 
 <ui-code>
 <pre><code>fudic generate lib &lt;name&gt;</code></pre>
@@ -67,7 +67,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -94,7 +94,7 @@ dry run — nothing written
 
 <h2 id="details">Detalles</h2>
 
-<p>Una app la usa con <code>fudic add ui --project web</code>, o al crearla, con <code>fudic g app admin --uses ui</code>. Sus componentes se crean con <code>fudic g component button --project ui</code>.</p>
+<p>Para que una app use la librería, ejecuta <code>fudic add ui --project web</code>. Si la app aún no existe, créala con <code>fudic g app admin --uses ui</code>. Sus componentes se crean con <code>fudic g component button --project ui</code>.</p>
 
 <h2 id="guide">En la guía</h2>
 

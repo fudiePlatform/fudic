@@ -44,11 +44,11 @@
 type MessageArg = string | number | bigint</code></pre>
 </ui-code>
 
-<p>Un texto en el idioma en que se escribe el código. Se usa en el <code>@@code</code>, como valor de una prop y en los módulos <code>.ts</code> de la app. Guía: <a href="/docs/i18n/code#t">Idiomas en el código</a>.</p>
+<p>Recibe un texto en el idioma en que está escrito el código y devuelve su traducción. Se usa en el <code>@@code</code>, como valor de una prop y en los módulos <code>.ts</code> de la app. Guía: <a href="/docs/i18n/code#t">Idiomas en el código</a>.</p>
 
 <ul>
   <li><strong><code>message</code></strong> es un texto fijo, no una variable: es lo que extrae <code>fudic translate</code>.</li>
-  <li><strong><code>args</code></strong>, si el mensaje tiene huecos, es un objeto escrito ahí mismo con una clave por hueco.</li>
+  <li>Si el mensaje tiene huecos, <strong><code>args</code></strong> es un objeto escrito en la propia llamada, con una clave por hueco.</li>
 </ul>
 
 <ui-code .path="src/services/posts.ts">
@@ -67,7 +67,7 @@ throw notFound(t("There is no post called &#123;slug&#125;", &#123; slug &#125;)
 
 <ul>
   <li><strong>Un hueco</strong>: <code>&#123;name&#125;</code>.</li>
-  <li><strong>Un plural</strong>: <code>&#123;n, plural, =0 &#123;no items&#125; one &#123;# item&#125; other &#123;# items&#125;&#125;</code>. Primero un caso exacto <code>=N</code>, luego la categoría de <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules" target="_blank" rel="noopener"><code>Intl.PluralRules</code></a> del idioma, y si no, <code>other</code>. <code>#</code> es el número, formateado para el idioma.</li>
+  <li><strong>Un plural</strong>: <code>&#123;n, plural, =0 &#123;no items&#125; one &#123;# item&#125; other &#123;# items&#125;&#125;</code>. Se elige primero un caso exacto <code>=N</code>; si no hay, la categoría de <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules" target="_blank" rel="noopener"><code>Intl.PluralRules</code></a> del idioma; y si tampoco, <code>other</code>. <code>#</code> es el número, formateado para el idioma.</li>
   <li><strong>Una selección</strong>: <code>&#123;role, select, admin &#123;Administrator&#125; other &#123;User&#125;&#125;</code>.</li>
 </ul>
 

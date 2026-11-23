@@ -72,7 +72,7 @@
 
 <h2 id="options">Opciones</h2>
 
-<p>Las de cada tipo, en su página. Sirven además las de todos los comandos, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Cada tipo explica sus opciones en su página. Sirven además las opciones de todos los comandos, explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

@@ -28,7 +28,7 @@
         <li><a href="#inject">Pedirlo con inject()</a></li>
         <li><a href="#service-in-service">Un servicio que usa otro</a></li>
         <li><a href="#tokens">Lo que no es una clase: tokens</a></li>
-        <li><a href="#options">Opcional y uno por petición</a></li>
+        <li><a href="#options">Opcional y uno nuevo cada vez</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
     </details>
@@ -57,7 +57,7 @@ Service(Logger);</code></pre>
 </ui-code>
 
 <ui-note>
-  <p><code>Service</code> es un decorador estándar de JavaScript (<a href="https://github.com/tc39/proposal-decorators" target="_blank" rel="noopener">la propuesta de decoradores</a> del TC39, en fase 3), y se podrá escribir <code>@@Service</code> encima de la clase. Hoy las herramientas de build aún no transforman los decoradores estándar, así que se llama como una función, debajo de la clase. Es la misma función.</p>
+  <p><code>Service</code> es un decorador estándar de JavaScript, de <a href="https://github.com/tc39/proposal-decorators" target="_blank" rel="noopener">la propuesta de decoradores</a> del TC39, que está en fase 3. Hoy las herramientas de build aún no transforman los decoradores estándar, así que se llama como una función, debajo de la clase. Cuando los transformen, se podrá escribir <code>@@Service</code> encima de la clase. Es la misma función.</p>
 </ui-note>
 
 <h2 id="inject">Pedirlo con <code>inject()</code></h2>
@@ -105,7 +105,7 @@ export class Cart &#123;
 Service(Cart);</code></pre>
 </ui-code>
 
-<p>Funciona porque el campo se inicializa mientras Fudic construye el servicio. Un <code>inject()</code> suelto en lo más alto de un módulo lanza un error: no sabría de qué página pedirlo. En el servidor también vale dentro de un handler (<a href="/docs/di/server#request">Un contenedor por petición</a>).</p>
+<p>Funciona porque el campo se inicializa mientras Fudic construye el servicio. Un <code>inject()</code> suelto en lo más alto de un módulo lanza un error: no sabría de qué página pedirlo. En el servidor, <code>inject()</code> también vale dentro de un handler (<a href="/docs/di/server#request">Un contenedor por petición</a>).</p>
 
 <h2 id="tokens">Lo que no es una clase: tokens</h2>
 
@@ -121,7 +121,7 @@ provide(API_URL, () =&gt; "https://api.example.com");</code></pre>
 
 <p><code>inject(API_URL)</code> devuelve un <code>string</code>. Dos tokens con el mismo nombre son distintos: lo que cuenta es el objeto, no el texto. <code>provide</code> registra en la raíz, como <code>Service</code>, pero con la función que crea el valor.</p>
 
-<h2 id="options">Opcional y uno por petición</h2>
+<h2 id="options">Opcional y uno nuevo cada vez</h2>
 
 <ul>
   <li><strong><code>inject(X, &#123; optional: true &#125;)</code></strong> devuelve <code>undefined</code> si nadie registró <code>X</code>, en vez de lanzar un error.</li>

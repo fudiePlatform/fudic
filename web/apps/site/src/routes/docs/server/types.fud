@@ -57,7 +57,7 @@
   </tbody>
 </table>
 
-<p>No hay un tipo <code>number</code>: cada número dice su ancho. Un backend en otro lenguaje necesita saberlo, y además valida gratis: un <code>u8</code> que recibe <code>300</code> se rechaza.</p>
+<p>No hay un tipo <code>number</code>: cada número dice su ancho. Un backend en otro lenguaje necesita saberlo. Además, el ancho ya valida: un <code>u8</code> que recibe <code>300</code> se rechaza.</p>
 
 <h2 id="modifiers">Listas, opcionales y mapas</h2>
 
@@ -90,7 +90,7 @@ enum Tone
 
 <h2 id="checked">Se comprueban al cruzar</h2>
 
-<p>Un valor se comprueba cada vez que pasa de un lado al otro: en el navegador, antes de enviar, y en el servidor, al recibir, que responde <code>400</code> sin llegar al handler. Así, el handler recibe valores que ya cumplen el contrato.</p>
+<p>Un valor se comprueba cada vez que pasa de un lado al otro: en el navegador antes de enviarlo, y en el servidor al recibirlo. Si no cumple, el servidor responde <code>400</code> sin llegar al handler. Así, el handler recibe valores que ya cumplen el contrato.</p>
 
 <p id="arg-rules">Un argumento puede llevar además reglas de validación debajo, con la misma doble comprobación:</p>
 
@@ -119,7 +119,7 @@ enum Tone
     accept "image/png, image/jpeg"</code></pre>
 </ui-code>
 
-<p>No caben en un <code>get</code>, porque sus argumentos viajan en la URL, ni en los datos de una página. Tampoco en el parámetro de una regla.</p>
+<p>No caben en los datos de una página ni en un <code>get</code>, cuyos argumentos viajan en la URL. Tampoco en el parámetro de una regla.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

@@ -40,7 +40,7 @@
 
 <ul>
   <li><strong>Lighthouse</strong>: 100/100/100/100 en móvil y en escritorio.</li>
-  <li><strong>TTFB</strong>: 2,47 ms hasta el primer byte, y 0,39 ms para descargar el resto, con <code>fudic preview</code> en local. Es lo que pone el servidor, sin la red de por medio (<a href="/docs/performance#ttfb">El primer byte, cuanto antes</a>).</li>
+  <li><strong>TTFB</strong>: 2,47 ms hasta el primer byte, y 0,39 ms para descargar el resto, con <code>fudic preview</code> en local. Es el tiempo del propio servidor, sin la red de por medio (<a href="/docs/performance#ttfb">El primer byte, cuanto antes</a>).</li>
   <li><strong>LCP</strong>: 0,13 s en escritorio. Es cuándo se ve lo más grande de la página.</li>
   <li><strong>INP</strong>: 16 ms, entre 8 y 32 según la interacción. Es lo que tarda la página en responder a un clic o una tecla; por debajo de 200 ms se considera bueno.</li>
 </ul>
@@ -65,11 +65,11 @@
 
 <h2 id="what-moved">Lo que movió la nota</h2>
 
-<p>Lo que Fudic no decide es lo que pone cada app. En esta documentación, tres cosas:</p>
+<p>Lo que Fudic no decide depende de cada app. En esta documentación, la nota dependió de tres cosas:</p>
 
 <ul>
-  <li><strong>Las fuentes.</strong> Fueron lo que más pesaba en móvil: cuatro ficheros, 192 KB. Ahora es una sola fuente variable, recortada a los caracteres del sitio (23 KB) y precargada con <code>&lt;link rel="preload"&gt;</code> desde el layout, para que llegue con el HTML y no después del CSS.</li>
-  <li><strong>Un solo componente al cargar.</strong> El índice lateral es lo único que arranca sin que nadie lo toque. Bloquear todo el JavaScript de la página no cambia la nota.</li>
+  <li><strong>Las fuentes.</strong> Fueron lo que más pesaba en móvil: cuatro ficheros, 192 KB. Ahora es una sola fuente variable de 23 KB, recortada a los caracteres del sitio. El layout la precarga con <code>&lt;link rel="preload"&gt;</code>, para que llegue con el HTML y no después del CSS.</li>
+  <li><strong>Un solo componente al cargar.</strong> El índice lateral es lo único que arranca sin que nadie lo toque. Con todo el JavaScript de la página bloqueado, la nota es la misma.</li>
   <li><strong>Los textos de los enlaces.</strong> La auditoría de SEO penaliza enlaces como «aquí», «más» o «empezar», que no dicen adónde van. El menú dice «Empezar con Fudic».</li>
 </ul>
 

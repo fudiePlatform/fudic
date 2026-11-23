@@ -80,13 +80,13 @@ vim.lsp.enable("fudic")</code></pre>
 
 <ul>
   <li><strong>El workbench</strong>, que abre una vista al lado del editor (<a href="/docs/testing/workbench">El workbench</a>). Fuera de VS Code, los criterios se ejecutan con <code>fudic spec</code>.</li>
-  <li><strong>Las órdenes de los enlaces del <code>.fudapi</code></strong>, como ver los tipos generados. Los enlaces salen, pero las órdenes son de la extensión.</li>
-  <li><strong>El color de la primera vista</strong>, antes de que responda el servidor, y la barra de estado.</li>
+  <li><strong>Las órdenes de los enlaces del <code>.fudapi</code></strong>, como ver los tipos generados. En otros editores los enlaces también salen, pero las órdenes que lanzan son de la extensión.</li>
+  <li><strong>El coloreado del fichero recién abierto</strong>, antes de que responda el servidor, y la barra de estado.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>: con <code>shadowrootmode</code>, el elemento con el que empieza cada componente que lee el servidor.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>: con <code>shadowrootmode</code>, el elemento con el que empieza cada componente, y el que lee el servidor.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: lo que el servidor le enseña a TypeScript de cada <code>.fud</code>.</li>
 </ul>

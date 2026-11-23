@@ -34,7 +34,7 @@
 
 <h1><code>fudic dev</code></h1>
 
-<p>Sirve todas las apps del workspace en un solo puerto, cada una en su URL base, mientras trabajas: <code>/</code> es una app y <code>/admin/</code> otra. Dentro de una app, solo esa.</p>
+<p>Sirve todas las apps del workspace en un solo puerto, cada una en su URL base, mientras trabajas: <code>/</code> es una app y <code>/admin/</code> otra. Si lo ejecutas dentro de una app, sirve solo esa app.</p>
 
 <ui-code>
 <pre><code>fudic dev</code></pre>
@@ -52,7 +52,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -65,8 +65,8 @@ fudic dev --port 3000</code></pre>
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li>Cada app corre su propio Vite, con su configuración, en un puerto libre que no hace falta conocer. Delante, un proxy manda cada petición a la app cuya base encaja más larga: <code>/admin/x</code> va a <code>admin</code> antes que a la app de <code>/</code>.</li>
-  <li>El runtime de Fudic, en <code>/_fudic/</code>, es del origen y no de una app: lo sirve la primera que lo tiene.</li>
+  <li>Cada app corre su propio Vite, con su configuración, en un puerto libre que no hace falta conocer. Delante hay un proxy que manda cada petición a la app con la URL base más larga que encaja: <code>/admin/x</code> va a <code>admin</code> antes que a la app de <code>/</code>.</li>
+  <li>El runtime de Fudic se sirve en <code>/_fudic/</code> y pertenece al origen, no a una app. Lo sirve la primera app que lo tiene.</li>
 </ul>
 
 <h2 id="guide">En la guía</h2>

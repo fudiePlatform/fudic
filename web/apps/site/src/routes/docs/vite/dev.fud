@@ -47,7 +47,7 @@ fudic dev --port 3000</code></pre>
 
 <p>En desarrollo no hay build: cada página se compila y se pinta cuando la pides, sea cual sea su modo. Una <code>ssg</code> ejecuta su <code>load</code> en cada petición, como una <code>ssr</code>, así que ves siempre lo último que guardaste.</p>
 
-<p>El servidor es el mismo que en producción (<a href="/docs/server/running">El servidor</a>): responde a las funciones del <code>.fudapi</code>, a los datos de las páginas y a la página de error, y la página sale en streaming igual que después.</p>
+<p>El servidor es el mismo que en producción (<a href="/docs/server/running">El servidor</a>): atiende las funciones del <code>.fudapi</code>, los datos de las páginas y la página de error. La página sale en streaming, igual que en producción.</p>
 
 <h2 id="types">Los tipos, en vivo</h2>
 
@@ -57,14 +57,14 @@ fudic dev --port 3000</code></pre>
 <pre><code>&lt;p&gt;@@data.user.nmae&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p>Con un error así, la página no se pinta. En su lugar, el navegador enseña el error con su fichero y su línea, los mismos que marca el editor, y en la terminal sale entero. El error de un componente bloquea también las páginas que lo usan.</p>
+<p>Con un error así, la página no se pinta. En su lugar, el navegador enseña el error con su fichero y su línea, los mismos que marca el editor. En la terminal sale entero. El error de un componente bloquea también las páginas que lo usan.</p>
 
 <p>Cuando lo arreglas y guardas, la página vuelve sola, sin recargar a mano.</p>
 
 <h2 id="save">Al guardar</h2>
 
 <ul>
-  <li><strong>Un <code>.fud</code> o un <code>.ts</code></strong>: el navegador recarga la página. También si el cambio es solo del servidor, como un layout o el <code>.ts</code> que usa un handler.</li>
+  <li><strong>Un <code>.fud</code> o un <code>.ts</code></strong>: el navegador recarga la página. También recarga si el cambio solo afecta al servidor, como un layout o el <code>.ts</code> que usa un handler.</li>
   <li><strong>Un <code>.fudapi</code></strong>: se regeneran sus tipos, y el editor los ve sin reiniciar nada.</li>
   <li><strong>Los <code>.headers</code></strong>: valen desde la petición siguiente. Si uno tiene un error, sale en la terminal y el servidor sigue.</li>
   <li><strong>Los catálogos de idiomas</strong>: se leen de nuevo en cada compilación (<a href="/docs/i18n/catalogs">Los catálogos</a>).</li>

@@ -5,7 +5,7 @@
 
 <head>
   <title>Qué hace el Service Worker · Fudic</title>
-  <meta name="description" content="El Service Worker de Fudic pinta las páginas en el navegador, con el mismo código que el servidor y los datos que guardó: desde la segunda visita no espera al servidor, y sin conexión se siguen viendo.">
+  <meta name="description" content="El Service Worker de Fudic pinta las páginas en el navegador, con el mismo código que el servidor y con los datos que tiene guardados: desde la segunda visita no espera al servidor, y sin conexión se siguen viendo.">
   <link rel="canonical" href="https://fudic.dev/docs/service-worker">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Qué hace el Service Worker · Fudic">
@@ -37,7 +37,7 @@
 
 <h1>Qué hace el Service Worker</h1>
 
-<p>El Service Worker de Fudic pinta las páginas en el navegador del usuario, con el mismo código que el servidor y los datos que guardó. Desde la segunda visita, una página no espera al servidor, y sin conexión se sigue viendo.</p>
+<p>El Service Worker de Fudic pinta las páginas en el navegador del usuario, con el mismo código que el servidor y con los datos que tiene guardados. Desde la segunda visita, una página no espera al servidor, y sin conexión se sigue viendo.</p>
 
 <h2 id="what">Un Service Worker</h2>
 
@@ -66,7 +66,7 @@
   <li><strong>Sin conexión</strong>, se sigue pintando toda ruta cuyo código y datos tiene guardados.</li>
 </ul>
 
-<p>Al instalarse no descarga la app entera, solo lo que dice <code>shell</code> en <code>sw.json</code>. El código de cada ruta lo guarda cuando se visita, y el JavaScript de los componentes que la página tiene a la vista, antes de que el usuario los toque.</p>
+<p>Al instalarse no descarga la app entera, solo lo que dice <code>shell</code> en <code>sw.json</code>. El código de cada ruta lo guarda cuando se visita. El JavaScript de los componentes que la página tiene a la vista lo guarda antes de que el usuario los toque.</p>
 
 <h2 id="updates">Un despliegue nuevo</h2>
 
@@ -91,7 +91,7 @@
 <ul>
   <li>Una página que pinta el Service Worker lleva las cabeceras de <code>page.headers</code> y su propio nonce, igual que si la mandara el servidor (<a href="/docs/security/csp#nonce">El nonce</a>).</li>
   <li>Con <code>page persist</code>, sirve el HTML guardado de la URL en vez de pintarla (<a href="/docs/service-worker/caching#persist">Guardar el HTML</a>).</li>
-  <li>El runtime de Fudic, lo que lista <code>shell</code> y lo que casa con <code>resources</code> también los sirve él, desde su caché.</li>
+  <li>También sirve desde su caché el runtime de Fudic, las URLs que lista <code>shell</code> y lo que casa con un patrón de <code>resources</code>.</li>
   <li>Las funciones de servidor y el token de <code>csrf</code> no los toca nunca: van siempre a la red.</li>
 </ul>
 

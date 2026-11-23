@@ -38,7 +38,7 @@
 
 <h2 id="what">Un <code>Request</code>, una <code>Response</code></h2>
 
-<p>El servidor de una app de Fudic, <code>@@fudic/server</code>, recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> estándar y devuelve una <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>, o <code>null</code> si la petición no es suya, como un fichero estático:</p>
+<p>El servidor de una app de Fudic, <code>@@fudic/server</code>, recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> estándar y devuelve una <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>, o <code>null</code> si la petición no es suya, por ejemplo la de un fichero estático:</p>
 
 <ui-code>
 <pre><code>import &#123; createServer &#125; from "@@fudic/server";
@@ -72,7 +72,7 @@ const response = await server.fetch(request);</code></pre>
 
 <p>El orden importa: primero la app, después los ficheros del build y, al final, la página de error para lo que nadie ha respondido.</p>
 
-<p>Del entorno vienen el puerto y el secreto de <code>csrf</code> con <code>token true</code>, normalmente en <code>FUDIC_SECRET</code>.</p>
+<p>El puerto y el secreto de <code>csrf</code> vienen del entorno. El secreto solo hace falta con <code>token true</code>, y suele ir en <code>FUDIC_SECRET</code>.</p>
 
 <h2 id="serve"><code>serve</code>, en <code>fudic.json</code></h2>
 

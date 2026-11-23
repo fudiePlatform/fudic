@@ -56,7 +56,7 @@
 
 <h2 id="example">Dos ejemplos</h2>
 
-<p>Los de esta web, el de la app y el de su librería de componentes:</p>
+<p>Estos son los de esta web, el de la app y el de su librería de componentes:</p>
 
 <ui-code .path="apps/site/fudic.json">
 <pre><code>&#123;
@@ -140,7 +140,7 @@
 
 <ul>
   <li>Sin <code>fudic.json</code>, todo toma su valor por defecto, sin ningún aviso.</li>
-  <li>Un campo mal escrito invalida el fichero entero, no solo ese campo: el proyecto se compila como si no tuviera <code>fudic.json</code> hasta que se arregla (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>). Media identidad sería peor que ninguna.</li>
+  <li>Un campo mal escrito invalida el fichero entero, no solo ese campo: el proyecto se compila como si no tuviera <code>fudic.json</code> hasta que se arregla (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>). Un fichero aplicado a medias sería peor que ninguno.</li>
   <li>Un campo que Fudic no conoce lo subraya el editor.</li>
   <li>Dos proyectos del workspace con el mismo <code>id</code> son un error (<a href="/docs/reference/diagnostics/FUD0724"><code>FUD0724</code></a>), y un <code>sw.json</code> sin <code>id</code>, también (<a href="/docs/reference/diagnostics/FUD0726"><code>FUD0726</code></a>).</li>
 </ul>

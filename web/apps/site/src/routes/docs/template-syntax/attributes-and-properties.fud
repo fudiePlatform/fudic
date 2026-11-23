@@ -40,7 +40,7 @@
 
 <h2 id="attributes">Atributos</h2>
 
-<p>Un atributo toma su valor de una expresión con <code>@@</code>. Si mezcla texto, va entre comillas:</p>
+<p>Un atributo toma su valor de una expresión con <code>@@</code>. Si el valor mezcla texto y expresión, va entre comillas:</p>
 
 <ui-code>
 <pre><code>&lt;img src=@@photo.url alt=@@photo.caption&gt;
@@ -49,14 +49,14 @@
 </ui-code>
 
 <ul>
-  <li>Con un texto o un número, se escribe ese valor. Con <code>true</code>, el atributo vacío, y con <code>false</code> o <code>null</code>, se quita. Es lo que esperan los <a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML" target="_blank" rel="noopener">atributos booleanos</a> como <code>disabled</code>.</li>
+  <li>Si la expresión da un texto o un número, el atributo lleva ese valor. Si da <code>true</code>, el atributo se escribe vacío; si da <code>false</code> o <code>null</code>, se quita. Es lo que esperan los <a href="https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML" target="_blank" rel="noopener">atributos booleanos</a> como <code>disabled</code>.</li>
   <li id="safe-urls">Un <code>href</code> o un <code>src</code> que viene de una expresión no puede usar <code>javascript:</code>: Fudic lo sustituye por una URL inerte.</li>
   <li id="inline-styles">Un <code>style</code> fijo funciona como en cualquier HTML, pero no admite expresiones (<a href="/docs/reference/diagnostics/FUD0915"><code>FUD0915</code></a>). Lo que cambia con el estado va con <code>class:</code>.</li>
 </ul>
 
 <h2 id="classes">Clases</h2>
 
-<p>Para encender o apagar una clase, <code>class:nombre=@@condición</code>:</p>
+<p>Para encender o apagar una clase se usa <code>class:nombre=@@condición</code>:</p>
 
 <ui-code>
 <pre><code>&lt;li class="item" class:done=@@task.done&gt;@@task.title&lt;/li&gt;</code></pre>
@@ -73,7 +73,7 @@
 <p>Un punto delante del nombre significa dos cosas, según el elemento:</p>
 
 <ul>
-  <li><strong>En un elemento nativo</strong>, asigna una propiedad del DOM: <code>&lt;input type="checkbox" .indeterminate=@@partial()&gt;</code>. Una propiedad no está en el HTML, así que se asigna al hidratarse. Para que algo se vea desde el principio, usa el atributo.</li>
+  <li><strong>En un elemento nativo</strong>, asigna una propiedad del DOM: <code>&lt;input type="checkbox" .indeterminate=@@partial()&gt;</code>. Una propiedad no está en el HTML, así que no se asigna hasta que el componente se hidrata en el navegador. Para que algo se vea desde el principio, usa el atributo.</li>
   <li id="component-props"><strong>En un componente</strong>, pasa una de sus props (<a href="/docs/template-syntax/components#props">Componentes</a>). El servidor ya pinta el componente con ella.</li>
 </ul>
 
@@ -119,7 +119,7 @@
 
 <p><code>&lt;miapp-field .label="Nombre" .required=true&gt;</code> pinta <code>&lt;input required&gt;</code>. En un elemento nativo, cada clave se escribe como un atributo; en un componente, como una prop.</p>
 
-<p id="rest-rules">Un resto se puede leer (<code>@@rest.placeholder</code>), pasar a un tag o desestructurar otra vez, pero no recorrer (<a href="/docs/reference/diagnostics/FUD1147"><code>FUD1147</code></a>): en otros lenguajes de servidor un objeto no se recorre como en JavaScript.</p>
+<p id="rest-rules">Un resto se puede leer (<code>@@rest.placeholder</code>), pasar a un tag o desestructurar otra vez. Lo que no se puede es recorrerlo (<a href="/docs/reference/diagnostics/FUD1147"><code>FUD1147</code></a>), porque en otros lenguajes de servidor un objeto no se recorre como en JavaScript.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

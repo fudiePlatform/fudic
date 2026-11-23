@@ -36,6 +36,8 @@
 
 <h1>Hojas compartidas</h1>
 
+<p>El CSS que comparten varias páginas o varios componentes va en hojas compartidas. Como el CSS de la página no entra en los componentes, hay una hoja para cada lado.</p>
+
 <h2 id="two-scopes">Dos sitios, dos hojas</h2>
 
 <p>El CSS de la página no entra en los componentes (<a href="/docs/styles">El CSS de un componente</a>). Por eso hay dos clases de hoja compartida:</p>
@@ -45,7 +47,7 @@
   <li><strong>Las hojas de los componentes</strong> se declaran en <code>fudic.json</code>, y los componentes las adoptan.</li>
 </ul>
 
-<p>Las variables CSS son la excepción: se declaran en la hoja de la página y, como se heredan, llegan también a los componentes.</p>
+<p>Las custom properties son la excepción: se declaran en la hoja de la página y, como se heredan, llegan también a los componentes.</p>
 
 <h2 id="document">La hoja de la página</h2>
 
@@ -57,7 +59,7 @@
 &lt;/head&gt;</code></pre>
 </ui-code>
 
-<p>La ruta es relativa al <code>.fud</code>. El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code> de una página o de un layout también es CSS de la página.</p>
+<p>El <code>href</code> es relativo al <code>.fud</code>. El <code>&lt;style&gt;</code> del <code>&lt;head&gt;</code> de una página o de un layout también es CSS de la página.</p>
 
 <h2 id="styles">Hojas para los componentes</h2>
 
@@ -107,7 +109,7 @@
 
 <p>No van en una hoja de componente, porque dentro de un shadow root <code>:root</code> no casa con nada. Fudic avisa si lo intentas (<a href="/docs/reference/diagnostics/FUD0743"><code>FUD0743</code></a>).</p>
 
-<p>Como se heredan, una zona de la página puede cambiarlos y todo lo que contiene, componentes incluidos, usa el valor nuevo: <code>.promo { --guide-accent: #2e6b3a; }</code>.</p>
+<p>Como se heredan, una zona de la página puede cambiarlos. Todo lo que hay dentro de esa zona usa el valor nuevo, también los componentes: <code>.promo { --guide-accent: #2e6b3a; }</code>.</p>
 
 <h2 id="details">Detalles</h2>
 

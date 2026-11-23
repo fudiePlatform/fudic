@@ -58,7 +58,7 @@
 
 <h2 id="how">Cómo se escriben</h2>
 
-<p>Son funciones de <code>@@code</code> que no se importan. Reciben la función que se ejecutará en su momento, y esa función recibe <code>host</code>, el tag del componente:</p>
+<p>Son funciones de <code>@@code</code> que no se importan. Cada hook recibe una función, y Fudic la ejecuta en su momento pasándole <code>host</code>, el tag del componente:</p>
 
 <ui-code .path="src/components/miapp-size/miapp-size.fud">
 <pre><code>@@code {
@@ -96,7 +96,7 @@
 
 <p>Un componente puede salir y volver sin destruirse, por ejemplo una fila de una lista que se reordena. Por eso lo que depende de estar en la página (un observer, un listener en <code>window</code>) va en <code>onConnect</code>.</p>
 
-<p>Los <code>effect</code> escritos en <code>@@code</code> se destruyen con el componente, sin hacer nada.</p>
+<p>Los <code>effect</code> escritos en <code>@@code</code> se destruyen con el componente, sin que tengas que hacer nada.</p>
 
 <ui-note>
   <p><code>beforeHydrate</code>, <code>afterHydrate</code> y <code>onConnect</code> hacen que el componente se hidrate al cargar la página, y no en su primera interacción (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
@@ -113,7 +113,7 @@
   <li><code>onDispose</code>: cuando se va y la página no va a volver.</li>
 </ul>
 
-<p>Un carrito guardado en el navegador: se lee al hidratar y se guarda cada vez que cambia.</p>
+<p>Este ejemplo guarda un carrito en el navegador: lo lee al hidratar y lo guarda cada vez que cambia.</p>
 
 <ui-code .path="src/routes/cart.fud">
 <pre><code>@@code {

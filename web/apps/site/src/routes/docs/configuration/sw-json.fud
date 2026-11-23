@@ -38,7 +38,7 @@
 
 <h1><code>sw.json</code></h1>
 
-<p><code>sw.json</code>, en la raíz de la app junto a <code>fudic.json</code>, configura su Service Worker. Tenerlo es lo que lo activa: sin <code>sw.json</code>, la app no tiene Service Worker y todo lo sirve el servidor.</p>
+<p><code>sw.json</code> configura el Service Worker de la app y va en su raíz, junto a <code>fudic.json</code>. Basta con tenerlo para activar el Service Worker: sin <code>sw.json</code>, la app no lo tiene y todo lo sirve el servidor.</p>
 
 <h2 id="file">El fichero</h2>
 
@@ -69,7 +69,7 @@
 <pre><code>"shell": ["/logo.svg", "/offline.css"]</code></pre>
 </ui-code>
 
-<p>El manifiesto de rutas y el JavaScript de arranque ya los añade Fudic. Aquí va lo tuyo que tiene que estar disponible desde el primer momento, como una imagen que se ve sin conexión. Son URLs exactas, sin patrones.</p>
+<p>El manifiesto de rutas y el JavaScript de arranque ya los añade Fudic. Aquí van tus propios ficheros que tienen que estar disponibles desde el primer momento, como una imagen que se ve sin conexión. Son URLs exactas, sin patrones.</p>
 
 <h2 id="resources"><code>resources</code></h2>
 
@@ -85,8 +85,8 @@
       <li><code>network-only</code>: siempre de la red, sin guardar nada.</li>
     </ul>
   </li>
-  <li><strong><code>ttl</code></strong>: cuánto vale lo guardado, con un número y una unidad (<code>30s</code>, <code>5m</code>, <code>2h</code>, <code>7d</code>). <code>null</code> o sin escribir, para siempre.</li>
-  <li><strong><code>maxEntries</code></strong>: cuántos ficheros guarda como mucho. Al pasarse, borra los más antiguos. Sin escribir, no hay límite.</li>
+  <li><strong><code>ttl</code></strong>: cuánto vale lo guardado, con un número y una unidad (<code>30s</code>, <code>5m</code>, <code>2h</code>, <code>7d</code>). Con <code>null</code>, o si no se escribe, vale para siempre.</li>
+  <li><strong><code>maxEntries</code></strong>: cuántos ficheros guarda como mucho. Al pasarse, borra los más antiguos. Si no se escribe, no hay límite.</li>
 </ul>
 
 <p>Gana el primer patrón que casa, en el orden en que están escritos, así que los más concretos van primero:</p>
@@ -118,13 +118,13 @@
 
 <h2 id="headers"><code>sw.headers</code></h2>
 
-<p>Junto a <code>sw.json</code> va <code>sw.headers</code>, con las cabeceras del propio Service Worker, <code>/fudic-sw.js</code>. Su CSP necesita <code>'unsafe-eval'</code>, y solo él (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>). El formato es el de los tres ficheros de cabeceras (<a href="/docs/security/headers">Las cabeceras</a>).</p>
+<p>Junto a <code>sw.json</code> va <code>sw.headers</code>, con las cabeceras del propio Service Worker, <code>/fudic-sw.js</code>. Su CSP necesita <code>'unsafe-eval'</code>, y es la única que lo permite (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>). El formato es el de los tres ficheros de cabeceras (<a href="/docs/security/headers">Las cabeceras</a>).</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
   <li>La clave de la caché es la URL, y solo la URL: no se mira <code>Vary</code>. Si una respuesta cambia según una cabecera de la petición, como <code>Accept-Language</code>, eso tiene que ir en la URL.</li>
-  <li>Un <code>sw.json</code> que no es JSON, sin <code>shell</code>, o con un recurso sin <code>pattern</code> o con una <code>policy</code> que no existe es un error (<a href="/docs/reference/diagnostics/FUD0390"><code>FUD0390</code></a>). Si el fichero no se lee, la app sale sin Service Worker; si falla un recurso, se descarta ese.</li>
+  <li>Es un error (<a href="/docs/reference/diagnostics/FUD0390"><code>FUD0390</code></a>) que <code>sw.json</code> no sea JSON, que le falte <code>shell</code> o que tenga un recurso sin <code>pattern</code> o con una <code>policy</code> que no existe. Si el fichero no se lee, la app sale sin Service Worker. Si falla un recurso, solo se descarta ese.</li>
   <li>Una URL de <code>shell</code> que el build no produce es un aviso (<a href="/docs/reference/diagnostics/FUD0391"><code>FUD0391</code></a>): el Service Worker no podría instalarse en el navegador.</li>
   <li>Un <code>ttl</code> que no se entiende es un aviso, y esa entrada se descarta (<a href="/docs/reference/diagnostics/FUD0392"><code>FUD0392</code></a>).</li>
   <li>Un valor de <code>dev</code> que no es <code>"preview"</code> se lee como <code>"off"</code>.</li>

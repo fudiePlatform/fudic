@@ -5,11 +5,11 @@
 
 <head>
   <title>fudic approve · Fudic</title>
-  <meta name="description" content="fudic approve aprueba los criterios y las props de una pieza en su .fudlog, con tu nombre de git y su hash.">
+  <meta name="description" content="fudic approve aprueba los criterios y las props de una pieza en su .fudlog, con tu nombre de git y el hash de sus criterios.">
   <link rel="canonical" href="https://fudic.dev/docs/cli/approve">
   <meta property="og:type" content="article">
   <meta property="og:title" content="fudic approve · Fudic">
-  <meta property="og:description" content="fudic approve aprueba los criterios y las props de una pieza en su .fudlog, con tu nombre de git y su hash.">
+  <meta property="og:description" content="fudic approve aprueba los criterios y las props de una pieza en su .fudlog, con tu nombre de git y el hash de sus criterios.">
   <meta property="og:url" content="https://fudic.dev/docs/cli/approve">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -35,7 +35,7 @@
 
 <h1><code>fudic approve</code></h1>
 
-<p>Aprueba los criterios y las props de un componente o de una ruta: lo apunta en su <code>.fudlog</code>, con tu nombre de git y el hash de su <code>.fudspec</code> y su fixture. Si tocas cualquiera de los dos, la aprobación caduca.</p>
+<p>Aprueba los criterios y las props de un componente o de una ruta. La aprobación queda apuntada en el <code>.fudlog</code> de la pieza, con tu nombre de git y el hash de su <code>.fudspec</code> y de su fixture. Si tocas cualquiera de los dos, la aprobación caduca.</p>
 
 <ui-code>
 <pre><code>fudic approve &lt;piece&gt;</code></pre>
@@ -63,7 +63,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

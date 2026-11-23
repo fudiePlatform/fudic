@@ -36,7 +36,7 @@
 
 <h1>Ficheros</h1>
 
-<p>Un fichero es un campo más del formulario, con su tipo y sus reglas. Lo que cambia es el viaje: sube sin cargarse entero en memoria, y la vista puede enseñar cuánto lleva y cancelarlo.</p>
+<p>Un fichero es un campo más del formulario, con su tipo y sus reglas. Lo que cambia es el envío: el fichero sube sin cargarse entero en memoria, y la vista puede enseñar cuánto lleva subido y cancelar la subida.</p>
 
 <h2 id="fields">Un campo de fichero</h2>
 
@@ -55,7 +55,7 @@
   <li>En una lista, <code>min-length</code> y <code>max-length</code> limitan cuántos.</li>
 </ul>
 
-<p>El navegador las comprueba al elegir, sin subir nada. El servidor las vuelve a comprobar mientras lee, y corta en el byte que pasa del límite.</p>
+<p>El navegador las comprueba cuando el usuario elige el fichero, sin subir nada. El servidor las vuelve a comprobar mientras lee, y corta en el byte que pasa del límite.</p>
 
 <h2 id="bind">En la vista</h2>
 
@@ -72,7 +72,7 @@
 
 <h2 id="upload">Cómo suben</h2>
 
-<p>Un formulario con ficheros sube como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission" target="_blank" rel="noopener"><code>multipart/form-data</code></a>: una parte con el resto de los campos, en el formato de la función, y una parte por fichero.</p>
+<p>Un formulario con ficheros sube como <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission" target="_blank" rel="noopener"><code>multipart/form-data</code></a>: una parte con los demás campos, en el mismo formato que recibe la función, y otra parte por cada fichero.</p>
 
 <p>Ni el navegador ni el servidor cargan un fichero entero en memoria: lo leen a medida que pasa. En el handler, cada fichero es un <code>File</code> estándar, ya comprobado, que se puede guardar con su <code>stream()</code>.</p>
 
@@ -88,7 +88,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>Si un fichero pasa un límite, el servidor deja de leer y responde <code>413</code>. Con <code>413</code> en el <code>catches</code> del formulario, el error se pinta en el formulario.</p>
+<p>Si un fichero pasa un límite, el servidor deja de leer y responde <code>413</code>. Si el <code>catches</code> del formulario incluye <code>413</code>, el error se pinta en él.</p>
 
 <h2 id="progress">Progreso y cancelación</h2>
 
@@ -103,7 +103,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>Cancelar deja de enviar bytes, el servidor tira lo que ya había recibido, y no se lanza ni <code>fudic:result</code> ni <code>fudic:error</code>.</p>
+<p>Al cancelar, el navegador deja de enviar bytes y el servidor tira lo que ya había recibido. No se lanza ni <code>fudic:result</code> ni <code>fudic:error</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

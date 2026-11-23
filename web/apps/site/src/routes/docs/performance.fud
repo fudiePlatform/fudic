@@ -76,7 +76,7 @@
 
 <h2 id="html">HTML primero</h2>
 
-<p>El servidor, o el build si la página es estática, envía el HTML entero, con cada componente ya pintado dentro de su shadow DOM gracias a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. El navegador pinta según llega, sin esperar a ningún script, y eso es lo que mide el LCP: cuándo se ve lo más grande de la página.</p>
+<p>El HTML llega entero, con cada componente ya pintado dentro de su shadow DOM gracias a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. Lo envía el servidor, o el build si la página es estática. El navegador lo pinta según llega, sin esperar a ningún script. El LCP mide justo eso: cuándo se ve lo más grande de la página.</p>
 
 <h2 id="javascript">JavaScript solo donde se toca</h2>
 

@@ -49,13 +49,13 @@
   </thead>
   <tbody>
     <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
-    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Este layout en lugar del que elegiría. El de una librería, por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
+    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Usa este layout en lugar del que elegiría el comando. Uno de una librería se pasa por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
     <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -76,7 +76,7 @@ dry run — nothing written
 
 <ul>
   <li>En una app es <code>src/routes/_error.fud</code>, y enlaza el layout que elegiría <code>fudic g page</code>.</li>
-  <li>En una librería es <code>src/_error.fud</code>, y enlaza el <code>src/layouts/_layout.fud</code> de la librería. Toda app que depende de ella y no tiene su propio <code>_error.fud</code> pinta sus errores con ella.</li>
+  <li>En una librería es <code>src/_error.fud</code>, y enlaza el <code>src/layouts/_layout.fud</code> de la librería. Toda app que depende de la librería y no tiene su propio <code>_error.fud</code> pinta sus errores con esta página.</li>
   <li>Sin layout que enlazar, no escribe nada y dice cómo crear uno.</li>
 </ul>
 

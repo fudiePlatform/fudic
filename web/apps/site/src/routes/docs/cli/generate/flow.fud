@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate flow</code></h1>
 
-<p>Escribe los criterios <code>.fudspec</code> de un flujo entre páginas en <code>src/flows/&lt;name&gt;.fudspec</code>, y su fixture, todavía sin servicios.</p>
+<p>Escribe en <code>src/flows/&lt;name&gt;.fudspec</code> los criterios de un flujo entre páginas, y su fixture. El fixture todavía no sustituye ningún servicio.</p>
 
 <ui-code>
 <pre><code>fudic generate flow &lt;name&gt;</code></pre>
@@ -66,7 +66,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -86,7 +86,7 @@ dry run — nothing written
 
 <h2 id="details">Detalles</h2>
 
-<p>Cada criterio se ejecuta contra el servidor real. Un grupo de servicios en el fixture pone en su lugar unos en memoria.</p>
+<p>Cada criterio se ejecuta contra el servidor real. Si el fixture declara un grupo de servicios, esos servicios se sustituyen por otros en memoria.</p>
 
 <h2 id="guide">En la guía</h2>
 

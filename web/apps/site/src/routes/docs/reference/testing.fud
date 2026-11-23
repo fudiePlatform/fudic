@@ -39,7 +39,7 @@
 
 <h1><code>@@fudic/testing</code></h1>
 
-<p>Tests unitarios en <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a>: monta un componente o visita una ruta con el HTML que pinta el servidor y la hidratación del navegador, en un DOM simulado. Para probar en un navegador de verdad, los criterios del <code>.fudspec</code> con <code>fudic spec</code> (<a href="/docs/testing">Probar</a>). Guía: <a href="/docs/testing/unit">El test unitario</a>.</p>
+<p>Tests unitarios en <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a>: monta un componente o visita una ruta con el HTML que pinta el servidor y la hidratación del navegador, en un DOM simulado. Para probar en un navegador de verdad están los criterios del <code>.fudspec</code>, que ejecuta <code>fudic spec</code>; lo explica <a href="/docs/testing">Probar</a>. Guía: <a href="/docs/testing/unit">El test unitario</a>.</p>
 
 <ui-code>
 <pre><code>import &#123; mount, visit &#125; from "@@fudic/testing";</code></pre>
@@ -69,7 +69,7 @@ export default defineConfig(&#123;
 
 <ul>
   <li><strong><code>props</code></strong>: sus props. Un nombre que el componente no declara lanza un error.</li>
-  <li><strong><code>via</code></strong>: <code>"ssr"</code>, por defecto, lo pinta el servidor y el navegador lo hidrata; las props tienen que ser JSON o <code>Date</code>. <code>"client"</code> lo crea el navegador.</li>
+  <li><strong><code>via</code></strong>: con <code>"ssr"</code>, el valor por defecto, lo pinta el servidor y el navegador lo hidrata; las props tienen que ser JSON o <code>Date</code>. Con <code>"client"</code>, lo crea el navegador.</li>
   <li><strong><code>url</code></strong>: la URL de la página. Por defecto, <code>"/"</code>.</li>
   <li><strong><code>providers</code></strong>, <strong><code>fetch</code></strong> y <strong><code>sw</code></strong>: <a href="#fake">Respuestas y servicios falsos</a>.</li>
 </ul>
@@ -100,8 +100,8 @@ expect(t.query("output")).toHaveTextContent("3");</code></pre>
 
 <ul>
   <li><strong><code>data</code></strong>: ocupa el lugar de lo que devuelve <code>load</code>. <code>layout</code> se ejecuta igual.</li>
-  <li><strong><code>fixture</code></strong>: un nombre de los <code>data</code> de la fixture de la ruta, o varios: el primero para la página y los siguientes para cada vez que pide sus datos otra vez. No va con <code>data</code>.</li>
-  <li><strong><code>answers</code></strong> y <strong><code>services</code></strong>: grupos <code>calls</code> y <code>services</code> de la fixture.</li>
+  <li><strong><code>fixture</code></strong>: uno o varios nombres del grupo <code>data</code> de la fixture de la ruta. El primero es para la página, y los siguientes para cada vez que pide sus datos otra vez. No se combina con la opción <code>data</code>.</li>
+  <li><strong><code>answers</code></strong> y <strong><code>services</code></strong>: nombres de los grupos <code>calls</code> y <code>services</code> de la fixture, respectivamente.</li>
 </ul>
 
 <p>Devuelve un <code>Visited</code>: las consultas y los gestos, <code>document</code> y <code>status</code>. Una redirección lanza un error que dice adónde.</p>
@@ -119,7 +119,7 @@ renderSnippet(file: string, call: string, options?: SnippetOptions): Promise&lt;
 </ui-code>
 
 <ul>
-  <li><strong><code>renderLayout</code></strong>: pinta un layout solo. <code>props</code>, o cada una con su valor por defecto; <code>body</code>, el HTML de <code>@@RenderBody()</code>; <code>sections</code>, el de cada <code>@@RenderSection</code>; <code>head</code>, el de <code>@@RenderHead()</code>.</li>
+  <li><strong><code>renderLayout</code></strong>: pinta un layout solo. <code>props</code>, y si falta, cada prop toma su valor por defecto; <code>body</code>, el HTML de <code>@@RenderBody()</code>; <code>sections</code>, el de cada <code>@@RenderSection</code>; <code>head</code>, el de <code>@@RenderHead()</code>.</li>
   <li><strong><code>renderSnippet</code></strong>: pinta un snippet. <code>file</code> es relativo al test, <code>call</code> lo que va detrás de <code>@@render</code>, y <code>scope</code> los valores que lee con <code>@@</code>.</li>
 </ul>
 
@@ -145,13 +145,13 @@ renderSnippet(file: string, call: string, options?: SnippetOptions): Promise&lt;
   <li><strong><code>upload(el, files)</code></strong>: uno o varios <code>File</code>.</li>
   <li><strong><code>submit(form?)</code></strong>: pulsa el botón de enviar del único formulario, o del que se da.</li>
   <li><strong><code>settled()</code></strong>: espera a que no quede nada pendiente.</li>
-  <li><strong><code>invalidated</code></strong>: las rutas que se mandaron invalidar al Service Worker simulado.</li>
+  <li><strong><code>invalidated</code></strong>: las rutas que se pidió invalidar al Service Worker simulado.</li>
 </ul>
 
 <h2 id="inspect">Inspeccionar</h2>
 
 <ul>
-  <li><strong><code>shadowOf(host)</code></strong>: cómo se pidió el shadow root: <code>mode</code>, <code>delegatesFocus</code>, <code>clonable</code>, <code>serializable</code>, <code>referenceTarget</code> y <code>adoptedStyleSheets</code>, con <code>"self"</code> para la hoja del propio componente.</li>
+  <li><strong><code>shadowOf(host)</code></strong>: las opciones con las que se pidió el shadow root, que son <code>mode</code>, <code>delegatesFocus</code>, <code>clonable</code>, <code>serializable</code>, <code>referenceTarget</code> y <code>adoptedStyleSheets</code>. En <code>adoptedStyleSheets</code>, <code>"self"</code> es la hoja del propio componente.</li>
   <li><strong><code>outline(root)</code></strong>: el árbol de accesibilidad en texto, con el formato de los snapshots ARIA de <a href="https://playwright.dev/docs/aria-snapshots" target="_blank" rel="noopener">Playwright</a>, cruzando shadow roots y slots.</li>
   <li><strong><code>expect(clientGraphOf(Component)).toReach(path)</code></strong>: si el código que llega al navegador incluye un fichero. Guía: <a href="/docs/testing/unit#client-graph">El test unitario</a>.</li>
   <li><strong><code>expect(html).toContainTemplate(attrs)</code></strong>: el primer <code>&lt;template&gt;</code> declarativo lleva exactamente esos atributos <code>shadowroot*</code>.</li>
@@ -203,7 +203,7 @@ export default &#123;
 <ul>
   <li><strong><code>fails</code></strong> con status <code>0</code> es un fallo de red.</li>
   <li><strong><code>file</code></strong>: la ruta es relativa a la fixture, y solo vale para una función <code>-&gt; file</code>.</li>
-  <li><strong><code>later</code></strong> va con el reloj del criterio.</li>
+  <li><strong><code>later</code></strong> cuenta el tiempo con el reloj del criterio.</li>
   <li><strong>Una fixture de flujo</strong> se tipa con <code>FlowFixtures</code>: <code>services</code> y <code>calls</code>.</li>
 </ul>
 

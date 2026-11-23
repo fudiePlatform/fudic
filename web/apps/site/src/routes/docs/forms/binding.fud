@@ -6,11 +6,11 @@
 
 <head>
   <title>Enlazar la vista · Fudic</title>
-  <meta name="description" content="control, error y summary: los tres atributos que enlazan un formulario de Fudic con su HTML, accesible desde el servidor.">
+  <meta name="description" content="control, error y summary: los tres atributos que enlazan un formulario de Fudic con su HTML, que ya sale accesible del servidor.">
   <link rel="canonical" href="https://fudic.dev/docs/forms/binding">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Enlazar la vista · Fudic">
-  <meta property="og:description" content="Tres atributos enlazan un formulario de Fudic con su HTML, accesible desde el servidor.">
+  <meta property="og:description" content="Tres atributos enlazan un formulario de Fudic con su HTML, que ya sale accesible del servidor.">
   <meta property="og:url" content="https://fudic.dev/docs/forms/binding">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -38,7 +38,7 @@
 
 <h1>Enlazar la vista</h1>
 
-<p>El formulario se declara en el <code>.fudapi</code> (<a href="/docs/forms">El formulario</a>), y la vista lo enlaza a HTML estándar con tres atributos. Tú escribes el markup, y el compilador añade lo que hace falta para que sea accesible, ya desde el servidor.</p>
+<p>El formulario se declara en el <code>.fudapi</code> (<a href="/docs/forms">El formulario</a>), y la vista lo enlaza a HTML estándar con tres atributos. Tú escribes el markup, y el compilador añade lo necesario para que sea accesible desde el primer HTML que envía el servidor.</p>
 
 <h2 id="three-attributes">Tres atributos</h2>
 
@@ -64,9 +64,9 @@
 
 <h2 id="control"><code>control</code></h2>
 
-<p>Enlaza en los dos sentidos: lo que escribe el usuario llega al campo, y lo que cambia el código llega al elemento. El valor que guarda depende del elemento: texto en un <code>&lt;input&gt;</code> de texto, un número (o <code>null</code>) en uno <code>number</code>, un <code>bool</code> en un <code>checkbox</code>, el <code>value</code> elegido en unos <code>radio</code> o un <code>&lt;select&gt;</code>, y el fichero en uno <code>file</code> (<a href="/docs/forms/files">Ficheros</a>).</p>
+<p>Enlaza en los dos sentidos: lo que escribe el usuario llega al campo, y lo que cambia el código llega al elemento. El valor que guarda depende del elemento. Un <code>&lt;input&gt;</code> de texto guarda texto, y uno <code>number</code> guarda un número o <code>null</code>. Un <code>checkbox</code> guarda un <code>bool</code>. Unos <code>radio</code> o un <code>&lt;select&gt;</code> guardan el <code>value</code> elegido, y un <code>&lt;input&gt;</code> <code>file</code> guarda el fichero (<a href="/docs/forms/files">Ficheros</a>).</p>
 
-<p>En el tag de un componente, el componente recibe el campo y lo enlaza dentro (<a href="/docs/forms/form-associated">Controles form-associated</a>).</p>
+<p>Puesto en el tag de un componente, <code>control</code> le pasa el campo, y el componente lo enlaza por dentro (<a href="/docs/forms/form-associated">Controles form-associated</a>).</p>
 
 <h2 id="error"><code>error</code></h2>
 
@@ -83,7 +83,7 @@
 
 <p>Algunos errores no son de un campo, como «las contraseñas no coinciden» (<a href="/docs/forms/validation#summary">Validación y validez</a>). <code>summary</code> los pinta como una lista, y avisa al lector de pantalla sin mover el foco (<code>aria-live</code>).</p>
 
-<p id="fields">Con <code>fields</code>, tras un envío fallido el resumen lista también el error de cada campo, como un enlace a ese campo, y recibe el foco. Es el patrón <a href="https://design-system.service.gov.uk/components/error-summary/" target="_blank" rel="noopener"><em>error summary</em> del Gobierno británico</a>.</p>
+<p id="fields">Con <code>fields</code>, tras un envío fallido, el resumen recibe el foco y lista también los errores de los campos, cada uno como un enlace a su campo. Es el patrón <a href="https://design-system.service.gov.uk/components/error-summary/" target="_blank" rel="noopener"><em>error summary</em> del Gobierno británico</a>.</p>
 
 <p id="own-summary">Para pintar un resumen distinto, <code>$issues()</code> da lo mismo como datos: el mensaje de cada error y el enlace a su campo.</p>
 

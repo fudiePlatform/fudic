@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate app</code></h1>
 
-<p>Crea otra app en el workspace, en <code>apps/</code>, servida en su propia URL base, e instala sus dependencias.</p>
+<p>Crea otra app del workspace en <code>apps/</code> e instala sus dependencias. La app se sirve en su propia URL base.</p>
 
 <ui-code>
 <pre><code>fudic generate app &lt;name&gt;</code></pre>
@@ -65,16 +65,16 @@
     <tr><td><code>--base &lt;path&gt;</code></td><td>La URL en la que se sirve. Por defecto, <code>/&lt;name&gt;/</code>.</td></tr>
     <tr><td><code>--uses &lt;lib&gt;</code></td><td>Una librería del workspace que usa. Se repite.</td></tr>
     <tr><td><code>--prefix &lt;p&gt;</code></td><td>Lo que convierte <code>button</code> en <code>&lt;p-button&gt;</code>. Por defecto, el nombre de la app.</td></tr>
-    <tr><td><code>--layout &lt;name|href&gt;</code></td><td>Un nombre: su propio layout, por defecto <code>_layout</code>. Un href: el de una librería, que entonces usa.</td></tr>
+    <tr><td><code>--layout &lt;name|href&gt;</code></td><td>Si es un nombre, crea un layout propio de la app; por defecto, <code>_layout</code>. Si es un href, la app usa ese layout de una librería.</td></tr>
     <tr><td><code>--locale &lt;tag&gt;</code></td><td>Su idioma, una etiqueta BCP 47. Por defecto, <code>en</code>.</td></tr>
-    <tr><td><code>--id &lt;id&gt;</code></td><td>La identidad de la app para sus cachés. Por defecto, su nombre. Una vez publicada, no se cambia.</td></tr>
+    <tr><td><code>--id &lt;id&gt;</code></td><td>La identidad de la app para sus cachés. Por defecto, su nombre. No la cambies cuando la app ya esté publicada.</td></tr>
     <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta del workspace. Por defecto, <code>apps</code>.</td></tr>
     <tr><td><code>--no-sw</code></td><td>Sin Service Worker.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

@@ -38,13 +38,13 @@
 
 <h1>El formulario</h1>
 
-<p>Un formulario de Fudic se declara en un <code>.fudapi</code>, con <code>form</code>, junto a las funciones de servidor que lo reciben (<a href="/docs/server#declarations">lo que se declara en un <code>.fudapi</code></a>). Sus reglas vienen del mismo sitio (<a href="/docs/server/rules">Reglas y patrones</a>). Enviarlo es como llamar a cualquier función de servidor: sin <code>fetch</code> ni conversión de datos, y validado en los dos lados desde la misma declaración (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</p>
+<p>Un formulario de Fudic se declara con <code>form</code> en un <code>.fudapi</code>, junto a las funciones de servidor que lo reciben (<a href="/docs/server#declarations">lo que se declara en un <code>.fudapi</code></a>). Sus reglas se declaran en el mismo fichero (<a href="/docs/server/rules">Reglas y patrones</a>). Enviarlo es como llamar a cualquier función de servidor: no hace falta <code>fetch</code> ni convertir datos. Los dos lados lo validan desde la misma declaración (<a href="/docs/server#why">Por qué existe el <code>.fudapi</code></a>).</p>
 
 <p>No es un elemento ni un componente: es un modelo con campos, tipos, valores iniciales, reglas y textos de error. La vista lo enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form" target="_blank" rel="noopener"><code>&lt;form&gt;</code></a> estándar, y el servidor lo usa para validar lo que llega.</p>
 
 <h2 id="one-declaration">Una declaración, los dos extremos</h2>
 
-<p>Un formulario se valida dos veces: en el navegador, para avisar al usuario, y en el servidor, porque no se puede fiar de lo que llega. Las dos validaciones tienen que decir lo mismo.</p>
+<p>Un formulario se valida dos veces: en el navegador, para avisar al usuario, y en el servidor, porque no puede fiarse de lo que llega. Las dos validaciones tienen que decir lo mismo.</p>
 
 <p>En React, Vue o Angular, el esquema vive en el cliente (Zod, VeeValidate, los <code>Validators</code> de Angular), y el servidor escribe el suyo. En Fudic se declara una vez, y los dos extremos lo construyen desde esa declaración.</p>
 
@@ -63,7 +63,7 @@
   active  bool = true</code></pre>
 </ui-code>
 
-<p>Las reglas se comprueban en orden, y la primera que falla para: un campo tiene un solo error (<a href="/docs/forms/validation">Validación y validez</a>).</p>
+<p>Las reglas se comprueban en orden y la comprobación se detiene en la primera que falla, así que un campo tiene un solo error (<a href="/docs/forms/validation">Validación y validez</a>).</p>
 
 <p>Una vista ve el formulario cuando enlaza su <code>.fudapi</code>, con <code>&lt;link rel="server" href="../forms/person.fudapi"&gt;</code>. Desde TypeScript se importa: <code>import &#123; personForm &#125; from "fudic:forms/person"</code>.</p>
 
@@ -101,7 +101,7 @@ personForm.name();       // "Ada"
 personForm.$value();     // &#123; name: "Ada", email: "", age: null, active: true &#125;</code></pre>
 </ui-code>
 
-<p>Lo que es del formulario entero empieza por <code>$</code>, para no chocar con ningún campo: <code>$value()</code>, <code>$valid()</code>, <code>$reset()</code>.</p>
+<p>Los métodos del formulario entero empiezan por <code>$</code>, para no chocar con el nombre de ningún campo: <code>$value()</code>, <code>$valid()</code>, <code>$reset()</code>.</p>
 
 <ul id="write">
   <li><code>$set(&#123; … &#125;)</code> escribe todos los campos, y falla si falta uno.</li>
@@ -109,11 +109,11 @@ personForm.$value();     // &#123; name: "Ada", email: "", age: null, active: tr
   <li><code>$reset()</code> vuelve a los valores iniciales y borra los errores.</li>
 </ul>
 
-<p>Son dos operaciones para que un objeto incompleto no vacíe en silencio los campos que faltan.</p>
+<p><code>$set</code> y <code>$patch</code> son operaciones distintas para que un objeto incompleto no vacíe en silencio los campos que faltan.</p>
 
 <h2 id="state">El estado de un campo</h2>
 
-<p>Cada campo sabe cosas de sí mismo, y se leen llamándolas:</p>
+<p>Cada campo tiene su propio estado, y cada dato se lee llamando a su función:</p>
 
 <ul>
   <li><code>message()</code>: el texto de su error, o <code>""</code>. <code>errors()</code> da el error con el código de la regla.</li>

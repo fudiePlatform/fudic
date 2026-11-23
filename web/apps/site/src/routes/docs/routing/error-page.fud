@@ -5,11 +5,11 @@
 
 <head>
   <title>La página de error · Fudic</title>
-  <meta name="description" content="La página de error de Fudic: un _error.fud con layout, sin URL propia, que pinta un 404, un load que falla o una llamada que nadie espera.">
+  <meta name="description" content="La página de error de Fudic: un _error.fud con layout, sin URL propia, que pinta un 404, un load que falla o una llamada que falla sin que nadie recoja el error.">
   <link rel="canonical" href="https://fudic.dev/docs/routing/error-page">
   <meta property="og:type" content="article">
   <meta property="og:title" content="La página de error · Fudic">
-  <meta property="og:description" content="Un _error.fud para el 404, el load que falla y la llamada que nadie espera.">
+  <meta property="og:description" content="Un _error.fud para el 404, el load que falla y la llamada cuyo error nadie recoge.">
   <meta property="og:url" content="https://fudic.dev/docs/routing/error-page">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -35,9 +35,9 @@
 
 <h1>La página de error</h1>
 
-<h2 id="file"><code>_error.fud</code></h2>
-
 <p>La página de error de una app es <code>src/routes/_error.fud</code>, y la crea <code>fudic g error-page</code>. Es una página como las demás, pero sin URL propia: se pinta en la URL que falló, con el status del error. Así un buscador que pide <code>/blog/no-existe</code> recibe un <code>404</code> de verdad.</p>
+
+<h2 id="file"><code>_error.fud</code></h2>
 
 <ui-code .path="src/routes/_error.fud">
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
@@ -68,13 +68,13 @@
 <ul>
   <li><strong>Una URL que no encaja con ninguna ruta</strong>: un <code>404</code>.</li>
   <li><strong>Un <code>load</code> que lanza</strong>: el status del error, o un <code>500</code> (<a href="/docs/routing/data#errors">Los datos de la página</a>).</li>
-  <li><strong>Una llamada que falla y nadie espera</strong>, con <a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a> en la cadena: el navegador va a la página de error.</li>
+  <li><strong>Una llamada que falla sin que nadie recoja el error</strong>, con <a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a> en la cadena: el navegador va a la página de error.</li>
 </ul>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li id="layout">Necesita un layout. Si el layout tiene props, se las da un <code>_error.fudapi</code> con <code>layout</code>, como en una ruta (<a href="/docs/routing/data#layout">Los datos de la página</a>). Es lo único que puede declarar.</li>
+  <li id="layout">Necesita un layout. Si el layout tiene props, se las da un <code>_error.fudapi</code> con <code>layout</code>, como en una ruta (<a href="/docs/routing/data#layout">Los datos de la página</a>). <code>layout</code> es lo único que puede declarar un <code>_error.fudapi</code>.</li>
   <li id="library">En un workspace, la página de error puede vivir en una librería compartida (<code>fudic g error-page --project ui</code>). Toda app que dependa de ella y no tenga la suya la usa.</li>
 </ul>
 

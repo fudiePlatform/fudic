@@ -68,7 +68,7 @@
   <li><strong>Un código</strong> tiene su propia entrada, que gana a <code>"warnings"</code>.</li>
 </ul>
 
-<p>Un aviso con otro nivel lo dice en su mensaje («warning by default; error in this project»), para que nadie busque en la explicación del código un nivel que su proyecto no usa.</p>
+<p>Un aviso con otro nivel lo dice en su mensaje («warning by default; error in this project»). Así se sabe que el nivel de la explicación del código no es el que usa el proyecto.</p>
 
 <h2 id="line">En una línea, con su motivo</h2>
 
@@ -92,7 +92,7 @@
 
 <h2 id="errors">Un error no se rebaja</h2>
 
-<p>Un error quiere decir que lo que sale estaría mal, así que siempre rompe el build: ni <code>fudic.json</code> lo convierte en aviso ni un comentario lo silencia. Se arregla lo que dice. En el editor, cada código de <code>diagnostics</code> solo ofrece los niveles que puede tener: a un error, solo <code>"error"</code>.</p>
+<p>Un error quiere decir que lo que sale estaría mal, así que siempre rompe el build: ni <code>fudic.json</code> lo rebaja a <code>warning</code> ni un comentario lo silencia. Se arregla lo que dice. En el editor, cada código de <code>diagnostics</code> solo ofrece los niveles que puede tener: a un error, solo <code>"error"</code>.</p>
 
 <h2 id="details">Detalles</h2>
 
@@ -101,6 +101,6 @@
   <li>Un comentario solo silencia los avisos de su propio fichero.</li>
   <li>Un código que no existe o que Fudic retiró es un aviso, y esa entrada no hace nada (<a href="/docs/reference/diagnostics/FUD1520"><code>FUD1520</code></a>). Si el código cambió de número, el mensaje dice el nuevo.</li>
   <li>Una entrada que rebaja un error se ignora, y el error sigue saliendo (<a href="/docs/reference/diagnostics/FUD1521"><code>FUD1521</code></a>).</li>
-  <li>Un comentario sin código o sin motivo no silencia nada (<a href="/docs/reference/diagnostics/FUD1522"><code>FUD1522</code></a>), y uno que ya no silencia nada, porque el aviso desapareció, también avisa (<a href="/docs/reference/diagnostics/FUD1523"><code>FUD1523</code></a>).</li>
+  <li>Un comentario sin código o sin motivo no silencia nada (<a href="/docs/reference/diagnostics/FUD1522"><code>FUD1522</code></a>). Un comentario que ya no silencia nada porque el aviso desapareció también avisa (<a href="/docs/reference/diagnostics/FUD1523"><code>FUD1523</code></a>).</li>
   <li>Un <code>diagnostics</code> que no es un objeto de código y nivel invalida <code>fudic.json</code> entero (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>).</li>
 </ul>

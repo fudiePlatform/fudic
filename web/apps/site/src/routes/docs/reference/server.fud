@@ -43,9 +43,9 @@
 <pre><code>createServer(app: ServerApp, options?: ServerOptions): FudicServer</code></pre>
 </ui-code>
 
-<p><code>app</code> la construye el build: es <code>createApp(&#123; prerendered &#125;)</code>, del <code>server.mjs</code> que escribe en <code>.fudic/edge</code>. Ese módulo exporta también <code>config</code>, la sección <code>serve</code> de <code>fudic.json</code>.</p>
+<p><code>app</code> la construye el build: es <code>createApp(&#123; prerendered &#125;)</code>, que exporta el <code>server.mjs</code> que el build escribe en <code>.fudic/edge</code>. Ese módulo exporta también <code>config</code>, la sección <code>serve</code> de <code>fudic.json</code>.</p>
 
-<p>Para cada petición responde, en orden: las funciones de servidor, las páginas de las rutas, ya pintadas o pintadas en ese momento, y la página de error en su propia URL. Lo que no es suyo, un fichero estático, devuelve <code>null</code> para que lo sirva quien lo monta.</p>
+<p>Para cada petición responde, en orden: las funciones de servidor, las páginas de las rutas, ya pintadas o pintadas en ese momento, y la página de error en su propia URL. Si la petición no es suya, como la de un fichero estático, devuelve <code>null</code> para que la atienda quien monta el servidor.</p>
 
 <h2 id="options"><code>ServerOptions</code></h2>
 
@@ -55,10 +55,10 @@
   <li><strong><code>trustProxy</code></strong>: lee la URL pública de <code>Forwarded</code> o de <code>X-Forwarded-Proto</code> y <code>X-Forwarded-Host</code>. Por defecto, <code>false</code>. Guía: <a href="/docs/security#proxy">Seguridad</a>.</li>
   <li><strong><code>secureCookies</code></strong>: si las cookies llevan <code>Secure</code> por defecto. Por defecto, <code>true</code>; <code>fudic dev</code> y <code>fudic preview</code> sin HTTPS lo ponen a <code>false</code>.</li>
   <li><strong><code>secret</code></strong>: la clave que firma el token CSRF de <code>use csrf</code> con <code>token true</code>. En producción se le da con <code>FUDIC_SECRET</code>; en desarrollo, sin ella, se crea una por proceso.</li>
-  <li><strong><code>uploads</code></strong>: los límites de una llamada con ficheros. Por defecto, <code>maxFileSize</code> 10 MB por fichero, <code>maxFiles</code> 20 y <code>maxArgs</code> 1 MB para el resto. Pasar uno es un <code>413</code>. Guía: <a href="/docs/forms/files#limits">Ficheros</a>.</li>
+  <li><strong><code>uploads</code></strong>: los límites de una llamada con ficheros. Por defecto, <code>maxFileSize</code> 10 MB por fichero, <code>maxFiles</code> 20 y <code>maxArgs</code> 1 MB para el resto. Superar cualquiera de ellos responde con un <code>413</code>. Guía: <a href="/docs/forms/files#limits">Ficheros</a>.</li>
   <li><strong><code>spool</code></strong>: dónde esperan los ficheros subidos. Por defecto, en memoria; en Node, <a href="#disk-spool"><code>diskSpool</code></a>.</li>
   <li><strong><code>onError</code></strong>: recibe cada error que no es un <code>HttpError</code>, para registrarlo.</li>
-  <li><strong><code>dev</code></strong>: un <code>500</code> lleva su mensaje. Por defecto, <code>false</code>.</li>
+  <li><strong><code>dev</code></strong>: con <code>true</code>, un <code>500</code> lleva el mensaje del error. Por defecto, <code>false</code>.</li>
 </ul>
 
 <p><code>trustProxy</code> y <code>uploads</code> se escriben en el <code>serve</code> de <code>fudic.json</code> (<a href="/docs/configuration/fields#serve">Estilos, idiomas y servidor</a>); el resto se pasa al montar el servidor.</p>
@@ -67,7 +67,7 @@
 
 <ul>
   <li><strong><code>fetch(request, hooks?)</code></strong>: la respuesta de la app, o <code>null</code> si la URL no es suya. <code>hooks.earlyHints</code> recibe una vez las cabeceras del <code>103</code>.</li>
-  <li><strong><code>notFound(request, hooks?)</code></strong>: la página de error con un <code>404</code>, para una navegación que nada respondió. <code>null</code> si no es un <code>GET</code> o un <code>HEAD</code> que pide HTML.</li>
+  <li><strong><code>notFound(request, hooks?)</code></strong>: la página de error con un <code>404</code>, para una navegación a la que nada respondió. <code>null</code> si no es un <code>GET</code> o un <code>HEAD</code> que pide HTML.</li>
   <li><strong><code>staticHeaders(request)</code></strong>: las cabeceras de <code>assets.headers</code> para un fichero estático, o <code>null</code>.</li>
 </ul>
 
@@ -91,7 +91,7 @@ const files = staticFiles("dist");</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong><code>nodeMiddleware(server, &#123; notFound? &#125;)</code></strong>: un middleware <code>(req, res, next)</code>. Envía el <code>103 Early Hints</code> en HTTP/2. Con <code>notFound: true</code>, lo que nada respondió recibe la página de error; si no, pone las cabeceras de los estáticos y llama a <code>next()</code>.</li>
+  <li><strong><code>nodeMiddleware(server, &#123; notFound? &#125;)</code></strong>: un middleware <code>(req, res, next)</code>. Envía el <code>103 Early Hints</code> en HTTP/2. Con <code>notFound: true</code>, una petición a la que nada respondió recibe la página de error; si no, pone las cabeceras de los estáticos y llama a <code>next()</code>.</li>
   <li><strong><code>staticPages(dir)</code></strong>: lee las páginas que pintó el build, los <code>index.html</code> de <code>dist</code>.</li>
   <li><strong><code>staticFiles(dir)</code></strong>: sirve los ficheros de <code>dist</code> con su tipo.</li>
   <li id="disk-spool"><strong><code>diskSpool</code></strong>: los ficheros subidos esperan en ficheros temporales, que se borran al terminar.</li>

@@ -34,7 +34,7 @@
 
 <h1>Ampliar el <code>ctx</code></h1>
 
-<p>Cuando varios términos necesitan lo mismo (entrar como un usuario, encontrar el carrito), eso va una vez en <code>fudic/bench.js</code>, y aparece en el <code>ctx</code> de todos los términos del proyecto.</p>
+<p>Cuando varios términos necesitan lo mismo, como entrar como un usuario o encontrar el carrito, se escribe una vez en <code>fudic/bench.js</code>. Desde ahí aparece en el <code>ctx</code> de todos los términos del proyecto.</p>
 
 <h2 id="extension"><code>fudic/bench.js</code></h2>
 
@@ -63,7 +63,7 @@ export default defineExtension(&#123;
 
 <h2 id="use">Usarlo en un término</h2>
 
-<p>Si <code>fudic/bench.js</code> existe, <code>fudic g term</code> escribe el tipo que lo incluye, y el editor completa <code>ctx.signIn</code> y <code>ctx.cart</code>:</p>
+<p>Si <code>fudic/bench.js</code> existe, <code>fudic g term</code> escribe el tipo del <code>ctx</code> con lo que añade <code>bench.js</code>, y el editor completa <code>ctx.signIn</code> y <code>ctx.cart</code>:</p>
 
 <ui-code .path="fudic/terms/given/signed-in-as.js">
 <pre><code>/** @@type &#123;import('@@fudic/terms').Term&lt;string, import('@@fudic/terms').ContextOf&lt;typeof import('../../bench.js').default&gt;&gt;['run']&#125; */
@@ -77,7 +77,7 @@ export async function run(ctx, &#123; user &#125;) &#123;
 
 <h2 id="setup"><code>setup</code></h2>
 
-<p>Lo que hay que hacer en cada navegador antes de abrir la página, en todos los criterios:</p>
+<p><code>setup</code> prepara cada navegador antes de abrir la página, en todos los criterios:</p>
 
 <ui-code .path="fudic/bench.js">
 <pre><code>export default defineExtension(&#123;
@@ -93,7 +93,7 @@ export async function run(ctx, &#123; user &#125;) &#123;
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Si <code>bench.js</code> lanza</strong> al cargarse, en <code>setup</code> o en <code>context</code>, cada criterio para con <a href="/docs/reference/diagnostics/FUD1206"><code>FUD1206</code></a>.</li>
+  <li><strong>Si <code>bench.js</code> lanza</strong> al cargarse, en <code>setup</code> o en <code>context</code>, cada criterio se detiene con <a href="/docs/reference/diagnostics/FUD1206"><code>FUD1206</code></a>.</li>
   <li><strong>Al guardarlo</strong>, el workbench lo lee en la siguiente recarga, no en el momento.</li>
   <li><strong>El <code>ctx</code> de serie</strong> está en <a href="/docs/terms/anatomy#ctx">Cómo funciona un término</a>.</li>
 </ul>

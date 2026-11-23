@@ -34,7 +34,7 @@
 
 <h1><code>fudic translate</code></h1>
 
-<p>Extrae los textos que hay que traducir a <code>src/locales/&lt;locale&gt;/</code>, un fichero por cada fichero de código, para cada idioma de <code>fudic.json</code>. Lo que ya tradujiste se conserva.</p>
+<p>Extrae a <code>src/locales/&lt;locale&gt;/</code> los textos que hay que traducir, para cada idioma de <code>fudic.json</code>. Escribe un fichero por cada fichero de código. Lo que ya tradujiste se conserva.</p>
 
 <ui-code>
 <pre><code>fudic translate</code></pre>
@@ -47,11 +47,11 @@
     <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>--project &lt;name&gt;</code></td><td>La app cuyos textos extrae. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app cuyos textos extrae. Por defecto, la app en la que estás.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -64,8 +64,8 @@ fudic translate --project web</code></pre>
 
 <ul>
   <li>Lee los <code>.fud</code>, <code>.fudapi</code> y <code>.ts</code> de <code>src</code>, y los de las librerías de Fudic de las que depende la app. Dos ejecuciones sobre el mismo código dan los mismos ficheros.</li>
-  <li>Una app en un solo idioma no tiene nada que traducir: hay que añadir los demás a <code>locales</code> en <code>fudic.json</code>, o con <code>fudic add i18n --locales es,en</code>.</li>
-  <li>Ni <code>fudic dev</code> ni el build lo ejecutan: los catálogos solo cambian cuando lo ejecutas tú.</li>
+  <li>Una app en un solo idioma no tiene nada que traducir: hay que añadir los demás idiomas a <code>locales</code> en <code>fudic.json</code>, a mano o con <code>fudic add i18n --locales es,en</code>.</li>
+  <li>Ni <code>fudic dev</code> ni el build ejecutan <code>fudic translate</code>: los catálogos solo cambian cuando lo ejecutas tú.</li>
 </ul>
 
 <h2 id="guide">En la guía</h2>

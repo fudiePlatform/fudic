@@ -69,8 +69,8 @@
 </ui-code>
 
 <ul>
-  <li><strong>El primero es el idioma en que está escrito el código.</strong> Los textos de los <code>.fud</code> están en español, y el inglés es una traducción.</li>
-  <li><strong><code>site</code> es el origen en que se publica la app.</strong> Con dos idiomas o más el build lo necesita para escribir las URL absolutas de cada versión (<a href="/docs/i18n/urls#alternates">Las otras versiones de una página</a>).</li>
+  <li><strong>El primero es el idioma en que está escrito el código.</strong> En este ejemplo, los textos de los <code>.fud</code> están en español, y el inglés es una traducción.</li>
+  <li><strong><code>site</code> es el origen en que se publica la app.</strong> Con dos idiomas o más, el build lo necesita para escribir las URL absolutas de cada versión (<a href="/docs/i18n/urls#alternates">Las otras versiones de una página</a>).</li>
 </ul>
 
 <h2 id="what">Lo que se traduce solo</h2>
@@ -94,7 +94,7 @@
 
 <p>Aquí se traducen el <code>placeholder</code> y el <code>aria-label</code>. El nombre de la tienda no, porque está bajo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/translate" target="_blank" rel="noopener"><code>translate="no"</code></a>, el atributo estándar que también respetan los traductores del navegador.</p>
 
-<p>Tampoco se traducen el CSS, los <code>&lt;script&gt;</code>, <code>@@raw</code>, los comentarios ni el valor de una prop: un string que se pasa a un componente puede ser un texto o un valor, y ahí se marca con <code>t()</code> (<a href="/docs/i18n/code">Textos en el código</a>).</p>
+<p>Tampoco se traducen el CSS, los <code>&lt;script&gt;</code>, <code>@@raw</code>, los comentarios ni el valor de una prop. Un string que se pasa a un componente puede ser un texto o un valor, así que, si es un texto, se marca con <code>t()</code> (<a href="/docs/i18n/code">Textos en el código</a>).</p>
 
 <h2 id="sentence">La unidad es la frase</h2>
 
@@ -116,7 +116,7 @@
   <li><strong>El orden lo decide la traducción.</strong> <code>&#123;count&#125; messages for &lt;0&gt;&#123;name&#125;&lt;/0&gt;</code> es igual de válida, y la página se compila en ese orden.</li>
 </ul>
 
-<p>Traducir trozo a trozo obliga a que todos los idiomas pongan las palabras en el mismo orden, y no lo hacen. La frase corta en un elemento de bloque, en un componente o en un <code>@@if</code>; los elementos de texto, como <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code> o <code>&lt;code&gt;</code>, van dentro.</p>
+<p>Traducir trozo a trozo obliga a que todos los idiomas pongan las palabras en el mismo orden, y no lo hacen. Una frase termina donde empieza un elemento de bloque, un componente o un <code>@@if</code>. Los elementos de texto, como <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code> o <code>&lt;code&gt;</code>, quedan dentro de la frase.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

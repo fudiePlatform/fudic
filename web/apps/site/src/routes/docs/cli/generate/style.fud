@@ -35,7 +35,7 @@
 
 <h1><code>fudic generate style</code></h1>
 
-<p>Crea <code>&lt;name&gt;.css</code> en el proyecto y la añade a <code>globalStyles</code> de <code>fudic.json</code>: todos los componentes del proyecto la adoptan, después de las hojas de sus librerías.</p>
+<p>Crea la hoja <code>&lt;name&gt;.css</code> en el proyecto y la añade a <code>globalStyles</code> de <code>fudic.json</code>: todos los componentes del proyecto la adoptan, después de las hojas de sus librerías.</p>
 
 <ui-code>
 <pre><code>fudic generate style &lt;name&gt;</code></pre>
@@ -65,7 +65,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

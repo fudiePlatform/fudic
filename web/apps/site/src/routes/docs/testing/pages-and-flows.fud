@@ -5,7 +5,7 @@
 
 <head>
   <title>Páginas y flujos · Fudic</title>
-  <meta name="description" content="Criterios de páginas y flujos en Fudic: page abre una ruta por su URL con su layout, y lo que el fixture nombra es falso y el resto real; flow recorre varias páginas contra el servidor de verdad.">
+  <meta name="description" content="Criterios de páginas y flujos en Fudic. page abre una ruta por su URL con su layout: lo que nombra el fixture es falso y el resto es real. flow recorre varias páginas contra el servidor de verdad.">
   <link rel="canonical" href="https://fudic.dev/docs/testing/pages-and-flows">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Páginas y flujos · Fudic">
@@ -37,7 +37,7 @@
 
 <h1>Páginas y flujos</h1>
 
-<p>Un <code>.fudspec</code> de página abre una ruta por su URL, con su layout: lo que el fixture nombra es falso y lo demás es real. Uno de flujo recorre varias páginas contra el servidor de verdad, como lo haría un usuario.</p>
+<p>Un <code>.fudspec</code> de página abre una ruta por su URL, con su layout. Lo que nombra su fixture, un fichero de datos de prueba, es falso; lo demás es real. Uno de flujo recorre varias páginas contra el servidor de verdad, como lo haría un usuario.</p>
 
 <h2 id="page">Una página</h2>
 
@@ -96,24 +96,24 @@ export default &#123;
 
 <ul>
   <li><strong><code>data</code></strong> ocupa el lugar de <code>load</code>: <code>data two-people</code> pinta la página con esos datos. El layout sí se ejecuta, con ellos.</li>
-  <li><strong><code>calls</code></strong> responde funciones de servidor sin ejecutarlas: con <code>answers finds-luis</code>, <code>search</code> devuelve <code>[luis]</code>. Las que no nombra se ejecutan de verdad.</li>
-  <li><strong><code>fails</code></strong>, <strong><code>redirects</code></strong> y <strong><code>later</code></strong> dicen cómo responde: con un error, con una redirección, o tarde. <code>later.never()</code> no responde nunca, para comprobar lo que se ve mientras espera.</li>
+  <li><strong><code>calls</code></strong> da la respuesta de funciones de servidor sin ejecutarlas: con <code>answers finds-luis</code>, <code>search</code> devuelve <code>[luis]</code>. Las que no nombra se ejecutan de verdad.</li>
+  <li><strong><code>fails</code></strong>, <strong><code>redirects</code></strong> y <strong><code>later</code></strong> dicen cómo responden los datos o la función: con un error, con una redirección o tarde. <code>later.never()</code> no responde nunca, para comprobar lo que se ve mientras espera.</li>
 </ul>
 
-<p>El fixture lleva el tipo que genera el <code>.fudapi</code> de la ruta: unos datos que no son los de su <code>load</code>, o una función que la página no puede llamar, se marcan en el editor (<a href="/docs/server">El contrato <code>.fudapi</code></a>).</p>
+<p>El fixture lleva el tipo que genera el <code>.fudapi</code> de la ruta. El editor marca unos datos que no son los de su <code>load</code> o una función que la página no puede llamar (<a href="/docs/server">El contrato <code>.fudapi</code></a>).</p>
 
 <h2 id="calls">Lo que se envió</h2>
 
 <ul>
   <li><strong><code>sent search q "lu"</code></strong>: la última llamada a <code>search</code> llevó <code>q</code> igual a <code>"lu"</code>.</li>
-  <li><strong><code>called save 1</code></strong>: <code>save</code> se llamó una vez, respondida por el fixture o de verdad.</li>
+  <li><strong><code>called save 1</code></strong>: <code>save</code> se llamó una vez, tanto si respondió el fixture como si se ejecutó de verdad.</li>
   <li><strong><code>status 503</code></strong> y <strong><code>url /sign-in</code></strong>: el estado de la página y dónde acabó, también tras una redirección.</li>
   <li><strong><code>not-reloaded</code></strong>: el envío no recargó la página.</li>
 </ul>
 
 <h2 id="params">Rutas con parámetros</h2>
 
-<p>Una ruta como <code>/blog/[slug]</code> se abre con <code>path</code>, uno de los valores de su <code>paths</code>, o con <code>url</code>, una URL cualquiera:</p>
+<p>Una ruta como <code>/blog/[slug]</code> se abre de dos formas: con <code>path</code> y uno de los valores de su <code>paths</code>, o con <code>url</code> y una URL cualquiera:</p>
 
 <ui-code .path="src/routes/blog/[slug].fudspec">
 <pre><code>page /blog/[slug]
@@ -128,7 +128,7 @@ criterion unknown-slug
 
 <h2 id="flow">Un flujo</h2>
 
-<p>Un flujo prueba lo que cruza varias páginas: entrar, crear algo y encontrarlo después. Vive en <code>src/flows</code>, lo crea <code>fudic g flow sign-up</code>, y aquí el servidor es el de verdad:</p>
+<p>Un flujo prueba lo que cruza varias páginas: entrar, crear algo y encontrarlo después. Vive en <code>src/flows</code> y lo crea <code>fudic g flow sign-up</code>. Aquí el servidor es el de verdad:</p>
 
 <ui-code .path="src/flows/sign-up.fudspec">
 <pre><code>flow sign-up
@@ -156,7 +156,7 @@ criterion created-user-is-found
 
 <h2 id="people">Dos personas a la vez</h2>
 
-<p><code>as</code> pasa lo que sigue a otra persona, con su navegador y sus cookies. Así se prueba que uno no ve lo de otro:</p>
+<p>Con <code>as</code>, los pasos que siguen los hace otra persona, con su navegador y sus cookies. Así se prueba que una persona no ve lo de otra:</p>
 
 <ui-code .path="src/flows/sign-up.fudspec">
 <pre><code>criterion luis-does-not-see-ana
@@ -182,5 +182,5 @@ criterion created-user-is-found
   <li><strong><code>cookie</code></strong> en <code>given</code> pone una cookie antes de abrir, por ejemplo una sesión de verdad: <code>cookie session ana</code>.</li>
   <li><strong><code>offline</code></strong> en <code>given</code> abre sin red, para probar el <a href="/docs/service-worker">Service Worker</a>; en <code>when</code>, <code>offline</code> y <code>online</code> cortan y devuelven la red a mitad del criterio.</li>
   <li><strong><code>fails(0, "network")</code></strong> en un flujo simula que la llamada no llega: un fallo de red.</li>
-  <li><strong>Un fichero</strong> se sube con <code>upload</code> y se responde con <code>file("./fixtures/people.csv")</code>; <code>downloaded "people.csv"</code> comprueba la descarga.</li>
+  <li><strong>Un fichero</strong> se sube con <code>upload</code>. Un fixture devuelve uno con <code>file("./fixtures/people.csv")</code>, y <code>downloaded "people.csv"</code> comprueba la descarga.</li>
 </ul>

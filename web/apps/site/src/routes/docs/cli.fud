@@ -50,7 +50,7 @@
 
 <p><code>fudic new</code> deja la CLI en el proyecto como dependencia de desarrollo. Dentro, se usa con <code>npx fudic</code>, o desde los scripts de <code>package.json</code>.</p>
 
-<p><code>fudic --help</code> enseña todos los comandos, y <code>fudic &lt;comando&gt; --help</code>, las opciones de uno: lo mismo que hay en esta página y en la de cada comando.</p>
+<p><code>fudic --help</code> enseña todos los comandos, y <code>fudic &lt;comando&gt; --help</code> enseña las opciones de uno. Es lo mismo que cuentan esta página y la de cada comando.</p>
 
 <h2 id="words">Cuatro palabras</h2>
 
@@ -58,7 +58,7 @@
 
 <ul>
   <li><strong>App</strong>: lo que se sirve. Tiene páginas y una URL base, como <code>/</code> o <code>/admin/</code>.</li>
-  <li><strong>Librería</strong>: componentes que usan tus apps. No se sirve.</li>
+  <li><strong>Librería</strong>: componentes que tus apps usan. No se sirve.</li>
   <li><strong>Workspace</strong>: un solo repo con <code>apps/</code> y <code>libs/</code>.</li>
   <li><strong>Proyecto</strong>: una app o una librería. Dentro de un workspace, <code>--project</code> elige una.</li>
 </ul>
@@ -75,7 +75,7 @@
 
 <h3 id="commands-add">Añadir a un proyecto</h3>
 
-<p><code>fudic generate</code>, o <code>fudic g</code>, añade una pieza al proyecto en el que estás. Sus tipos, juntos, en <a href="/docs/cli/generate">la página de <code>fudic generate</code></a>:</p>
+<p><code>fudic generate</code>, o <code>fudic g</code>, añade una pieza al proyecto en el que estás. Estos son sus tipos; <a href="/docs/cli/generate">la página de <code>fudic generate</code></a> los reúne todos:</p>
 
 <ul>
   <li><a href="/docs/cli/generate/component"><code>generate component</code></a>: un componente en su carpeta, con su test unitario, sus criterios y su fixture.</li>
@@ -111,7 +111,7 @@
 
 <ul>
   <li><a href="/docs/cli/fmt"><code>fudic fmt</code></a>: formatea los <code>.fud</code>, <code>.fudspec</code> y <code>.fudapi</code>.</li>
-  <li><a href="/docs/cli/translate"><code>fudic translate</code></a>: extrae los textos que hay que traducir a <code>src/locales/</code>.</li>
+  <li><a href="/docs/cli/translate"><code>fudic translate</code></a>: extrae a <code>src/locales/</code> los textos que hay que traducir.</li>
 </ul>
 
 <h3 id="commands-history">El historial de una pieza</h3>
@@ -145,7 +145,7 @@ dry run — nothing written
 <h2 id="global">Opciones de todos los comandos</h2>
 
 <ul>
-  <li><strong><code>--project &lt;name&gt;</code></strong>: el proyecto sobre el que actúa. Sin ella, el del <code>fudic.json</code> más cercano subiendo desde donde estás. Nunca elige uno por su cuenta.</li>
+  <li><strong><code>--project &lt;name&gt;</code></strong>: el proyecto sobre el que actúa. Sin ella, actúa sobre el proyecto del <code>fudic.json</code> más cercano, buscando hacia arriba desde donde estás. Nunca elige uno por su cuenta.</li>
   <li><strong><code>--dry-run</code></strong>: enseña los ficheros que crearía, cambiaría o borraría, con el diff de los que cambian, y no escribe nada.</li>
   <li><strong><code>--force</code></strong>: sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</li>
   <li><strong><code>--json</code></strong>: lo que haría, en JSON y con el contenido de cada fichero, para que lo lea otro programa. Los mensajes para personas van entonces a la salida de error.</li>
@@ -155,7 +155,7 @@ dry run — nothing written
 
 <h2 id="errors">Cuando algo falla</h2>
 
-<p>Un error dice qué pasó, cómo seguir y dónde está la ayuda del comando. Nunca la ayuda entera:</p>
+<p>Un error dice qué pasó, cómo seguir y dónde está la ayuda del comando, pero no enseña la ayuda entera:</p>
 
 <ui-code>
 <pre><code>fudic g component
@@ -170,7 +170,7 @@ error  fudic generate component needs a name
 
 <h2 id="build">El build y los tipos</h2>
 
-<p>El build lo hace Vite, con <code>pnpm build</code>, y comprueba los tipos de todo el proyecto antes de empaquetar (<a href="/docs/vite/build">El build y la preview</a>). En desarrollo, los mismos tipos se comprueban en vivo (<a href="/docs/vite/dev">En desarrollo</a>). El aviso de lo que aún no está en Baseline se configura en <a href="/docs/configuration/baseline">Baseline</a>.</p>
+<p>El build lo hace Vite con <code>pnpm build</code>. Antes de empaquetar, comprueba los tipos de todo el proyecto; lo explica <a href="/docs/vite/build">El build y la preview</a>. En desarrollo, los mismos tipos se comprueban en vivo, como cuenta <a href="/docs/vite/dev">En desarrollo</a>. El aviso de lo que aún no está en Baseline se configura en <a href="/docs/configuration/baseline">Baseline</a>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

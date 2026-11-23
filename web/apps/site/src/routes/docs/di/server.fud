@@ -54,13 +54,13 @@ import &#123; Users &#125; from "../services/users";
 search.handle((ctx) =&gt; inject(Users).find(ctx.args.q));</code></pre>
 </ui-code>
 
-<p>Cada petición tiene su propio contenedor raíz, que la sigue a través de cada <code>await</code>. Dos visitantes a la vez nunca comparten una instancia: un servicio puede guardar datos de quien lo pide sin que el otro los vea.</p>
+<p>Cada petición tiene su propio contenedor raíz, donde viven sus instancias, y ese contenedor la sigue a través de cada <code>await</code>. Dos visitantes a la vez nunca comparten una instancia: un servicio puede guardar datos de quien lo pide sin que el otro los vea.</p>
 
 <p>Es lo contrario de una variable en un módulo, que en el servidor comparten todas las peticiones del proceso.</p>
 
 <h2 id="publish">Viajan valores, no instancias</h2>
 
-<p>El <code>Cart</code> del servidor pintó tres líneas. El del navegador nace vacío, y al primer cambio pintaría cero. Para que nazca igual, el servidor publica el valor del que se construye, bajo un token:</p>
+<p>El <code>Cart</code> del servidor pintó tres líneas. El del navegador nace vacío, y al primer cambio pintaría cero líneas. Para que nazca igual, el servidor publica bajo un token el valor con el que se construye:</p>
 
 <ui-code .path="src/services/cart.ts">
 <pre><code>export const LINES = token&lt;readonly string[]&gt;("lines");
@@ -93,7 +93,7 @@ load.handle(() =&gt; &#123;
 
 <h2 id="testing">Otro servicio en las pruebas</h2>
 
-<p>Un criterio del <code>.fudspec</code> puede cambiar un servicio por otro, sin tocar el código. El fixture da nombre a cada grupo de servicios:</p>
+<p>Un criterio del <code>.fudspec</code> puede cambiar un servicio por otro, sin tocar el código. El fixture, el fichero <code>.fixture.ts</code> que acompaña al flujo, da nombre a cada grupo de servicios:</p>
 
 <ui-code .path="src/flows/sign-up.fixture.ts">
 <pre><code>import type &#123; FlowFixtures &#125; from "@@fudic/spec";
@@ -120,4 +120,4 @@ criterion signing-in-opens-the-account
   …</code></pre>
 </ui-code>
 
-<p>El servicio de la prueba se registra en la raíz, en el servidor y en el navegador, y gana a <code>Service</code>. <code>fudic spec</code> lo ejecuta en un navegador de verdad, y en VS Code el workbench (Ctrl+K V) lo repite en cada guardado.</p>
+<p>El servicio de la prueba se registra en la raíz, en el servidor y en el navegador, y sustituye al que registra <code>Service</code>. <code>fudic spec</code> ejecuta el criterio en un navegador de verdad, y en VS Code el workbench (Ctrl+K V) lo repite en cada guardado.</p>

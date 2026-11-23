@@ -23,7 +23,6 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#what">Qué es un 103</a></li>
         <li><a href="#hints">Las pistas de cada página</a></li>
         <li><a href="#when">Cuándo se envía</a></li>
         <li><a href="#off">Apagarlo</a></li>
@@ -34,8 +33,6 @@
 }
 
 <h1>Early hints</h1>
-
-<h2 id="what">Qué es un <code>103</code></h2>
 
 <p>Mientras el servidor prepara una página, el navegador espera: no sabe qué CSS ni qué JavaScript necesitará hasta que llega el HTML. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a> es una respuesta estándar que el servidor envía antes de la de verdad, con lo que conviene ir descargando.</p>
 
@@ -66,7 +63,7 @@
 
 <h2 id="off">Apagarlo</h2>
 
-<p>Están activadas por defecto, porque no cuestan nada a la página. Se apagan en <code>fudic.json</code> con <code>"earlyHints": false</code>.</p>
+<p>Las early hints están activadas por defecto, porque no cuestan nada a la página. Se apagan en <code>fudic.json</code> con <code>"earlyHints": false</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

@@ -54,7 +54,7 @@ export default defineConfig(&#123;
 
 <h2 id="vite-config">Lo que lee de Vite</h2>
 
-<p>Lo que ya es de Vite no se repite en las opciones de Fudic. El plugin lo lee de la configuración de Vite:</p>
+<p>Lo que ya se configura en Vite no se repite en las opciones de Fudic. El plugin lee estos campos de la configuración de Vite:</p>
 
 <ul>
   <li><strong><code>base</code></strong>: la URL bajo la que se sirve la app. Llega a cada enlace, a cada fichero y al Service Worker.</li>
@@ -72,7 +72,7 @@ export default defineConfig(&#123;
 &#125;);</code></pre>
 </ui-code>
 
-<p><code>fudic dev</code> lee ese <code>base</code> para servir cada app del workspace en su sitio: <code>/</code> una y <code>/admin/</code> otra, en el mismo puerto.</p>
+<p><code>fudic dev</code> lee ese <code>base</code> para servir cada app del workspace en su sitio, una en <code>/</code> y otra en <code>/admin/</code>, en el mismo puerto.</p>
 
 <h2 id="options">Las opciones</h2>
 
@@ -91,8 +91,8 @@ export default defineConfig(&#123;
 <ul>
   <li><strong><code>routesDir</code></strong>: la carpeta de las páginas, relativa al proyecto. Por defecto, <code>src/routes</code> (<a href="/docs/routing">Rutas por carpetas</a>).</li>
   <li><strong><code>prerender</code></strong>: con <code>false</code>, el build no escribe ninguna página. Las que serían <code>ssg</code> se pintan cuando alguien las pide, y el build acaba antes. Por defecto, <code>true</code>.</li>
-  <li><strong><code>paramFallback</code></strong>: qué pasa con un valor que <code>paths</code> no dio. Con <code>"lazy"</code>, por defecto, se pinta cuando alguien lo pide. Con <code>"notFound"</code>, responde la página de error con un <code>404</code> (<a href="/docs/routing/rendering#paths">Los modos</a>).</li>
-  <li><strong><code>defaults</code></strong>: el modo de una ruta que no declara ninguno, por su patrón. Además de <code>ssg</code>, <code>ssr</code> y <code>sw</code>, admite <code>exclude</code>, que deja la ruta fuera del build.</li>
+  <li><strong><code>paramFallback</code></strong>: qué pasa cuando la URL trae un valor de parámetro que <code>paths</code> no dio. Con <code>"lazy"</code>, por defecto, la página se pinta cuando alguien la pide. Con <code>"notFound"</code>, responde la página de error con un <code>404</code> (<a href="/docs/routing/rendering#paths">Los modos</a>).</li>
+  <li><strong><code>defaults</code></strong>: el modo que reciben, según su patrón, las rutas que no declaran ninguno. Además de <code>ssg</code>, <code>ssr</code> y <code>sw</code>, admite <code>exclude</code>, que deja la ruta fuera del build.</li>
 </ul>
 
 <p><code>defaults</code> no manda sobre la página: si su <code>.fudapi</code> declara un modo en la línea de <code>load</code>, gana ese (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>). Sirve para fijar el modo de un grupo de rutas sin tocarlas una a una.</p>
@@ -101,7 +101,7 @@ export default defineConfig(&#123;
 
 <ul>
   <li><strong><code>manifestUrl</code></strong>: dónde se publica el manifiesto de rutas. Por defecto, <code>fudic-routes.json</code> bajo el <code>base</code>. Tiene que ser absoluta, porque la página y el Service Worker la leen desde sitios distintos (<a href="/docs/reference/diagnostics/FUD0365"><code>FUD0365</code></a>).</li>
-  <li><strong><code>sw: false</code></strong> construye la app sin Service Worker, como si no tuviera <code>sw.json</code>. Con <strong><code>edgeDir</code></strong>, que por defecto es <code>.fudic/edge</code>, ese segundo build escribe su servidor en otra carpeta y no pisa el del primero. Sirve para comparar las dos formas de la misma app.</li>
+  <li><strong><code>sw: false</code></strong> construye la app sin Service Worker, como si no tuviera <code>sw.json</code>. Sirve para comparar las dos formas de la misma app: haces un build con Service Worker y otro sin él. Para que el segundo no pise el servidor del primero, dale otra carpeta con <strong><code>edgeDir</code></strong>, que por defecto es <code>.fudic/edge</code>.</li>
   <li>Una ruta que declara su modo y además está en <code>defaults</code> da un aviso, <a href="/docs/reference/diagnostics/FUD0397"><code>FUD0397</code></a>: la entrada de <code>defaults</code> no hace nada.</li>
 </ul>
 

@@ -34,11 +34,11 @@
 
 <h1>Las cabeceras del Service Worker</h1>
 
-<p>El Service Worker no hereda la política de seguridad de la página: tiene la suya, en <code>sw.headers</code>. Es la única que permite <code>'unsafe-eval'</code>, porque sin él no podría cargar el código de las rutas.</p>
+<p>El Service Worker no hereda la política de seguridad de la página: tiene la suya, en <code>sw.headers</code>. Es la única que permite <code>'unsafe-eval'</code>, porque sin ese permiso no podría cargar el código de las rutas.</p>
 
 <h2 id="file"><code>sw.headers</code></h2>
 
-<p>Va en la raíz de la app, junto a <code>sw.json</code>, y son las cabeceras con las que se sirve <code>/fudic-sw.js</code>. Este es el que escribe <code>fudic new</code>:</p>
+<p>Va en la raíz de la app, junto a <code>sw.json</code>, y contiene las cabeceras con las que se sirve <code>/fudic-sw.js</code>. Este es el que escribe <code>fudic new</code>:</p>
 
 <ui-code .path="sw.headers">
 <pre><code># The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
@@ -55,7 +55,7 @@ Content-Security-Policy:
 
 <p>Es una limitación del estándar: un Service Worker no puede cargar módulos con <code>import()</code>, y <code>importScripts()</code> solo funciona mientras se instala. Para cargar el código de una ruta cuando se visita, Fudic lo evalúa con <code>new Function</code>.</p>
 
-<p>El permiso vale solo dentro del Service Worker. La página sigue sin <code>'unsafe-eval'</code>, y en <code>page.headers</code> es un aviso.</p>
+<p>El permiso vale solo dentro del Service Worker. La página sigue sin <code>'unsafe-eval'</code>, y ponerlo en <code>page.headers</code> da un aviso.</p>
 
 <h2 id="details">Detalles</h2>
 

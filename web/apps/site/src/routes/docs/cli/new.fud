@@ -35,7 +35,7 @@
 
 <h1><code>fudic new</code></h1>
 
-<p>Crea una app en una carpeta nueva, con su guía de estilos en <code>src/guide/</code>, instala sus dependencias y hace el primer commit. Con <code>--workspace</code> crea en su lugar un workspace: un solo repo con <code>apps/</code> y <code>libs/</code>, la guía en <code>libs/guide</code> y las apps y librerías que nombres.</p>
+<p>Crea una app en una carpeta nueva, con su guía de estilos en <code>src/guide/</code>, instala sus dependencias y hace el primer commit. Con <code>--workspace</code> crea un workspace en lugar de una app. Es un solo repo con <code>apps/</code> y <code>libs/</code>, con la guía en <code>libs/guide</code> y con las apps y librerías que nombres.</p>
 
 <ui-code>
 <pre><code>fudic new &lt;name&gt;</code></pre>
@@ -60,12 +60,12 @@
   </thead>
   <tbody>
     <tr><td><code>--workspace</code></td><td>Crea un workspace en vez de una app: <code>apps/</code>, <code>libs/</code> y la guía de estilos en <code>libs/guide</code>.</td></tr>
-    <tr><td><code>--app &lt;name&gt;</code></td><td>Con <code>--workspace</code>, su primera app, servida en <code>/</code>.</td></tr>
+    <tr><td><code>--app &lt;name&gt;</code></td><td>Con <code>--workspace</code>, la primera app del workspace, que se sirve en <code>/</code>.</td></tr>
     <tr><td><code>--lib &lt;name&gt;</code></td><td>Con <code>--workspace</code>, una librería en <code>libs/</code>. Se repite para crear varias.</td></tr>
-    <tr><td><code>--uses &lt;lib&gt;</code></td><td>Con <code>--app</code>, crea también esa librería, y la app la usa. Se repite.</td></tr>
-    <tr><td><code>--id &lt;id&gt;</code></td><td>La identidad de la app para sus cachés. Por defecto, su nombre. Una vez publicada, no se cambia.</td></tr>
+    <tr><td><code>--uses &lt;lib&gt;</code></td><td>Con <code>--app</code>, crea también esa librería y hace que la app la use. Se repite.</td></tr>
+    <tr><td><code>--id &lt;id&gt;</code></td><td>La identidad de la app para sus cachés. Por defecto, su nombre. No la cambies cuando la app ya esté publicada.</td></tr>
     <tr><td><code>--prefix &lt;p&gt;</code></td><td>Lo que convierte <code>button</code> en <code>&lt;p-button&gt;</code>. Por defecto, el nombre de la app.</td></tr>
-    <tr><td><code>--layout &lt;name|href&gt;</code></td><td>Un nombre: el layout propio de la app, por defecto <code>_layout</code>. Un href: el de una librería, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
+    <tr><td><code>--layout &lt;name|href&gt;</code></td><td>Si es un nombre, crea un layout propio de la app; por defecto, <code>_layout</code>. Si es un href, la app usa ese layout de una librería, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
     <tr><td><code>--locale &lt;tag&gt;</code></td><td>El idioma de la app, una etiqueta BCP 47 como <code>es</code> o <code>en-GB</code>. Por defecto, <code>en</code>.</td></tr>
     <tr><td><code>--target &lt;name&gt;</code></td><td>Dónde se despliega. Hoy solo existe <code>static</code>, el valor por defecto.</td></tr>
     <tr><td><code>--pm &lt;pnpm|npm|yarn&gt;</code></td><td>El gestor de paquetes. Por defecto, <code>pnpm</code>.</td></tr>
@@ -76,7 +76,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

@@ -4,7 +4,7 @@ Revisión de toda la prosa de `web/apps/site/src` (2026-11-23): párrafos que cu
 cuesta y cómo se reescribirían. No es una revisión técnica: no comprueba si lo que dice cada página
 es cierto, solo si se entiende a la primera.
 
-Lo aplica otra sesión. Este documento solo propone.
+**Aplicado el 2026-11-23**, entero. Donde la propuesta cambiaba el significado o mantenía la elipsis, se adaptó con el mismo criterio. Unificados: «hooks» y «custom properties».
 
 ## Cómo aplicarlo
 

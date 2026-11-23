@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate spec</code></h1>
 
-<p>Escribe junto a un componente o a una página sus criterios <code>.fudspec</code> y su fixture.</p>
+<p>Escribe los criterios <code>.fudspec</code> de un componente o de una página, y su fixture, junto a la pieza.</p>
 
 <ui-code>
 <pre><code>fudic generate spec &lt;component | route&gt;</code></pre>
@@ -51,7 +51,7 @@
     <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>&lt;component&gt;</code></td><td>Su tag, o su nombre sin el prefijo: <code>button</code> o <code>shop-button</code>.</td></tr>
+    <tr><td><code>&lt;component&gt;</code></td><td>Su nombre sin el prefijo, o su tag: <code>button</code> o <code>shop-button</code>.</td></tr>
     <tr><td><code>&lt;route&gt;</code></td><td>Una página, como está en <code>src/routes</code>: <code>/users</code>, <code>/blog/[slug]</code> o <code>/</code>.</td></tr>
   </tbody>
 </table>
@@ -69,7 +69,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -95,8 +95,8 @@ criterion renders
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li>El fixture de un componente lleva las props con las que lo montan los criterios. Si el componente no existe, lo crea también.</li>
-  <li>El de una página lleva una muestra de lo que devuelve su <code>load</code>, sus <code>paths</code> si los tiene, y ninguna llamada todavía: lo que el fixture no nombra se ejecuta de verdad.</li>
+  <li>El fixture de un componente lleva las props con las que lo montan los criterios. Si el componente no existe, también crea el componente.</li>
+  <li>El fixture de una página lleva una muestra de lo que devuelve su <code>load</code> y sus <code>paths</code>, si los tiene. Todavía no sustituye ninguna llamada: lo que el fixture no nombra se ejecuta de verdad.</li>
 </ul>
 
 <h2 id="guide">En la guía</h2>

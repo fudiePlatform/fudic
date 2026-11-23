@@ -67,7 +67,7 @@
 
 <ol class="flow">
   <li>Si un componente por encima provee <code>X</code>, el más cercano es el dueño y su instancia es la respuesta.</li>
-  <li>Si no, llega a la raíz, donde están los que registran <code>Service</code> y <code>provide</code> en un módulo.</li>
+  <li>Si no, llega a la raíz, donde están los servicios registrados con <code>Service</code> o con un <code>provide</code> en un módulo.</li>
   <li>Si nadie lo registra, es un error que nombra lo que se pidió.</li>
 </ol>
 
@@ -77,18 +77,18 @@
 
 <p>Proveer no hidrata: <code>app-shop</code> no inyecta nada, así que sigue sin JavaScript y no descarga su código. Solo se hidratan <code>app-cart-lines</code> y <code>app-cart-total</code>, que inyectan (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
 
-<p>Por eso Fudic no busca al dueño subiendo por el DOM: el elemento de <code>app-shop</code> está en la página, pero nunca ejecutó una línea en el navegador. El servidor anota en la página quién es dueño de quién, y el navegador reconstruye los contenedores a partir de esa nota.</p>
+<p>Por eso Fudic no busca al dueño subiendo por el DOM: el elemento de <code>app-shop</code> está en la página, pero nunca ejecutó una línea en el navegador. El servidor anota en la página quién es dueño de quién, y a partir de esa nota el navegador reconstruye los contenedores, el sitio donde vive la instancia de cada dueño.</p>
 
 <h2 id="lifetime">Quién puede pedir qué</h2>
 
-<p>La instancia se crea en el contenedor de su dueño, y desde ahí solo ve lo que hay por encima. Un servicio de la raíz que inyecta <code>Cart</code> no lo encuentra, aunque lo pida desde dentro de un <code>app-shop</code>: el error llega al momento.</p>
+<p>La instancia se crea en el contenedor de su dueño, y desde ahí solo ve lo que hay por encima. Un servicio de la raíz que inyecta <code>Cart</code> no lo encuentra, aunque quien pida ese servicio sea un componente de dentro de un <code>app-shop</code>. El error salta en el momento.</p>
 
 <p>Así nadie depende de algo que vive menos que él. Un servicio de toda la página que guardara el carrito de un <code>app-shop</code> lo seguiría usando cuando ese <code>app-shop</code> ya no exista.</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Un componente que no provee ni inyecta</strong> no crea contenedor: sus hijos ven el de su dueño más cercano.</li>
+  <li><strong>Un componente que no provee ni inyecta</strong> no crea su propio contenedor de servicios: sus hijos ven el de su dueño más cercano.</li>
   <li><strong>Un <code>provide</code> en el <code>@@code</code> de un componente</strong> registra para ese componente y su subárbol; uno en un módulo <code>.ts</code>, en la raíz.</li>
   <li><strong><a href="/docs/reference/diagnostics/FUD0684"><code>FUD0684</code></a></strong> sale en el editor cuando un componente provee el mismo token dos veces: la segunda reemplazaría a la primera.</li>
 </ul>

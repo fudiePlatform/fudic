@@ -63,7 +63,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 
@@ -81,7 +81,7 @@ fudic history src/routes/blog --json</code></pre>
 shop-cart  not approved · tests not run · spec not run</code></pre>
 </ui-code>
 
-<p>Cuando hay historia, cada parte dice algo así: <code>approved by ana (valid)</code> o <code>(expired)</code>, <code>tests pass 6/6</code>, y <code>spec stale (was pass)</code> si pasó pero los ficheros han cambiado desde entonces.</p>
+<p>Cuando hay historial, cada parte dice algo así: <code>approved by ana (valid)</code> o <code>(expired)</code>, y <code>tests pass 6/6</code>. <code>spec stale (was pass)</code> significa que los criterios pasaron, pero los ficheros han cambiado desde entonces.</p>
 
 <h2 id="guide">En la guía</h2>
 

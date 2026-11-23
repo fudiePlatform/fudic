@@ -102,7 +102,7 @@ fudic fmt src/components  # only there
 fudic fmt --dry-run       # show the diff, write nothing</code></pre>
 </ui-code>
 
-<p>Las opciones, una a una, en <a href="/docs/cli/fmt">la página de <code>fudic fmt</code></a>. En el editor no hay nada que lanzar: la extensión formatea al guardar (<a href="/docs/editors/writing#format">Escribir con el editor</a>).</p>
+<p>Cada opción se explica en <a href="/docs/cli/fmt">la página de <code>fudic fmt</code></a>. En el editor no hay nada que lanzar: la extensión formatea al guardar (<a href="/docs/editors/writing#format">Escribir con el editor</a>).</p>
 
 <h2 id="ci">En la integración continua</h2>
 

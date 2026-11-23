@@ -38,7 +38,7 @@
 
 <h1>Validación y validez</h1>
 
-<p>Un formulario responde a dos preguntas distintas. <strong>¿Qué error le enseño al usuario?</strong> Depende de por dónde ha pasado. <strong>¿Cumplen los valores las reglas?</strong> Sirve, por ejemplo, para habilitar un botón sin pintar ningún mensaje. En Fudic, los errores son lo que se muestra, y la validez es silenciosa.</p>
+<p>Un formulario responde a dos preguntas distintas. <strong>¿Qué error le enseño al usuario?</strong> Depende de por dónde ha pasado. <strong>¿Cumplen los valores las reglas?</strong> La respuesta sirve, por ejemplo, para habilitar un botón sin pintar ningún mensaje. En Fudic, los errores son lo que se muestra, y la validez es silenciosa.</p>
 
 <h2 id="field">Las reglas de un campo</h2>
 
@@ -53,7 +53,7 @@
 </ui-code>
 
 <ul>
-  <li><strong>Van en orden, y la primera que falla para.</strong> Un alias vacío dice «Elige un alias», y no se pregunta al servidor si está cogido.</li>
+  <li><strong>Van en orden, y la comprobación se detiene en la primera que falla.</strong> Un alias vacío dice «Elige un alias», y no se pregunta al servidor si está cogido.</li>
   <li><strong>Salvo <code>required</code>, todas aceptan el campo vacío.</strong> <code>web</code> es opcional, pero si se escribe tiene que ser una URL.</li>
   <li><strong>Las de serie no se importan</strong>: <code>required</code>, <code>min</code>, <code>max</code>, <code>min-length</code>, <code>max-length</code>, <code>pattern</code>… Las propias, como <code>alias-taken</code>, se declaran en el <code>.fudapi</code> (<a href="/docs/server/rules">Reglas y patrones</a>).</li>
 </ul>
@@ -81,7 +81,7 @@
 
 <ul>
   <li>La condición admite campos, textos y números, comparaciones, <code>contains</code>, <code>empty</code>, <code>length</code>, <code>and</code>, <code>or</code> y <code>not</code>.</li>
-  <li>Al contrario que las de un campo, se comprueban todas, y el resumen muestra todos sus errores a la vez.</li>
+  <li>Al contrario que las reglas de un campo, los <code>require</code> se comprueban todos, y el resumen muestra todos sus errores a la vez.</li>
   <li><code>on campo</code> pinta el error en ese campo, y <code>when</code> agrupa los <code>require</code> que solo cuentan si se cumple una condición.</li>
 </ul>
 
@@ -110,7 +110,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>Si la pregunta falla (sin red, un <code>500</code>), el campo pasa como válido: al enviar decide el servidor.</p>
+<p>Si la pregunta falla, por falta de red o por un <code>500</code>, el campo pasa como válido: al enviar decide el servidor.</p>
 
 <h2 id="validity">Validez: lo que no se muestra</h2>
 
@@ -120,7 +120,7 @@
 <pre><code>&lt;button type="submit" disabled=@@(!userForm.$valid())&gt;Guardar&lt;/button&gt;</code></pre>
 </ui-code>
 
-<p>Por defecto, un campo solo cuenta cuando el usuario ya ha pasado por él, así que el botón nace habilitado. Con <code>validity rules</code>, cuentan todas las reglas desde el principio, y el botón nace deshabilitado.</p>
+<p>Por defecto, la validez solo tiene en cuenta los campos por los que el usuario ya ha pasado, así que el botón nace habilitado. Con <code>validity rules</code>, cuentan todas las reglas desde el principio, y el botón nace deshabilitado.</p>
 
 <ui-note>
   <p>En la duda, no deshabilites el botón. Un envío fallido muestra todos los errores y lleva el foco al primero. Un botón gris no dice por qué.</p>

@@ -69,7 +69,7 @@
   <li><strong>Con <code>form</code></strong> debajo, recibe un formulario (<a href="/docs/forms/submitting">Enviar al servidor</a>).</li>
 </ul>
 
-<p>Llamarla con <code>await</code> es lo más directo. Para pintar su estado (si está en marcha, su valor, su error), está <a href="/docs/server/task"><code>task</code></a>.</p>
+<p>Llamarla con <code>await</code> es lo más directo. Para pintar su estado, si está en marcha, su valor o su error, usa <a href="/docs/server/task"><code>task</code></a>.</p>
 
 <h2 id="handler">El handler y su <code>ctx</code></h2>
 
@@ -106,7 +106,7 @@ find.handle(async (ctx) =&gt; &#123;
 
 <h3 id="fails-catches">Errores que se quedan en la página</h3>
 
-<p>Algunos errores son para el usuario: puede corregir algo. <code>catches</code> dice qué status se quedan en la página, y <code>fails</code> les da un código y un texto:</p>
+<p>Algunos errores son para el usuario, que puede corregir algo. <code>catches</code> dice qué status se quedan en la página, y <code>fails</code> les da un código y un texto:</p>
 
 <ui-code .path="src/routes/usuarios.fudapi">
 <pre><code>put save
@@ -139,11 +139,11 @@ find.handle(async (ctx) =&gt; &#123;
   name  str</code></pre>
 </ui-code>
 
-<p>Cuando la llamada sale bien, si la página está en <code>/usuarios</code>, pide sus datos otra vez y se repinta, sin recargar. Sin <code>invalidates</code> no se repinta nada: si la página ya sabe qué ha cambiado, lo pone al día ella misma en sus signals, que es más rápido.</p>
+<p>Cuando la llamada sale bien, si la página está en <code>/usuarios</code>, pide sus datos otra vez y se repinta, sin recargar. Sin <code>invalidates</code> no se repinta nada. Si la página ya sabe qué ha cambiado, actualiza ella misma sus signals, que es más rápido.</p>
 
 <h2 id="url">Una función como enlace</h2>
 
-<p>Un <code>get</code> tiene <code>url()</code>: la URL que lo llama con esos argumentos. Sirve para un <code>href</code> o un <code>src</code>, y el navegador la pide sin JavaScript:</p>
+<p>Un <code>get</code> tiene <code>url()</code>, que devuelve la URL que llama a esa función con los argumentos que le pases. Sirve para un <code>href</code> o un <code>src</code>, y el navegador la pide sin JavaScript:</p>
 
 <ui-code>
 <pre><code>&lt;img src=@@avatar.url(&#123; id: p.id &#125;) alt=@@p.name&gt;
@@ -154,22 +154,22 @@ find.handle(async (ctx) =&gt; &#123;
 
 <p>Por defecto, los argumentos y la respuesta viajan en <strong><code>fud-bin</code></strong>, el formato binario de Fudic (<code>application/fud+bin</code>). Es de la misma familia que <a href="https://protobuf.dev/" target="_blank" rel="noopener">Protocol Buffers</a> o <a href="https://msgpack.org/" target="_blank" rel="noopener">MessagePack</a>, con una diferencia: su esquema es el propio <code>.fudapi</code>, así que no hay nada más que escribir ni que mantener.</p>
 
-<p>Suena raro, pero la idea es sencilla: el navegador y el servidor ya conocen el contrato, así que no hace falta mandar lo que los dos saben.</p>
+<p>El navegador y el servidor ya conocen el contrato, así que no hace falta mandar lo que los dos saben.</p>
 
 <p>Compáralo con JSON. Para <code>&#123; id: 3, active: true &#125;</code>, JSON manda los nombres de los campos, las comillas y los números como texto. El binario de Fudic manda solo los valores, en el orden del contrato:</p>
 
 <ul>
   <li>Los nombres de los campos no viajan: los dos lados saben que primero va <code>id</code> y después <code>active</code>.</li>
   <li>Un número ocupa su ancho declarado: un <code>u8</code>, un byte, y un <code>i32</code>, cuatro.</li>
-  <li>Los <code>bool</code> van juntos como bits, ocho por byte, y los campos opcionales vacíos se marcan igual.</li>
-  <li>Un texto es su longitud y sus bytes en UTF-8. Las longitudes van en varint, el truco de Protocol Buffers: un número pequeño ocupa un byte. Una fecha, los milisegundos desde 1970 en seis bytes.</li>
+  <li>Los <code>bool</code> van juntos como bits, ocho por byte, y un campo opcional vacío se marca también con un bit.</li>
+  <li>Un texto es su longitud y sus bytes en UTF-8. Las longitudes van en varint, el truco de Protocol Buffers con el que un número pequeño ocupa un byte. Una fecha son los milisegundos desde 1970, en seis bytes.</li>
   <li>Una lista es cuántos elementos tiene y después los elementos. Un <code>enum</code> es la posición de su valor.</li>
 </ul>
 
-<p>Pesa menos y se lee más rápido, y el servidor no se fía de lo que llega: unos bytes que no encajan con el contrato son un <code>400</code>.</p>
+<p>Pesa menos y se lee más rápido. Además, el servidor no se fía de lo que llega: unos bytes que no encajan con el contrato son un <code>400</code>.</p>
 
 <ul>
-  <li><strong>Si la página es de una versión anterior</strong> a la del servidor, cada llamada lleva una firma de la forma de su contrato (la cabecera <code>fud-sig</code>), y la llamada falla con un <code>412</code> en vez de leer datos con otra forma.</li>
+  <li><strong>Cada llamada lleva una firma</strong> de la forma de su contrato, en la cabecera <code>fud-sig</code>. Si la página es de una versión anterior a la del servidor, la llamada falla con un <code>412</code> en vez de leer datos con otra forma.</li>
   <li><strong>Los datos de una página</strong> viajan en el mismo formato, en trozos (<code>application/fud+frames</code>): primero lo que devuelve <code>load</code>, y después cada campo <code>later</code> según llega.</li>
   <li><strong>El formato está documentado</strong>, para que otro backend pueda cumplirlo.</li>
 </ul>
@@ -190,7 +190,7 @@ find.handle(async (ctx) =&gt; &#123;
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li id="arguments">En un <code>get</code>, los argumentos viajan en la URL. En los demás, en el cuerpo. <code>query nombre tipo</code> manda uno en la URL, y <code>patch rename /:id</code> lo pone en la ruta.</li>
+  <li id="arguments">En un <code>get</code>, los argumentos viajan en la URL. En los demás, en el cuerpo. En ellos, <code>query nombre tipo</code> manda un argumento en la URL, y <code>patch rename /:id</code> pone <code>id</code> en la ruta.</li>
   <li id="cancel">Una llamada se cancela con un <code>AbortSignal</code> estándar: <code>search(&#123; q &#125;, &#123; signal &#125;)</code>. En el servidor, <code>ctx.signal</code> se aborta si el navegador se va. Fudic no pone timeouts.</li>
   <li>Una función declarada que nadie implementa responde <code>404</code>.</li>
   <li>Con <code>csrf</code> en la cadena, una llamada que no es <code>get</code> necesita su cabecera (<a href="/docs/server/middlewares#csrf">CSRF</a>).</li>

@@ -5,7 +5,7 @@
 
 <head>
   <title>Historial y aprobación · Fudic</title>
-  <meta name="description" content="El historial de cada pieza en Fudic: un .fudlog en git que solo crece, con quién aprobó sus criterios, sus ejecuciones y la aceptación del cliente, y un hash que dice si siguen valiendo. fudic approve, fudic accept y fudic history.">
+  <meta name="description" content="El historial de cada pieza en Fudic: un .fudlog en git que solo crece. Guarda quién aprobó sus criterios, cómo salieron sus ejecuciones y qué aceptó el cliente, con un hash que dice si siguen valiendo. fudic approve, fudic accept y fudic history.">
   <link rel="canonical" href="https://fudic.dev/docs/testing/history">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Historial y aprobación · Fudic">
@@ -35,7 +35,7 @@
 
 <h1>Historial y aprobación</h1>
 
-<p>Junto a cada componente y cada ruta vive un <code>.fudlog</code> que solo crece: quién aprobó sus criterios, cómo salieron sus ejecuciones y qué aceptó el cliente. Cada línea lleva un hash de lo que había, así que siempre se sabe si una aprobación o un verde siguen valiendo.</p>
+<p>Junto a cada componente y cada ruta vive un <code>.fudlog</code> que solo crece: quién aprobó sus criterios, cómo salieron sus ejecuciones y qué aceptó el cliente. Cada línea lleva un hash de los ficheros en ese momento, así que siempre se sabe si una aprobación o un verde siguen valiendo.</p>
 
 <h2 id="fudlog">El <code>.fudlog</code></h2>
 
@@ -46,7 +46,7 @@
 2026-11-21T09:15Z 9d8c7b6 accepted    by ana  "Approved in the demo"  tag accepted/app-tabs/2026-11-21</code></pre>
 </ui-code>
 
-<p>Cada línea es el minuto en UTC, el commit en que se escribió, lo que pasó y sus datos. Es texto en git: se revisa en un pull request como cualquier otro cambio, y nadie lo reescribe.</p>
+<p>Cada línea lleva el minuto en UTC, el commit en que se escribió, lo que pasó y sus datos. Es texto en git: se revisa en un pull request como cualquier otro cambio, y nadie lo reescribe.</p>
 
 <h2 id="approve">Aprobar los criterios</h2>
 
@@ -56,7 +56,7 @@
 <pre><code>fudic approve src/components/app-tabs</code></pre>
 </ui-code>
 
-<p>Apunta tu nombre de git y el hash del <code>.fudspec</code> y su fixture. Si cualquiera de los dos cambia después, la aprobación caduca: un criterio nuevo, o uno que se relaja para que pase, vuelve a necesitar el visto bueno.</p>
+<p>Apunta tu nombre de git y el hash del <code>.fudspec</code> y su fixture. Si el <code>.fudspec</code> o su fixture cambian después, la aprobación caduca: un criterio nuevo, o uno que se relaja para que pase, vuelve a necesitar el visto bueno.</p>
 
 <h2 id="accept">La aceptación del cliente</h2>
 
@@ -81,7 +81,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Las ejecuciones</strong> las apunta el servidor MCP de Fudic, cuando un agente ejecuta los tests o los criterios con él. La aprobación y la aceptación, las órdenes de arriba.</li>
+  <li><strong>Las ejecuciones</strong> las apunta el servidor MCP de Fudic, cuando un agente ejecuta los tests o los criterios con él. La aprobación y la aceptación las apuntan las órdenes de arriba.</li>
   <li><strong>Dos ramas que añaden líneas</strong> se juntan sin conflicto con <code>*.fudlog merge=union</code> en <code>.gitattributes</code>. <code>fudic new</code> ya lo pone.</li>
   <li><strong>Los paquetes publicados</strong> no entran en el hash; las librerías del workspace, sí. Los finales de línea no lo cambian.</li>
   <li><strong><code>--dry-run</code></strong> en <code>approve</code> y <code>accept</code> enseña la línea y la etiqueta sin escribirlas, y <code>fudic history --json</code> da el estado entero.</li>

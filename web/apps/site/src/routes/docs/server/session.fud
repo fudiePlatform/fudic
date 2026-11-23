@@ -40,7 +40,7 @@
 
 <ul>
   <li><strong>Es <code>HttpOnly</code></strong>: el JavaScript de la página no la puede leer, así que un script inyectado no tiene qué robar.</li>
-  <li><strong>El navegador la manda solo</strong>, en cada navegación y en cada llamada.</li>
+  <li><strong>El navegador la manda por su cuenta</strong>, en cada navegación y en cada llamada.</li>
   <li><strong>Llega también en la primera petición</strong>, así que el servidor pinta la página ya con los datos del usuario.</li>
 </ul>
 
@@ -72,7 +72,7 @@ logout.handle((ctx) =&gt; &#123;
 
 <p id="prerender">Por la misma razón, una página cuyo <code>load</code> lee la sesión no se puede pintar en el build, porque sería igual para todos. El build se para (<a href="/docs/reference/diagnostics/FUD1300"><code>FUD1300</code></a>), y la solución es pintarla en cada petición, con <code>load ssr</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</p>
 
-<p id="example">Para que una llamada sin sesión lleve a entrar en vez de a la página de error, usa <code>routes 403 /entrar</code> en <a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>. Contra las llamadas desde otra web, <a href="/docs/server/middlewares#csrf"><code>csrf</code></a>.</p>
+<p id="example">Para que una llamada sin sesión lleve a entrar en vez de a la página de error, usa <code>routes 403 /entrar</code> en <a href="/docs/server/middlewares#error-pages"><code>error-pages</code></a>. Contra las llamadas desde otra web, usa <a href="/docs/server/middlewares#csrf"><code>csrf</code></a>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

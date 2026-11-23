@@ -49,7 +49,7 @@
   posts  Post[]</code></pre>
 </ui-code>
 
-<p>Lo guardado es la respuesta de <code>load</code>. Pintar con ella cuesta unos milisegundos, y así nunca sale una página vieja con datos nuevos, ni al revés.</p>
+<p>Lo guardado es la respuesta de <code>load</code>. Pintar con ella cuesta unos milisegundos. Como el HTML sale siempre de los datos guardados, nunca sale una página vieja con datos nuevos, ni al revés.</p>
 
 <p>Todo esto solo tiene efecto con Service Worker. Sin él, el servidor pinta cada vez (<a href="/docs/routing/rendering#without-sw">Sin Service Worker</a>).</p>
 
@@ -70,7 +70,7 @@
 
 <h2 id="private">Lo privado no se guarda</h2>
 
-<p>Una respuesta con <code>Cache-Control: private</code> o <code>no-store</code> no se guarda nunca, con ninguna política, y si había una copia de esa URL, se borra. Fudic marca así, solo, toda respuesta de un <code>load</code> que lee la sesión (<a href="/docs/server/session#private">Sesión y cookies</a>). Los datos de un usuario nunca se quedan en un navegador compartido.</p>
+<p>Una respuesta con <code>Cache-Control: private</code> o <code>no-store</code> no se guarda nunca, con ninguna política, y si había una copia de esa URL, se borra. Fudic marca así, por su cuenta, toda respuesta de un <code>load</code> que lee la sesión (<a href="/docs/server/session#private">Sesión y cookies</a>). Los datos de un usuario nunca se quedan en un navegador compartido.</p>
 
 <h2 id="invalidate">Invalidar</h2>
 

@@ -63,7 +63,7 @@
     cart-has 1</code></pre>
 </ui-code>
 
-<p>El primero dice cómo está hecha la pantalla; el segundo, qué tiene que pasar. Si mañana el carrito deja de ser una lista, el primero se rompe en cada criterio que lo cuenta; el segundo, en <code>cart-has.js</code>.</p>
+<p>El primero dice cómo está hecha la pantalla; el segundo, qué tiene que pasar. Si mañana el carrito deja de ser una lista, el primero hay que arreglarlo en cada criterio que cuenta sus elementos; el segundo, solo en <code>cart-has.js</code>.</p>
 
 <h2 id="when">Cuándo escribir uno</h2>
 
@@ -73,11 +73,11 @@
   <li><strong>Cuando los de serie no llegan.</strong> El <code>localStorage</code>, un <code>&lt;canvas&gt;</code>, un widget de terceros, arrastrar y soltar: un término tiene a mano la página entera de <a href="https://playwright.dev/docs/api/class-page" target="_blank" rel="noopener">Playwright</a>.</li>
 </ul>
 
-<p>Y cuándo no: si un término solo cambia de nombre a uno de serie (<code>click-button</code> en vez de <code>click role:button</code>), no aporta nada. Un término propio dice algo del dominio.</p>
+<p>Y cuándo no: si un término solo le pone otro nombre a uno de serie (<code>click-button</code> en vez de <code>click role:button</code>), no aporta nada. Un término propio dice algo del dominio.</p>
 
 <h2 id="what-it-is">Qué es un término</h2>
 
-<p>Un módulo de JavaScript en <code>fudic/terms/&lt;bloque&gt;/&lt;nombre&gt;.js</code>, con dos partes: <code>meta</code>, cómo se escribe el paso, y <code>run</code>, qué hace en el navegador. Se crea con la CLI:</p>
+<p>Un término es un módulo de JavaScript en <code>fudic/terms/&lt;bloque&gt;/&lt;nombre&gt;.js</code>, con dos partes: <code>meta</code> dice cómo se escribe el paso y <code>run</code> dice qué hace en el navegador. Se crea con la CLI:</p>
 
 <ui-code>
 <pre><code>fudic g term then cart-has --param count:number</code></pre>

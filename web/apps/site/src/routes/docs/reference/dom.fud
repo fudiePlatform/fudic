@@ -47,7 +47,7 @@
 <pre><code>emit&lt;K extends string&gt;(name: K, ...detail: BusArgs&lt;K&gt;): void</code></pre>
 </ui-code>
 
-<p>Anuncia un evento del bus desde el componente. Sale como un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar con <code>bubbles</code> y <code>composed</code>, así que cruza los shadow roots, y lo recibe cualquier elemento con <code>bus:name</code>. Fudic hidrata antes a los receptores, y el primer evento no se pierde. Guía: <a href="/docs/template-syntax/events#event-bus">Eventos</a>.</p>
+<p>Anuncia un evento del bus desde el componente. Sale como un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar con <code>bubbles</code> y <code>composed</code>, así que cruza los shadow roots. Lo recibe cualquier elemento con <code>bus:name</code>. Fudic hidrata antes a los receptores, así que el primer evento no se pierde. Guía: <a href="/docs/template-syntax/events#event-bus">Eventos</a>.</p>
 
 <ui-code .path="src/components/item-picker.fud">
 <pre><code>@@code &#123;
@@ -65,11 +65,11 @@
 
 <ul>
   <li><strong><code>name</code></strong> es un texto fijo: el nombre del canal.</li>
-  <li><strong><code>detail</code></strong> va tipado por los receptores de ese nombre: tiene que valer para el parámetro de todos. Es opcional solo si todos aceptan <code>undefined</code>.</li>
-  <li><strong>Solo funciona en el <code>@@code</code> de un <code>.fud</code></strong> que importa <code>emit</code> de <code>@@fudic/dom</code>: el compilador le da el componente desde el que sale. Desde un módulo <code>.ts</code> lanza un error.</li>
+  <li><strong><code>detail</code></strong> tiene el tipo que fijan los receptores de ese nombre, y tiene que valer para el parámetro de todos ellos. Es opcional solo si todos aceptan <code>undefined</code>.</li>
+  <li><strong>Solo funciona en el <code>@@code</code> de un <code>.fud</code></strong> que importa <code>emit</code> de <code>@@fudic/dom</code>: el compilador le pasa a <code>emit</code> el componente desde el que sale el evento. Desde un módulo <code>.ts</code> lanza un error.</li>
 </ul>
 
-<p>Los tipos que lo calculan: <code>BusDetail&lt;K&gt;</code>, lo que tiene que llevar el evento <code>K</code>; <code>BusParam&lt;F&gt;</code>, el primer parámetro de un handler; y <code>BusArgs&lt;K&gt;</code>, los argumentos de <code>emit</code> después del nombre.</p>
+<p>Los tipos que calculan esos argumentos: <code>BusDetail&lt;K&gt;</code>, lo que tiene que llevar el evento <code>K</code>; <code>BusParam&lt;F&gt;</code>, el primer parámetro de un handler; y <code>BusArgs&lt;K&gt;</code>, los argumentos de <code>emit</code> después del nombre.</p>
 
 <h2 id="trusted-html"><code>trustedHtml</code></h2>
 
@@ -103,7 +103,7 @@ isTrustedHtml(value: unknown): value is TrustedHTML</code></pre>
 isTrustedUrl(value: unknown): value is TrustedURL</code></pre>
 </ui-code>
 
-<p>Marca una URL para que la guarda la deje pasar, sea cual sea su esquema. Como con el HTML, la marca se pone en el <code>@@code</code>, donde la ve quien revisa el código, y ningún dato la lleva.</p>
+<p>Marca una URL para que la guarda la deje pasar, sea cual sea su esquema. Como con el HTML, la marca se pone en el <code>@@code</code>, donde la ve quien revisa el código. Ningún dato la lleva.</p>
 
 <ui-code>
 <pre><code>const open = trustedUrl("myapp:open");
@@ -113,7 +113,7 @@ isTrustedUrl(value: unknown): value is TrustedURL</code></pre>
 
 <h2 id="url-guard">La guarda de URLs</h2>
 
-<p>Un <code>href</code> o un <code>src</code> cuyo origen no fija el texto del atributo pasa por la guarda antes de escribirse, igual en el servidor y en el navegador. Si no es segura, se escribe <code>INERT_URL</code>, que vale <code>"about:blank"</code>. Guía: <a href="/docs/template-syntax/attributes-and-properties#safe-urls">Atributos y propiedades</a>.</p>
+<p>Cuando el texto de un <code>href</code> o un <code>src</code> no fija el origen de la URL, el valor pasa por la guarda antes de escribirse, igual en el servidor que en el navegador. Si la URL no es segura, se escribe <code>INERT_URL</code>, que vale <code>"about:blank"</code>. Guía: <a href="/docs/template-syntax/attributes-and-properties#safe-urls">Atributos y propiedades</a>.</p>
 
 <ul>
   <li><strong>Pasan</strong> <code>http:</code>, <code>https:</code>, <code>mailto:</code>, <code>tel:</code>, las URLs relativas y una <code>trustedUrl</code>.</li>

@@ -52,7 +52,7 @@
 
 <h2 id="cut">Lo que se ejecuta al pintar</h2>
 
-<p>El compilador separa del <code>@@code</code> lo que el HTML muestra: las props, los signals y los <code>computed</code> que aparecen en el markup, lo que usan, y los servicios de <code>inject</code> y <code>provide</code>. Solo eso se ejecuta al pintar. Lo demás se queda para el navegador:</p>
+<p>El compilador separa del <code>@@code</code> lo que el HTML muestra: las props, los signals y los <code>computed</code> que aparecen en el markup, junto con todo lo que estos usan, y los servicios de <code>inject</code> y <code>provide</code>. Solo eso se ejecuta al pintar. Lo demás se queda para el navegador:</p>
 
 <ui-code>
 <pre><code>@@code &#123;
@@ -78,17 +78,17 @@
 <h2 id="where">Dónde va cada cosa</h2>
 
 <ul>
-  <li><strong>Solo en el navegador</strong>: los <code>effect</code>, los ganchos del ciclo de vida (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>), los handlers de eventos y las llamadas de un <code>task</code>, que al pintar muestra su valor <code>initial</code> (<a href="/docs/server/task#lifetime"><code>task</code></a>). Ahí va todo lo que necesita <code>window</code>, <code>document</code> o el tamaño de la pantalla.</li>
-  <li><strong>Solo en el servidor</strong>: el código del <code>.fudapi</code>, como <code>load</code>, con la base de datos, los secretos y los ficheros. La página recibe su resultado como <code>data</code> (<a href="/docs/routing/data">Los datos de la página</a>). Ese código nunca llega al navegador: el Service Worker no ejecuta <code>load</code>, pide su resultado al servidor.</li>
+  <li><strong>Solo en el navegador</strong>: los <code>effect</code>, los hooks del ciclo de vida (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>), los handlers de eventos y las llamadas de un <code>task</code>. Al pintar, un <code>task</code> muestra su valor <code>initial</code> (<a href="/docs/server/task#lifetime"><code>task</code></a>). Aquí va todo lo que necesita <code>window</code>, <code>document</code> o el tamaño de la pantalla.</li>
+  <li><strong>Solo en el servidor</strong>: el código del <code>.fudapi</code>, como <code>load</code>, con la base de datos, los secretos y los ficheros. La página recibe su resultado como <code>data</code> (<a href="/docs/routing/data">Los datos de la página</a>). Ese código nunca llega al navegador: el Service Worker no ejecuta <code>load</code>, sino que pide su resultado al servidor.</li>
 </ul>
 
 <h2 id="rules">Para que pinte igual en todas partes</h2>
 
 <ul>
-  <li><strong>Lo que el HTML muestra no toca el navegador.</strong> Dale a <code>signal(window.innerWidth)</code> un valor fijo al crearlo y ponle el de verdad en un <code>afterHydrate</code>.</li>
+  <li><strong>Lo que el HTML muestra no usa APIs del navegador.</strong> Dale a <code>signal(window.innerWidth)</code> un valor fijo al crearlo y ponle el de verdad en un <code>afterHydrate</code>.</li>
   <li><strong>Las fechas y los números, con pipes.</strong> <code>toLocaleDateString()</code> depende de la máquina; un pipe da el mismo texto en el servidor y en el navegador (<a href="/docs/server/pipes">Pipes</a>).</li>
-  <li><strong>En el markup, solo las expresiones de la lista cerrada</strong> (<a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a>), que dan el mismo resultado en los tres sitios.</li>
-  <li><strong>Una página que depende de quién la mira es <code>ssr</code>.</strong> Al construir no hay usuario, y sus datos no se guardan en el Service Worker (<a href="/docs/server/session">Sesión y cookies</a>).</li>
+  <li><strong>En el markup, solo las expresiones que Fudic admite</strong> (<a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a>), que dan el mismo resultado en los tres sitios.</li>
+  <li><strong>Una página que depende de quién la mira es <code>ssr</code>.</strong> Al construir no hay usuario, y los datos de una página así no se guardan en el Service Worker (<a href="/docs/server/session">Sesión y cookies</a>).</li>
 </ul>
 
 <ui-note>

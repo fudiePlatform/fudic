@@ -59,13 +59,13 @@
 <h2 id="components">Componentes</h2>
 
 <ul>
-  <li><strong>Al escribir <code>&lt;app-card </code></strong>, completa las props que declara ese componente, con sus tipos. Una expresión dentro se completa con el tipo de la prop.</li>
-  <li><strong>Al pasar el ratón por el tag</strong>, una tarjeta con lo que hay que saber para usarlo: su descripción, cada prop con su tipo, su valor por defecto y su documentación, sus slots, los eventos que emite y lo que llevan, sus parts y los tokens que lee. Si viene de una librería, dice de cuál.</li>
+  <li><strong>Al escribir <code>&lt;app-card </code></strong>, completa las props que declara ese componente, con sus tipos. Una expresión en el valor de una prop se completa con el tipo de esa prop.</li>
+  <li><strong>Al pasar el ratón por el tag</strong>, sale una tarjeta con lo que hay que saber para usarlo. Trae su descripción y cada prop con su tipo, su valor por defecto y su documentación. También sus slots, los eventos que emite y lo que llevan, sus parts y los tokens que lee. Si viene de una librería, dice de cuál.</li>
   <li><strong><kbd>F12</kbd></strong> sobre el tag abre su fichero, y <strong>Buscar todas las referencias</strong> lista dónde se usa, en tu proyecto y en tus librerías.</li>
   <li><strong>Dentro de <code>href=""</code></strong> de un <code>&lt;link rel="component"&gt;</code>, la lista de lo que puedes enlazar: tus ficheros por su ruta relativa y los de una librería por el nombre de su paquete.</li>
 </ul>
 
-<p>Cada componente se distingue de un tag nativo también en el color: <code>&lt;app-card&gt;</code> y <code>&lt;article&gt;</code> no se pintan igual.</p>
+<p>Los componentes también se distinguen de los tags nativos por el color: <code>&lt;app-card&gt;</code> y <code>&lt;article&gt;</code> no se pintan igual.</p>
 
 <figure>
   <img src="../../../images/editor-hover.webp" width="1260" height="458" style="aspect-ratio: 1260 / 458" loading="lazy" decoding="async" alt="La tarjeta de ciclo-demo al pasar el ratón por su tag: su descripción, las props name y state con su tipo, su valor por defecto y su documentación, y el token --radius-box que lee.">
@@ -83,7 +83,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>Al pasar el ratón por un token, de dónde viene; <kbd>F12</kbd> abre la hoja que lo declara. En el markup funciona Emmet: <code>ul&gt;li*3</code> y <kbd>Tab</kbd>.</p>
+<p>Al pasar el ratón por un token, dice de dónde viene; <kbd>F12</kbd> abre la hoja que lo declara. En el markup funciona Emmet: <code>ul&gt;li*3</code> y <kbd>Tab</kbd>.</p>
 
 <figure>
   <img src="../../../images/editor-tokens.webp" width="800" height="287" style="aspect-ratio: 800 / 287" loading="lazy" decoding="async" alt="Dentro de un style, al escribir color: var( se abre la lista de tokens del proyecto: --brand, --line, --pad-box, --pad-field, --radius, --radius-box y --surface.">
@@ -96,7 +96,7 @@
   <li><strong>Completado</strong> de cada declaración y cada cláusula, y de los tipos del proyecto.</li>
   <li><strong>Encima de cada declaración</strong>, quién la implementa: un enlace al <code>.ts</code> de su handler, o <code>not implemented</code> si aún no lo tiene.</li>
   <li><strong>En la primera línea</strong>, lo que genera el fichero: los tipos, el módulo de servidor y el del navegador, y cómo volver a generarlos.</li>
-  <li><strong>Al pasar el ratón</strong> por una regla, un <code>catches</code> o un fichero, qué hace; <kbd>F12</kbd> y las referencias funcionan de un contrato a otro.</li>
+  <li><strong>Al pasar el ratón</strong> por una regla, un <code>catches</code> o un fichero, explica qué hace; <kbd>F12</kbd> y las referencias funcionan de un contrato a otro.</li>
 </ul>
 
 <figure>
@@ -106,9 +106,9 @@
 
 <h2 id="fudspec">En un <code>.fudspec</code></h2>
 
-<p><kbd>Ctrl+K V</kbd> abre el workbench al lado del editor: el componente o la página, sus criterios ejecutados en un navegador de verdad en cada guardado y <em>Live</em> para tocarlo a mano (<a href="/docs/testing/workbench">El workbench</a>). El mismo botón está en la barra del editor de un <code>.fud</code>.</p>
+<p><kbd>Ctrl+K V</kbd> abre el workbench al lado del editor. Enseña el componente o la página, ejecuta sus criterios en un navegador de verdad en cada guardado y ofrece <em>Live</em> para tocarlo a mano (<a href="/docs/testing/workbench">El workbench</a>). El mismo botón está en la barra del editor de un <code>.fud</code>.</p>
 
-<p>Encima de la primera línea, <strong>Run all</strong> y <strong>Run failing</strong>, y encima de cada criterio, <strong>Run</strong>: ejecutan todos, los que fallan o ese, en el workbench.</p>
+<p>Encima de la primera línea salen <strong>Run all</strong> y <strong>Run failing</strong>, que ejecutan todos los criterios o los que fallan. Encima de cada criterio sale <strong>Run</strong>, que ejecuta solo ese. Todo se ejecuta en el workbench.</p>
 
 <figure>
   <img src="../../../images/editor-fudspec.webp" width="1010" height="724" style="aspect-ratio: 1010 / 724" loading="lazy" decoding="async" alt="El .fudspec de app-card con sus enlaces: Run all y Run failing sobre la línea component, y Run encima de cada uno de sus tres criterios.">
@@ -126,7 +126,7 @@
 
 <h2 id="fixes">La bombilla</h2>
 
-<p>Cuando un error tiene un arreglo seguro, aparece la bombilla, o <kbd>Ctrl+.</kbd>. Algunos:</p>
+<p>Cuando un error tiene un arreglo seguro, aparece la bombilla; también la abre <kbd>Ctrl+.</kbd>. Algunos:</p>
 
 <ul>
   <li>Un tag sin su <code>&lt;link rel="component"&gt;</code>: <strong>Add &lt;link rel="component"&gt; for &lt;app-card&gt;</strong>.</li>

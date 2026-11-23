@@ -23,7 +23,6 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#two-events">Dos eventos</a></li>
         <li><a href="#result">fudic:result</a></li>
         <li><a href="#error">fudic:error</a></li>
         <li><a href="#composed">Cruzan el shadow DOM</a></li>
@@ -35,8 +34,6 @@
 
 <h1>Resultado y error</h1>
 
-<h2 id="two-events">Dos eventos</h2>
-
 <p>Un formulario enviado con <code>form:=</code> (<a href="/docs/forms/submitting">Enviar al servidor</a>) termina con uno de dos eventos en el <code>&lt;form&gt;</code>:</p>
 
 <ul>
@@ -44,7 +41,7 @@
   <li><code>fudic:error</code>: la llamada falló. El handler recibe un <code>Error</code>.</li>
 </ul>
 
-<p>Los errores que el formulario se queda, los de su <code>catches</code>, no lanzan ninguno de los dos: ya están pintados en el formulario (<a href="/docs/forms/submitting#catches">Los errores que se quedan en el formulario</a>).</p>
+<p>Los errores que recoge el <code>catches</code> del formulario no lanzan ninguno de los dos eventos: ya están pintados en el formulario (<a href="/docs/forms/submitting#catches">Los errores que se quedan en el formulario</a>).</p>
 
 <h2 id="result"><code>fudic:result</code></h2>
 
@@ -69,7 +66,7 @@
 <pre><code>&lt;form control=@@personForm form:=@@save @@fudic:error=@@fallo&gt;</code></pre>
 </ui-code>
 
-<p><code>fallo</code> recibe un <code>Error</code>. Uno del servidor es un <code>HttpError</code>, con su <code>status</code>. Si nadie escucha <code>fudic:error</code>, el error lleva a la página de error.</p>
+<p><code>fallo</code> recibe un <code>Error</code>. Si el error viene del servidor, es un <code>HttpError</code>, con su <code>status</code>. Si nadie escucha <code>fudic:error</code>, el error lleva a la página de error.</p>
 
 <h2 id="composed">Cruzan el shadow DOM</h2>
 
@@ -87,11 +84,11 @@
 &lt;user-form @@fudic:result=@@alta&gt;&lt;/user-form&gt;</code></pre>
 </ui-code>
 
-<p>La persona aparece en la lista solo cuando el servidor dice que sí, con su <code>id</code> real y sin volver a pedir la lista. El componente no sabe nada de la tabla.</p>
+<p>La persona aparece en la lista solo cuando el servidor dice que sí, con su <code>id</code> real y sin volver a pedir la lista. El componente no sabe nada de la lista.</p>
 
 <p id="others">En React se pasaría una función de componente en componente, y en Vue o Angular habría que reemitir el evento en cada nivel. Aquí lo hace el DOM.</p>
 
-<p id="event">Si necesitas el evento entero, usa una llamada: <code>@@fudic:result=@@alta($event.detail)</code>.</p>
+<p id="event">Si necesitas el evento entero, escribe el handler como una llamada: <code>@@fudic:result=@@alta($event.detail)</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

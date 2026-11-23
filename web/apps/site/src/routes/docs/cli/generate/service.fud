@@ -60,14 +60,14 @@
   </thead>
   <tbody>
     <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
-    <tr><td><code>--provided</code></td><td>No es uno para toda la app: lo provee un componente con <code>provide()</code>.</td></tr>
+    <tr><td><code>--provided</code></td><td>El servicio no es único para toda la app: lo provee un componente con <code>provide()</code>.</td></tr>
     <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
     <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
     <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

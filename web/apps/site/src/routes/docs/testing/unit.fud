@@ -37,7 +37,7 @@
 
 <h1>Tests unitarios</h1>
 
-<p>Con <code>@@fudic/testing</code>, un test de <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a> monta un componente o visita una ruta en happy-dom, un DOM simulado sin navegador. El HTML es el que manda el servidor y la hidratación, la que hace el navegador. Es rápido, y sirve para la lógica; lo que depende del layout o del foco va a un <a href="/docs/testing">criterio</a>.</p>
+<p>Con <code>@@fudic/testing</code>, un test de <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a> monta un componente o visita una ruta en happy-dom, un DOM simulado sin navegador. El HTML es el mismo que manda el servidor, y la hidratación, la misma que hace el navegador. Es rápido, y sirve para la lógica; lo que depende del layout o del foco va a un <a href="/docs/testing">criterio</a>.</p>
 
 <h2 id="mount">Montar un componente</h2>
 
@@ -56,7 +56,7 @@ test("adds on click", async () =&gt; &#123;
 <ul>
   <li><strong><code>mount</code></strong> pasa el componente por el servidor, aplica su shadow DOM declarativo e instala la hidratación. Como en el navegador, el primer clic cuenta aunque aún no se haya hidratado.</li>
   <li><strong>Las búsquedas</strong> son las de <a href="https://testing-library.com/docs/queries/about" target="_blank" rel="noopener">Testing Library</a>, por rol y nombre, y entran en el shadow DOM de los hijos.</li>
-  <li><strong>Un gesto</strong> como <code>t.click</code> espera a que acabe todo lo que empezó: peticiones, código y microtareas.</li>
+  <li><strong>Un gesto</strong> como <code>t.click</code> espera a que acabe todo lo que puso en marcha: peticiones, código y microtareas.</li>
   <li><strong><code>t.props(&#123; … &#125;)</code></strong> cambia las props como lo haría el padre.</li>
 </ul>
 
@@ -64,14 +64,14 @@ test("adds on click", async () =&gt; &#123;
 
 <h2 id="server">Las funciones de servidor</h2>
 
-<p>No se simula nada que no simules tú. Una llamada pasa por la cadena del navegador, el formato de la red, los middlewares y la validación del servidor, y llega a tu handler. Para cambiar lo que ve el servidor, simula el módulo de datos:</p>
+<p>Solo se simula lo que simulas tú. Una llamada pasa por la cadena del navegador, el formato de la red, los middlewares y la validación del servidor, y llega a tu handler. Para cambiar lo que ve el servidor, simula el módulo de datos:</p>
 
 <ui-code .path="src/forms/user-form.test.ts">
 <pre><code>vi.mock("../data/aliases", () =&gt; (&#123; aliasTaken: async (alias: string) =&gt; alias === "admin" &#125;));</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong><code>fetch: (request) =&gt; Response</code></strong> en <code>mount</code> ocupa el lugar del servidor en ese test: para un <code>500</code> o un fallo de red.</li>
+  <li><strong><code>fetch: (request) =&gt; Response</code></strong> en <code>mount</code> ocupa el lugar del servidor en ese test. Sirve para probar un <code>500</code> o un fallo de red.</li>
   <li><strong><code>providers: [&#123; provide, use &#125;]</code></strong> cambia un servicio, en el navegador y en el servidor (<a href="/docs/di/server#testing">Otro servicio en las pruebas</a>).</li>
 </ul>
 
@@ -84,7 +84,7 @@ expect(page.status).toBe(200);
 const empty = await visit("/users", &#123; fixture: "nobody" &#125;);</code></pre>
 </ui-code>
 
-<p><code>visit</code> ejecuta el <code>load</code> de verdad, o, con <code>fixture</code>, usa los datos del mismo fixture que su <code>.fudspec</code> (<a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>). Si <code>load</code> falla, pinta la página de error con su estado, como en <code>fudic dev</code>.</p>
+<p><code>visit</code> ejecuta el <code>load</code> de verdad. Con <code>fixture</code>, usa en su lugar los datos del fixture de la ruta, el mismo que usa su <code>.fudspec</code> (<a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>). Si <code>load</code> falla, pinta la página de error con su estado, como en <code>fudic dev</code>.</p>
 
 <h2 id="client-graph">Lo que descarga el navegador</h2>
 
@@ -97,16 +97,16 @@ expect(graph).not.toReach("src/data/aliases.ts");</code></pre>
 
 <h2 id="run">Ejecutarlos: <code>fudic test</code></h2>
 
-<p><code>fudic test</code> ejecuta los <code>src/**/*.test.ts</code> del proyecto; desde la raíz de un workspace, los de todos.</p>
+<p><code>fudic test</code> ejecuta los <code>src/**/*.test.ts</code> del proyecto; desde la raíz de un workspace, los de todos sus proyectos.</p>
 
 <h2 id="which">Test unitario o criterio</h2>
 
-<p>happy-dom no calcula el layout, no tiene foco de verdad y no sigue las referencias ARIA entre shadow roots. Un ancho mínimo, un elemento visible, a dónde va el foco o lo que lee un lector de pantalla se prueban en un <code>.fudspec</code>, en un navegador de verdad. El test unitario queda para la lógica: lo que calcula un componente, lo que envía un formulario, lo que devuelve un <code>load</code>.</p>
+<p>happy-dom no calcula el layout, no tiene foco de verdad y no sigue las referencias ARIA entre shadow roots. Por eso se prueban en un <code>.fudspec</code>, en un navegador de verdad: un ancho mínimo, un elemento visible, a dónde va el foco o lo que lee un lector de pantalla. El test unitario queda para la lógica: lo que calcula un componente, lo que envía un formulario, lo que devuelve un <code>load</code>.</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong><code>via: "client"</code></strong> en <code>mount</code> crea el elemento como lo crea un padre en el navegador, sin pasar por el servidor, con cualquier valor como prop.</li>
+  <li><strong><code>via: "client"</code></strong> en <code>mount</code> crea el elemento como lo crea un padre en el navegador, sin pasar por el servidor. Así acepta cualquier valor como prop.</li>
   <li><strong><code>outline(host)</code></strong> escribe el árbol de accesibilidad del componente, como lo encuentra un lector de pantalla: <code>- button "Save" [disabled]</code>.</li>
   <li><strong>El estado de un módulo</strong>, como un formulario o un signal global, se comparte entre los tests de un fichero: reinícialo en un <code>beforeEach</code>, por ejemplo con <code>form.$reset()</code>.</li>
   <li><strong>Un <code>.fud</code> con errores</strong> hace fallar el test al importarlo, con los diagnósticos como los imprime el build.</li>

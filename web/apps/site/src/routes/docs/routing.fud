@@ -34,7 +34,7 @@
 
 <h1>Rutas por carpetas</h1>
 
-<p>En Fudic no hay tabla de rutas: cada <code>.fud</code> dentro de <code>src/routes/</code> es una página, y su URL sale de dónde está. Cómo se escribe una página está en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>; sus datos, en su <code>.fudapi</code> (<a href="/docs/routing/data">Los datos de la página</a>).</p>
+<p>En Fudic no hay tabla de rutas: cada <code>.fud</code> dentro de <code>src/routes/</code> es una página, y su URL sale de dónde está. Cómo se escribe una página se explica en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>. Sus datos se declaran en su <code>.fudapi</code> (<a href="/docs/routing/data">Los datos de la página</a>).</p>
 
 <h2 id="files">Un fichero, una URL</h2>
 
@@ -50,7 +50,7 @@
   </tbody>
 </table>
 
-<p>Se crea con la CLI: <code>fudic g page about</code>, o <code>fudic g page blog/:slug --server</code> para una página con datos, que también escribe su <code>.fudapi</code>.</p>
+<p>Una página se crea con la CLI: <code>fudic g page about</code>. Para una página con datos, <code>fudic g page blog/:slug --server</code> escribe también su <code>.fudapi</code>.</p>
 
 <h2 id="params">Parámetros</h2>
 
@@ -68,14 +68,14 @@
   <li>un lector de pantalla, que anuncia la página nueva sin código extra.</li>
 </ul>
 
-<p>La página llega pintada del servidor, el runtime de Fudic queda en la caché del navegador, y con Service Worker la siguiente página se pinta en el propio navegador (<a href="/docs/routing/rendering">Los modos</a>).</p>
+<p>La página llega pintada del servidor, y el runtime de Fudic queda en la caché del navegador. Con Service Worker, la siguiente página se pinta en el propio navegador (<a href="/docs/routing/rendering">Los modos</a>).</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
   <li><code>index.fud</code> es la raíz de su carpeta. Una página y una carpeta pueden llamarse igual: <code>docs/styles.fud</code> es <code>/docs/styles</code>, y lo de <code>docs/styles/</code> cuelga de ella.</li>
   <li>Dos ficheros para la misma URL, como <code>about.fud</code> y <code>about/index.fud</code>, son un error (<a href="/docs/reference/diagnostics/FUD0361"><code>FUD0361</code></a>).</li>
-  <li>Un parámetro ocupa un segmento entero; no hay opcionales ni que recojan varios segmentos.</li>
+  <li>Un parámetro ocupa un segmento entero. No hay parámetros opcionales ni parámetros que recojan varios segmentos.</li>
   <li><code>src/routes/_error.fud</code> no es una URL: es la <a href="/docs/routing/error-page">página de error</a>.</li>
 </ul>
 

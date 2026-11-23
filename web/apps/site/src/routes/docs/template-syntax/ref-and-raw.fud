@@ -34,7 +34,7 @@
 
 <h1><code>ref</code> y <code>@@raw</code></h1>
 
-<p>Casi todo en una plantilla es declarativo. Para los pocos casos que no lo son hay dos salidas.</p>
+<p>Casi todo en una plantilla es declarativo. Para lo poco que no lo es hay dos salidas: <code>ref</code>, que da el elemento en una variable, y <code>@@raw</code>, que escribe HTML.</p>
 
 <h2 id="ref"><code>ref</code>: el elemento, en una variable</h2>
 
@@ -61,7 +61,7 @@
 
 <h2 id="raw"><code>@@raw</code>: escribir HTML</h2>
 
-<p>Lo que escribe una expresión siempre llega como texto. Para escribir un valor como HTML está <code>@@raw</code>, con un valor marcado en el <code>@@code</code>:</p>
+<p>Lo que escribe una expresión siempre llega como texto. Para escribir un valor como HTML está <code>@@raw</code>. El valor se marca antes en el <code>@@code</code>:</p>
 
 <ui-code .path="src/components/miapp-article/miapp-article.fud">
 <pre><code>@@code &#123;
@@ -79,7 +79,7 @@
 
 <ul>
   <li><strong>El valor tiene que venir de <code>trustedHtml(…)</code></strong>, de <code>@@fudic/dom</code>. Así dices «este HTML lo avalo yo». Un string normal se escribe como texto.</li>
-  <li><strong>La marca no viaja.</strong> Un HTML que llega en los datos de la página o de una función, también uno de tipo <code>html</code>, se escribe escapado.</li>
+  <li><strong>La marca no viaja.</strong> Un HTML que llega en los datos de la página o de una función se escribe escapado, aunque sea de tipo <code>html</code>.</li>
   <li><strong><code>@@raw</code> es lo único que hay dentro de su elemento.</strong></li>
 </ul>
 

@@ -77,7 +77,7 @@
 
 <h2 id="own">Escribir una regla</h2>
 
-<p>Una regla propia se declara en un <code>.fudapi</code>, por convención en <code>src/rules/</code>, con qué valida, dónde se ejecuta y con qué código falla:</p>
+<p>Una regla propia se declara en un <code>.fudapi</code>, por convención en <code>src/rules/</code>. La declaración dice qué valida, dónde se ejecuta y con qué código falla:</p>
 
 <ui-code .path="src/rules/people.fudapi">
 <pre><code># The alias is taken. Asked while the user types, and checked again on submit.
@@ -96,8 +96,8 @@ rule alias-taken
 <p id="runs"><code>runs</code> dice dónde se ejecuta:</p>
 
 <ul>
-  <li><strong><code>both</code></strong>: en el navegador mientras se escribe, y en el servidor al enviar. Para lo que se comprueba con el valor solo. Se implementa en <code>src/browser</code>.</li>
-  <li><strong><code>server</code></strong>: solo en el servidor, al enviar. Para lo que necesita datos que no salen del servidor.</li>
+  <li><strong><code>both</code></strong>: en el navegador mientras se escribe, y en el servidor al enviar. Sirve para lo que se comprueba solo con el valor. Se implementa en <code>src/browser</code>.</li>
+  <li><strong><code>server</code></strong>: solo en el servidor, al enviar. Sirve para lo que necesita datos que no salen del servidor.</li>
   <li><strong><code>remote</code></strong>: como <code>server</code>, pero el navegador se la pregunta mientras se escribe, 300 ms después de la última tecla. Es la de «ese alias ya está cogido».</li>
 </ul>
 
@@ -105,8 +105,8 @@ rule alias-taken
 
 <ul>
   <li id="params">Una regla puede recibir parámetros con su tipo (<code>low i32</code>) y citarlos en su código: <code>fails between low high</code>. El texto los usa como <code>&#123;low&#125;</code>.</li>
-  <li id="scope"><code>on field</code> valida un campo; <code>on group</code>, un grupo de campos, como «las dos contraseñas coinciden»; <code>on form</code>, el formulario entero. Las de grupo y formulario van en su <code>summary</code> (<a href="/docs/forms/validation#summary">Validación y validez</a>).</li>
-  <li>El texto por defecto de un código para todo el proyecto se declara con <code>messages</code> (<a href="/docs/forms/validation#messages">Los textos</a>).</li>
+  <li id="scope"><code>on field</code> valida un campo; <code>on group</code>, un grupo de campos, como «las dos contraseñas coinciden»; <code>on form</code>, el formulario entero. Los errores de las de grupo y de formulario van en el <code>summary</code> del formulario (<a href="/docs/forms/validation#summary">Validación y validez</a>).</li>
+  <li>Con <code>messages</code> se declara el texto por defecto de un código para todo el proyecto (<a href="/docs/forms/validation#messages">Los textos</a>).</li>
   <li>Una regla <code>server</code> o <code>remote</code> se llama como una función, y puede llevar <code>use</code> y <code>skip</code> para su cadena.</li>
 </ul>
 

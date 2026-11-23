@@ -35,7 +35,7 @@
 
 <h1><code>fudic generate term</code></h1>
 
-<p>Escribe un paso propio para los criterios <code>.fudspec</code> en <code>fudic/terms/&lt;kind&gt;/&lt;name&gt;.js</code>, para lo que no dicen los pasos de serie.</p>
+<p>Escribe en <code>fudic/terms/&lt;kind&gt;/&lt;name&gt;.js</code> un paso propio para los criterios <code>.fudspec</code>. Sirve para decir lo que los pasos de serie no dicen.</p>
 
 <ui-code>
 <pre><code>fudic generate term &lt;kind&gt; &lt;name&gt;</code></pre>
@@ -50,8 +50,8 @@
     <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>&lt;kind&gt;</code></td><td><code>given</code> (cómo empieza), <code>when</code> (lo que hace el usuario) o <code>then</code> (lo que se comprueba).</td></tr>
-    <tr><td><code>&lt;name&gt;</code></td><td>Lo que escriben los criterios, en kebab-case: <code>cart-has</code>.</td></tr>
+    <tr><td><code>&lt;kind&gt;</code></td><td><code>given</code>, <code>when</code> o <code>then</code>. <code>given</code> dice cómo empieza, <code>when</code> dice lo que hace el usuario y <code>then</code> dice lo que se comprueba.</td></tr>
+    <tr><td><code>&lt;name&gt;</code></td><td>El nombre del paso, que es lo que escriben los criterios, en kebab-case: <code>cart-has</code>.</td></tr>
   </tbody>
 </table>
 
@@ -69,7 +69,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

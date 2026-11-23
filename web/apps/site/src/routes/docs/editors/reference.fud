@@ -47,7 +47,7 @@
     <tr><td><code>@@if</code>, <code>@@if else</code>, <code>@@switch</code></td><td>Una condición.</td></tr>
     <tr><td><code>@@foreach</code>, <code>@@for</code>, <code>@@while</code></td><td>Un bucle.</td></tr>
     <tr><td><code>@@empty</code></td><td>Lo que pinta el bucle cuando no da ninguna vuelta.</td></tr>
-    <tr><td><code>@@await</code>, <code>@@catch</code></td><td>Una parte que se pinta cuando llega un campo <code>later</code>, y lo que pinta si falla.</td></tr>
+    <tr><td><code>@@await</code>, <code>@@catch</code></td><td>Una parte que se pinta cuando llega un campo <code>later</code>, y lo que se pinta si falla.</td></tr>
     <tr><td><code>@@code</code></td><td>El bloque de código, con lo que toca según sea componente, ruta o layout.</td></tr>
     <tr><td><code>props</code></td><td>El contrato de props de un componente, o las que un layout pide a sus rutas.</td></tr>
     <tr><td><code>link-component</code>, <code>link-snippet</code>, <code>link-layout</code></td><td>Un <code>&lt;link&gt;</code>, con el cursor en su <code>href</code> y la lista de ficheros abierta.</td></tr>
@@ -73,7 +73,7 @@
     <tr><td><code>form</code></td><td>Un formulario y sus reglas.</td></tr>
     <tr><td><code>type</code>, <code>enum</code>, <code>pattern</code></td><td>Un tipo, un enum, un patrón con nombre.</td></tr>
     <tr><td><code>rule</code>, <code>rule remote</code></td><td>Una regla de validación; una que el navegador pregunta al servidor mientras escribes.</td></tr>
-    <tr><td><code>middleware</code>, <code>chain</code>, <code>use</code></td><td>Un middleware; los de todas las funciones de debajo; ejecutarlos.</td></tr>
+    <tr><td><code>middleware</code>, <code>chain</code>, <code>use</code></td><td>Un middleware; una cadena con los middlewares de todas las funciones de debajo; la línea que los ejecuta.</td></tr>
     <tr><td><code>pipe</code></td><td>Un pipe.</td></tr>
     <tr><td><code>fails</code>, <code>catches</code>, <code>invalidates</code>, <code>query</code>, <code>-&gt;</code></td><td>Las cláusulas de una función.</td></tr>
     <tr><td><code>summary</code>, <code>validate-on</code></td><td>Las cláusulas de un formulario.</td></tr>
@@ -108,8 +108,8 @@
     <tr><td><strong>Fudic: Show API Server Module</strong></td><td>El módulo de servidor que genera.</td></tr>
     <tr><td><strong>Fudic: Show API Browser Module</strong></td><td>El módulo del navegador que genera.</td></tr>
     <tr><td><strong>Fudic: Regenerate API Types</strong></td><td>Vuelve a escribir lo generado.</td></tr>
-    <tr><td><strong>Fudic: Restart Language Server</strong></td><td>Vuelve a leer los ajustes, el servidor y el TypeScript. Tras instalar una dependencia o cambiar de rama.</td></tr>
-    <tr><td><strong>Fudic: Show Component Registry</strong></td><td>Cada tag, su <code>href</code> y a qué fichero llega: por qué un componente no se completa.</td></tr>
+    <tr><td><strong>Fudic: Restart Language Server</strong></td><td>Vuelve a leer los ajustes, el servidor y el TypeScript. Úsala tras instalar una dependencia o cambiar de rama.</td></tr>
+    <tr><td><strong>Fudic: Show Component Registry</strong></td><td>Cada tag, su <code>href</code> y a qué fichero llega. Sirve para ver por qué un componente no se completa.</td></tr>
     <tr><td><strong>Fudic: Show Virtual Files</strong></td><td>Lo que el servidor le enseña a TypeScript. Para depurar.</td></tr>
   </tbody>
 </table>
@@ -134,4 +134,4 @@
   </tbody>
 </table>
 
-<p>La extensión también deja puestos, para los ficheros de Fudic, dos espacios de sangría y formatear al guardar.</p>
+<p>Para los ficheros de Fudic, la extensión también deja puestos dos espacios de sangría y el formato al guardar.</p>

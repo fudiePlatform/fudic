@@ -36,7 +36,7 @@
 
 <h1><code>fudic generate snippet</code></h1>
 
-<p>Añade un snippet a <code>src/snippets/&lt;file&gt;.fud</code>, y crea el fichero con el primero, y su test unitario a <code>&lt;file&gt;.test.ts</code>.</p>
+<p>Añade un snippet a <code>src/snippets/&lt;file&gt;.fud</code> y su test unitario a <code>&lt;file&gt;.test.ts</code>. Si el fichero aún no existe, lo crea con ese primer snippet.</p>
 
 <ui-code>
 <pre><code>fudic generate snippet &lt;file&gt; &lt;name&gt;</code></pre>
@@ -68,7 +68,7 @@
   </tbody>
 </table>
 
-<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>. Están explicadas en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
 
 <h2 id="examples">Ejemplos</h2>
 

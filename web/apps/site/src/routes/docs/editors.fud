@@ -40,8 +40,8 @@
 <h2 id="what">Qué te da</h2>
 
 <ul>
-  <li><strong><code>.fud</code></strong>: los componentes, sus props y sus eventos, los datos de la página, los tokens de CSS y los enlaces, con los tipos del <code>.fudapi</code> y del <code>@@code</code> comprobados en el markup.</li>
-  <li><strong><code>.fudapi</code></strong>: cada declaración y cada cláusula, y encima de cada una quién la implementa.</li>
+  <li><strong><code>.fud</code></strong>: los componentes, sus props y sus eventos, los datos de la página, los tokens de CSS y los enlaces. El markup se comprueba con los tipos del <code>.fudapi</code> y del <code>@@code</code>.</li>
+  <li><strong><code>.fudapi</code></strong>: cada declaración y cada cláusula, y encima de cada declaración, quién la implementa.</li>
   <li><strong><code>.fudspec</code></strong>: los tags, las rutas, los pasos y los fixtures, y el workbench con <kbd>Ctrl+K V</kbd>.</li>
   <li><strong>Los <code>.headers</code> y <code>fudic.json</code></strong>: completado, ayuda y errores en cada campo.</li>
 </ul>
@@ -56,9 +56,9 @@
 <pre><code>ext install fudic.fudic-vscode</code></pre>
 </ui-code>
 
-<p>Antigravity, Cursor, Windsurf y VSCodium instalan sus extensiones desde <a href="https://open-vsx.org/" target="_blank" rel="noopener">Open VSX</a>, y la extensión de Fudic está también allí, igual.</p>
+<p>Antigravity, Cursor, Windsurf y VSCodium instalan sus extensiones desde <a href="https://open-vsx.org/" target="_blank" rel="noopener">Open VSX</a>, y la extensión de Fudic también está allí, la misma.</p>
 
-<p>Se activa sola en cuanto el proyecto tiene un <code>.fud</code>, un <code>.fudapi</code> o un <code>.fudspec</code>. Cada sistema tiene su propia versión, porque el parser y el formateador son nativos; la tienda te da la tuya.</p>
+<p>Se activa sola en cuanto el proyecto tiene un <code>.fud</code>, un <code>.fudapi</code> o un <code>.fudspec</code>. Cada sistema operativo tiene su propia versión, porque el parser y el formateador son nativos; la tienda te da la tuya.</p>
 
 <h2 id="typescript">El TypeScript del proyecto</h2>
 

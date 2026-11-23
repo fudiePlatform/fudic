@@ -38,9 +38,11 @@
 
 <h1>Cuándo se pinta: los modos</h1>
 
+<p>Toda página de Fudic llega al navegador ya pintada. Lo que cambia es quién la pinta y cuándo, y eso es su <strong>modo</strong>.</p>
+
 <h2 id="modes">Tres modos</h2>
 
-<p>Toda página de Fudic llega al navegador ya pintada. Lo que cambia es quién la pinta y cuándo, y eso es su <strong>modo</strong>. Se declara en la línea de <code>load</code> de su <code>.fudapi</code>:</p>
+<p>El modo se declara en la línea de <code>load</code> de su <code>.fudapi</code>:</p>
 
 <ui-code>
 <pre><code>load ssr
@@ -94,7 +96,7 @@
 
 <p><code>ssr</code> nunca se deduce: quien escribe una página con sesión lo sabe, y es mejor que lo diga.</p>
 
-<p id="paths">Con <code>paths</code> (<a href="/docs/routing/data#paths">Los datos de la página</a>), el build escribe un HTML por cada valor. Uno que <code>paths</code> no dio, como un artículo publicado después, se pinta cuando alguien lo pide.</p>
+<p id="paths">Con <code>paths</code> (<a href="/docs/routing/data#paths">Los datos de la página</a>), el build escribe un HTML por cada valor. Un valor que <code>paths</code> no devolvió, como el de un artículo publicado después, se pinta cuando alguien lo pide.</p>
 
 <h2 id="choose">Cuál elegir</h2>
 

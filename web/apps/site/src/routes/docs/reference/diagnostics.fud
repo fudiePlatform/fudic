@@ -39,7 +39,7 @@
   <li><strong>Del MCP.</strong> Un agente lee la misma explicación por su código.</li>
 </ul>
 
-<p>Qué nivel tiene cada aviso en tu proyecto, y cómo se silencia uno en una línea, está en <a href="/docs/configuration/diagnostics">Diagnósticos de la configuración</a>.</p>
+<p>Para saber qué nivel tiene cada aviso en tu proyecto y cómo silenciar uno en una línea, consulta <a href="/docs/configuration/diagnostics">Diagnósticos de la configuración</a>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

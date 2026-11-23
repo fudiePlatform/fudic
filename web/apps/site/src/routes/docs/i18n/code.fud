@@ -36,7 +36,7 @@
 
 <h1>Textos en el código</h1>
 
-<p>Donde el compilador no puede saber si un string es un texto o un valor, se marca con <code>t()</code>: en una prop y en el código TypeScript. Los textos del <code>.fudapi</code> se traducen sin marcar nada, y el contenido que llega de los datos se elige por idioma con <code>locale</code>.</p>
+<p>En una prop y en el código TypeScript, el compilador no puede saber si un string es un texto o un valor, así que los textos se marcan con <code>t()</code>. Los textos del <code>.fudapi</code> se traducen sin marcar nada, y el contenido que llega de los datos se elige por idioma con <code>locale</code>.</p>
 
 <h2 id="t"><code>t()</code></h2>
 
@@ -44,7 +44,7 @@
 
 <h2 id="props">En una prop</h2>
 
-<p>El valor de una prop puede ser un texto, como un título, o un valor, como <code>"highlight"</code>. El compilador no lo traduce si no se marca:</p>
+<p>El valor de una prop puede ser un texto, como un título, o un valor, como <code>"highlight"</code>. El compilador solo lo traduce si se marca:</p>
 
 <ui-code .path="src/routes/about.fud">
 <pre><code>@@code &#123;
@@ -89,7 +89,7 @@ export function notFound(slug: string): string &#123;
 
 <h2 id="content">El contenido de los datos</h2>
 
-<p>El título de un artículo no es interfaz: es contenido, y llega de los datos en cada idioma. Para elegirlo, <code>locale</code> es el idioma de la página que se está pintando:</p>
+<p>El título de un artículo no es interfaz: es contenido, y llega de los datos en cada idioma. Para elegirlo está <code>locale</code>, el idioma de la página que se está pintando:</p>
 
 <ui-code .path="src/services/posts.ts">
 <pre><code>import &#123; locale &#125; from "@@fudic/core";

@@ -85,7 +85,7 @@ criterion adds-one
 
 <ul>
   <li><strong><code>criterion</code></strong>: un criterio, con un nombre único en el fichero.</li>
-  <li><strong><code>given</code></strong>: cómo empieza. Como mucho uno, y el primero.</li>
+  <li><strong><code>given</code></strong>: cómo empieza el criterio. Hay como mucho uno, y va el primero.</li>
   <li><strong><code>when</code></strong> y <strong><code>then</code></strong>: lo que hace el usuario y lo que tiene que pasar. Se alternan, y el criterio termina siempre en <code>then</code> (<a href="/docs/reference/diagnostics/FUD0933"><code>FUD0933</code></a>).</li>
 </ul>
 
@@ -97,9 +97,9 @@ criterion adds-one
 <pre><code>&lt;term&gt; &lt;arg&gt;…</code></pre>
 </ui-code>
 
-<p>Un paso es un término y sus argumentos. El nombre del término va sin comillas, y uno en camelCase se lee en kebab-case: <code>minHeight</code> es <code>min-height</code>.</p>
+<p>Un paso es un término y sus argumentos. El nombre del término va sin comillas, y un nombre en camelCase se lee en kebab-case: <code>minHeight</code> es <code>min-height</code>.</p>
 
-<p>Un argumento es una palabra (<code>2</code>, <code>/sign-in</code>, <code>app-card</code>), un texto entre comillas o una referencia a un elemento. La referencia es una cadena de pasos separados por <code>&gt;</code>, cada uno buscado dentro del anterior y entrando en los shadow roots:</p>
+<p>Un argumento es una palabra (<code>2</code>, <code>/sign-in</code>, <code>app-card</code>), un texto entre comillas o una referencia a un elemento. La referencia es una cadena de partes separadas por <code>&gt;</code>. Cada parte se busca dentro de la anterior, entrando en los shadow roots:</p>
 
 <ul>
   <li><strong><code>app-tabs</code></strong>: por su tag.</li>
@@ -126,7 +126,7 @@ criterion adds-one
 
 <h2 id="fixture-lines">Líneas de fixture</h2>
 
-<p>En <code>given</code>, dicen qué datos usa el criterio. Cada nombre es uno de la fixture: <code>&lt;tag&gt;.fixture.ts</code>, <code>&lt;ruta&gt;.fixture.ts</code> (<code>index.fixture.ts</code> para <code>/</code>) o <code>src/flows/&lt;name&gt;.fixture.ts</code>. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
+<p>Las líneas de fixture van en <code>given</code> y dicen qué datos usa el criterio. Cada nombre que citan está en la fixture: <code>&lt;tag&gt;.fixture.ts</code>, <code>&lt;ruta&gt;.fixture.ts</code> (<code>index.fixture.ts</code> para <code>/</code>) o <code>src/flows/&lt;name&gt;.fixture.ts</code>. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
 
 <ul>
   <li><strong><code>props &lt;case&gt;</code></strong>, en un componente: sus props. Obligatoria si tiene props obligatorias.</li>
@@ -223,7 +223,7 @@ export const selfTest = [];</code></pre>
 <h3 id="then-terms">En <code>then</code></h3>
 
 <ul>
-  <li><strong><code>text &lt;target&gt; &lt;expected&gt;</code></strong>: su texto contiene ese.</li>
+  <li><strong><code>text &lt;target&gt; &lt;expected&gt;</code></strong>: el texto del elemento contiene <code>&lt;expected&gt;</code>.</li>
   <li><strong><code>value &lt;target&gt; &lt;expected&gt;</code></strong> y <strong><code>attribute &lt;target&gt; &lt;attribute&gt; &lt;expected&gt;</code></strong>.</li>
   <li><strong><code>visible</code></strong>, <strong><code>hidden</code></strong>, <strong><code>present</code></strong>, <strong><code>focused</code></strong>, <strong><code>enabled</code></strong>, <strong><code>disabled</code></strong>, <strong><code>checked</code></strong> y <strong><code>unchecked</code></strong> <code>&lt;target&gt;</code>.</li>
   <li><strong><code>count &lt;target&gt; &lt;n&gt;</code></strong>: cuántos hay. Con <code>0</code>, que no hay ninguno.</li>

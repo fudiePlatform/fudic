@@ -48,7 +48,7 @@
 
 <h2 id="raw">HTML a propósito: <code>@@raw</code></h2>
 
-<p>Para escribir un valor como HTML está <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>). Solo escribe HTML si el valor viene marcado con <code>trustedHtml(…)</code>; si no, lo escribe como texto, igual que una expresión. La marca se pone en el <code>@@code</code> y no viaja: un HTML que llega del servidor se escribe como texto.</p>
+<p>Para escribir un valor como HTML está <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>). Solo escribe HTML si el valor viene marcado con <code>trustedHtml(…)</code>; si no, lo escribe como texto, igual que una expresión. La marca se pone en el <code>@@code</code>.</p>
 
 <ul>
   <li><strong>La marca va en el valor</strong>, no en la plantilla: quien crea el valor es quien responde de él.</li>
@@ -65,7 +65,7 @@
   trusted-types fudic</code></pre>
 </ui-code>
 
-<p>Fudic tiene una sola política, <code>fudic</code>, y su runtime solo pinta HTML en dos sitios, que pasan por ella: <code>@@raw</code> y el <a href="/docs/forms/binding#summary">resumen de errores</a> de un formulario, que escapa cada mensaje. La usa también para la URL del Service Worker al registrarlo. Cualquier otra vía, en tu código o en una librería, la rechaza el navegador. En un navegador que aún no tiene Trusted Types, todo funciona igual, sin esa última barrera.</p>
+<p>Fudic tiene una sola política, <code>fudic</code>. Su runtime solo pinta HTML en dos sitios, y los dos pasan por ella: <code>@@raw</code> y el <a href="/docs/forms/binding#summary">resumen de errores</a> de un formulario, que escapa cada mensaje. Fudic también la usa para la URL del Service Worker al registrarlo. Cualquier otra vía, en tu código o en una librería, la rechaza el navegador. En un navegador que aún no tiene Trusted Types, todo funciona igual, sin esa última barrera.</p>
 
 <h2 id="editor">El aviso del editor</h2>
 
@@ -89,7 +89,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>El aviso es <a href="/docs/reference/diagnostics/FUD1555"><code>FUD1555</code></a></strong>. Mira el <code>@@code</code> de los <code>.fud</code> y los módulos que carga el navegador, nunca <code>src/server</code>, y solo si <code>page.headers</code> pide Trusted Types.</li>
+  <li><strong>El aviso es <a href="/docs/reference/diagnostics/FUD1555"><code>FUD1555</code></a></strong>. Fudic lo busca en el <code>@@code</code> de los <code>.fud</code> y en los módulos que carga el navegador, nunca en <code>src/server</code>. Solo lo da si <code>page.headers</code> pide Trusted Types.</li>
   <li><strong>Lo que decide es el tipo</strong>: un objeto <code>TrustedHTML</code> de una política tuya no da aviso, y un campo <code>innerHTML</code> de un objeto tuyo tampoco.</li>
 </ul>
 

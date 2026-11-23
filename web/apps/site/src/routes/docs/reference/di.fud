@@ -48,7 +48,7 @@
 <pre><code>Service&lt;T extends abstract new () =&gt; unknown&gt;(target: T): T</code></pre>
 </ui-code>
 
-<p>Registra una clase en la raíz, con una instancia por contenedor raíz. Devuelve la clase tal cual. Es un decorador de clase estándar, pero las herramientas aún no lo transforman, así que se llama debajo de la clase. Su constructor no recibe argumentos: lo que necesita, lo pide con <code>inject</code> en sus campos.</p>
+<p>Registra una clase en la raíz, con una instancia por contenedor raíz. Devuelve la clase tal cual. Es un decorador de clase estándar, pero las herramientas aún no lo transforman, así que se llama debajo de la clase. El constructor de la clase no recibe argumentos: lo que necesita lo pide con <code>inject</code> en sus campos.</p>
 
 <ui-code .path="src/services/cart.ts">
 <pre><code>export class Cart &#123;
@@ -69,7 +69,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 
 <ul>
   <li><strong>Dónde se puede llamar</strong>: en el <code>@@code</code> de un <code>.fud</code>, en los campos y el constructor de un servicio, y en un handler del servidor, donde resuelve con el contenedor de la petición.</li>
-  <li><strong>El orden</strong>: el primer componente de arriba que lo provee con <code>provide</code>; si no, la raíz (<code>Service</code> o <code>provide</code> en un módulo); si no, lo que publicó el servidor con <code>publish</code>, solo para tokens.</li>
+  <li><strong>El orden</strong>: primero, el componente más cercano por encima que lo provee con <code>provide</code>; si no hay, la raíz (<code>Service</code> o <code>provide</code> en un módulo); y si es un token, lo que publicó el servidor con <code>publish</code>.</li>
   <li><strong>Si no lo encuentra</strong>, lanza <code>no registration for &lt;name&gt;</code>; con <code>&#123; optional: true &#125;</code>, devuelve <code>undefined</code>.</li>
   <li><strong>Un ciclo</strong> (<code>A</code> pide <code>B</code> y <code>B</code> pide <code>A</code>) lanza un error con la cadena.</li>
 </ul>
@@ -86,7 +86,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 
 <ul>
   <li><strong>En un módulo <code>.ts</code></strong>, en la raíz, como <code>Service</code> pero con su fábrica.</li>
-  <li><strong>En el <code>@@code</code> de un componente</strong>, para ese componente y todo lo que tiene dentro. Ese componente no se hidrata por proveer.</li>
+  <li><strong>En el <code>@@code</code> de un componente</strong>, para ese componente y todo lo que tiene dentro. Proveer no obliga a hidratar ese componente.</li>
   <li><strong><code>transient</code></strong>: una instancia nueva cada vez que se pide. Por defecto, una por contenedor.</li>
 </ul>
 
@@ -117,7 +117,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 <pre><code>publish&lt;T&gt;(token: Token&lt;T&gt;, value: T): void</code></pre>
 </ui-code>
 
-<p>En el servidor, durante una petición: deja un valor para el navegador. Viaja con la página y los dos lados construyen sus servicios a partir de él. Viajan valores, nunca instancias. Fuera de una petición, lanza un error. Guía: <a href="/docs/di/server#publish">En el servidor</a>.</p>
+<p>Deja un valor para el navegador. Se llama en el servidor, durante una petición. El valor viaja con la página y los dos lados construyen sus servicios a partir de él. Viajan valores, nunca instancias. Fuera de una petición, lanza un error. Guía: <a href="/docs/di/server#publish">En el servidor</a>.</p>
 
 <ui-code .path="src/server/cart.ts">
 <pre><code>load.handle(async () =&gt; &#123;
