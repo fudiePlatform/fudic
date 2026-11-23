@@ -118,7 +118,7 @@
 
 <h2 id="headers"><code>sw.headers</code></h2>
 
-<p>Junto a <code>sw.json</code> va <code>sw.headers</code>, con las cabeceras del propio Service Worker, <code>/fudic-sw.js</code>. Su CSP necesita <code>'unsafe-eval'</code>, y solo él (<a href="/docs/service-worker/configuration#sw-headers"><code>sw.headers</code></a>). El formato es el de los tres ficheros de cabeceras (<a href="/docs/security/headers">Las cabeceras</a>).</p>
+<p>Junto a <code>sw.json</code> va <code>sw.headers</code>, con las cabeceras del propio Service Worker, <code>/fudic-sw.js</code>. Su CSP necesita <code>'unsafe-eval'</code>, y solo él (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>). El formato es el de los tres ficheros de cabeceras (<a href="/docs/security/headers">Las cabeceras</a>).</p>
 
 <h2 id="details">Detalles</h2>
 

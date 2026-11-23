@@ -44,7 +44,7 @@
 
 <ul>
   <li><strong><code>page.headers</code></strong>: las cabeceras de cada página. Las manda el servidor y las pone también el Service Worker cuando pinta una página él.</li>
-  <li><strong><code>sw.headers</code></strong>: las del propio Service Worker, que tiene su política aparte (<a href="/docs/service-worker/configuration#sw-headers">Configuración</a>).</li>
+  <li><strong><code>sw.headers</code></strong>: las del propio Service Worker, que tiene su política aparte (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>).</li>
   <li><strong><code>assets.headers</code></strong>: las de los ficheros estáticos, por ruta. Casi siempre, cuánto guardarlos en caché (<a href="/docs/performance/caching#headers">Las cachés del navegador</a>).</li>
 </ul>
 

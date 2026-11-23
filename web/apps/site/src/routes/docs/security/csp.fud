@@ -113,7 +113,7 @@
 
 <h2 id="service-worker">El Service Worker</h2>
 
-<p>Un Service Worker no hereda la política de la página: tiene la suya en <code>sw.headers</code>, con el <code>'unsafe-eval'</code> que necesita para cargar el código de cada ruta (<a href="/docs/service-worker/configuration#sw-headers">Configuración</a>). Ese permiso vale solo dentro del Service Worker, y en <code>page.headers</code> es un aviso.</p>
+<p>Un Service Worker no hereda la política de la página: tiene la suya en <code>sw.headers</code>, con el <code>'unsafe-eval'</code> que necesita para cargar el código de cada ruta (<a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>). Ese permiso vale solo dentro del Service Worker, y en <code>page.headers</code> es un aviso.</p>
 
 <h2 id="details">Detalles</h2>
 

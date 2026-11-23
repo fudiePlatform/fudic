@@ -96,8 +96,8 @@
         <ol>
           <li><a href="/docs/service-worker" aria-current=@(current === "service-worker" ? "page" : false)>Qué hace</a></li>
           <li><a href="/docs/service-worker/caching" aria-current=@(current === "service-worker-caching" ? "page" : false)>Datos y páginas en caché</a></li>
-          <li><a href="/docs/service-worker/configuration" aria-current=@(current === "service-worker-configuration" ? "page" : false)>Configuración</a></li>
           <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
+          <li><a href="/docs/service-worker/headers" aria-current=@(current === "service-worker-headers" ? "page" : false)>Las cabeceras del Service Worker</a></li>
         </ol>
       </li>
       <li>

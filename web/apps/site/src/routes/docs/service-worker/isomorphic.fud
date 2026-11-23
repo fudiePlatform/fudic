@@ -6,11 +6,11 @@
 
 <head>
   <title>Render isomórfico · Fudic</title>
-  <meta name="description" content="El render isomórfico de Fudic: el mismo código de cada ruta pinta en el build, en el servidor y en el Service Worker. Qué parte del @code se ejecuta al pintar, qué se queda en el navegador y qué en el servidor.">
+  <meta name="description" content="El render isomórfico de Fudic: el mismo código de cada página pinta al construir, en el servidor y en el Service Worker. Qué parte del &#64;code se ejecuta al pintar y qué se queda en el navegador o en el servidor.">
   <link rel="canonical" href="https://fudic.dev/docs/service-worker/isomorphic">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Render isomórfico · Fudic">
-  <meta property="og:description" content="El mismo código pinta en el build, en el servidor y en el Service Worker.">
+  <meta property="og:description" content="El mismo código pinta al construir, en el servidor y en el Service Worker.">
   <meta property="og:url" content="https://fudic.dev/docs/service-worker/isomorphic">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -24,10 +24,10 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#problem">Un código que se ejecuta tres veces</a></li>
-        <li><a href="#cut">Lo que Fudic ejecuta al pintar</a></li>
-        <li><a href="#where">Dónde se ejecuta cada cosa</a></li>
-        <li><a href="#rules">Reglas para que pinte igual en todas partes</a></li>
+        <li><a href="#three">Tres sitios, el mismo HTML</a></li>
+        <li><a href="#cut">Lo que se ejecuta al pintar</a></li>
+        <li><a href="#where">Dónde va cada cosa</a></li>
+        <li><a href="#rules">Para que pinte igual en todas partes</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
     </details>
@@ -36,33 +36,23 @@
 
 <h1>Render isomórfico</h1>
 
-<h2 id="problem">Un código que se ejecuta tres veces</h2>
+<p>Una página de Fudic se pinta con el mismo código en tres sitios: al construir la web, en el servidor y en el Service Worker. Para que el HTML salga igual, al pintar solo se ejecuta la parte del <code>@@code</code> que la página muestra.</p>
 
-<p>Una página de Fudic se escribe una vez, pero su código puede ejecutarse en tres momentos distintos para escribir su HTML (lo que aquí llamamos <em>pintarla</em>):</p>
-
-<ul>
-  <li><strong>al construir la web</strong>, si la página es estática (<code>ssg</code>);</li>
-  <li><strong>en el servidor</strong>, cada vez que alguien la pide;</li>
-  <li><strong>en el Service Worker</strong>, dentro del navegador del usuario.</li>
-</ul>
-
-<p>Los tres ejecutan el mismo código compilado y escriben el mismo HTML. Eso es el <strong>render isomórfico</strong>. Gracias a él, una página pasa de un modo a otro cambiando una sola palabra en su <code>.fudapi</code>, sin tocar su <code>.fud</code> (<a href="/docs/routing/rendering">Los modos</a>).</p>
-
-<p>El reto es que en dos de esos tres momentos no hay navegador. Si la página lee <code>window.innerWidth</code> para mostrarlo, el servidor falla, porque allí <code>window</code> no existe. Si formatea una fecha con <code>toLocaleDateString()</code>, el servidor y el navegador pueden escribir textos distintos, porque cada máquina tiene su configuración.</p>
-
-<p>Por eso Fudic no ejecuta todo el código de la página al pintarla: solo la parte que necesita para mostrarse.</p>
-
-<h2 id="cut">Lo que Fudic ejecuta al pintar</h2>
-
-<p>Todo el <code>@@code</code> de una ruta o de un componente está escrito para el navegador. Pero para pintar fuera de él, el compilador separa la parte que el HTML de la página muestra:</p>
+<h2 id="three">Tres sitios, el mismo HTML</h2>
 
 <ul>
-  <li>las props, los signals y los <code>computed</code> que aparecen en el HTML;</li>
-  <li>las constantes y funciones de las que dependen, con sus <code>import</code>;</li>
-  <li>los servicios que piden con <code>inject</code>, y los <code>provide</code> escritos directamente en el <code>@@code</code>, fuera de cualquier función.</li>
+  <li><strong>Al construir</strong>, si la página es <code>ssg</code>.</li>
+  <li><strong>En el servidor</strong>, cuando alguien la pide.</li>
+  <li><strong>En el Service Worker</strong>, dentro del navegador del usuario.</li>
 </ul>
 
-<p>Esa parte es lo único que se ejecuta al construir la web, en el servidor y en el Service Worker. El resto (los <code>effect</code>, los handlers de eventos y los hooks del ciclo de vida) no escribe nada en el HTML, así que se queda para el navegador.</p>
+<p>Por eso una página pasa de un modo a otro cambiando una palabra en su <code>.fudapi</code>, sin tocar su <code>.fud</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</p>
+
+<p>En dos de esos tres sitios no hay navegador. Una página que lee <code>window.innerWidth</code> para mostrarlo falla en el servidor, donde <code>window</code> no existe.</p>
+
+<h2 id="cut">Lo que se ejecuta al pintar</h2>
+
+<p>El compilador separa del <code>@@code</code> lo que el HTML muestra: las props, los signals y los <code>computed</code> que aparecen en el markup, lo que usan, y los servicios de <code>inject</code> y <code>provide</code>. Solo eso se ejecuta al pintar. Lo demás se queda para el navegador:</p>
 
 <ui-code>
 <pre><code>@@code &#123;
@@ -83,44 +73,31 @@
 &lt;button type="button" @@click=@@add&gt;@@count() · @@double()&lt;/button&gt;</code></pre>
 </ui-code>
 
-<p>El botón muestra <code>count</code> y <code>double</code>, así que esas dos líneas se ejecutan en los tres momentos. El <code>effect</code> toca <code>document</code> y <code>add</code> solo se llama al hacer clic: ninguno de los dos hace falta para escribir el botón.</p>
+<p>El botón muestra <code>count</code> y <code>double</code>, así que esas dos líneas se ejecutan en los tres sitios. El <code>effect</code> toca <code>document</code>, y <code>add</code> solo se llama al hacer clic: ninguno de los dos hace falta para escribir el botón.</p>
 
-<h2 id="where">Dónde se ejecuta cada cosa</h2>
-
-<table>
-  <thead>
-    <tr><th scope="col">Qué</th><th scope="col">Dónde se ejecuta</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Lo que el HTML muestra: props, signals, <code>computed</code>, lo que usan, <code>inject</code> y <code>provide</code></td><td>Al pintar, en los tres momentos, y después en el navegador</td></tr>
-    <tr><td>Los <code>effect</code>, que reaccionan a cambios; al pintar no hay cambios</td><td>Solo en el navegador</td></tr>
-    <tr><td>Los hooks del ciclo de vida: <code>afterHydrate</code>, <code>onConnect</code> y los demás (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>)</td><td>Solo en el navegador</td></tr>
-    <tr><td>Los handlers de eventos</td><td>Solo en el navegador</td></tr>
-    <tr><td>Las llamadas de un <code>task</code>; al pintar, el <code>task</code> muestra su valor <code>initial</code> (<a href="/docs/server/task#lifetime"><code>task</code></a>)</td><td>Solo en el navegador</td></tr>
-    <tr><td>Los handlers del <code>.fudapi</code> en <code>src/server</code>, como <code>load</code>: base de datos, secretos, ficheros</td><td>Solo en el servidor</td></tr>
-  </tbody>
-</table>
-
-<p>Todo lo que necesita <code>window</code>, <code>document</code> o el tamaño de la pantalla va, por tanto, en un <code>effect</code>, un hook o un handler.</p>
-
-<p>Y todo lo que no puede salir del servidor va en los handlers del <code>.fudapi</code>, nunca en el <code>@@code</code>. La página recibe su resultado como <code>data</code> (<a href="/docs/routing/data">Los datos de la página</a>). Ese código no llega nunca al navegador, ni siquiera al Service Worker: por eso, cuando el Service Worker pinta una página, no ejecuta su <code>load</code>, sino que pide el resultado al servidor.</p>
-
-<h2 id="rules">Reglas para que pinte igual en todas partes</h2>
+<h2 id="where">Dónde va cada cosa</h2>
 
 <ul>
-  <li><strong>Lo que el HTML muestra no toca el navegador.</strong> Un <code>signal(window.innerWidth)</code> que aparece en el HTML se evalúa también en el servidor, donde no hay <code>window</code>. Dale un valor fijo al crearlo y ponle el de verdad en un <code>afterHydrate</code>.</li>
-  <li><strong>Las fechas y los números se formatean con pipes.</strong> <code>toLocaleDateString()</code> depende de la máquina; un pipe da el mismo texto en el servidor y en el navegador (<a href="/docs/server/pipes">Pipes</a>).</li>
-  <li><strong>En el HTML solo valen las expresiones de una lista cerrada</strong> (<a href="/docs/template-syntax/expressions">Expresiones</a>). Así se garantiza que dan el mismo resultado en los tres momentos.</li>
-  <li><strong>Una página que depende de quién la mira es <code>ssr</code>.</strong> No puede pintarse al construir la web, porque entonces no hay usuario, y sus datos no se guardan en el Service Worker (<a href="/docs/server/session">Sesión y cookies</a>).</li>
+  <li><strong>Solo en el navegador</strong>: los <code>effect</code>, los ganchos del ciclo de vida (<a href="/docs/reactivity/lifecycle">Ciclo de vida</a>), los handlers de eventos y las llamadas de un <code>task</code>, que al pintar muestra su valor <code>initial</code> (<a href="/docs/server/task#lifetime"><code>task</code></a>). Ahí va todo lo que necesita <code>window</code>, <code>document</code> o el tamaño de la pantalla.</li>
+  <li><strong>Solo en el servidor</strong>: el código del <code>.fudapi</code>, como <code>load</code>, con la base de datos, los secretos y los ficheros. La página recibe su resultado como <code>data</code> (<a href="/docs/routing/data">Los datos de la página</a>). Ese código nunca llega al navegador: el Service Worker no ejecuta <code>load</code>, pide su resultado al servidor.</li>
+</ul>
+
+<h2 id="rules">Para que pinte igual en todas partes</h2>
+
+<ul>
+  <li><strong>Lo que el HTML muestra no toca el navegador.</strong> Dale a <code>signal(window.innerWidth)</code> un valor fijo al crearlo y ponle el de verdad en un <code>afterHydrate</code>.</li>
+  <li><strong>Las fechas y los números, con pipes.</strong> <code>toLocaleDateString()</code> depende de la máquina; un pipe da el mismo texto en el servidor y en el navegador (<a href="/docs/server/pipes">Pipes</a>).</li>
+  <li><strong>En el markup, solo las expresiones de la lista cerrada</strong> (<a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a>), que dan el mismo resultado en los tres sitios.</li>
+  <li><strong>Una página que depende de quién la mira es <code>ssr</code>.</strong> Al construir no hay usuario, y sus datos no se guardan en el Service Worker (<a href="/docs/server/session">Sesión y cookies</a>).</li>
 </ul>
 
 <ui-note>
-  <p>Que el servidor ejecute parte del <code>@@code</code> no significa que la página llegue ya funcionando. Llega pintada, pero sin vida: el JavaScript de cada componente se descarga y se ejecuta después en el navegador, en su primera interacción, o al cargar si tiene un <code>effect</code>. A eso se le llama hidratar (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+  <p>La página llega pintada, pero sin vida: el JavaScript de cada componente se ejecuta después en el navegador, en su primera interacción, o al cargar si tiene un <code>effect</code> (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
 </ui-note>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el HTML que escriben los tres momentos.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a>: donde ocurre el tercero de esos momentos.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el HTML que escriben los tres sitios.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a>: donde ocurre el tercero.</li>
 </ul>

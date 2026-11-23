@@ -1,0 +1,72 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Las cabeceras del Service Worker · Fudic</title>
+  <meta name="description" content="sw.headers: las cabeceras con las que se sirve el Service Worker de Fudic, su propia CSP y por qué necesita unsafe-eval, solo dentro del Service Worker.">
+  <link rel="canonical" href="https://fudic.dev/docs/service-worker/headers">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Las cabeceras del Service Worker · Fudic">
+  <meta property="og:description" content="sw.headers y la CSP del Service Worker de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/service-worker/headers">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("service-worker-headers")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#file">sw.headers</a></li>
+        <li><a href="#unsafe-eval">Por qué unsafe-eval</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Las cabeceras del Service Worker</h1>
+
+<p>El Service Worker no hereda la política de seguridad de la página: tiene la suya, en <code>sw.headers</code>. Es la única que permite <code>'unsafe-eval'</code>, porque sin él no podría cargar el código de las rutas.</p>
+
+<h2 id="file"><code>sw.headers</code></h2>
+
+<p>Va en la raíz de la app, junto a <code>sw.json</code>, y son las cabeceras con las que se sirve <code>/fudic-sw.js</code>. Este es el que escribe <code>fudic new</code>:</p>
+
+<ui-code .path="sw.headers">
+<pre><code># The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
+# 'unsafe-eval' is what lets it link the route chunks: without it the app is served without it.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'self' 'unsafe-eval'</code></pre>
+</ui-code>
+
+<p>El formato es el de <code>page.headers</code> y <code>assets.headers</code>: una cabecera por línea, continuaciones sangradas y <code>#</code> para los comentarios (<a href="/docs/security/headers">Las cabeceras</a>).</p>
+
+<h2 id="unsafe-eval">Por qué <code>'unsafe-eval'</code></h2>
+
+<p>Es una limitación del estándar: un Service Worker no puede cargar módulos con <code>import()</code>, y <code>importScripts()</code> solo funciona mientras se instala. Para cargar el código de una ruta cuando se visita, Fudic lo evalúa con <code>new Function</code>.</p>
+
+<p>El permiso vale solo dentro del Service Worker. La página sigue sin <code>'unsafe-eval'</code>, y en <code>page.headers</code> es un aviso.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Sin <code>'unsafe-eval'</code>, el Service Worker se instala pero no pinta ninguna página, y todas las navegaciones van al servidor. El build avisa (<code>FUD1548</code>).</li>
+  <li>Un <code>sw.headers</code> sin <code>sw.json</code> sobra, y avisa (<code>FUD1554</code>).</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/importScripts" target="_blank" rel="noopener"><code>importScripts()</code></a>: por qué un Service Worker no carga módulos cuando quiere.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src" target="_blank" rel="noopener"><code>script-src</code></a> y <code>'unsafe-eval'</code>.</li>
+</ul>
