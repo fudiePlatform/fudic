@@ -60,7 +60,7 @@ criterion switches-tab
   <li><strong><code>component app-tabs</code></strong> dice qué se prueba: el componente, montado solo.</li>
   <li><strong><code>criterion</code></strong> abre un criterio, con un nombre en kebab-case que lo identifica en los resultados.</li>
   <li><strong><code>given</code></strong> dice cómo empieza, <strong><code>when</code></strong> lo que hace el usuario y <strong><code>then</code></strong> lo que se comprueba. <code>given</code> va primero y una sola vez; <code>when</code> y <code>then</code> se pueden alternar, y el criterio acaba en <code>then</code>.</li>
-  <li><strong>Cada línea es un paso</strong>: <code>click</code>, <code>type</code>, <code>press</code> para actuar; <code>text</code>, <code>visible</code>, <code>count</code>, <code>focused</code> para comprobar. Fudic trae unos cincuenta, y puedes escribir los tuyos (<a href="/docs/testing/terms">Tus propios pasos</a>).</li>
+  <li><strong>Cada línea es un paso</strong>: <code>click</code>, <code>type</code>, <code>press</code> para actuar; <code>text</code>, <code>visible</code>, <code>count</code>, <code>focused</code> para comprobar. Fudic trae unos cincuenta, y puedes escribir los tuyos (<a href="/docs/terms">Términos propios</a>).</li>
 </ul>
 
 <p>El segundo criterio vale aunque el componente aún no se haya hidratado: el primer clic nunca se pierde (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
@@ -135,7 +135,7 @@ export default &#123;
 
 <ul>
   <li><strong>Una referencia, un elemento.</strong> Si encuentra varios, el criterio no da veredicto y te dice cuántos: <code>FUD1203</code>. Solo <code>count</code> admite varios, o ninguno.</li>
-  <li><strong>Un paso que tarda demasiado</strong>, como esperar un texto que nunca llega, para el criterio con <code>FUD1202</code>.</li>
+  <li><strong>Un <code>then</code> que no se cumple</strong>, como un texto que nunca llega, se reintenta durante 5 segundos y el criterio falla con su evidencia. Un gesto sobre un elemento que nunca aparece para el criterio con <code>FUD1202</code>.</li>
   <li><strong><code>fudic fmt</code></strong> ordena también los <code>.fudspec</code>: sangría de dos en dos y una línea en blanco entre criterios.</li>
 </ul>
 

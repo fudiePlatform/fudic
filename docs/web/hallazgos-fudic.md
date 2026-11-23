@@ -625,3 +625,31 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `inject()` y `publishIn` no miran si está vivo; solo `injectFrom` lanza
   (`packages/di/src/container.ts:89`, `resolve.ts`).
 - **Qué debería hacer.** Que `destroy` llegue a los hijos, y que todas las entradas lo comprueben.
+
+## 45. `selfTest` se exige y nadie lo ejecuta
+
+- **Qué pasó.** Al escribir el capítulo Términos propios (2026-11-23). Un término del proyecto tiene
+  que exportar `selfTest` (`FUD0946`, `packages/spec/src/term-module.ts:100`), pero ni el workbench,
+  ni `fudic spec`, ni el editor lo ejecutan: solo se busca el nombre. Su forma (`[{ args, expect:
+  'pass' }]`) solo sale en el README de `@fudic/terms`, en `examples/basic` y en la guía del MCP;
+  ningún código la define. SDD-32 y SDD-59 dejan ejecutarlo fuera de alcance.
+- **Cómo se resolvió en la web.** Cómo funciona un término dice que se exige y que hoy solo se
+  comprueba que exista. La página propia que se había propuesto no se escribió.
+- **Qué debería hacer.** Ejecutarlo (`fudic spec`, o el workbench al guardar el término) o dejar de
+  exigirlo.
+
+## 46. Detalles de los términos y del workbench
+
+- **Qué pasó.** Al escribir el capítulo Términos propios (2026-11-23):
+  - Guardar `fudic/bench.js` no vuelve a ejecutar nada (`packages/workbench/src/rerun.ts:31-38`):
+    se lee en la siguiente recarga. Guardar un término sí, pero ejecuta todos los criterios abiertos,
+    no solo los que lo usan.
+  - Un `given` o un `when` que devuelve `pass: false` no hace fallar el criterio
+    (`packages/workbench/src/engine.ts:466`): para pararlo, el término tiene que lanzar.
+  - El comentario de `examples/basic/fudic/terms/given/route.js` dice que el workbench nunca
+    navega; desde los criterios de página y de flujo, sí.
+  - El README de `@fudic/terms` dice que el `ctx` «tiene cuatro cosas» y lista más.
+- **Cómo se resolvió en la web.** Cómo funciona un término y Ampliar el `ctx` dicen lo que hace el
+  código.
+- **Qué debería hacer.** Volver a ejecutar al guardar `bench.js`; decidir si un `when` con
+  `pass: false` debe parar el criterio; poner al día el comentario y el README.

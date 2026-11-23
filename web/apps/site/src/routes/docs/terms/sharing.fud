@@ -1,0 +1,91 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Sustituir y compartir · Fudic</title>
+  <meta name="description" content="Dónde busca Fudic los términos del .fudspec, cómo se sustituye uno de serie en un proyecto y cómo se reutiliza código entre las apps y librerías de un workspace.">
+  <link rel="canonical" href="https://fudic.dev/docs/terms/sharing">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Sustituir y compartir · Fudic">
+  <meta property="og:description" content="Sustituir un término de serie y reutilizar código entre proyectos.">
+  <meta property="og:url" content="https://fudic.dev/docs/terms/sharing">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("terms-sharing")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#lookup">Dónde se buscan</a></li>
+        <li><a href="#replace">Sustituir uno de serie</a></li>
+        <li><a href="#share">Entre proyectos</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Sustituir y compartir</h1>
+
+<p>Cada proyecto tiene sus términos en su carpeta <code>fudic/terms</code>, y gana a los de serie: un término con el mismo nombre sustituye al de Fudic en ese proyecto. Entre proyectos no se comparten términos, pero sí el código que usan.</p>
+
+<h2 id="lookup">Dónde se buscan</h2>
+
+<ol>
+  <li><strong><code>fudic/terms/</code></strong> del proyecto: la carpeta junto a su <code>fudic.json</code>.</li>
+  <li><strong><code>@@fudic/terms</code></strong>, los que trae Fudic.</li>
+</ol>
+
+<p>Gana el primero que tiene <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>, entero: no se mezclan. Cada app y cada librería de un workspace es un proyecto, con su carpeta: los términos de una librería sirven a los <code>.fudspec</code> de esa librería.</p>
+
+<h2 id="replace">Sustituir uno de serie</h2>
+
+<p>Si tu producto necesita que un paso de serie se comporte de otra forma, se escribe uno con su nombre. Por ejemplo, un <code>text</code> que ignora mayúsculas:</p>
+
+<ui-code .path="fudic/terms/then/text.js">
+<pre><code>export const meta = &#123;
+  name: 'text',
+  block: 'then',
+  params: [
+    &#123; name: 'target', type: 'element' &#125;,
+    &#123; name: 'expected', type: 'string' &#125;,
+  ],
+  describe: (&#123; target, expected &#125;) =&gt; `$&#123;target&#125; says "$&#123;expected&#125;", in any case`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term['run']&#125; */
+export async function run(ctx, &#123; target, expected &#125;) &#123;
+  const actual = await ctx.text(ctx.locate(String(target)));
+  const pass = actual.toLowerCase().includes(String(expected).toLowerCase());
+  return &#123; pass, evidence: &#123; expected: `contains "$&#123;expected&#125;"`, actual: `"$&#123;actual&#125;"` &#125; &#125;;
+&#125;
+
+export const selfTest = [&#123; args: &#123; target: 'h1', expected: 'shop' &#125;, expect: 'pass' &#125;];</code></pre>
+</ui-code>
+
+<p>Desde ese momento, cada <code>text</code> de los <code>.fudspec</code> del proyecto usa el tuyo, y el editor enlaza al tuyo. Los de serie, para copiarlos de modelo, están en <code>node_modules/@@fudic/terms/terms</code>.</p>
+
+<h2 id="share">Entre proyectos</h2>
+
+<p>Un término es de su proyecto. Lo que se comparte es el código: el término lo carga Vite y puede importar de otro paquete del workspace. La lógica va en una librería, y cada proyecto deja un término de pocas líneas que la llama:</p>
+
+<ui-code .path="apps/shop/fudic/terms/then/cart-has.js">
+<pre><code>import &#123; cartCount &#125; from '@@acme/test-helpers';
+
+export const meta = &#123; name: 'cart-has', block: 'then', params: [&#123; name: 'count', type: 'number' &#125;] &#125;;
+
+export async function run(ctx, &#123; count &#125;) &#123;
+  const actual = await cartCount(ctx);
+  return &#123; pass: actual === count, evidence: &#123; expected: String(count), actual: String(actual) &#125; &#125;;
+&#125;
+
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<p><code>meta</code> se queda en cada proyecto, literal, porque es lo que lee su editor.</p>

@@ -191,7 +191,7 @@ export async function run(ctx, &#123; count &#125;) &#123;
 export const selfTest = [];</code></pre>
 </ui-code>
 
-<p><code>run</code> recibe el <code>ctx</code> del criterio y los argumentos por nombre, y devuelve si pasa y la evidencia. Un término del proyecto necesita también <code>selfTest</code>. <code>fudic g term</code> lo crea con todo. Guía: <a href="/docs/testing/terms">Términos propios</a>.</p>
+<p><code>run</code> recibe el <code>ctx</code> del criterio y los argumentos por nombre, y devuelve si pasa y la evidencia. Un término del proyecto necesita también <code>selfTest</code>. <code>fudic g term</code> lo crea con todo. Guía: <a href="/docs/terms">Términos propios</a>.</p>
 
 <h2 id="builtin-terms">Los términos de Fudic</h2>
 

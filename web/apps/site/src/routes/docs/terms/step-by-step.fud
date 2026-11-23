@@ -1,0 +1,171 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Uno de cada bloque · Fudic</title>
+  <meta name="description" content="Tres términos propios del .fudspec escritos paso a paso: un given que entra como un usuario, un when que añade al carrito y un then que cuenta lo que hay, con lo que enseña el workbench cuando falla.">
+  <link rel="canonical" href="https://fudic.dev/docs/terms/step-by-step">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Uno de cada bloque · Fudic">
+  <meta property="og:description" content="Un given, un when y un then propios, de punta a punta.">
+  <meta property="og:url" content="https://fudic.dev/docs/terms/step-by-step">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("terms-step-by-step")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#criterion">El criterio</a></li>
+        <li><a href="#given"><code>given signed-in-as</code></a></li>
+        <li><a href="#when"><code>when add-to-cart</code></a></li>
+        <li><a href="#then"><code>then cart-has</code></a></li>
+        <li><a href="#failing">Cuando falla</a></li>
+        <li><a href="#none">Comprobar que no hay nada</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Uno de cada bloque</h1>
+
+<p>Una tienda con carrito, y un criterio que dice lo que tiene que pasar en el idioma de la tienda. Tres términos lo hacen posible, uno por bloque, y cada uno usa la parte del <code>ctx</code> que le toca.</p>
+
+<h2 id="criterion">El criterio</h2>
+
+<ui-code .path="src/routes/shop.fudspec">
+<pre><code>page /shop
+
+criterion adding-a-book
+  given
+    signed-in-as ana
+  when
+    add-to-cart "The Hobbit"
+  then
+    cart-has 1</code></pre>
+</ui-code>
+
+<p>Mientras los términos no existen, el editor subraya cada línea con <code>FUD0940</code>, y su bombilla ofrece crear el fichero. También se crean con la CLI:</p>
+
+<ui-code>
+<pre><code>fudic g term given signed-in-as --param user:token
+fudic g term when add-to-cart --param product:string
+fudic g term then cart-has --param count:number</code></pre>
+</ui-code>
+
+<h2 id="given"><code>given signed-in-as</code></h2>
+
+<p>Un <code>given</code> prepara el navegador antes de abrir la página. Aquí, la cookie de sesión de la tienda:</p>
+
+<ui-code .path="fudic/terms/given/signed-in-as.js">
+<pre><code>export const meta = &#123;
+  name: 'signed-in-as',
+  block: 'given',
+  params: [&#123; name: 'user', type: 'token' &#125;],
+  describe: (&#123; user &#125;) =&gt; `$&#123;user&#125; is signed in`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term['run']&#125; */
+export async function run(ctx, &#123; user &#125;) &#123;
+  await ctx.page.context().addCookies([
+    &#123; name: 'session', value: String(user), url: new URL('/', ctx.url).href &#125;,
+  ]);
+  return &#123; pass: true, evidence: `session cookie for $&#123;user&#125;` &#125;;
+&#125;
+
+export const selfTest = [&#123; args: &#123; user: 'ana' &#125;, expect: 'pass' &#125;];</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>user</code> es un <code>token</code></strong>: una palabra sin comillas, como un nombre de usuario.</li>
+  <li><strong>La cookie va a <code>/</code></strong>, para que viaje con todas las peticiones de la app, no solo con las de la página.</li>
+  <li><strong>No espera nada</strong>: la página aún no se ha abierto.</li>
+</ul>
+
+<h2 id="when"><code>when add-to-cart</code></h2>
+
+<p>Un <code>when</code> hace lo que haría el usuario, y pasa el gesto por <code>ctx.act</code> para que Fudic espere a que la página termine:</p>
+
+<ui-code .path="fudic/terms/when/add-to-cart.js">
+<pre><code>export const meta = &#123;
+  name: 'add-to-cart',
+  block: 'when',
+  params: [&#123; name: 'product', type: 'string' &#125;],
+  describe: (&#123; product &#125;) =&gt; `the user adds "$&#123;product&#125;" to the cart`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term['run']&#125; */
+export async function run(ctx, &#123; product &#125;) &#123;
+  const button = ctx.locate(`role:article/~"$&#123;product&#125;"&gt;role:button/"Add to cart"`);
+  await ctx.act(button, () =&gt; button.click());
+  return &#123; pass: true, evidence: `added $&#123;product&#125;` &#125;;
+&#125;
+
+export const selfTest = [&#123; args: &#123; product: 'The Hobbit' &#125;, expect: 'pass' &#125;];</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La referencia vive aquí</strong>, no en cada criterio: si el botón cambia de texto, se cambia una línea.</li>
+  <li><strong><code>ctx.act</code></strong> espera a la petición que añade al carrito, al código que pinta el resultado y a que el componente se hidrate si era el primer gesto.</li>
+  <li><strong>Si no hay ese producto</strong>, <code>click</code> espera y acaba lanzando: el criterio para con <code>FUD1202</code>, en el paso que falló.</li>
+</ul>
+
+<h2 id="then"><code>then cart-has</code></h2>
+
+<p>Un <code>then</code> mira la página y dice si se cumple, con la evidencia de lo que encontró:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export const meta = &#123;
+  name: 'cart-has',
+  block: 'then',
+  params: [&#123; name: 'count', type: 'number' &#125;],
+  describe: (&#123; count &#125;) =&gt; `the cart has $&#123;count&#125; items`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term['run']&#125; */
+export async function run(ctx, &#123; count &#125;) &#123;
+  const actual = await ctx.locate('role:region/"Cart"&gt;role:listitem').count();
+  return &#123; pass: actual === count, evidence: &#123; expected: String(count), actual: String(actual) &#125; &#125;;
+&#125;
+
+export const selfTest = [&#123; args: &#123; count: 1 &#125;, expect: 'pass' &#125;];</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>count</code> llega como número</strong>: su tipo es <code>number</code>.</li>
+  <li><strong>No espera</strong>: si el carrito aún no se ha pintado, devuelve <code>pass: false</code> y Fudic lo vuelve a leer hasta 5 segundos.</li>
+  <li><strong><code>evidence</code> en texto</strong>, para que el workbench pueda compararlos.</li>
+</ul>
+
+<h2 id="failing">Cuando falla</h2>
+
+<p>Si el carrito se queda en 0, <code>fudic spec</code> lo dice así:</p>
+
+<ui-code>
+<pre><code>  ✗ adding-a-book  5214 ms
+      then the cart has 1 items
+        expected  1
+        actual    0</code></pre>
+</ui-code>
+
+<p>En el workbench, la misma frase en rojo, <code>1</code> frente a <code>0</code>, y la captura con un recuadro en el botón que pulsó <code>add-to-cart</code>. Los pasos anteriores salen con su evidencia: <code>session cookie for ana</code>, <code>added The Hobbit</code>.</p>
+
+<h2 id="none">Comprobar que no hay nada</h2>
+
+<p>Con <code>cart-has 0</code>, reintentar no tiene sentido: un carrito vacío ya está vacío, y esperar 5 segundos solo retrasa el resultado. <code>negative</code> lo dice:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export const meta = &#123;
+  …
+  negative: (&#123; count &#125;) =&gt; Number(count) === 0,
+&#125;;</code></pre>
+</ui-code>
+
+<p>Con <code>0</code>, Fudic lo lee una vez, con la página quieta. Con cualquier otro número, sigue reintentando.</p>

@@ -140,9 +140,18 @@
           <li><a href="/docs/testing" aria-current=@(current === "testing" ? "page" : false)>Criterios</a></li>
           <li><a href="/docs/testing/workbench" aria-current=@(current === "testing-workbench" ? "page" : false)>El workbench</a></li>
           <li><a href="/docs/testing/pages-and-flows" aria-current=@(current === "testing-pages-and-flows" ? "page" : false)>Páginas y flujos</a></li>
-          <li><a href="/docs/testing/terms" aria-current=@(current === "testing-terms" ? "page" : false)>Tus propios pasos</a></li>
           <li><a href="/docs/testing/unit" aria-current=@(current === "testing-unit" ? "page" : false)>Tests unitarios</a></li>
           <li><a href="/docs/testing/history" aria-current=@(current === "testing-history" ? "page" : false)>Historial y aprobación</a></li>
+        </ol>
+      </li>
+      <li>
+        <span class="chapter">Términos propios</span>
+        <ol>
+          <li><a href="/docs/terms" aria-current=@(current === "terms" ? "page" : false)>Por qué ampliar el lenguaje</a></li>
+          <li><a href="/docs/terms/anatomy" aria-current=@(current === "terms-anatomy" ? "page" : false)>Cómo funciona un término</a></li>
+          <li><a href="/docs/terms/step-by-step" aria-current=@(current === "terms-step-by-step" ? "page" : false)>Uno de cada bloque</a></li>
+          <li><a href="/docs/terms/bench" aria-current=@(current === "terms-bench" ? "page" : false)>Ampliar el <code>ctx</code></a></li>
+          <li><a href="/docs/terms/sharing" aria-current=@(current === "terms-sharing" ? "page" : false)>Sustituir y compartir</a></li>
         </ol>
       </li>
       <li>

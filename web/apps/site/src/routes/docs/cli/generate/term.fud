@@ -102,5 +102,5 @@ export const selfTest = [];</code></pre>
 <h2 id="guide">En la guía</h2>
 
 <ul>
-  <li><a href="/docs/testing/terms">Tus propios pasos</a>: <code>meta</code>, <code>run</code> y <code>ctx</code>.</li>
+  <li><a href="/docs/terms/anatomy">Cómo funciona un término</a>: <code>meta</code>, <code>run</code> y <code>ctx</code>.</li>
 </ul>

@@ -1,0 +1,140 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Cómo funciona un término · Fudic</title>
+  <meta name="description" content="Las partes de un término del .fudspec: meta, que el editor lee sin ejecutar; run, que recibe el ctx y devuelve si pasa y la evidencia; y lo que hace Fudic con given, when y then.">
+  <link rel="canonical" href="https://fudic.dev/docs/terms/anatomy">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Cómo funciona un término · Fudic">
+  <meta property="og:description" content="meta, run, el ctx y cómo se ejecuta cada bloque.">
+  <meta property="og:url" content="https://fudic.dev/docs/terms/anatomy">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("terms-anatomy")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#file">El fichero</a></li>
+        <li><a href="#meta"><code>meta</code></a></li>
+        <li><a href="#run"><code>run</code></a></li>
+        <li><a href="#ctx">El <code>ctx</code></a></li>
+        <li><a href="#blocks">Cómo se ejecuta cada bloque</a></li>
+        <li><a href="#workbench">Lo que enseña el workbench</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Cómo funciona un término</h1>
+
+<p>Un término tiene dos partes: <code>meta</code> dice cómo se escribe el paso y el editor la lee sin ejecutar nada; <code>run</code> hace el trabajo en el navegador y devuelve si se cumple y por qué. Lo demás lo pone Fudic: abrir la página, esperar a que termine y reintentar.</p>
+
+<h2 id="file">El fichero</h2>
+
+<p>Esto es lo que escribe <code>fudic g term then cart-has --param count:number</code>:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export const meta = &#123;
+  name: 'cart-has',
+  block: 'then',
+  params: [
+    &#123; name: 'count', type: 'number' &#125;,
+  ],
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term&lt;string&gt;['run']&#125; */
+export async function run(ctx, &#123; count &#125;) &#123;
+  return &#123; pass: false, evidence: 'not implemented' &#125;;
+&#125;
+
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<p>La carpeta es el bloque, y el nombre del fichero, el del término. Recién creado devuelve <code>pass: false</code>: un término nunca pasa por accidente.</p>
+
+<h2 id="meta"><code>meta</code></h2>
+
+<ul>
+  <li><strong><code>name</code></strong> y <strong><code>block</code></strong>: los de su fichero y su carpeta (<code>FUD0942</code>, <code>FUD0943</code>).</li>
+  <li><strong><code>params</code></strong>: los argumentos, en el orden en que se escriben en la línea. El tipo dice qué acepta: <code>number</code>, un número; <code>string</code>, una palabra o un texto entre comillas; <code>token</code>, una palabra; <code>element</code>, una referencia como <code>role:button/"Save"</code> o un tag.</li>
+  <li><strong><code>describe</code></strong>: una función que recibe los argumentos y devuelve la frase que sale en el workbench, <code>the cart has 3 items</code>. Sin ella, sale la línea tal cual.</li>
+  <li><strong><code>negative</code></strong>: en un <code>then</code> que comprueba que algo no está, <code>true</code>, o una función de los argumentos. Ver <a href="#blocks">abajo</a>.</li>
+</ul>
+
+<p><code>meta</code> tiene que ser un objeto escrito ahí mismo, con textos literales: el editor la lee sin ejecutar el módulo. Por eso marca un <code>cart-has</code> sin número, o con una palabra, mientras escribes el <code>.fudspec</code> (<code>FUD0947</code>, <code>FUD0948</code>).</p>
+
+<h2 id="run"><code>run</code></h2>
+
+<ui-code>
+<pre><code>run(ctx: TermContext, args: Record&lt;string, string | number&gt;): Promise&lt;&#123; pass: boolean; evidence: … &#125;&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>args</code></strong> trae los argumentos por nombre: un <code>number</code> ya como número, el resto como texto, sin comillas.</li>
+  <li><strong><code>pass</code></strong>: si se cumple. Solo cuenta en un <code>then</code>.</li>
+  <li><strong><code>evidence</code></strong>: lo que lees cuando falla. En un <code>then</code>, mejor <code>&#123; expected, actual &#125;</code>, lo que buscó contra lo que encontró, en texto: el workbench los enseña uno frente al otro. En un <code>given</code> o un <code>when</code>, un texto con lo que hizo.</li>
+</ul>
+
+<p>El módulo lo carga Vite, así que puede importar otros módulos de tu proyecto.</p>
+
+<h3 id="self-test"><code>selfTest</code></h3>
+
+<p>Un término del proyecto tiene que exportar <code>selfTest</code> (<code>FUD0946</code>). La forma acordada es una lista de casos, <code>[&#123; args: &#123; count: 1 &#125;, expect: "pass" &#125;]</code>. Hoy Fudic solo comprueba que exista: no lo ejecuta. Los de serie no lo llevan, porque se prueban en el propio paquete.</p>
+
+<h2 id="ctx">El <code>ctx</code></h2>
+
+<p>Lo que recibe <code>run</code>, uno por persona del criterio:</p>
+
+<ul>
+  <li><strong><code>locate(ref)</code></strong>: busca con las mismas referencias que un criterio, entrando en los shadow roots. Devuelve un <a href="https://playwright.dev/docs/api/class-locator" target="_blank" rel="noopener"><code>Locator</code></a> de Playwright. Si encuentra más de uno al usarlo, para el criterio (<code>FUD1203</code>); si encuentra uno, lo marca en la captura.</li>
+  <li><strong><code>text(target)</code></strong>: el texto que ve una persona, con lo que llega por cada slot.</li>
+  <li><strong><code>act(target, gesture)</code></strong>: hace un gesto y espera a que la página lo haya servido: peticiones, código e hidratación. Todo <code>when</code> que toca la página lo usa.</li>
+  <li><strong><code>page</code></strong>: la página de Playwright, para todo lo demás: teclado, ratón, <code>evaluate</code>, cookies.</li>
+  <li><strong><code>url</code></strong>: la URL donde se abre el criterio. <strong><code>resolve(path)</code></strong>: una ruta relativa al <code>.fudspec</code>, absoluta.</li>
+  <li><strong><code>quiet()</code></strong>: espera a que la página quede quieta: sin peticiones, sin timers cortos, sin animaciones.</li>
+  <li><strong><code>clock(at)</code></strong> y <strong><code>advance(ms)</code></strong>: paran el reloj del navegador y del servidor, y lo avanzan.</li>
+  <li><strong><code>calls()</code></strong>: las llamadas al servidor que hizo el criterio, con sus argumentos y su status.</li>
+  <li><strong><code>response()</code></strong>, <strong><code>lastWhen()</code></strong>, <strong><code>reloaded()</code></strong> y <strong><code>paths()</code></strong>: la última respuesta del documento, las peticiones y descargas del último <code>when</code>, si la página se recargó, y los valores de <code>paths</code>.</li>
+</ul>
+
+<h2 id="blocks">Cómo se ejecuta cada bloque</h2>
+
+<ol class="flow">
+  <li><strong><code>given</code></strong>, antes de abrir la página. Lo que pone (una cookie, un idioma, un reloj) ya está cuando la página carga. <code>ctx.page</code> aún no ha navegado.</li>
+  <li><strong>Se abre la página</strong>, en una pestaña nueva: ningún criterio hereda nada de otro.</li>
+  <li><strong><code>when</code></strong>, en orden. Después de cada uno, Fudic espera a que la página quede quieta, aunque el término no use <code>act</code>.</li>
+  <li><strong><code>then</code></strong>, sobre la página quieta. Si no se cumple, se vuelve a leer cada 50 ms durante 5 segundos: un texto que llega tarde no hace fallar el criterio. Uno con <code>negative</code> se lee una sola vez, porque algo que no está no va a aparecer esperando.</li>
+</ol>
+
+<p>Después de un <code>then</code> puede venir otro <code>when</code>. Un <code>then</code> que falla no para el criterio: siguen los pasos, y el informe enseña el primero en rojo.</p>
+
+<p>Solo un <code>then</code> decide si el criterio pasa. Un <code>given</code> o un <code>when</code> que no puede hacer su trabajo lanza un error: el criterio para con <code>FUD1204</code> y el mensaje, en vez de seguir sobre una página que no es la que crees.</p>
+
+<h2 id="workbench">Lo que enseña el workbench</h2>
+
+<ul>
+  <li><strong>La frase de <code>describe</code></strong>, en cada paso, enlazada al fichero del término y a su línea en el <code>.fudspec</code>.</li>
+  <li><strong>Un <code>then</code> que falla</strong>, con <code>expected</code> y <code>actual</code> uno frente al otro y la diferencia resaltada.</li>
+  <li><strong>La captura</strong>, con un recuadro en cada elemento que encontró <code>locate</code>, y la línea del <code>.fud</code> que lo pintó.</li>
+</ul>
+
+<p>Al guardar un término, el workbench vuelve a ejecutar los criterios abiertos (<a href="/docs/testing/workbench">El workbench</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los errores del módulo</strong>, en cada línea del <code>.fudspec</code> que lo usa: <code>FUD0941</code>, <code>meta</code> no es literal; <code>FUD0944</code>, un tipo que no existe; <code>FUD0945</code>, falta <code>run</code>; <code>FUD0954</code>, un parámetro repetido.</li>
+  <li><strong>Los de la ejecución</strong>: <code>FUD1202</code>, una llamada de Playwright agotó su tiempo; <code>FUD1203</code>, una referencia ambigua; <code>FUD1204</code>, el término lanzó; <code>FUD1508</code>, la página no se quedó quieta.</li>
+  <li><strong>Un nombre de término en camelCase</strong> en el <code>.fudspec</code> se lee en kebab-case: <code>cartHas</code> es <code>cart-has</code>.</li>
+  <li><strong>Los tiempos</strong> (5 segundos, cada 50 ms) son fijos.</li>
+</ul>
