@@ -6,14 +6,14 @@ import * as AppCard from './app-card.fud';
 // A component with no JavaScript (N1): the server's HTML and nothing else.
 
 test('the featured card, from the fixture of its .fudspec', async () => {
-  const t = await mount(AppCard, { props: fixtures.destacada });
+  const t = await mount(AppCard, { props: fixtures.featured });
   expect(t.root).toBe(t.host.shadowRoot);
   expect(t.getByRole('link', { name: 'Featured' })).toHaveAttribute('href', '/blog/featured');
   expect(t.query('article')).toHaveClass('card', 'highlight');
 });
 
 test('without a variant, the default one', async () => {
-  const t = await mount(AppCard, { props: fixtures.minima });
+  const t = await mount(AppCard, { props: fixtures.minimal });
   expect(t.getByRole('heading', { level: 2 })).toHaveTextContent('A');
   expect(t.query('article')).not.toHaveClass('highlight');
 });
