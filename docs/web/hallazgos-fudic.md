@@ -653,3 +653,28 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   código.
 - **Qué debería hacer.** Volver a ejecutar al guardar `bench.js`; decidir si un `when` con
   `pass: false` debe parar el criterio; poner al día el comentario y el README.
+
+## 47. Detalles del MCP, de una conversación real
+
+- **Qué pasó.** Para la página «Una conversación de principio a fin» de la sección MCP
+  (2026-11-23), un Claude Code nuevo construyó un botón con el MCP en un proyecto de prueba,
+  instalado desde el Verdaccio local. La pieza llegó a `done`, pero:
+  - **El diff de una aprobación caducada sale vacío** si los ficheros aprobados nunca se
+    commitearon. `diffSince` (`packages/mcp/src/status.ts:86-89`) hace `git diff` contra el
+    commit de la aprobación, y en ese commit los ficheros no existían. `next` pide igualmente
+    «Show the user the diff in "expired"», y el agente tuvo que componer el diff él.
+  - **`fudic_spec_run` en verde responde un `next` que habla de criterios.** Con `pass 9/9` y dos
+    tests unitarios en rojo, `next` decía «Make the view of … pass these criteria. Do not change
+    the .fudspec.» (`packages/mcp/src/runs.ts:270`). La pieza seguía en `view` por los tests, no
+    por los criterios.
+  - **Una ejecución parcial pasa por el estado de la pieza.** Tras ejecutar un solo criterio,
+    `fudic_status` dice `spec: "fail 0/1"` para una pieza que tiene nueve.
+  - **El agente no empezó por `fudic_status`** aunque las `instructions` y `AGENTS.md` lo piden:
+    su primera llamada fue `fudic_symbols { kind: "tokens" }`. Por eso tampoco acordó los tokens
+    con la persona: los dio por buenos porque existían.
+- **Cómo se resolvió en la web.** La página cuenta la conversación tal como fue, y «Cuando el
+  modelo se desvía» usa el último punto como ejemplo.
+- **Qué debería hacer.** Comparar con lo aprobado aunque no esté en git (o decir en `expired` que
+  no hay diff y por qué); que el `next` de `fudic_spec_run` nombre lo que falta de verdad; decidir
+  si una ejecución parcial cuenta para el estado; y que la primera respuesta de cualquier
+  herramienta, si `fudic_status` no se ha llamado en la sesión, lo recuerde en su `next`.

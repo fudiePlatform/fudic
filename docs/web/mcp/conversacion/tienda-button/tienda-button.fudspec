@@ -1,0 +1,68 @@
+component tienda-button
+
+# Lo que se escribe dentro del botón es lo que se lee en él, y es su nombre accesible.
+criterion dice-su-texto
+  given
+    props base
+  then
+    visible role:button/"Añadir al carrito"
+
+# El peso de la acción se ve: la principal con el color de marca, la alternativa discreta,
+# la destructiva en rojo. Se comprueba por el atributo que el botón refleja de su variante.
+criterion la-principal-lleva-el-color-de-marca
+  given
+    props base
+  then
+    attribute tienda-button variant "primary"
+
+criterion la-alternativa-es-discreta
+  given
+    props secundaria
+  then
+    visible role:button/"Seguir comprando"
+    attribute tienda-button variant "secondary"
+
+criterion la-destructiva-avisa-en-rojo
+  given
+    props peligro
+  then
+    visible role:button/"Vaciar el carrito"
+    attribute tienda-button variant "danger"
+
+# Se llega a él con el tabulador: el foco entra en el componente y acaba en el botón.
+criterion el-foco-llega-al-boton
+  given
+    props base
+  when
+    focus tienda-button
+  then
+    focused role:button/"Añadir al carrito"
+
+# Un producto sin stock no se puede añadir: el botón está ahí, se lee, y no responde.
+criterion sin-stock-no-responde
+  given
+    props deshabilitada
+  then
+    visible role:button/"Sin stock"
+    disabled role:button/"Sin stock"
+
+# Mientras se añade al carrito avisa de que está trabajando y no se puede pulsar dos veces.
+criterion mientras-trabaja-avisa-y-no-se-repite
+  given
+    props ocupada
+  then
+    visible role:progressbar
+    disabled role:button/"Añadir al carrito"
+
+# Se puede pulsar con el dedo en el móvil, y un texto largo no lo deforma.
+criterion se-pulsa-con-el-dedo
+  given
+    props base
+  then
+    min-height tienda-button 40
+
+criterion un-texto-largo-se-lee-entero
+  given
+    props texto-largo
+  then
+    visible role:button/"Añadir al carrito y seguir con la compra"

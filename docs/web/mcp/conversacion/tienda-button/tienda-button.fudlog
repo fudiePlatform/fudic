@@ -1,0 +1,17 @@
+2026-11-23T20:01Z 2f3a378 started     by agent  "Un botón para la tienda: la acción principal de cada pantalla (añadir al carrito, comprar) y también acciones secundarias."
+2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d
+2026-11-23T20:16Z 2f3a378 tests       broken 0/8  hash f30f8f283e41
+2026-11-23T20:17Z 2f3a378 tests       broken 0/8  hash 945afa51a450
+2026-11-23T20:18Z 2f3a378 tests       red 0/8  hash 87829e018cf7
+2026-11-23T20:19Z 2f3a378 spec_run    error 0/9  hash 87829e018cf7  dice-su-texto la-principal-lleva-el-color-de-marca la-alternativa-es-discreta la-destructiva-avisa-en-rojo se-puede-enfocar sin-stock-no-responde mientras-trabaja-avisa-y-no-se-repite se-pulsa-con-el-dedo un-texto-largo-se-lee-entero
+2026-11-23T20:20Z 2f3a378 spec_run    error 0/1  hash fa30b29546a0  se-puede-enfocar
+2026-11-23T20:22Z 2f3a378 spec_run    fail 0/1  hash 3ac4bc2fc846  el-foco-llega-al-boton
+2026-11-23T20:24Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 188d180b8c14
+2026-11-23T20:30Z 2f3a378 tests       red 6/8  hash 41f240880583
+2026-11-23T20:31Z 2f3a378 spec_run    pass 9/9  hash 41f240880583
+2026-11-23T20:34Z 2f3a378 tests       pass 8/8  hash e85d66337d36
+2026-11-23T20:52Z 2f3a378 tests       pass 8/8  hash 745e3bc903e8
+2026-11-23T20:54Z 2f3a378 spec_run    pass 9/9  hash 745e3bc903e8
+2026-11-23T20:58Z 2f3a378 look        by Pedro-Hurtado  hash 3619dff483fb
+2026-11-23T21:01Z 2f3a378 documented  4/4
+2026-11-23T21:01Z 2f3a378 done

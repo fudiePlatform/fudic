@@ -1,0 +1,80 @@
+@code {
+  /**
+   * El botón de la tienda: la acción principal de cada pantalla (añadir al carrito, comprar) y
+   * también las secundarias. Su texto es lo que se escribe entre las etiquetas. Para navegar a
+   * otra página, usa un enlace, no un botón.
+   */
+  const { variant = "primary", type = "button", disabled = false, busy = false } = props<{
+    /** Qué peso tiene la acción: `primary` la principal, `secondary` una alternativa, `danger` la que destruye algo. */
+    variant?: "primary" | "secondary" | "danger";
+    /** `submit` cuando el botón envía el formulario en el que está. */
+    type?: "button" | "submit";
+    /** La acción no está disponible ahora: no responde al clic ni al teclado. */
+    disabled?: boolean;
+    /** La acción está en marcha: avisa de que se está haciendo y no se puede pulsar otra vez. */
+    busy?: boolean;
+  }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: inline-block;
+    }
+
+    button {
+      /* Alto cómodo para el dedo en el móvil, con los pasos de la guía. */
+      padding-block: var(--tienda-space-3);
+    }
+
+    /* Trabajando no es lo mismo que no disponible: el indicador avisa, el botón no se apaga.
+       Gana al :disabled de la guía, que atenúa todo lo deshabilitado. */
+    button[aria-busy="true"] {
+      opacity: 1;
+      cursor: progress;
+    }
+
+    :host([variant="secondary"]) button {
+      color: var(--tienda-ink);
+      background: var(--tienda-surface);
+      border-color: var(--tienda-line);
+    }
+
+    :host([variant="danger"]) button {
+      color: var(--tienda-on-danger);
+      background: var(--tienda-danger);
+    }
+
+    .spinner {
+      width: 1em;
+      height: 1em;
+      border: 2px solid currentColor;
+      border-block-start-color: transparent;
+      border-radius: var(--tienda-radius-full);
+      animation: spin 600ms linear infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+  </style>
+</head>
+
+<tienda-button variant=@variant>
+  <template shadowrootmode="open" shadowrootdelegatesfocus shadowrootadoptedstylesheets="button">
+    <button type=@type disabled=@(disabled || busy) aria-busy=@(busy ? "true" : null)>
+      @if (busy) {
+        <span class="spinner" role="progressbar"></span>
+      }
+      <slot></slot>
+    </button>
+  </template>
+</tienda-button>
