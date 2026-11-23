@@ -1,0 +1,8 @@
+{
+  "id": "mcp",
+  "kind": "app",
+  "prefix": "mcp",
+  "server": "src/server",
+  "browser": "src/browser",
+  "baseline": "widely"
+}

@@ -50,6 +50,31 @@ Es lo que Pedro aprobó al reescribir Estilos, Reactividad, `.fud`, Servidor, Ru
 - **Sin introducciones ni cierres** («En este capítulo…», «Siguiente paso»). Es documentación,
   no un tutorial.
 
+### Las frases: lo que costó tres pasadas
+
+La calidad actual del manual salió de tres pasadas de revisión (`docs/web/redaccion.md` tiene la
+última, con cada original y su propuesta). Estas reglas existen para que una página nueva salga
+ya así, sin repetirlas. Relee cada párrafo con ellas antes de entregar:
+
+- **Cada frase con su verbo.** Nada de elipsis con coma: «`fudic add http`, la cadena global»
+  se escribe «`fudic add http` crea la cadena global». «Con `true`, el atributo vacío» se escribe
+  «Con `true`, escribe el atributo vacío». En una celda de tabla o un punto de lista corto, el
+  estilo telegráfico vale; en un párrafo, no.
+- **Cada pronombre con su sustantivo cerca.** Si «lo», «los», «su», «uno», «él» o «es lo único»
+  apuntan a algo del `<h2>` o de dos frases atrás, se repite el sustantivo: «el workbench los
+  ejecuta» se escribe «el workbench ejecuta los criterios».
+- **Un sujeto por frase.** Si cambia a mitad, se parte en dos frases.
+- **Nada de dos puntos encadenados.** Un «:» presenta y el siguiente abre una lista: el lector
+  no sabe cuál manda. Se cierra la primera idea con punto.
+- **Enlaces dentro de la frase, no entre paréntesis.** Como mucho uno por frase. «el clic no se
+  pierde (Hidratación)» se escribe «el clic no se pierde. Lo explica Hidratación».
+- **Palabras con dos lecturas.** «para» (de *parar*) se lee como preposición: se escribe «se
+  detiene». «solo» detrás del verbo se lee como «únicamente»: si es «por sí mismo», se escribe
+  «por su cuenta».
+- **Un nombre para cada cosa.** Elegido el término («custom properties», «hooks»), se usa siempre.
+  Un concepto nuevo («contenedor», «fixture») se presenta en una frase la primera vez que sale.
+- **La jerga, explicada o fuera.** Nada de «fichero hermano» o «vale» por «pasa»: se dice qué es.
+
 ### El mensaje de fondo
 
 - **El estándar primero.** HTML, CSS y TypeScript son «estándar», siempre con esa palabra. Lo

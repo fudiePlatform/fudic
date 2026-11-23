@@ -180,7 +180,7 @@ dominio) se apunta en [../hallazgos-cli.md](../hallazgos-cli.md); lo del framewo
 ## 6. Orden de trabajo
 
 1. Este documento, validado por Pedro.
-2. Crear la app `mcp` con la CLI y llevar el enlace «MCP» del menú hasta ella.
+2. ~~Crear la app `mcp` con la CLI y llevar el enlace «MCP» del menú hasta ella.~~
 3. Qué es el MCP y Dirigir un modelo (grupos 1 y 2): lo que más importa, primero.
 4. Conectarlo y Lo que genera la CLI (grupos 3 y 4), comprobando cada entorno.
 5. Ver lo que se construye y Workspaces (grupos 5 y 8).
@@ -213,3 +213,4 @@ Decidido, pero **no se hace ahora**: va junto a `robots.txt` y `sitemap.xml`, al
 | 2026-11-23 | Este documento, para revisión. |
 | 2026-11-23 | Decisiones de Pedro: fuera el túnel y el chat (no se documentan); subapp en `fudic.dev/mcp`; sin componentes propios, los de `ui`; el `llms.txt`, al final con `robots.txt` y `sitemap.xml`. |
 | 2026-11-23 | Corrección de Pedro: el chat **sí** se cuenta (herramientas de ficheros, la pieza en la conversación, la app en una URL); lo que no se detalla es cómo se conecta (túnel, secreto, puertos), porque cambiará con la infraestructura. Vuelven las 21 herramientas. |
+| 2026-11-23 | Plan validado. App `web/apps/mcp` creada con `fudic g app mcp --uses ui --layout @web/ui/layouts/docs.fud --no-sw`, servida en `/mcp/`. Dentro del monorepo la CLI no pudo (hallazgos 5 y 6 de la CLI): se creó sobre una copia de `web/` y se trajo. «MCP» en la cabecera de todas las páginas y `mcpNav` en `ui`. La portada, solo con su cabecera, a la espera de las notas de los grupos 1 y 2. |

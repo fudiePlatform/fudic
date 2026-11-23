@@ -73,6 +73,18 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Vuelto a comprobar (Herramientas), el 2026-11-23.** Desde `web/apps/site`,
   `fudic dev --project nope` responde con los 23 proyectos del repo, entre ellos fixtures de tests
   como `FUD0744` o `FUD1442`, y `admin` y `ui` repetidos.
+- **Vuelto a comprobar (app del MCP), el 2026-11-23, y ahora bloquea.** Desde `web/`,
+  `fudic g app mcp --no-sw --dry-run`, sin `--uses`, termina con dos errores de proyectos ajenos:
+  `FUD0785` («--uses FUD1442: that is an app») y `FUD0724` («the id "fixes" is declared by more
+  than one project: FUD0744, FUD0855, FUD1442»). Son los fixtures de
+  `packages/diagnostics/fixtures`, que no están en el `pnpm-workspace.yaml`. Con `--uses ui`,
+  `--uses @web/ui` o `--uses libs/ui` tampoco encuentra la librería de la web. Rodeo: se ejecutó
+  la CLI sobre una copia de `web/` fuera del monorepo, con su propio `pnpm-workspace.yaml`, y se
+  trajo `apps/mcp` al repo. Ahí la CLI creó la app con `--layout @web/ui/layouts/docs.fud` sin
+  problema. Después se ajustó a mano lo mismo que en `site` (§6.1 del plan): `@fudic/*` a
+  `workspace:*`. Además se quitó `"locales": ["es"]`, que `--locale es` escribe y la web aún no
+  usa. **Qué debería hacer, además:** validar solo los proyectos que toca el comando, y no
+  tratar como proyecto una carpeta que el `pnpm-workspace.yaml` no incluye.
 
 ## 6. `fudic g page --layout @web/ui/…` revienta, y la alternativa escribe una ruta frágil
 
@@ -105,6 +117,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   2026-11-23: sin `--layout` escribe `../../../layouts/_layout.fud`, corregido a mano.
 - **Y otra vez** con las otras once páginas de Referencia (`docs/reference`, `docs/reference/…`), el
   2026-11-23: el mismo `href` y títulos como «Fudapi», corregidos a mano.
+- **Y otra vez** con la app del MCP, el 2026-11-23: dentro del monorepo,
+  `fudic g app mcp --layout @web/ui/layouts/docs.fud` termina con el mismo `ENOENT` sobre
+  `examples\vista-errores\package.json`. Fuera del monorepo el mismo comando funciona. El rodeo
+  está en el nº 5.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

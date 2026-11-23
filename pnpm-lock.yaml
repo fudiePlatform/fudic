@@ -1218,6 +1218,52 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  web/apps/mcp:
+    dependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../../../packages/dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../../../packages/ssr
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../../../packages/transport
+      '@web/guide':
+        specifier: workspace:*
+        version: link:../../libs/guide
+      '@web/ui':
+        specifier: workspace:*
+        version: link:../../libs/ui
+    devDependencies:
+      '@fudic/cli':
+        specifier: workspace:*
+        version: link:../../../packages/cli
+      '@fudic/terms':
+        specifier: workspace:*
+        version: link:../../../packages/terms
+      '@fudic/testing':
+        specifier: workspace:*
+        version: link:../../../packages/testing
+      '@fudic/vite':
+        specifier: workspace:*
+        version: link:../../../packages/vite
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../../../packages/workbench
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@22.20.0)
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
+
   web/apps/site:
     dependencies:
       '@fudic/core':

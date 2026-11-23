@@ -1,0 +1,31 @@
+{
+  "name": "@web/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
+  },
+  "dependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*",
+    "@web/ui": "workspace:*",
+    "@web/guide": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@fudic/workbench": "workspace:*",
+    "typescript": "5.9.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  }
+}

@@ -7,6 +7,7 @@
     <nav aria-label="Principal">
       <ul>
         <li><a href="/docs/getting-started">Documentación</a></li>
+        <li><a href="/mcp">MCP</a></li>
         <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
       </ul>
     </nav>
@@ -206,6 +207,17 @@
           <li><a href="/docs/reference/diagnostics" aria-current=@(current === "reference-diagnostics" ? "page" : false)>Diagnósticos</a></li>
         </ol>
       </li>
+    </ol>
+  </details>
+}
+
+@* The pages of the MCP section, in the order they are read. Same shape as docsNav: a page passes
+   its own id to mark itself. *@
+@snippet mcpNav(current: string) {
+  <details class="chapters">
+    <summary>Páginas</summary>
+    <ol>
+      <li><a href="/mcp" aria-current=@(current === "mcp" ? "page" : false)>Qué es el MCP</a></li>
     </ol>
   </details>
 }
