@@ -177,16 +177,21 @@ criterion lists-the-first-post
 <pre><code>export const meta = &#123;
   name: "cart-has",
   block: "then",
-  params: [&#123; name: "n", type: "number" &#125;],
-  describe: "the cart has &#123;n&#125; items",
+  params: [&#123; name: "count", type: "number" &#125;],
+  describe: (&#123; count &#125;) =&gt; `the cart has $&#123;count&#125; items`,
 &#125;;
 
-export async function run(page, n) &#123; … &#125;
+/** @@type &#123;import('@@fudic/terms').Term['run']&#125; */
+export async function run(ctx, &#123; count &#125;) &#123;
+  const actual = await ctx.text(ctx.locate('role:status/"Cart"'));
+  const expected = `$&#123;count&#125; items`;
+  return &#123; pass: actual === expected, evidence: &#123; expected, actual &#125; &#125;;
+&#125;
 
-export const selfTest = &#123; … &#125;;</code></pre>
+export const selfTest = [];</code></pre>
 </ui-code>
 
-<p>Un término del proyecto necesita también <code>selfTest</code>. <code>fudic g term</code> lo crea con todo. Guía: <a href="/docs/testing/terms">Términos propios</a>.</p>
+<p><code>run</code> recibe el <code>ctx</code> del criterio y los argumentos por nombre, y devuelve si pasa y la evidencia. Un término del proyecto necesita también <code>selfTest</code>. <code>fudic g term</code> lo crea con todo. Guía: <a href="/docs/testing/terms">Términos propios</a>.</p>
 
 <h2 id="builtin-terms">Los términos de Fudic</h2>
 
