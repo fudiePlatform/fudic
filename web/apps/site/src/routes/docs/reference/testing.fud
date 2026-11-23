@@ -211,6 +211,6 @@ export default &#123;
 
 <ul>
   <li><strong>Los matchers de jest-dom</strong> ya están registrados. No hay <code>getAll*</code> ni <code>findBy*</code>: un gesto ya espera a que todo termine.</li>
-  <li><strong>Los errores de una fixture</strong> en el editor: <code>FUD1510</code>, un valor que no se puede leer sin ejecutarla, como un spread; <code>FUD1514</code>, una respuesta del tipo equivocado.</li>
+  <li><strong>Los errores de una fixture</strong> en el editor: <a href="/docs/reference/diagnostics/FUD1510"><code>FUD1510</code></a>, un valor que no se puede leer sin ejecutarla, como un spread; <a href="/docs/reference/diagnostics/FUD1514"><code>FUD1514</code></a>, una respuesta del tipo equivocado.</li>
   <li><strong><code>@@fudic/testing/run</code> y <code>/render</code></strong> los usan <code>fudic test</code> y el workbench.</li>
 </ul>

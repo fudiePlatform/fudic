@@ -81,7 +81,7 @@
 </ui-code>
 
 <ul>
-  <li><strong>Van en el nivel superior de <code>@@code</code></strong>, nunca dentro de un <code>if</code> o de una función (<code>FUD1560</code>).</li>
+  <li><strong>Van en el nivel superior de <code>@@code</code></strong>, nunca dentro de un <code>if</code> o de una función (<a href="/docs/reference/diagnostics/FUD1560"><code>FUD1560</code></a>).</li>
   <li><strong>La función que devuelven es su limpieza.</strong> En <code>onConnect</code> se ejecuta al salir de la página; en <code>afterHydrate</code> y <code>afterCreate</code>, al destruirse.</li>
   <li><strong>El servidor nunca los ejecuta.</strong></li>
 </ul>

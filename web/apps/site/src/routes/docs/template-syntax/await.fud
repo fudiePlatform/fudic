@@ -89,7 +89,7 @@
 
 <h2 id="where">Dónde se puede usar</h2>
 
-<p>Solo en el cuerpo de una ruta (<code>FUD1322</code>). Un componente recibe el valor ya resuelto, como una prop, así que no sabe si llegó antes o después.</p>
+<p>Solo en el cuerpo de una ruta (<a href="/docs/reference/diagnostics/FUD1322"><code>FUD1322</code></a>). Un componente recibe el valor ya resuelto, como una prop, así que no sabe si llegó antes o después.</p>
 
 <p id="hydration">Cada bloque trae sus datos de hidratación, así que sus componentes responden en cuanto llega, aunque el resto siga en camino.</p>
 

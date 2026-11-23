@@ -106,7 +106,7 @@
   <li>Sin nada en la línea de <code>load</code>, la política es <code>cache-first</code> sin caducidad.</li>
   <li>Una llamada que no es <code>get</code> borra siempre lo guardado de la página en la que está el usuario, aunque no lo diga <code>invalidates</code>.</li>
   <li>Dos navegaciones a la misma URL a la vez comparten una sola petición a la red, y solo se guardan las respuestas <code>200</code>.</li>
-  <li>Una página nunca tiene dos caducidades: un <code>page persist 2h</code> con <code>ttl 1h</code> avisa, y gana el <code>ttl</code> (<code>FUD0396</code>).</li>
+  <li>Una página nunca tiene dos caducidades: un <code>page persist 2h</code> con <code>ttl 1h</code> avisa, y gana el <code>ttl</code> (<a href="/docs/reference/diagnostics/FUD0396"><code>FUD0396</code></a>).</li>
   <li>Un HTML con datos privados no se guarda nunca, aunque la página diga <code>page persist</code>.</li>
   <li>Los ficheros que no son páginas se guardan según <code>resources</code>, en <code>sw.json</code> (<a href="/docs/configuration/sw-json#resources"><code>resources</code></a>).</li>
 </ul>

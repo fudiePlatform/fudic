@@ -55,7 +55,7 @@
 
 <h2 id="ssg"><code>ssg</code>: en el build</h2>
 
-<p>El build ejecuta <code>load</code>, pinta la página y la guarda en un fichero, que el servidor envía tal cual. Es lo más rápido. Los datos son los del momento del build, así que una página que lee la sesión no puede ser <code>ssg</code> (<a href="/docs/server/session#prerender"><code>FUD1300</code></a>).</p>
+<p>El build ejecuta <code>load</code>, pinta la página y la guarda en un fichero, que el servidor envía tal cual. Es lo más rápido. Los datos son los del momento del build, así que una página que <a href="/docs/server/session#prerender">lee la sesión</a> no puede ser <code>ssg</code> (<a href="/docs/reference/diagnostics/FUD1300"><code>FUD1300</code></a>).</p>
 
 <p>Todas las páginas de esta documentación son <code>ssg</code>.</p>
 

@@ -114,7 +114,7 @@
 
 <h2 id="plain-css">El <code>&lt;style&gt;</code> no cambia</h2>
 
-<p>En el markup, la <code>@@</code> abre una expresión. En el <code>&lt;style&gt;</code>, no: allí solo puede empezar una at-rule de CSS, como <code>@@media</code>. Escribir una expresión es un error (<code>FUD0132</code>).</p>
+<p>En el markup, la <code>@@</code> abre una expresión. En el <code>&lt;style&gt;</code>, no: allí solo puede empezar una at-rule de CSS, como <code>@@media</code>. Escribir una expresión es un error (<a href="/docs/reference/diagnostics/FUD0132"><code>FUD0132</code></a>).</p>
 
 <p>Lo que cambia con el estado va en el markup, eligiendo entre reglas que el <code>&lt;style&gt;</code> ya tiene, con <code>class:</code> (<a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a>). Como el CSS no cambia, Fudic sabe al compilar qué reglas usa cada página y envía solo esas (<a href="/docs/styles/delivery#pruning">Solo el CSS que se usa</a>).</p>
 

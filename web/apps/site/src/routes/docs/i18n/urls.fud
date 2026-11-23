@@ -113,7 +113,7 @@ criterion an-english-browser-lands-in-english
   <li><strong>No reciben prefijo</strong> los enlaces que empiezan por <code>//</code> o por <code>/_fudic/</code>, ni los que acaban en un fichero, como <code>/guide.pdf</code>. Un <code>action</code> de <code>&lt;form&gt;</code> sigue la misma regla que un enlace.</li>
   <li><strong><code>paths()</code> se llama una vez por idioma</strong>, y puede devolver slugs distintos en cada uno leyendo <code>locale</code> (<a href="/docs/i18n/code#content">El contenido de los datos</a>).</li>
   <li><strong>La página de error también existe por idioma</strong>, y una página que falla pinta la de su idioma (<a href="/docs/routing/error-page">La página de error</a>).</li>
-  <li><strong>Construir con dos idiomas o más sin <code>site</code></strong> para el build con <code>FUD1027</code>.</li>
+  <li><strong>Construir con dos idiomas o más sin <code>site</code></strong> para el build con <a href="/docs/reference/diagnostics/FUD1027"><code>FUD1027</code></a>.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

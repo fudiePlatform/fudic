@@ -63,7 +63,7 @@
 
 <h2 id="warning">El aviso</h2>
 
-<p>Si usas algo más nuevo que tu nivel, Fudic avisa en el editor y en el build (<code>FUD1524</code>), con el nombre de la función y desde cuándo está en cada navegador. En un navegador más antiguo, ese CSS se ignora y ese JavaScript lanza un error.</p>
+<p>Si usas algo más nuevo que tu nivel, Fudic avisa en el editor y en el build (<a href="/docs/reference/diagnostics/FUD1524"><code>FUD1524</code></a>), con el nombre de la función y desde cuándo está en cada navegador. En un navegador más antiguo, ese CSS se ignora y ese JavaScript lanza un error.</p>
 
 <p>Hay tres salidas:</p>
 
@@ -94,19 +94,19 @@
 
 <h2 id="libraries">Las librerías</h2>
 
-<p>Cada librería tiene su propio <code>baseline</code> y se comprueba con él. Si una librería usa algo que no llega al nivel de la app y no lo protege, la app recibe el aviso (<code>FUD1526</code>). Se resuelve en la app, permitiendo esas funciones o subiendo su nivel, o pidiendo a la librería que las proteja.</p>
+<p>Cada librería tiene su propio <code>baseline</code> y se comprueba con él. Si una librería usa algo que no llega al nivel de la app y no lo protege, la app recibe el aviso (<a href="/docs/reference/diagnostics/FUD1526"><code>FUD1526</code></a>). Se resuelve en la app, permitiendo esas funciones o subiendo su nivel, o pidiendo a la librería que las proteja.</p>
 
 <h2 id="floor">Lo que necesita Fudic</h2>
 
-<p>Fudic escribe en cada página cosas que los navegadores antiguos no tienen y que no puede sustituir, como el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. Por eso una app de Fudic necesita navegadores de 2024 en adelante, y un nivel anterior avisa (<code>FUD1525</code>): ninguna página de Fudic puede prometerlo. <code>"widely"</code> ya está por encima.</p>
+<p>Fudic escribe en cada página cosas que los navegadores antiguos no tienen y que no puede sustituir, como el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. Por eso una app de Fudic necesita navegadores de 2024 en adelante, y un nivel anterior avisa (<a href="/docs/reference/diagnostics/FUD1525"><code>FUD1525</code></a>): ninguna página de Fudic puede prometerlo. <code>"widely"</code> ya está por encima.</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li>Un id de <code>allow</code> que no existe no permite nada (<code>FUD1527</code>). Si la función se renombró o se dividió, avisa igual, pero permite lo que es ahora.</li>
-  <li>Un id de <code>allow</code> que ya nada usa es una pista (<code>FUD1528</code>): hoy no hace daño, pero mañana dejaría entrar esa función sin que nadie lo note.</li>
+  <li>Un id de <code>allow</code> que no existe no permite nada (<a href="/docs/reference/diagnostics/FUD1527"><code>FUD1527</code></a>). Si la función se renombró o se dividió, avisa igual, pero permite lo que es ahora.</li>
+  <li>Un id de <code>allow</code> que ya nada usa es una pista (<a href="/docs/reference/diagnostics/FUD1528"><code>FUD1528</code></a>): hoy no hace daño, pero mañana dejaría entrar esa función sin que nadie lo note.</li>
   <li>En el objeto, <code>target</code> es opcional y vale <code>"widely"</code> por defecto. Un año va de 2015 al de los datos.</li>
-  <li>Un <code>baseline</code> que no es un nivel ni un objeto con <code>target</code> y <code>allow</code> invalida <code>fudic.json</code> entero (<code>FUD0725</code>).</li>
+  <li>Un <code>baseline</code> que no es un nivel ni un objeto con <code>target</code> y <code>allow</code> invalida <code>fudic.json</code> entero (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>).</li>
 </ul>
 
 <h2 id="mdn">El estándar</h2>

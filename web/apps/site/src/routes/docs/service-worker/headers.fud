@@ -60,8 +60,8 @@ Content-Security-Policy:
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li>Sin <code>'unsafe-eval'</code>, el Service Worker se instala pero no pinta ninguna página, y todas las navegaciones van al servidor. El build avisa (<code>FUD1548</code>).</li>
-  <li>Un <code>sw.headers</code> sin <code>sw.json</code> sobra, y avisa (<code>FUD1554</code>).</li>
+  <li>Sin <code>'unsafe-eval'</code>, el Service Worker se instala pero no pinta ninguna página, y todas las navegaciones van al servidor. El build avisa (<a href="/docs/reference/diagnostics/FUD1548"><code>FUD1548</code></a>).</li>
+  <li>Un <code>sw.headers</code> sin <code>sw.json</code> sobra, y avisa (<a href="/docs/reference/diagnostics/FUD1554"><code>FUD1554</code></a>).</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

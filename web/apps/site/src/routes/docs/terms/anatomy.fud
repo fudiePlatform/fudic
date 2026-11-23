@@ -65,13 +65,13 @@ export const selfTest = [];</code></pre>
 <h2 id="meta"><code>meta</code></h2>
 
 <ul>
-  <li><strong><code>name</code></strong> y <strong><code>block</code></strong>: los de su fichero y su carpeta (<code>FUD0942</code>, <code>FUD0943</code>).</li>
+  <li><strong><code>name</code></strong> y <strong><code>block</code></strong>: los de su fichero y su carpeta (<a href="/docs/reference/diagnostics/FUD0942"><code>FUD0942</code></a>, <a href="/docs/reference/diagnostics/FUD0943"><code>FUD0943</code></a>).</li>
   <li><strong><code>params</code></strong>: los argumentos, en el orden en que se escriben en la línea. El tipo dice qué acepta: <code>number</code>, un número; <code>string</code>, una palabra o un texto entre comillas; <code>token</code>, una palabra; <code>element</code>, una referencia como <code>role:button/"Save"</code> o un tag.</li>
   <li><strong><code>describe</code></strong>: una función que recibe los argumentos y devuelve la frase que sale en el workbench, <code>the cart has 3 items</code>. Sin ella, sale la línea tal cual.</li>
   <li><strong><code>negative</code></strong>: en un <code>then</code> que comprueba que algo no está, <code>true</code>, o una función de los argumentos. Ver <a href="#blocks">abajo</a>.</li>
 </ul>
 
-<p><code>meta</code> tiene que ser un objeto escrito ahí mismo, con textos literales: el editor la lee sin ejecutar el módulo. Por eso marca un <code>cart-has</code> sin número, o con una palabra, mientras escribes el <code>.fudspec</code> (<code>FUD0947</code>, <code>FUD0948</code>).</p>
+<p><code>meta</code> tiene que ser un objeto escrito ahí mismo, con textos literales: el editor la lee sin ejecutar el módulo. Por eso marca un <code>cart-has</code> sin número, o con una palabra, mientras escribes el <code>.fudspec</code> (<a href="/docs/reference/diagnostics/FUD0947"><code>FUD0947</code></a>, <a href="/docs/reference/diagnostics/FUD0948"><code>FUD0948</code></a>).</p>
 
 <h2 id="run"><code>run</code></h2>
 
@@ -89,14 +89,14 @@ export const selfTest = [];</code></pre>
 
 <h3 id="self-test"><code>selfTest</code></h3>
 
-<p>Un término del proyecto tiene que exportar <code>selfTest</code> (<code>FUD0946</code>). La forma acordada es una lista de casos, <code>[&#123; args: &#123; count: 1 &#125;, expect: "pass" &#125;]</code>. Hoy Fudic solo comprueba que exista: no lo ejecuta. Los de serie no lo llevan, porque se prueban en el propio paquete.</p>
+<p>Un término del proyecto tiene que exportar <code>selfTest</code> (<a href="/docs/reference/diagnostics/FUD0946"><code>FUD0946</code></a>). La forma acordada es una lista de casos, <code>[&#123; args: &#123; count: 1 &#125;, expect: "pass" &#125;]</code>. Hoy Fudic solo comprueba que exista: no lo ejecuta. Los de serie no lo llevan, porque se prueban en el propio paquete.</p>
 
 <h2 id="ctx">El <code>ctx</code></h2>
 
 <p>Lo que recibe <code>run</code>, uno por persona del criterio:</p>
 
 <ul>
-  <li><strong><code>locate(ref)</code></strong>: busca con las mismas referencias que un criterio, entrando en los shadow roots. Devuelve un <a href="https://playwright.dev/docs/api/class-locator" target="_blank" rel="noopener"><code>Locator</code></a> de Playwright. Si encuentra más de uno al usarlo, para el criterio (<code>FUD1203</code>); si encuentra uno, lo marca en la captura.</li>
+  <li><strong><code>locate(ref)</code></strong>: busca con las mismas referencias que un criterio, entrando en los shadow roots. Devuelve un <a href="https://playwright.dev/docs/api/class-locator" target="_blank" rel="noopener"><code>Locator</code></a> de Playwright. Si encuentra más de uno al usarlo, para el criterio (<a href="/docs/reference/diagnostics/FUD1203"><code>FUD1203</code></a>); si encuentra uno, lo marca en la captura.</li>
   <li><strong><code>text(target)</code></strong>: el texto que ve una persona, con lo que llega por cada slot.</li>
   <li><strong><code>act(target, gesture)</code></strong>: hace un gesto y espera a que la página lo haya servido: peticiones, código e hidratación. Todo <code>when</code> que toca la página lo usa.</li>
   <li><strong><code>page</code></strong>: la página de Playwright, para todo lo demás: teclado, ratón, <code>evaluate</code>, cookies.</li>
@@ -118,7 +118,7 @@ export const selfTest = [];</code></pre>
 
 <p>Después de un <code>then</code> puede venir otro <code>when</code>. Un <code>then</code> que falla no para el criterio: siguen los pasos, y el informe enseña el primero en rojo.</p>
 
-<p>Solo un <code>then</code> decide si el criterio pasa. Un <code>given</code> o un <code>when</code> que no puede hacer su trabajo lanza un error: el criterio para con <code>FUD1204</code> y el mensaje, en vez de seguir sobre una página que no es la que crees.</p>
+<p>Solo un <code>then</code> decide si el criterio pasa. Un <code>given</code> o un <code>when</code> que no puede hacer su trabajo lanza un error: el criterio para con <a href="/docs/reference/diagnostics/FUD1204"><code>FUD1204</code></a> y el mensaje, en vez de seguir sobre una página que no es la que crees.</p>
 
 <h2 id="workbench">Lo que enseña el workbench</h2>
 
@@ -133,8 +133,8 @@ export const selfTest = [];</code></pre>
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Los errores del módulo</strong>, en cada línea del <code>.fudspec</code> que lo usa: <code>FUD0941</code>, <code>meta</code> no es literal; <code>FUD0944</code>, un tipo que no existe; <code>FUD0945</code>, falta <code>run</code>; <code>FUD0954</code>, un parámetro repetido.</li>
-  <li><strong>Los de la ejecución</strong>: <code>FUD1202</code>, una llamada de Playwright agotó su tiempo; <code>FUD1203</code>, una referencia ambigua; <code>FUD1204</code>, el término lanzó; <code>FUD1508</code>, la página no se quedó quieta.</li>
+  <li><strong>Los errores del módulo</strong>, en cada línea del <code>.fudspec</code> que lo usa: <a href="/docs/reference/diagnostics/FUD0941"><code>FUD0941</code></a>, <code>meta</code> no es literal; <a href="/docs/reference/diagnostics/FUD0944"><code>FUD0944</code></a>, un tipo que no existe; <a href="/docs/reference/diagnostics/FUD0945"><code>FUD0945</code></a>, falta <code>run</code>; <a href="/docs/reference/diagnostics/FUD0954"><code>FUD0954</code></a>, un parámetro repetido.</li>
+  <li><strong>Los de la ejecución</strong>: <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>, una llamada de Playwright agotó su tiempo; <a href="/docs/reference/diagnostics/FUD1203"><code>FUD1203</code></a>, una referencia ambigua; <a href="/docs/reference/diagnostics/FUD1204"><code>FUD1204</code></a>, el término lanzó; <a href="/docs/reference/diagnostics/FUD1508"><code>FUD1508</code></a>, la página no se quedó quieta.</li>
   <li><strong>Un nombre de término en camelCase</strong> en el <code>.fudspec</code> se lee en kebab-case: <code>cartHas</code> es <code>cart-has</code>.</li>
   <li><strong>Los tiempos</strong> (5 segundos, cada 50 ms) son fijos.</li>
 </ul>

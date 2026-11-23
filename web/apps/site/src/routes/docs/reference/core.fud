@@ -238,7 +238,7 @@ interface CallSignals &#123;
 <pre><code>now(): Date</code></pre>
 </ui-code>
 
-<p>El instante actual. En el <code>@@code</code> de un <code>.fud</code> solo puede ser el argumento entero de un <code>signal</code>: el servidor lo calcula una vez por render, viaja con la página y el navegador lo lee de ahí sin volver a llamarlo. En cualquier otro sitio del <code>@@code</code> da <code>FUD0912</code>. Guía: <a href="/docs/reactivity#batch-untrack">Reactividad</a>.</p>
+<p>El instante actual. En el <code>@@code</code> de un <code>.fud</code> solo puede ser el argumento entero de un <code>signal</code>: el servidor lo calcula una vez por render, viaja con la página y el navegador lo lee de ahí sin volver a llamarlo. En cualquier otro sitio del <code>@@code</code> da <a href="/docs/reference/diagnostics/FUD0912"><code>FUD0912</code></a>. Guía: <a href="/docs/reactivity#batch-untrack">Reactividad</a>.</p>
 
 <ui-code>
 <pre><code>const current = signal(now());</code></pre>
@@ -348,7 +348,7 @@ onDispose(fn: (host: HTMLElement) =&gt; void): void</code></pre>
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Los hooks</strong> van en el nivel superior del <code>@@code</code> (<code>FUD1560</code>). Una ruta o un layout no tienen <code>beforeCreate</code> ni <code>afterCreate</code>, porque nunca se crean en el navegador (<code>FUD1561</code>). Declarar algo con el nombre de un hook lo tapa (<code>FUD1562</code>).</li>
+  <li><strong>Los hooks</strong> van en el nivel superior del <code>@@code</code> (<a href="/docs/reference/diagnostics/FUD1560"><code>FUD1560</code></a>). Una ruta o un layout no tienen <code>beforeCreate</code> ni <code>afterCreate</code>, porque nunca se crean en el navegador (<a href="/docs/reference/diagnostics/FUD1561"><code>FUD1561</code></a>). Declarar algo con el nombre de un hook lo tapa (<a href="/docs/reference/diagnostics/FUD1562"><code>FUD1562</code></a>).</li>
   <li><strong>El resto de exports</strong> de <code>@@fudic/core</code> (<code>FudicElement</code>, <code>installHydration</code>, <code>painted</code>, <code>owned</code>, <code>hooks</code>, <code>subscribe</code>, <code>written</code>, <code>onStaleData</code>, los bloques de hidratación y los canales de precalentado) los usa el código que genera el compilador. Tu código no los necesita.</li>
   <li><strong>El modo de render</strong> de una ruta no se elige en <code>@@fudic/core</code>: es la línea <code>load</code> de su <code>.fudapi</code> (<a href="/docs/routing/rendering">Los modos</a>).</li>
 </ul>

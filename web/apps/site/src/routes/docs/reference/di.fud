@@ -132,6 +132,6 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 <ul>
   <li><strong>Los tipos</strong>: <code>Token&lt;T&gt;</code> es <code>&#123; name: string &#125;</code>; <code>Provider&lt;T&gt;</code>, una clase o un token; <code>InjectOptions</code> y <code>ProvideOptions</code>, las opciones de arriba.</li>
   <li><strong>En los tests</strong>, un servicio se cambia con <code>providers</code> en <code>mount</code> y <code>visit</code> (<a href="/docs/reference/testing#provider-override"><code>@@fudic/testing</code></a>), o con el grupo <code>services</code> de una fixture.</li>
-  <li><strong>Los diagnósticos</strong>: <code>FUD0680</code>, se inyecta una clase que nadie registra; <code>FUD0684</code>, el mismo proveedor dos veces en un <code>@@code</code>.</li>
+  <li><strong>Los diagnósticos</strong>: <a href="/docs/reference/diagnostics/FUD0680"><code>FUD0680</code></a>, se inyecta una clase que nadie registra; <a href="/docs/reference/diagnostics/FUD0684"><code>FUD0684</code></a>, el mismo proveedor dos veces en un <code>@@code</code>.</li>
   <li><strong><code>createRoot</code>, <code>createChild</code>, <code>destroy</code>, <code>injectFrom</code>, <code>provideIn</code>, <code>publishIn</code>, <code>seedOf</code> y <code>setAmbient</code></strong> los usan el compilador y el servidor. El compilador convierte cada <code>inject</code> y <code>provide</code> de un <code>@@code</code> en una de ellas.</li>
 </ul>

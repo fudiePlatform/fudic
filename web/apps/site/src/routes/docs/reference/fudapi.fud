@@ -46,7 +46,7 @@
 <h2 id="lines">Líneas</h2>
 
 <ul>
-  <li><strong>Una declaración por línea</strong>, y debajo, sangradas, sus partes. La sangría es de dos espacios por nivel: un tabulador, un número impar o saltarse un nivel es <code>FUD1061</code>.</li>
+  <li><strong>Una declaración por línea</strong>, y debajo, sangradas, sus partes. La sangría es de dos espacios por nivel: un tabulador, un número impar o saltarse un nivel es <a href="/docs/reference/diagnostics/FUD1061"><code>FUD1061</code></a>.</li>
   <li><strong>Las palabras</strong> se separan con espacios. Un texto va entre comillas, <code>"…"</code>, con <code>\"</code> y <code>\\</code> como únicos escapes, y no pasa de una línea.</li>
   <li><strong><code>#</code></strong> al empezar una palabra comenta el resto de la línea. Las líneas <code>#</code> justo encima de una declaración, un campo o un argumento son su documentación: salen en el editor y en los tipos generados. Una línea en blanco las corta.</li>
   <li><strong>Una línea que empieza por un texto</strong> y va más sangrada de la cuenta continúa la de arriba.</li>
@@ -69,9 +69,9 @@ put save
   <li><strong>Extensiones</strong>, en cualquier carpeta: <code>rule</code>, <code>middleware</code>, <code>pattern</code> y <code>pipe</code>.</li>
 </ul>
 
-<p><code>type</code> y <code>enum</code> caben en los dos. Mezclarlos es <code>FUD1078</code>. <code>load</code>, <code>paths</code> y <code>layout</code> solo van al lado de una ruta, y <code>src/http.fudapi</code> guarda la <code>chain</code> de toda la app.</p>
+<p><code>type</code> y <code>enum</code> caben en los dos. Mezclarlos es <a href="/docs/reference/diagnostics/FUD1078"><code>FUD1078</code></a>. <code>load</code>, <code>paths</code> y <code>layout</code> solo van al lado de una ruta, y <code>src/http.fudapi</code> guarda la <code>chain</code> de toda la app.</p>
 
-<p>Cada nombre tiene su forma (<code>FUD1070</code>):</p>
+<p>Cada nombre tiene su forma (<a href="/docs/reference/diagnostics/FUD1070"><code>FUD1070</code></a>):</p>
 
 <ul>
   <li><strong>Funciones, formularios, campos y argumentos</strong>: un identificador, <code>saveUser</code>.</li>
@@ -79,7 +79,7 @@ put save
   <li><strong><code>type</code> y <code>enum</code></strong>: en PascalCase, <code>Person</code>.</li>
 </ul>
 
-<p>Los tipos, los formularios, las reglas, los middlewares, los patrones y los pipes se ven en todo el proyecto sin importarlos: dos con el mismo nombre son <code>FUD1081</code>.</p>
+<p>Los tipos, los formularios, las reglas, los middlewares, los patrones y los pipes se ven en todo el proyecto sin importarlos: dos con el mismo nombre son <a href="/docs/reference/diagnostics/FUD1081"><code>FUD1081</code></a>.</p>
 
 <h2 id="functions">Funciones</h2>
 
@@ -127,7 +127,7 @@ post signIn
   user  str</code></pre>
 </ui-code>
 
-<p>Los argumentos que van en la URL (los de la ruta, los de <code>query</code> y todos los de una <code>get</code>) tienen que ser un tipo simple o un <code>enum</code> (<code>FUD1101</code>), y nunca <code>file</code> (<code>FUD1480</code>).</p>
+<p>Los argumentos que van en la URL (los de la ruta, los de <code>query</code> y todos los de una <code>get</code>) tienen que ser un tipo simple o un <code>enum</code> (<a href="/docs/reference/diagnostics/FUD1101"><code>FUD1101</code></a>), y nunca <code>file</code> (<a href="/docs/reference/diagnostics/FUD1480"><code>FUD1480</code></a>).</p>
 
 <h2 id="load"><code>load</code>, <code>paths</code> y <code>layout</code></h2>
 
@@ -145,7 +145,7 @@ post signIn
   <li><strong><code>page</code></strong>: si la página pintada se guarda, <code>never</code> o <code>persist</code>, con su duración (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>).</li>
   <li><strong><code>buffer</code></strong>: cuántos bytes junta antes de mandar el primer trozo, <code>0</code>, <code>4096</code> o <code>16k</code>.</li>
   <li><strong><code>later</code></strong> en un campo: no retiene la página; el handler lo devuelve como promesa y llega después (<a href="/docs/template-syntax/await"><code>@@await</code></a>).</li>
-  <li><strong>Debajo</strong> van también <code>use</code> y <code>skip</code>. <code>fails</code> no: <code>load</code> lanza el error (<code>FUD1360</code>).</li>
+  <li><strong>Debajo</strong> van también <code>use</code> y <code>skip</code>. <code>fails</code> no: <code>load</code> lanza el error (<a href="/docs/reference/diagnostics/FUD1360"><code>FUD1360</code></a>).</li>
 </ul>
 
 <ui-code .path="src/routes/dashboard.fudapi">
@@ -186,7 +186,7 @@ enum Tone
   warning</code></pre>
 </ui-code>
 
-<p>Un <code>type</code> sale como <code>interface</code> y un <code>enum</code> como una unión de textos. Un <code>type</code> no puede contenerse a sí mismo por campos obligatorios (<code>FUD1088</code>). Guía: <a href="/docs/server/types">Tipos</a>.</p>
+<p>Un <code>type</code> sale como <code>interface</code> y un <code>enum</code> como una unión de textos. Un <code>type</code> no puede contenerse a sí mismo por campos obligatorios (<a href="/docs/reference/diagnostics/FUD1088"><code>FUD1088</code></a>). Guía: <a href="/docs/server/types">Tipos</a>.</p>
 
 <p>Cómo se escribe un tipo:</p>
 
@@ -268,7 +268,7 @@ enum Tone
   min-length  "At least &#123;n&#125; characters."</code></pre>
 </ui-code>
 
-<p>Un texto solo puede usar los huecos que le corresponden: los parámetros del <code>fails</code> de su regla, como <code>&#123;n&#125;</code>, y <code>&#123;detail&#125;</code> en una regla <code>server</code> o <code>remote</code> (<code>FUD1085</code>).</p>
+<p>Un texto solo puede usar los huecos que le corresponden: los parámetros del <code>fails</code> de su regla, como <code>&#123;n&#125;</code>, y <code>&#123;detail&#125;</code> en una regla <code>server</code> o <code>remote</code> (<a href="/docs/reference/diagnostics/FUD1085"><code>FUD1085</code></a>).</p>
 
 <h2 id="extensions">Reglas, middlewares, patrones y pipes</h2>
 
@@ -285,7 +285,7 @@ enum Tone
   fails &lt;code&gt; [&lt;param&gt;…]</code></pre>
 </ui-code>
 
-<p>Una regla propia, que se implementa con <code>check</code>. <code>on</code>, <code>runs</code> y al menos un <code>fails</code> son obligatorios (<code>FUD1097</code>). En <code>on field</code>, <code>*</code> es cualquier tipo y <code>*[]</code> cualquier lista. <code>debounce</code>, por defecto 300 ms, solo en una <code>remote</code>; <code>use</code> y <code>skip</code>, no en una <code>both</code>. Guía: <a href="/docs/server/rules">Reglas</a>.</p>
+<p>Una regla propia, que se implementa con <code>check</code>. <code>on</code>, <code>runs</code> y al menos un <code>fails</code> son obligatorios (<a href="/docs/reference/diagnostics/FUD1097"><code>FUD1097</code></a>). En <code>on field</code>, <code>*</code> es cualquier tipo y <code>*[]</code> cualquier lista. <code>debounce</code>, por defecto 300 ms, solo en una <code>remote</code>; <code>use</code> y <code>skip</code>, no en una <code>both</code>. Guía: <a href="/docs/server/rules">Reglas</a>.</p>
 
 <ui-code .path="src/rules/people.fudapi">
 <pre><code>rule alias-taken
@@ -315,7 +315,7 @@ enum Tone
     user  User</code></pre>
 </ui-code>
 
-<p>Los parámetros se le dan debajo de cada <code>use</code>, uno por línea; una lista lleva sus valores o <code>[]</code>, y un <code>map</code> repite la línea <code>clave valor</code> (<code>FUD1087</code>).</p>
+<p>Los parámetros se le dan debajo de cada <code>use</code>, uno por línea; una lista lleva sus valores o <code>[]</code>, y un <code>map</code> repite la línea <code>clave valor</code> (<a href="/docs/reference/diagnostics/FUD1087"><code>FUD1087</code></a>).</p>
 
 <h3 id="pattern"><code>pattern</code></h3>
 
@@ -332,7 +332,7 @@ enum Tone
   on str</code></pre>
 </ui-code>
 
-<p>Un pipe propio, para <code>@@(x | initials)</code>. <code>on</code> dice qué tipos formatea (<code>FUD1340</code>), y debajo van sus parámetros. Guía: <a href="/docs/server/pipes#own">Pipes</a>.</p>
+<p>Un pipe propio, para <code>@@(x | initials)</code>. <code>on</code> dice qué tipos formatea (<a href="/docs/reference/diagnostics/FUD1340"><code>FUD1340</code></a>), y debajo van sus parámetros. Guía: <a href="/docs/server/pipes#own">Pipes</a>.</p>
 
 <h2 id="builtins">Lo que trae Fudic</h2>
 
@@ -375,7 +375,7 @@ enum Tone
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Los diagnósticos del <code>.fudapi</code></strong> van de <code>FUD1060</code> a <code>FUD1101</code>, más algunos sueltos: <code>FUD1324</code>, <code>later</code> fuera de <code>load</code>; <code>FUD1360</code>, <code>fails</code> en <code>load</code>; <code>FUD1460</code> y <code>FUD1461</code>, reglas; <code>FUD1480</code> a <code>FUD1487</code>, ficheros y tamaños. Cada uno tiene su explicación en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</li>
+  <li><strong>Los diagnósticos del <code>.fudapi</code></strong> van de <a href="/docs/reference/diagnostics/FUD1060"><code>FUD1060</code></a> a <a href="/docs/reference/diagnostics/FUD1101"><code>FUD1101</code></a>, más algunos sueltos: <a href="/docs/reference/diagnostics/FUD1324"><code>FUD1324</code></a>, <code>later</code> fuera de <code>load</code>; <a href="/docs/reference/diagnostics/FUD1360"><code>FUD1360</code></a>, <code>fails</code> en <code>load</code>; <a href="/docs/reference/diagnostics/FUD1460"><code>FUD1460</code></a> y <a href="/docs/reference/diagnostics/FUD1461"><code>FUD1461</code></a>, reglas; <a href="/docs/reference/diagnostics/FUD1480"><code>FUD1480</code></a> a <a href="/docs/reference/diagnostics/FUD1487"><code>FUD1487</code></a>, ficheros y tamaños. Cada uno tiene su explicación en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</li>
   <li><strong>Un tamaño</strong> (<code>kb</code>, <code>mb</code>, <code>gb</code>, en base 1024) es un número: vale en cualquier parámetro numérico.</li>
   <li><strong><code>fud-disable</code></strong> se escribe en un comentario <code>#</code> (<a href="/docs/configuration/diagnostics#line">Diagnósticos de la configuración</a>).</li>
 </ul>

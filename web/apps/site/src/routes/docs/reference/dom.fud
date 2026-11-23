@@ -92,7 +92,7 @@ isTrustedHtml(value: unknown): value is TrustedHTML</code></pre>
 
 <ul>
   <li><strong>La marca está en el valor</strong> y JSON no la lleva: un HTML que llega del servidor o de una petición nunca es de confianza, y <code>@@raw</code> lo escapa. Solo vale el que se marca en el <code>@@code</code>.</li>
-  <li><strong><code>@@raw</code> es el único contenido</strong> de su elemento (<code>FUD0990</code>).</li>
+  <li><strong><code>@@raw</code> es el único contenido</strong> de su elemento (<a href="/docs/reference/diagnostics/FUD0990"><code>FUD0990</code></a>).</li>
   <li><strong>En el navegador</strong> se escribe por la política de <a href="/docs/security/trusted-types">Trusted Types</a> de Fudic.</li>
 </ul>
 
@@ -128,6 +128,6 @@ isTrustedUrl(value: unknown): value is TrustedURL</code></pre>
 
 <ul>
   <li><strong><code>safeUrl</code> y <code>guardUrl</code></strong> son la guarda: la primera es la regla, la segunda la usa el runtime y avisa en desarrollo. Tu código no las llama.</li>
-  <li><strong>Lo que la guarda no cubre</strong> lo avisa el compilador con <code>FUD0915</code>: un <code>javascript:</code> escrito a mano, <code>srcdoc</code>, un <code>&lt;meta http-equiv="refresh"&gt;</code>, un <code>&lt;base&gt;</code> dinámico o un <code>style</code> dinámico.</li>
+  <li><strong>Lo que la guarda no cubre</strong> lo avisa el compilador con <a href="/docs/reference/diagnostics/FUD0915"><code>FUD0915</code></a>: un <code>javascript:</code> escrito a mano, <code>srcdoc</code>, un <code>&lt;meta http-equiv="refresh"&gt;</code>, un <code>&lt;base&gt;</code> dinámico o un <code>style</code> dinámico.</li>
   <li><strong>El resto de exports</strong> (<code>browserDom</code>, <code>escapeText</code>, <code>escapeAttr</code>, <code>template</code>, los diffs de atributos y clases) los usa el código que genera el compilador.</li>
 </ul>

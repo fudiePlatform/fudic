@@ -108,7 +108,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Un <code>immutable</code> o un <code>max-age</code> de un día o más sobre un fichero sin hash</strong> es un aviso del build, <code>FUD1552</code>: cuando cambie, el navegador seguirá usando el viejo.</li>
+  <li><strong>Un <code>immutable</code> o un <code>max-age</code> de un día o más sobre un fichero sin hash</strong> es un aviso del build, <a href="/docs/reference/diagnostics/FUD1552"><code>FUD1552</code></a>: cuando cambie, el navegador seguirá usando el viejo.</li>
   <li><strong>Una respuesta que leyó la sesión</strong> sale con <code>private, no-store</code>, y el Service Worker no la guarda (<a href="/docs/server/session">Sesión y cookies</a>).</li>
 </ul>
 

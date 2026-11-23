@@ -105,7 +105,7 @@
 }</code></pre>
 </ui-code>
 
-<p>No van en una hoja de componente, porque dentro de un shadow root <code>:root</code> no casa con nada. Fudic avisa si lo intentas (<code>FUD0743</code>).</p>
+<p>No van en una hoja de componente, porque dentro de un shadow root <code>:root</code> no casa con nada. Fudic avisa si lo intentas (<a href="/docs/reference/diagnostics/FUD0743"><code>FUD0743</code></a>).</p>
 
 <p>Como se heredan, una zona de la página puede cambiarlos y todo lo que contiene, componentes incluidos, usa el valor nuevo: <code>.promo { --guide-accent: #2e6b3a; }</code>.</p>
 
@@ -114,8 +114,8 @@
 <ul>
   <li><code>fudic g style nombre</code> crea una hoja y la añade a <code>globalStyles</code>.</li>
   <li>Las <code>globalStyles</code> de las librerías van antes que las del proyecto.</li>
-  <li>Un nombre que no existe (<code>FUD0744</code>) o repetido (<code>FUD0741</code>) es un error.</li>
-  <li>Una hoja de componente no puede tener <code>@@import</code> (<code>FUD0854</code>): el estándar no lo carga en una hoja adoptada.</li>
+  <li>Un nombre que no existe (<a href="/docs/reference/diagnostics/FUD0744"><code>FUD0744</code></a>) o repetido (<a href="/docs/reference/diagnostics/FUD0741"><code>FUD0741</code></a>) es un error.</li>
+  <li>Una hoja de componente no puede tener <code>@@import</code> (<a href="/docs/reference/diagnostics/FUD0854"><code>FUD0854</code></a>): el estándar no lo carga en una hoja adoptada.</li>
   <li>Con <code>href="./site.css?inline"</code>, la hoja de la página va dentro del HTML, en un <code>&lt;style&gt;</code>.</li>
 </ul>
 

@@ -79,7 +79,7 @@
 <pre><code>const freeShipping = computed(() =&gt; total() &gt; 100);</code></pre>
 </ui-code>
 
-<p id="computed-syntax">Si la plantilla lo lee, el servidor también lo calcula, y ese servidor puede no ser Node (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso se escribe con lo mismo que una expresión de la plantilla: una flecha sin llaves y la <a href="/docs/template-syntax/expressions#the-closed-list">lista de operaciones de la vista</a>. Un <code>find</code>, por ejemplo, da error (<code>FUD1140</code>); se escribe <code>filter(…)[0]</code>.</p>
+<p id="computed-syntax">Si la plantilla lo lee, el servidor también lo calcula, y ese servidor puede no ser Node (<a href="/docs/template-syntax#polyglot-views">vistas políglotas</a>). Por eso se escribe con lo mismo que una expresión de la plantilla: una flecha sin llaves y la <a href="/docs/template-syntax/expressions#the-closed-list">lista de operaciones de la vista</a>. Un <code>find</code>, por ejemplo, da error (<a href="/docs/reference/diagnostics/FUD1140"><code>FUD1140</code></a>); se escribe <code>filter(…)[0]</code>.</p>
 
 <p>Un <code>computed</code> que la plantilla no lee es TypeScript libre.</p>
 

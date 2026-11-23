@@ -118,8 +118,8 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Un nonce escrito a mano</strong>, como <code>'nonce-abc123'</code>, es un error, <code>FUD1546</code>: un nonce que no cambia no protege nada. También lo es <code>&#123;nonce&#125;</code> fuera de la CSP de <code>page.headers</code>.</li>
-  <li><strong>Los códigos</strong> de los tres casos de arriba son <code>FUD1545</code> (bloquea), <code>FUD1547</code> (debilita) y <code>FUD1556</code> (sobra). Una directiva que no existe es <code>FUD1544</code>: el navegador la ignora.</li>
+  <li><strong>Un nonce escrito a mano</strong>, como <code>'nonce-abc123'</code>, es un error, <a href="/docs/reference/diagnostics/FUD1546"><code>FUD1546</code></a>: un nonce que no cambia no protege nada. También lo es <code>&#123;nonce&#125;</code> fuera de la CSP de <code>page.headers</code>.</li>
+  <li><strong>Los códigos</strong> de los tres casos de arriba son <a href="/docs/reference/diagnostics/FUD1545"><code>FUD1545</code></a> (bloquea), <a href="/docs/reference/diagnostics/FUD1547"><code>FUD1547</code></a> (debilita) y <a href="/docs/reference/diagnostics/FUD1556"><code>FUD1556</code></a> (sobra). Una directiva que no existe es <a href="/docs/reference/diagnostics/FUD1544"><code>FUD1544</code></a>: el navegador la ignora.</li>
   <li><strong>Un <code>&lt;script type="application/ld+json"&gt;</code></strong> no lleva nonce: el navegador no lo ejecuta, y la política no lo mira.</li>
 </ul>
 

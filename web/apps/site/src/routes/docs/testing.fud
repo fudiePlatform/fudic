@@ -134,8 +134,8 @@ export default &#123;
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Una referencia, un elemento.</strong> Si encuentra varios, el criterio no da veredicto y te dice cuántos: <code>FUD1203</code>. Solo <code>count</code> admite varios, o ninguno.</li>
-  <li><strong>Un <code>then</code> que no se cumple</strong>, como un texto que nunca llega, se reintenta durante 5 segundos y el criterio falla con su evidencia. Un gesto sobre un elemento que nunca aparece para el criterio con <code>FUD1202</code>.</li>
+  <li><strong>Una referencia, un elemento.</strong> Si encuentra varios, el criterio no da veredicto y te dice cuántos: <a href="/docs/reference/diagnostics/FUD1203"><code>FUD1203</code></a>. Solo <code>count</code> admite varios, o ninguno.</li>
+  <li><strong>Un <code>then</code> que no se cumple</strong>, como un texto que nunca llega, se reintenta durante 5 segundos y el criterio falla con su evidencia. Un gesto sobre un elemento que nunca aparece para el criterio con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>.</li>
   <li><strong><code>fudic fmt</code></strong> ordena también los <code>.fudspec</code>: sangría de dos en dos y una línea en blanco entre criterios.</li>
 </ul>
 

@@ -74,7 +74,7 @@
 
 <ul>
   <li><code>index.fud</code> es la raíz de su carpeta. Una página y una carpeta pueden llamarse igual: <code>docs/styles.fud</code> es <code>/docs/styles</code>, y lo de <code>docs/styles/</code> cuelga de ella.</li>
-  <li>Dos ficheros para la misma URL, como <code>about.fud</code> y <code>about/index.fud</code>, son un error (<code>FUD0361</code>).</li>
+  <li>Dos ficheros para la misma URL, como <code>about.fud</code> y <code>about/index.fud</code>, son un error (<a href="/docs/reference/diagnostics/FUD0361"><code>FUD0361</code></a>).</li>
   <li>Un parámetro ocupa un segmento entero; no hay opcionales ni que recojan varios segmentos.</li>
   <li><code>src/routes/_error.fud</code> no es una URL: es la <a href="/docs/routing/error-page">página de error</a>.</li>
 </ul>

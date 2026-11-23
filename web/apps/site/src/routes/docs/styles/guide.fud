@@ -73,7 +73,7 @@
 &lt;/ui-note&gt;</code></pre>
 </ui-code>
 
-<p>No tienes que llevar la lista a mano. El editor añade la hoja al escribir el elemento, y avisa si falta una (<code>FUD1440</code>) o si sobra (<code>FUD1441</code>). Las que sobran nunca las quita: puede que un script cree ese elemento más tarde.</p>
+<p>No tienes que llevar la lista a mano. El editor añade la hoja al escribir el elemento, y avisa si falta una (<a href="/docs/reference/diagnostics/FUD1440"><code>FUD1440</code></a>) o si sobra (<a href="/docs/reference/diagnostics/FUD1441"><code>FUD1441</code></a>). Las que sobran nunca las quita: puede que un script cree ese elemento más tarde.</p>
 
 <h2 id="where">Siempre pierde</h2>
 

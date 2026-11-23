@@ -122,8 +122,8 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Una traducción con huecos o etiquetas distintos de los del original</strong> es un error de <code>fudic translate</code>, <code>FUD1024</code>. El orden puede cambiar; el conjunto no.</li>
-  <li><strong>Un catálogo que no es JSON válido</strong> es <code>FUD1023</code>, y <code>fudic translate</code> no lo reescribe, para no perder sus traducciones.</li>
+  <li><strong>Una traducción con huecos o etiquetas distintos de los del original</strong> es un error de <code>fudic translate</code>, <a href="/docs/reference/diagnostics/FUD1024"><code>FUD1024</code></a>. El orden puede cambiar; el conjunto no.</li>
+  <li><strong>Un catálogo que no es JSON válido</strong> es <a href="/docs/reference/diagnostics/FUD1023"><code>FUD1023</code></a>, y <code>fudic translate</code> no lo reescribe, para no perder sus traducciones.</li>
   <li><strong>Un <code>&#123;</code> o un <code>'</code> del texto</strong> se escribe en el mensaje como en ICU: <code>'&#123;'</code> y <code>''</code>.</li>
   <li><strong>Con un solo idioma no hay catálogos.</strong> <code>fudic translate</code> lo dice y no escribe nada.</li>
 </ul>

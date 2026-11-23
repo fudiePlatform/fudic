@@ -56,7 +56,7 @@ criterion adds-one
 <h2 id="lines">Líneas</h2>
 
 <ul>
-  <li><strong>La sangría</strong> es exactamente de 0, 2 o 4 espacios: la cabecera y <code>criterion</code> en 0, los bloques en 2, los pasos en 4. Otra cosa es <code>FUD0921</code>.</li>
+  <li><strong>La sangría</strong> es exactamente de 0, 2 o 4 espacios: la cabecera y <code>criterion</code> en 0, los bloques en 2, los pasos en 4. Otra cosa es <a href="/docs/reference/diagnostics/FUD0921"><code>FUD0921</code></a>.</li>
   <li><strong>Las palabras</strong> se separan con espacios; un texto va entre comillas, con <code>\"</code> y <code>\\</code> como escapes.</li>
   <li><strong><code>#</code></strong> al empezar una palabra comenta el resto de la línea, también al final de un paso. <code>fud-disable</code> se escribe ahí.</li>
 </ul>
@@ -86,7 +86,7 @@ criterion adds-one
 <ul>
   <li><strong><code>criterion</code></strong>: un criterio, con un nombre único en el fichero.</li>
   <li><strong><code>given</code></strong>: cómo empieza. Como mucho uno, y el primero.</li>
-  <li><strong><code>when</code></strong> y <strong><code>then</code></strong>: lo que hace el usuario y lo que tiene que pasar. Se alternan, y el criterio termina siempre en <code>then</code> (<code>FUD0933</code>).</li>
+  <li><strong><code>when</code></strong> y <strong><code>then</code></strong>: lo que hace el usuario y lo que tiene que pasar. Se alternan, y el criterio termina siempre en <code>then</code> (<a href="/docs/reference/diagnostics/FUD0933"><code>FUD0933</code></a>).</li>
 </ul>
 
 <p>Un bloque no puede quedar vacío, ni ir dos del mismo tipo seguidos.</p>
@@ -115,7 +115,7 @@ criterion adds-one
     checked role:row/~"Ada"&gt;role:checkbox/"Active"</code></pre>
 </ui-code>
 
-<p>Cada parámetro de un término tiene su tipo, y acepta unas formas (<code>FUD0948</code>):</p>
+<p>Cada parámetro de un término tiene su tipo, y acepta unas formas (<a href="/docs/reference/diagnostics/FUD0948"><code>FUD0948</code></a>):</p>
 
 <ul>
   <li><strong><code>number</code></strong>: un número.</li>
@@ -137,7 +137,7 @@ criterion adds-one
   <li><strong><code>url &lt;url&gt;</code></strong>, en una página o un flujo: la URL entera, con query.</li>
 </ul>
 
-<p>Cada una va una vez. Una página con parámetros necesita <code>path</code> o <code>url</code> (<code>FUD1504</code>).</p>
+<p>Cada una va una vez. Una página con parámetros necesita <code>path</code> o <code>url</code> (<a href="/docs/reference/diagnostics/FUD1504"><code>FUD1504</code></a>).</p>
 
 <ui-code .path="src/routes/blog/[slug].fudspec">
 <pre><code>page /blog/[slug]
@@ -241,7 +241,7 @@ export const selfTest = [];</code></pre>
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Los diagnósticos del <code>.fudspec</code></strong>: <code>FUD0920</code> a <code>FUD0935</code>, la forma del fichero; <code>FUD0940</code> a <code>FUD0954</code>, términos y fixtures; <code>FUD1500</code> a <code>FUD1513</code>, páginas y flujos. Los más comunes: <code>FUD0940</code>, un término que no existe, con la lista de los que hay; <code>FUD0947</code> y <code>FUD0948</code>, sus argumentos; <code>FUD0950</code>, un nombre que no está en la fixture.</li>
+  <li><strong>Los diagnósticos del <code>.fudspec</code></strong>: <a href="/docs/reference/diagnostics/FUD0920"><code>FUD0920</code></a> a <a href="/docs/reference/diagnostics/FUD0935"><code>FUD0935</code></a>, la forma del fichero; <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a> a <a href="/docs/reference/diagnostics/FUD0954"><code>FUD0954</code></a>, términos y fixtures; <a href="/docs/reference/diagnostics/FUD1500"><code>FUD1500</code></a> a <a href="/docs/reference/diagnostics/FUD1513"><code>FUD1513</code></a>, páginas y flujos. Los más comunes: <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a>, un término que no existe, con la lista de los que hay; <a href="/docs/reference/diagnostics/FUD0947"><code>FUD0947</code></a> y <a href="/docs/reference/diagnostics/FUD0948"><code>FUD0948</code></a>, sus argumentos; <a href="/docs/reference/diagnostics/FUD0950"><code>FUD0950</code></a>, un nombre que no está en la fixture.</li>
   <li><strong>Una línea de fixture fuera de <code>given</code></strong> se lee como término si hay uno con ese nombre en el bloque: <code>url</code> en <code>then</code> es el término.</li>
-  <li><strong>Un nombre de <code>as</code></strong> no puede ser el de un término (<code>FUD1512</code>).</li>
+  <li><strong>Un nombre de <code>as</code></strong> no puede ser el de un término (<a href="/docs/reference/diagnostics/FUD1512"><code>FUD1512</code></a>).</li>
 </ul>

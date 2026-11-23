@@ -108,10 +108,10 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>En el editor</strong>, una línea que no se entiende es <code>FUD1540</code>, un nombre no válido o repetido <code>FUD1541</code>, una cabecera de Fudic <code>FUD1542</code> y un valor que la cabecera no admite <code>FUD1543</code>.</li>
-  <li><strong>Un <code>Referrer-Policy</code></strong> que no manda la ruta (<code>no-referrer</code>, <code>origin</code>, <code>strict-origin</code>) deja vacío <code>back</code>: <code>FUD1549</code>.</li>
-  <li><strong><code>preload</code></strong> sin un <code>max-age</code> de un año o más, o sin <code>includeSubDomains</code>, no entra en la lista: <code>FUD1550</code>.</li>
-  <li><strong>En una librería</strong>, que nadie sirve, un <code>.headers</code> no se aplica a nada, y tampoco un <code>sw.headers</code> en una app sin <code>sw.json</code>: <code>FUD1554</code>.</li>
+  <li><strong>En el editor</strong>, una línea que no se entiende es <a href="/docs/reference/diagnostics/FUD1540"><code>FUD1540</code></a>, un nombre no válido o repetido <a href="/docs/reference/diagnostics/FUD1541"><code>FUD1541</code></a>, una cabecera de Fudic <a href="/docs/reference/diagnostics/FUD1542"><code>FUD1542</code></a> y un valor que la cabecera no admite <a href="/docs/reference/diagnostics/FUD1543"><code>FUD1543</code></a>.</li>
+  <li><strong>Un <code>Referrer-Policy</code></strong> que no manda la ruta (<code>no-referrer</code>, <code>origin</code>, <code>strict-origin</code>) deja vacío <code>back</code>: <a href="/docs/reference/diagnostics/FUD1549"><code>FUD1549</code></a>.</li>
+  <li><strong><code>preload</code></strong> sin un <code>max-age</code> de un año o más, o sin <code>includeSubDomains</code>, no entra en la lista: <a href="/docs/reference/diagnostics/FUD1550"><code>FUD1550</code></a>.</li>
+  <li><strong>En una librería</strong>, que nadie sirve, un <code>.headers</code> no se aplica a nada, y tampoco un <code>sw.headers</code> en una app sin <code>sw.json</code>: <a href="/docs/reference/diagnostics/FUD1554"><code>FUD1554</code></a>.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

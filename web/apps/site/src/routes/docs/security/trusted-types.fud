@@ -89,7 +89,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>El aviso es <code>FUD1555</code></strong>. Mira el <code>@@code</code> de los <code>.fud</code> y los módulos que carga el navegador, nunca <code>src/server</code>, y solo si <code>page.headers</code> pide Trusted Types.</li>
+  <li><strong>El aviso es <a href="/docs/reference/diagnostics/FUD1555"><code>FUD1555</code></a></strong>. Mira el <code>@@code</code> de los <code>.fud</code> y los módulos que carga el navegador, nunca <code>src/server</code>, y solo si <code>page.headers</code> pide Trusted Types.</li>
   <li><strong>Lo que decide es el tipo</strong>: un objeto <code>TrustedHTML</code> de una política tuya no da aviso, y un campo <code>innerHTML</code> de un objeto tuyo tampoco.</li>
 </ul>
 

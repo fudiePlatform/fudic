@@ -46,7 +46,7 @@
 
 <h2 id="form">El formulario</h2>
 
-<p><code>Form&lt;S&gt;</code> es la API de abajo más cada campo por su nombre: <code>userForm.name</code>, <code>userForm.access.password</code>. Un grupo es otro formulario, con la misma API: <code>userForm.access.$valid()</code>. Lo que va con paréntesis es una lectura reactiva, y la vista solo puede usar lecturas (<code>FUD1140</code>).</p>
+<p><code>Form&lt;S&gt;</code> es la API de abajo más cada campo por su nombre: <code>userForm.name</code>, <code>userForm.access.password</code>. Un grupo es otro formulario, con la misma API: <code>userForm.access.$valid()</code>. Lo que va con paréntesis es una lectura reactiva, y la vista solo puede usar lecturas (<a href="/docs/reference/diagnostics/FUD1140"><code>FUD1140</code></a>).</p>
 
 <h3 id="read">Leer</h3>
 
@@ -189,7 +189,7 @@ type ErrorMap = Readonly&lt;Record&lt;string, Errors&gt;&gt;;     // &#123; "acc
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Los errores de <code>control</code></strong>: <code>FUD0590</code> a <code>FUD0595</code> (un elemento que no admite enlace, un campo enlazado dos veces, dentro de un bucle o fuera de su <code>&lt;form control&gt;</code>). Los de <code>error</code> y <code>summary</code>: <code>FUD0596</code> a <code>FUD0602</code>.</li>
+  <li><strong>Los errores de <code>control</code></strong>: <a href="/docs/reference/diagnostics/FUD0590"><code>FUD0590</code></a> a <a href="/docs/reference/diagnostics/FUD0595"><code>FUD0595</code></a> (un elemento que no admite enlace, un campo enlazado dos veces, dentro de un bucle o fuera de su <code>&lt;form control&gt;</code>). Los de <code>error</code> y <code>summary</code>: <a href="/docs/reference/diagnostics/FUD0596"><code>FUD0596</code></a> a <a href="/docs/reference/diagnostics/FUD0602"><code>FUD0602</code></a>.</li>
   <li><strong><code>$set</code> y <code>$patch</code></strong> lanzan un <code>TypeError</code> o un <code>RangeError</code> con un valor que no encaja: son API del navegador, no del compilador.</li>
   <li><strong>Los subpaths</strong> <code>@@fudic/forms/dom</code>, <code>/contract</code> y <code>/element</code> los usa el código que generan el compilador y el <code>.fudapi</code>. Tu código no los importa.</li>
 </ul>

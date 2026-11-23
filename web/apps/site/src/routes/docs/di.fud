@@ -132,5 +132,5 @@ provide(API_URL, () =&gt; "https://api.example.com");</code></pre>
 
 <ul>
   <li><strong>Un ciclo</strong>, un servicio que acaba pidiéndose a sí mismo, lanza un error que nombra la cadena entera: <code>Panel -&gt; Cart -&gt; Panel</code>.</li>
-  <li><strong><code>FUD0680</code></strong> sale en el editor cuando un componente inyecta una clase que nadie registra: ni su módulo ni ningún componente por encima.</li>
+  <li><strong><a href="/docs/reference/diagnostics/FUD0680"><code>FUD0680</code></a></strong> sale en el editor cuando un componente inyecta una clase que nadie registra: ni su módulo ni ningún componente por encima.</li>
 </ul>

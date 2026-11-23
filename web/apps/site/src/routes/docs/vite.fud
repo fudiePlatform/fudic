@@ -100,9 +100,9 @@ export default defineConfig(&#123;
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong><code>manifestUrl</code></strong>: dónde se publica el manifiesto de rutas. Por defecto, <code>fudic-routes.json</code> bajo el <code>base</code>. Tiene que ser absoluta, porque la página y el Service Worker la leen desde sitios distintos (<code>FUD0365</code>).</li>
+  <li><strong><code>manifestUrl</code></strong>: dónde se publica el manifiesto de rutas. Por defecto, <code>fudic-routes.json</code> bajo el <code>base</code>. Tiene que ser absoluta, porque la página y el Service Worker la leen desde sitios distintos (<a href="/docs/reference/diagnostics/FUD0365"><code>FUD0365</code></a>).</li>
   <li><strong><code>sw: false</code></strong> construye la app sin Service Worker, como si no tuviera <code>sw.json</code>. Con <strong><code>edgeDir</code></strong>, que por defecto es <code>.fudic/edge</code>, ese segundo build escribe su servidor en otra carpeta y no pisa el del primero. Sirve para comparar las dos formas de la misma app.</li>
-  <li>Una ruta que declara su modo y además está en <code>defaults</code> da un aviso, <code>FUD0397</code>: la entrada de <code>defaults</code> no hace nada.</li>
+  <li>Una ruta que declara su modo y además está en <code>defaults</code> da un aviso, <a href="/docs/reference/diagnostics/FUD0397"><code>FUD0397</code></a>: la entrada de <code>defaults</code> no hace nada.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

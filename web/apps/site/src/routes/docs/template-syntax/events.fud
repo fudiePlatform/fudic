@@ -68,7 +68,7 @@
 
 <h2 id="delegation">Eventos en una lista</h2>
 
-<p>Un <code>@@click</code> dentro de un <code>@@foreach</code> pone un listener por fila. Es mejor <strong>delegar</strong>: un solo listener en la lista, y una marca en cada fila. Fudic te avisa si no lo haces (<code>FUD1380</code>).</p>
+<p>Un <code>@@click</code> dentro de un <code>@@foreach</code> pone un listener por fila. Es mejor <strong>delegar</strong>: un solo listener en la lista, y una marca en cada fila. Fudic te avisa si no lo haces (<a href="/docs/reference/diagnostics/FUD1380"><code>FUD1380</code></a>).</p>
 
 <ui-code>
 <pre><code>&lt;ul @@click=@@remove(task)&gt;

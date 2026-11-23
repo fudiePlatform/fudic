@@ -93,7 +93,7 @@ export async function run(ctx, &#123; user &#125;) &#123;
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>Si <code>bench.js</code> lanza</strong> al cargarse, en <code>setup</code> o en <code>context</code>, cada criterio para con <code>FUD1206</code>.</li>
+  <li><strong>Si <code>bench.js</code> lanza</strong> al cargarse, en <code>setup</code> o en <code>context</code>, cada criterio para con <a href="/docs/reference/diagnostics/FUD1206"><code>FUD1206</code></a>.</li>
   <li><strong>Al guardarlo</strong>, el workbench lo lee en la siguiente recarga, no en el momento.</li>
   <li><strong>El <code>ctx</code> de serie</strong> está en <a href="/docs/terms/anatomy#ctx">Cómo funciona un término</a>.</li>
 </ul>

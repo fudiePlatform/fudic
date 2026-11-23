@@ -99,8 +99,8 @@
 <ul>
   <li>Un comentario <code>fud-disable</code> gana a <code>diagnostics</code>: lo que silencia no se ve, sea cual sea su nivel en el proyecto.</li>
   <li>Un comentario solo silencia los avisos de su propio fichero.</li>
-  <li>Un código que no existe o que Fudic retiró es un aviso, y esa entrada no hace nada (<code>FUD1520</code>). Si el código cambió de número, el mensaje dice el nuevo.</li>
-  <li>Una entrada que rebaja un error se ignora, y el error sigue saliendo (<code>FUD1521</code>).</li>
-  <li>Un comentario sin código o sin motivo no silencia nada (<code>FUD1522</code>), y uno que ya no silencia nada, porque el aviso desapareció, también avisa (<code>FUD1523</code>).</li>
-  <li>Un <code>diagnostics</code> que no es un objeto de código y nivel invalida <code>fudic.json</code> entero (<code>FUD0725</code>).</li>
+  <li>Un código que no existe o que Fudic retiró es un aviso, y esa entrada no hace nada (<a href="/docs/reference/diagnostics/FUD1520"><code>FUD1520</code></a>). Si el código cambió de número, el mensaje dice el nuevo.</li>
+  <li>Una entrada que rebaja un error se ignora, y el error sigue saliendo (<a href="/docs/reference/diagnostics/FUD1521"><code>FUD1521</code></a>).</li>
+  <li>Un comentario sin código o sin motivo no silencia nada (<a href="/docs/reference/diagnostics/FUD1522"><code>FUD1522</code></a>), y uno que ya no silencia nada, porque el aviso desapareció, también avisa (<a href="/docs/reference/diagnostics/FUD1523"><code>FUD1523</code></a>).</li>
+  <li>Un <code>diagnostics</code> que no es un objeto de código y nivel invalida <code>fudic.json</code> entero (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>).</li>
 </ul>

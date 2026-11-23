@@ -81,10 +81,10 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li id="import-url">Un <code>@@import</code> relativo en la hoja de la página se mete en su sitio durante el build, sin petición aparte. Uno a una URL externa se queda como está, sin quitarle nada (<code>FUD0850</code>).</li>
+  <li id="import-url">Un <code>@@import</code> relativo en la hoja de la página se mete en su sitio durante el build, sin petición aparte. Uno a una URL externa se queda como está, sin quitarle nada (<a href="/docs/reference/diagnostics/FUD0850"><code>FUD0850</code></a>).</li>
   <li>Cada <code>url()</code> se resuelve desde el fichero que lo escribe, así que las hojas de una librería funcionan igual en la app que las usa.</li>
   <li>Con <code>"link"</code>, las hojas de los componentes también se piden en los <a href="/docs/routing/early-hints">Early Hints</a>, antes de que llegue el HTML.</li>
-  <li>El campo <code>baseline</code> de <code>fudic.json</code> fija qué navegadores cubres, y Fudic avisa si usas CSS más nuevo (<code>FUD1524</code>).</li>
+  <li>El campo <code>baseline</code> de <code>fudic.json</code> fija qué navegadores cubres, y Fudic avisa si usas CSS más nuevo (<a href="/docs/reference/diagnostics/FUD1524"><code>FUD1524</code></a>).</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

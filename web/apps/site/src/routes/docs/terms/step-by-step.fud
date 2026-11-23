@@ -52,7 +52,7 @@ criterion adding-a-book
     cart-has 1</code></pre>
 </ui-code>
 
-<p>Mientras los términos no existen, el editor subraya cada línea con <code>FUD0940</code>, y su bombilla ofrece crear el fichero. También se crean con la CLI:</p>
+<p>Mientras los términos no existen, el editor subraya cada línea con <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a>, y su bombilla ofrece crear el fichero. También se crean con la CLI:</p>
 
 <ui-code>
 <pre><code>fudic g term given signed-in-as --param user:token
@@ -114,7 +114,7 @@ export const selfTest = [&#123; args: &#123; product: 'The Hobbit' &#125;, expec
 <ul>
   <li><strong>La referencia vive aquí</strong>, no en cada criterio: si el botón cambia de texto, se cambia una línea.</li>
   <li><strong><code>ctx.act</code></strong> espera a la petición que añade al carrito, al código que pinta el resultado y a que el componente se hidrate si era el primer gesto.</li>
-  <li><strong>Si no hay ese producto</strong>, <code>click</code> espera y acaba lanzando: el criterio para con <code>FUD1202</code>, en el paso que falló.</li>
+  <li><strong>Si no hay ese producto</strong>, <code>click</code> espera y acaba lanzando: el criterio para con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>, en el paso que falló.</li>
 </ul>
 
 <h2 id="then"><code>then cart-has</code></h2>

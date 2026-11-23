@@ -105,12 +105,12 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><code>globalStyles</code> y <code>styles</code> son objetos de nombre y ruta. Una lista de rutas no vale (<code>FUD0725</code>).</li>
-  <li>Un nombre de hoja que se repite entre los dos campos es un error (<code>FUD0741</code>), y una ruta a un fichero que no existe, también (<code>FUD0740</code>).</li>
+  <li><code>globalStyles</code> y <code>styles</code> son objetos de nombre y ruta. Una lista de rutas no vale (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>).</li>
+  <li>Un nombre de hoja que se repite entre los dos campos es un error (<a href="/docs/reference/diagnostics/FUD0741"><code>FUD0741</code></a>), y una ruta a un fichero que no existe, también (<a href="/docs/reference/diagnostics/FUD0740"><code>FUD0740</code></a>).</li>
   <li>Las etiquetas de <code>locales</code> se normalizan: <code>"EN-us"</code> se lee <code>"en-US"</code>, y dos formas de la misma etiqueta cuentan como repetida. Una lista vacía no vale: si se escribe el campo, tiene que decir qué idiomas.</li>
   <li>En una librería, <code>locales</code> no se usa: sus textos salen en los idiomas de la app que la compila.</li>
   <li><code>site</code> se guarda como lo escribe <code>URL.origin</code>: host en minúsculas, sin puerto por defecto y sin <code>/</code> final.</li>
-  <li>Un campo de <code>serve</code> mal escrito, o uno que no existe, es un error que lo nombra (<code>FUD1488</code>): un error de tipeo que dejara el valor por defecto sin avisar se descubriría en producción.</li>
+  <li>Un campo de <code>serve</code> mal escrito, o uno que no existe, es un error que lo nombra (<a href="/docs/reference/diagnostics/FUD1488"><code>FUD1488</code></a>): un error de tipeo que dejara el valor por defecto sin avisar se descubriría en producción.</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>

@@ -90,5 +90,5 @@
 <ul>
   <li><strong>Un componente que no provee ni inyecta</strong> no crea contenedor: sus hijos ven el de su dueño más cercano.</li>
   <li><strong>Un <code>provide</code> en el <code>@@code</code> de un componente</strong> registra para ese componente y su subárbol; uno en un módulo <code>.ts</code>, en la raíz.</li>
-  <li><strong><code>FUD0684</code></strong> sale en el editor cuando un componente provee el mismo token dos veces: la segunda reemplazaría a la primera.</li>
+  <li><strong><a href="/docs/reference/diagnostics/FUD0684"><code>FUD0684</code></a></strong> sale en el editor cuando un componente provee el mismo token dos veces: la segunda reemplazaría a la primera.</li>
 </ul>

@@ -112,7 +112,7 @@
 
 <h2 id="id">El id y las cachés</h2>
 
-<p>Las cachés del Service Worker llevan en el nombre el <code>id</code> de <code>fudic.json</code> y el del build. Así dos apps en el mismo dominio no se pisan: cada una borra solo sus cachés viejas. Por eso un <code>sw.json</code> exige un <code>id</code> (<code>FUD0726</code>).</p>
+<p>Las cachés del Service Worker llevan en el nombre el <code>id</code> de <code>fudic.json</code> y el del build. Así dos apps en el mismo dominio no se pisan: cada una borra solo sus cachés viejas. Por eso un <code>sw.json</code> exige un <code>id</code> (<a href="/docs/reference/diagnostics/FUD0726"><code>FUD0726</code></a>).</p>
 
 <p>El <code>id</code> no se cambia nunca una vez publicado. Con otro, el Service Worker trataría como ajenas las cachés de la misma app, y se quedarían ocupando espacio en el navegador de cada usuario.</p>
 
@@ -124,11 +124,11 @@
 
 <ul>
   <li>La clave de la caché es la URL, y solo la URL: no se mira <code>Vary</code>. Si una respuesta cambia según una cabecera de la petición, como <code>Accept-Language</code>, eso tiene que ir en la URL.</li>
-  <li>Un <code>sw.json</code> que no es JSON, sin <code>shell</code>, o con un recurso sin <code>pattern</code> o con una <code>policy</code> que no existe es un error (<code>FUD0390</code>). Si el fichero no se lee, la app sale sin Service Worker; si falla un recurso, se descarta ese.</li>
-  <li>Una URL de <code>shell</code> que el build no produce es un aviso (<code>FUD0391</code>): el Service Worker no podría instalarse en el navegador.</li>
-  <li>Un <code>ttl</code> que no se entiende es un aviso, y esa entrada se descarta (<code>FUD0392</code>).</li>
+  <li>Un <code>sw.json</code> que no es JSON, sin <code>shell</code>, o con un recurso sin <code>pattern</code> o con una <code>policy</code> que no existe es un error (<a href="/docs/reference/diagnostics/FUD0390"><code>FUD0390</code></a>). Si el fichero no se lee, la app sale sin Service Worker; si falla un recurso, se descarta ese.</li>
+  <li>Una URL de <code>shell</code> que el build no produce es un aviso (<a href="/docs/reference/diagnostics/FUD0391"><code>FUD0391</code></a>): el Service Worker no podría instalarse en el navegador.</li>
+  <li>Un <code>ttl</code> que no se entiende es un aviso, y esa entrada se descarta (<a href="/docs/reference/diagnostics/FUD0392"><code>FUD0392</code></a>).</li>
   <li>Un valor de <code>dev</code> que no es <code>"preview"</code> se lee como <code>"off"</code>.</li>
-  <li>Un <code>sw.headers</code> sin <code>sw.json</code> sobra, y avisa (<code>FUD1554</code>).</li>
+  <li>Un <code>sw.headers</code> sin <code>sw.json</code> sobra, y avisa (<a href="/docs/reference/diagnostics/FUD1554"><code>FUD1554</code></a>).</li>
 </ul>
 
 <h2 id="mdn">El estándar, en MDN</h2>
