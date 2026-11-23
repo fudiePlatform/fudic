@@ -1,0 +1,153 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic.json · Fudic</title>
+  <meta name="description" content="fudic.json dice qué es un proyecto de Fudic: su identidad, si es una app o una librería, el prefijo de sus componentes y dónde están sus carpetas.">
+  <link rel="canonical" href="https://fudic.dev/docs/configuration">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic.json · Fudic">
+  <meta property="og:description" content="Qué es un proyecto de Fudic y cómo se declara.">
+  <meta property="og:url" content="https://fudic.dev/docs/configuration">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("configuration")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#project">Un fichero, un proyecto</a></li>
+        <li><a href="#example">Dos ejemplos</a></li>
+        <li><a href="#editor">En el editor</a></li>
+        <li><a href="#id">id</a></li>
+        <li><a href="#kind">kind</a></li>
+        <li><a href="#prefix">prefix</a></li>
+        <li><a href="#folders">server, browser, pipes y api</a></li>
+        <li><a href="#fields">Los demás campos</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic.json</code></h1>
+
+<p><code>fudic.json</code> dice qué es un proyecto: cómo se llama, si es una app o una librería y cómo se compila. Todos sus campos son opcionales, y el que falta toma su valor por defecto.</p>
+
+<h2 id="project">Un fichero, un proyecto</h2>
+
+<p>Una carpeta con un <code>fudic.json</code> es un proyecto de Fudic. Cada fichero pertenece al proyecto del <code>fudic.json</code> más cercano por encima de él. En un workspace, cada app y cada librería tiene el suyo, y la raíz no tiene ninguno:</p>
+
+<ui-code>
+<pre><code>web/
+├── apps/site/fudic.json    ← an app
+└── libs/ui/fudic.json      ← a library the app uses</code></pre>
+</ui-code>
+
+<p>El build, la CLI y el editor lo leen con el mismo código, así que el editor entiende el fichero igual que el build.</p>
+
+<h2 id="example">Dos ejemplos</h2>
+
+<p>Los de esta web, el de la app y el de su librería de componentes:</p>
+
+<ui-code .path="apps/site/fudic.json">
+<pre><code>&#123;
+  "id": "site",
+  "kind": "app",
+  "prefix": "site",
+  "server": "src/server",
+  "browser": "src/browser",
+  "baseline": "widely"
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="libs/ui/fudic.json">
+<pre><code>&#123;
+  "kind": "lib",
+  "prefix": "ui",
+  "baseline": "widely"
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="editor">En el editor</h2>
+
+<p>La extensión de VS Code registra el <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a> de <code>fudic.json</code>. Al escribir, el editor completa cada campo, explica qué hace y subraya un valor que no vale. En <code>diagnostics</code> completa los códigos de Fudic, y en <code>baseline.allow</code>, las funciones de la plataforma.</p>
+
+<h2 id="id"><code>id</code></h2>
+
+<p>El nombre del proyecto: minúsculas, números y guiones, empezando por una letra (<code>shop</code>, <code>admin-panel</code>).</p>
+
+<p>Una app lo necesita si tiene Service Worker. Sus cachés llevan el <code>id</code> en el nombre, y así dos apps del mismo dominio no se borran las cachés una a otra. Por eso no se cambia una vez publicado (<a href="/docs/configuration/sw-json#id">El id y las cachés</a>).</p>
+
+<h2 id="kind"><code>kind</code></h2>
+
+<ul>
+  <li><strong><code>"app"</code></strong>, por defecto: una aplicación que se sirve, con sus rutas, su servidor y sus cabeceras.</li>
+  <li><strong><code>"lib"</code></strong>: una librería que usan otros proyectos. No se sirve sola, así que no lleva <code>.headers</code> ni <code>sw.json</code>. Sus componentes, sus hojas y sus contratos los usa la app que depende de ella.</li>
+</ul>
+
+<p>Una app usa una librería con solo tenerla en las dependencias de su <code>package.json</code>. <code>fudic g lib</code> crea una en el workspace.</p>
+
+<h2 id="prefix"><code>prefix</code></h2>
+
+<p>El prefijo que la CLI y el editor proponen al crear un componente. Con <code>"prefix": "shop"</code>, <code>fudic g component card</code> crea <code>&lt;shop-card&gt;</code>.</p>
+
+<p>Es una propuesta, no una regla: un nombre que ya lleva guion se respeta, y <code>fudic g component signal-counter</code> crea <code>&lt;signal-counter&gt;</code>. El prefijo se escribe sin guion, porque el guion lo pone Fudic.</p>
+
+<p>El guion lo exige el estándar: el nombre de un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a> lo lleva para no chocar nunca con un elemento de HTML.</p>
+
+<h2 id="folders"><code>server</code>, <code>browser</code>, <code>pipes</code> y <code>api</code></h2>
+
+<p>Dónde están las carpetas que Fudic busca. Son rutas relativas al proyecto, y no pueden salir de él:</p>
+
+<ul>
+  <li><strong><code>server</code></strong>, por defecto <code>src/server</code>: lo que corre solo en el servidor, como el código de las funciones de un <code>.fudapi</code> (<a href="/docs/server/functions">Funciones de servidor</a>).</li>
+  <li><strong><code>browser</code></strong>, por defecto <code>src/browser</code>: lo que corre en el navegador. El servidor también lo carga, para pintar la misma página.</li>
+  <li><strong><code>pipes</code></strong>, por defecto <code>src/pipes</code>: los pipes del proyecto, cada uno con su <code>.fudapi</code> y su código (<a href="/docs/server/pipes">Pipes</a>).</li>
+  <li><strong><code>api</code></strong>, solo en una librería, por defecto <code>fudapi</code>: la carpeta de los <code>.fudapi</code> que publica. La app los lee de cada librería de la que depende.</li>
+</ul>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "server": "src/backend",
+  "browser": "src/client"
+&#125;</code></pre>
+</ui-code>
+
+<p>Las demás carpetas son fijas: <code>src/routes</code>, <code>src/components</code>, <code>src/layouts</code> y <code>src/locales</code>.</p>
+
+<h2 id="fields">Los demás campos</h2>
+
+<ul>
+  <li><strong><code>globalStyles</code>, <code>styles</code>, <code>css</code> y <code>guide</code></strong>: las hojas de estilo del proyecto y cómo llegan (<a href="/docs/configuration/fields#styles">Estilos</a>).</li>
+  <li><strong><code>locales</code> y <code>site</code></strong>: los idiomas de la app y dónde se publica (<a href="/docs/configuration/fields#locales">Idiomas y publicación</a>).</li>
+  <li><strong><code>earlyHints</code> y <code>serve</code></strong>: cómo se sirve (<a href="/docs/configuration/fields#serve">Servir</a>).</li>
+  <li><strong><code>diagnostics</code></strong>: cómo avisa cada código (<a href="/docs/configuration/diagnostics">Diagnósticos</a>).</li>
+  <li><strong><code>baseline</code></strong>: a qué navegadores llega la app (<a href="/docs/configuration/baseline">Baseline</a>).</li>
+</ul>
+
+<p>El Service Worker se configura aparte, en <code>sw.json</code>, porque habla de cómo se despliega la app y no de qué es (<a href="/docs/configuration/sw-json"><code>sw.json</code></a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Sin <code>fudic.json</code>, todo toma su valor por defecto, sin ningún aviso.</li>
+  <li>Un campo mal escrito invalida el fichero entero, no solo ese campo: el proyecto se compila como si no tuviera <code>fudic.json</code> hasta que se arregla (<code>FUD0725</code>). Media identidad sería peor que ninguna.</li>
+  <li>Un campo que Fudic no conoce lo subraya el editor.</li>
+  <li>Dos proyectos del workspace con el mismo <code>id</code> son un error (<code>FUD0724</code>), y un <code>sw.json</code> sin <code>id</code>, también (<code>FUD0726</code>).</li>
+</ul>
+
+<h2 id="mdn">El estándar</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Usar custom elements</a>, en MDN: por qué el nombre de un componente lleva guion.</li>
+  <li><a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>: con lo que el editor completa y valida <code>fudic.json</code>.</li>
+</ul>

@@ -145,6 +145,17 @@
           <li><a href="/docs/testing/history" aria-current=@(current === "testing-history" ? "page" : false)>Historial y aprobación</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Configuración</span>
+        <ol>
+          <li><a href="/docs/configuration" aria-current=@(current === "configuration" ? "page" : false)><code>fudic.json</code></a></li>
+          <li><a href="/docs/configuration/fields" aria-current=@(current === "configuration-fields" ? "page" : false)>Estilos, idiomas y servidor</a></li>
+          <li><a href="/docs/configuration/diagnostics" aria-current=@(current === "configuration-diagnostics" ? "page" : false)>Diagnósticos</a></li>
+          <li><a href="/docs/configuration/baseline" aria-current=@(current === "configuration-baseline" ? "page" : false)>Baseline</a></li>
+          <li><a href="/docs/configuration/sw-json" aria-current=@(current === "configuration-sw-json" ? "page" : false)><code>sw.json</code></a></li>
+          <li><a href="/docs/configuration/generated" aria-current=@(current === "configuration-generated" ? "page" : false)>Lo que genera Fudic</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

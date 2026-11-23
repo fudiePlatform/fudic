@@ -1,0 +1,119 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Baseline · Fudic</title>
+  <meta name="description" content="El campo baseline de fudic.json: a qué navegadores llega la app, el aviso de lo que va más allá en HTML, CSS y TypeScript, cómo se resuelve y el build.target de Vite.">
+  <link rel="canonical" href="https://fudic.dev/docs/configuration/baseline">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Baseline · Fudic">
+  <meta property="og:description" content="A qué navegadores llega la app, y el aviso de lo que va más allá.">
+  <meta property="og:url" content="https://fudic.dev/docs/configuration/baseline">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("configuration-baseline")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué es Baseline</a></li>
+        <li><a href="#target">El nivel</a></li>
+        <li><a href="#warning">El aviso</a></li>
+        <li><a href="#allow">allow</a></li>
+        <li><a href="#build">El build</a></li>
+        <li><a href="#libraries">Las librerías</a></li>
+        <li><a href="#floor">Lo que necesita Fudic</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Baseline</h1>
+
+<p><code>baseline</code> dice a qué navegadores llega la app. Fudic avisa de todo lo que uses en HTML, CSS o TypeScript que no llegue a ellos, y compila el JavaScript para esos navegadores.</p>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "baseline": "widely"
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="what">Qué es Baseline</h2>
+
+<p><a href="https://web.dev/baseline" target="_blank" rel="noopener">Baseline</a> dice desde cuándo una función de la plataforma funciona en todos los navegadores principales: Chrome, Edge, Firefox y Safari, en escritorio y en móvil. Lo mantiene el WebDX Community Group del W3C, con los datos del proyecto <a href="https://github.com/web-platform-dx/web-features" target="_blank" rel="noopener">web-features</a>, y es lo que muestran MDN y <a href="https://webstatus.dev" target="_blank" rel="noopener">webstatus.dev</a> en cada función.</p>
+
+<h2 id="target">El nivel</h2>
+
+<ul>
+  <li><strong><code>"widely"</code></strong>, por defecto: lo que funciona en todos los navegadores principales desde hace al menos 30 meses. Llega a casi todos los usuarios.</li>
+  <li><strong><code>"newly"</code></strong>: lo que ya funciona en todos, aunque sea desde la última versión.</li>
+  <li><strong>Un año</strong>, como <code>2024</code>: lo que funcionaba en todos al acabar ese año.</li>
+</ul>
+
+<p>Las fechas salen de los datos que trae cada versión de Fudic, no del reloj: la misma versión da la misma respuesta hoy y dentro de un año.</p>
+
+<h2 id="warning">El aviso</h2>
+
+<p>Si usas algo más nuevo que tu nivel, Fudic avisa en el editor y en el build (<code>FUD1524</code>), con el nombre de la función y desde cuándo está en cada navegador. En un navegador más antiguo, ese CSS se ignora y ese JavaScript lanza un error.</p>
+
+<p>Hay tres salidas:</p>
+
+<ul>
+  <li><strong>Protegerlo</strong> para que solo se use donde existe: el CSS dentro de <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40supports" target="_blank" rel="noopener"><code>@@supports</code></a>, el JavaScript detrás de <code>'name' in object</code> o <code>typeof X === "function"</code>. Lo protegido no avisa.</li>
+  <li><strong>Permitirlo</strong> en <code>allow</code>, si lo que pasa en un navegador antiguo te vale.</li>
+  <li><strong>Subir el nivel</strong>, si tus usuarios tienen navegadores recientes.</li>
+</ul>
+
+<h2 id="allow"><code>allow</code></h2>
+
+<p>Las funciones que usas a sabiendas por encima del nivel. Con <code>allow</code>, <code>baseline</code> pasa a ser un objeto:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "baseline": &#123;
+    "target": "widely",
+    "allow": ["starting-style", "view-transitions"]
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Cada id es el de web-features, el mismo que aparece en la URL de la función en webstatus.dev. El editor los completa todos, con su nombre.</p>
+
+<h2 id="build">El build</h2>
+
+<p>El nivel decide también el <a href="https://vite.dev/config/build-options#build-target" target="_blank" rel="noopener"><code>build.target</code></a> de Vite: la última versión de cada navegador principal en la fecha del nivel. El JavaScript que sale usa solo la sintaxis que esos navegadores entienden.</p>
+
+<h2 id="libraries">Las librerías</h2>
+
+<p>Cada librería tiene su propio <code>baseline</code> y se comprueba con él. Si una librería usa algo que no llega al nivel de la app y no lo protege, la app recibe el aviso (<code>FUD1526</code>). Se resuelve en la app, permitiendo esas funciones o subiendo su nivel, o pidiendo a la librería que las proteja.</p>
+
+<h2 id="floor">Lo que necesita Fudic</h2>
+
+<p>Fudic escribe en cada página cosas que los navegadores antiguos no tienen y que no puede sustituir, como el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>. Por eso una app de Fudic necesita navegadores de 2024 en adelante, y un nivel anterior avisa (<code>FUD1525</code>): ninguna página de Fudic puede prometerlo. <code>"widely"</code> ya está por encima.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Un id de <code>allow</code> que no existe no permite nada (<code>FUD1527</code>). Si la función se renombró o se dividió, avisa igual, pero permite lo que es ahora.</li>
+  <li>Un id de <code>allow</code> que ya nada usa es una pista (<code>FUD1528</code>): hoy no hace daño, pero mañana dejaría entrar esa función sin que nadie lo note.</li>
+  <li>En el objeto, <code>target</code> es opcional y vale <code>"widely"</code> por defecto. Un año va de 2015 al de los datos.</li>
+  <li>Un <code>baseline</code> que no es un nivel ni un objeto con <code>target</code> y <code>allow</code> invalida <code>fudic.json</code> entero (<code>FUD0725</code>).</li>
+</ul>
+
+<h2 id="mdn">El estándar</h2>
+
+<ul>
+  <li><a href="https://web.dev/baseline" target="_blank" rel="noopener">Baseline</a>, en web.dev: qué es y cómo se decide.</li>
+  <li><a href="https://webstatus.dev" target="_blank" rel="noopener">webstatus.dev</a>: el estado de cada función y su id.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility" target="_blank" rel="noopener">Baseline</a>, en el glosario de MDN.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40supports" target="_blank" rel="noopener"><code>@@supports</code></a>, en MDN: proteger el CSS nuevo.</li>
+</ul>

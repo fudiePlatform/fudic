@@ -1,0 +1,92 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Lo que genera Fudic · Fudic</title>
+  <meta name="description" content="Los ficheros y carpetas que escribe Fudic y que no se tocan a mano: .fudic, dist, fudic-globals.d.ts y .fudlog, qué hace cada uno y cuáles van a git.">
+  <link rel="canonical" href="https://fudic.dev/docs/configuration/generated">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Lo que genera Fudic · Fudic">
+  <meta property="og:description" content="Los ficheros que escribe Fudic, y qué hace cada uno.">
+  <meta property="og:url" content="https://fudic.dev/docs/configuration/generated">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("configuration-generated")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#rule">No se tocan</a></li>
+        <li><a href="#fudic">.fudic</a></li>
+        <li><a href="#dist">dist</a></li>
+        <li><a href="#globals">fudic-globals.d.ts</a></li>
+        <li><a href="#fudlog">.fudlog</a></li>
+        <li><a href="#locales">Los catálogos</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Lo que genera Fudic</h1>
+
+<p>Fudic escribe algunos ficheros por su cuenta y los reescribe en cada build o cada guardado. No se editan a mano: el cambio se pierde la próxima vez. Esta página dice qué es cada uno.</p>
+
+<h2 id="rule">No se tocan</h2>
+
+<ui-code>
+<pre><code>web/
+├── fudic-globals.d.ts      ← written by fudic new, kept in git
+└── apps/site/
+    ├── .fudic/             ← build and editor files, not in git
+    ├── dist/               ← what gets published, not in git
+    └── src/components/app-tabs/
+        └── app-tabs.fudlog ← the piece's history, kept in git</code></pre>
+</ui-code>
+
+<p><code>fudic new</code> deja <code>.fudic/</code> y <code>dist/</code> en el <code>.gitignore</code> de cada proyecto. Si se borran, el próximo <code>fudic dev</code> o build los vuelve a escribir.</p>
+
+<h2 id="fudic"><code>.fudic</code></h2>
+
+<p>Lo que el build y el editor necesitan y no se publica. Cada proyecto tiene la suya:</p>
+
+<ul>
+  <li><strong><code>.fudic/api/</code></strong>: los tipos de TypeScript que Fudic genera de cada <code>.fudapi</code> y de los componentes, un <code>.d.ts</code> por pieza. Son los que lee el editor para completar y comprobar los tipos, y la comprobación del build.</li>
+  <li><strong><code>.fudic/edge/</code></strong>: la app compilada para el servidor. <code>server.mjs</code> es la app entera, la que se monta con <code>createServer</code> (<a href="/docs/server/running">El servidor</a>), y al lado están las rutas con su <code>load</code> y las funciones de servidor. Vive fuera de <code>dist</code> a propósito: lleva el código del servidor, que nunca se publica.</li>
+  <li><strong><code>.fudic/csp-needs.json</code></strong>: lo que el último build o <code>fudic dev</code> vio que las páginas necesitan de la CSP. Con él, el editor avisa en <code>page.headers</code> y <code>sw.headers</code> de lo que falta y de lo que sobra (<a href="/docs/security/csp#checks">Lo que falta y lo que sobra</a>).</li>
+</ul>
+
+<h2 id="dist"><code>dist</code></h2>
+
+<p>Lo que se publica, el resultado de <code>vite build</code>:</p>
+
+<ul>
+  <li><strong>Las páginas prerenderizadas</strong>, como <code>index.html</code> o <code>docs/…/index.html</code>, las que salen en modo <code>ssg</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</li>
+  <li><strong><code>assets/</code></strong>: las hojas, el JavaScript de cada componente, las imágenes y las fuentes, cada fichero con un hash en el nombre. Un contenido nuevo es un nombre nuevo, así que se guardan en caché para siempre.</li>
+  <li><strong><code>_fudic/&lt;versión&gt;/</code></strong>: el runtime de Fudic, versionado y compartido por todas las apps del mismo dominio (<a href="/docs/performance/caching#runtime">El runtime de Fudic</a>).</li>
+  <li><strong><code>fudic-main-….js</code></strong>: el arranque de cada página, uno por cada combinación de piezas que se usan juntas.</li>
+  <li><strong><code>fudic-routes.json</code></strong>: el manifiesto de rutas. Cada ruta con su modo, sus cabeceras y sus early hints; lo leen el servidor y el Service Worker.</li>
+  <li><strong><code>fudic-sw.js</code> y <code>sw/</code></strong>, solo con <code>sw.json</code>: el Service Worker y el código de las rutas que pinta él (<a href="/docs/configuration/sw-json"><code>sw.json</code></a>).</li>
+</ul>
+
+<h2 id="globals"><code>fudic-globals.d.ts</code></h2>
+
+<p>En la raíz del workspace. Declara para TypeScript lo que un <code>.fud</code> usa sin importarlo, como <code>props()</code> o los ganchos del ciclo de vida, para que <code>tsc</code> y la integración continua vean lo mismo que el editor. Lo escribe <code>fudic new</code> y empieza con «Generated by fudic. Do not edit.».</p>
+
+<p>Va en git. El editor y la comprobación del build usan su propia copia, la de su versión de Fudic, así que una copia antigua en disco no los rompe.</p>
+
+<h2 id="fudlog"><code>.fudlog</code></h2>
+
+<p>El historial de una pieza, junto a su <code>.fud</code> y con el mismo nombre: los criterios que se ejecutaron y lo que se aprobó. Lo escriben <code>fudic approve</code>, <code>fudic accept</code> y el servidor MCP, y lo leen el editor y el workbench (<a href="/docs/testing/history">Historial y aprobación</a>).</p>
+
+<p>Va en git: es la memoria de la pieza, y sirve a quien llegue después.</p>
+
+<h2 id="locales">Los catálogos</h2>
+
+<p>Los <code>src/locales/&lt;idioma&gt;.json</code> son a medias: los crea y los pone al día <code>fudic translate</code>, pero las traducciones las escribes tú, y van en git (<a href="/docs/i18n/catalogs">Los catálogos</a>).</p>

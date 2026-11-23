@@ -1,0 +1,123 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Estilos, idiomas y servidor · Fudic</title>
+  <meta name="description" content="Los campos de fudic.json para las hojas de estilo, los idiomas, el origen de la app, las early hints, el proxy y los límites de subida, uno a uno.">
+  <link rel="canonical" href="https://fudic.dev/docs/configuration/fields">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Estilos, idiomas y servidor · Fudic">
+  <meta property="og:description" content="Los campos de fudic.json para estilos, idiomas y servidor.">
+  <meta property="og:url" content="https://fudic.dev/docs/configuration/fields">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("configuration-fields")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#styles">Estilos</a></li>
+        <li><a href="#locales">Idiomas y publicación</a></li>
+        <li><a href="#serve">Servir</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Estilos, idiomas y servidor</h1>
+
+<p>Los campos de <code>fudic.json</code> que deciden qué CSS reciben los componentes, en qué idiomas sale la app y cómo se sirve. Cada uno con su valor por defecto y un enlace a la página que lo explica a fondo.</p>
+
+<h2 id="styles">Estilos</h2>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "globalStyles": &#123; "base": "src/styles/base.css" &#125;,
+  "styles": &#123; "panel": "src/styles/panel.css" &#125;,
+  "css": "inline"
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>globalStyles</code></strong>: las hojas que adoptan todos los componentes del proyecto, en el orden escrito y delante de las suyas. Cada una lleva un nombre y una ruta desde la raíz del proyecto. Pon aquí muy poco, porque llega a todos (<a href="/docs/styles/shared#styles">Hojas para los componentes</a>).</li>
+  <li><strong><code>styles</code></strong>: las hojas que un componente puede adoptar si las nombra en el <code>shadowrootadoptedstylesheets</code> de su <code>&lt;template&gt;</code>. Se aplican después de las globales y antes del CSS del propio componente.</li>
+  <li><strong><code>css</code></strong>: cómo llega el CSS de los componentes. <code>"inline"</code>, por defecto, lo escribe dentro del HTML, una vez por página; <code>"link"</code> lo entrega como ficheros, con un <code>&lt;link rel="stylesheet"&gt;</code> (<a href="/docs/styles/delivery#inline-or-link">Dentro del HTML o como fichero</a>).</li>
+  <li><strong><code>guide</code></strong>: solo en la librería que es la guía de estilos. <code>sheet</code> es la hoja de entrada, que reciben todas las páginas de la app que la usa, y <code>icon</code>, opcional, el favicon de esas páginas (<a href="/docs/styles/guide">La guía de estilos</a>).</li>
+</ul>
+
+<ui-code .path="libs/guide/fudic.json">
+<pre><code>&#123;
+  "kind": "lib",
+  "globalStyles": &#123; "base": "base.css" &#125;,
+  "guide": &#123; "sheet": "guide.css", "icon": "logo.svg" &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>El nombre de una hoja es como la nombra el HTML: letras, números y <code>_</code>, sin guion. El guion queda para los componentes, y así una hoja nunca se confunde con la de un componente.</p>
+
+<h2 id="locales">Idiomas y publicación</h2>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "locales": ["es", "en"],
+  "site": "https://example.com"
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>locales</code></strong>: los idiomas de la app, como etiquetas <a href="https://developer.mozilla.org/en-US/docs/Glossary/BCP_47_language_tag" target="_blank" rel="noopener">BCP 47</a>. El primero es el idioma en que está escrito el código, y los demás, traducciones. Por defecto, <code>["en"]</code>. Lo escribe <code>fudic add i18n --locales es,en</code> (<a href="/docs/i18n#locales">Declarar los idiomas</a>).</li>
+  <li><strong><code>site</code></strong>: el origen en que se publica la app, sin ruta. El build lo usa para las URLs absolutas de <code>canonical</code> y <code>hreflang</code>, que una página prerenderizada no puede sacar de ninguna petición. Con dos idiomas o más, hace falta (<a href="/docs/i18n/urls#alternates">Las otras versiones de una página</a>).</li>
+</ul>
+
+<p>Una app servida bajo una ruta, como <code>/tienda/</code>, no la pone en <code>site</code>: va en el <code>base</code> de Vite.</p>
+
+<h2 id="serve">Servir</h2>
+
+<ui-code .path="fudic.json">
+<pre><code>&#123;
+  "earlyHints": true,
+  "serve": &#123;
+    "trustProxy": true,
+    "uploads": &#123; "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "2mb" &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>earlyHints</code></strong>: si el servidor envía las pistas de cada página en un <code>103 Early Hints</code> antes de la respuesta. Por defecto, <code>true</code> (<a href="/docs/routing/early-hints">Early hints</a>).</li>
+  <li><strong><code>serve.trustProxy</code></strong>: detrás de un proxy, la URL pública de cada petición sale de las cabeceras <code>Forwarded</code> y <code>X-Forwarded-*</code>. Por defecto no se leen. Actívalo solo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</li>
+  <li><strong><code>serve.uploads.maxFileSize</code></strong>: el fichero más grande que acepta una subida. Por defecto, 10 MB (<a href="/docs/forms/files#limits">Los límites del servidor</a>).</li>
+  <li><strong><code>serve.uploads.maxFiles</code></strong>: cuántos ficheros acepta una llamada. Por defecto, 20.</li>
+  <li><strong><code>serve.uploads.maxArgs</code></strong>: lo que pueden ocupar los demás argumentos de una llamada con ficheros. Por defecto, 1 MB.</li>
+</ul>
+
+<p>Un tamaño es un número de bytes o un texto con su unidad: <code>"500kb"</code>, <code>"50mb"</code>, <code>"1.5gb"</code>, con 1 KB = 1024 bytes.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><code>globalStyles</code> y <code>styles</code> son objetos de nombre y ruta. Una lista de rutas no vale (<code>FUD0725</code>).</li>
+  <li>Un nombre de hoja que se repite entre los dos campos es un error (<code>FUD0741</code>), y una ruta a un fichero que no existe, también (<code>FUD0740</code>).</li>
+  <li>Las etiquetas de <code>locales</code> se normalizan: <code>"EN-us"</code> se lee <code>"en-US"</code>, y dos formas de la misma etiqueta cuentan como repetida. Una lista vacía no vale: si se escribe el campo, tiene que decir qué idiomas.</li>
+  <li>En una librería, <code>locales</code> no se usa: sus textos salen en los idiomas de la app que la compila.</li>
+  <li><code>site</code> se guarda como lo escribe <code>URL.origin</code>: host en minúsculas, sin puerto por defecto y sin <code>/</code> final.</li>
+  <li>Un campo de <code>serve</code> mal escrito, o uno que no existe, es un error que lo nombra (<code>FUD1488</code>): un error de tipeo que dejara el valor por defecto sin avisar se descubriría en producción.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/BCP_47_language_tag" target="_blank" rel="noopener">Etiquetas BCP 47</a>: cómo se escribe un idioma en <code>locales</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/origin" target="_blank" rel="noopener"><code>URL.origin</code></a>: lo que se guarda de <code>site</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded" target="_blank" rel="noopener"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a>: lo que envía <code>earlyHints</code>.</li>
+</ul>
