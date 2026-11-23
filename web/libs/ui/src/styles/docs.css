@@ -275,12 +275,68 @@ a[target="_blank"]::after {
   font-family: var(--guide-font-mono);
 }
 
-.diagnostic .severity {
+/* One diagnostic: a card in the colour of its severity, so the reader sees at once what kind of
+   problem it is, and its fix set apart from the explanation. */
+
+.diagnostic {
+  --severity: var(--guide-muted);
+  margin-block: var(--guide-space-5);
+  padding: var(--guide-space-4) var(--guide-space-5);
+  background: var(--guide-raised);
+  border-inline-start: 4px solid var(--severity);
+  border-radius: var(--guide-radius-md);
+}
+
+.diagnostic[data-severity="error"] { --severity: var(--guide-danger); }
+.diagnostic[data-severity="warning"] { --severity: var(--guide-warning); }
+.diagnostic[data-severity="info"],
+.diagnostic[data-severity="hint"] { --severity: var(--guide-accent); }
+
+.diagnostic h1 {
+  margin-block: var(--guide-space-2) var(--guide-space-4);
+  font-size: var(--guide-text-2xl);
+}
+
+.diagnostic-code {
+  margin: 0;
+  font-family: var(--guide-font-mono);
   font-size: var(--guide-text-sm);
-  font-weight: var(--guide-weight-bold);
   color: var(--guide-muted);
+}
+
+.diagnostic .severity {
+  padding: 0.1em 0.5em;
+  font-family: var(--guide-font-sans);
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-surface);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  background: var(--severity);
+  border-radius: var(--guide-radius-sm);
+}
+
+.diagnostic .fix {
+  margin-top: var(--guide-space-4);
+  padding: var(--guide-space-3) var(--guide-space-4);
+  background: var(--guide-surface);
+  border-inline-start: 3px solid var(--guide-success);
+  border-radius: var(--guide-radius-sm);
+}
+
+.diagnostic .fix p {
+  margin: 0;
+}
+
+.diagnostic .fix-label {
+  font-size: var(--guide-text-sm);
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-success);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diagnostic-back {
+  margin-top: var(--guide-space-6);
 }
 
 /* Footer */

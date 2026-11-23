@@ -193,8 +193,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Publicar con la dirección pública del catálogo de diagnósticos, o no
   imprimir el enlace mientras no exista.
 - **Resuelto (Referencia), el 2026-11-23.** `fudic.docs` es `https://fudic.dev/docs/reference/diagnostics`
-  y `docsUrl()` pone el código en la query (`?code=FUD0443`): la página se pinta en el servidor y
-  un ancla no le llegaría.
+  y `docsUrl()` pone el código en la ruta (`…/diagnostics/FUD0443`): la página se pinta en el
+  servidor y un ancla no le llegaría.
 
 ## 15. `fudic --version` enseña la ayuda entera
 

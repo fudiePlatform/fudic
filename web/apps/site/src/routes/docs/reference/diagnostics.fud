@@ -2,14 +2,10 @@
 <link rel="snippet" href="@web/ui/snippets/site.fud">
 <link rel="server" href="./diagnostics.fudapi">
 
-@code {
-  import type { Part } from "fudic:routes/docs/reference/diagnostics";
-}
-
 <head>
-  <title>@(data.state === "found" ? data.code + " · Fudic" : "Diagnósticos · Fudic")</title>
+  <title>Diagnósticos · Fudic</title>
   <meta name="description" content="Busca un código FUD de Fudic y lee qué significa y cómo se arregla, del mismo fichero que leen el editor y el MCP.">
-  <link rel="canonical" href=@(data.state === "found" ? "https://fudic.dev/docs/reference/diagnostics?code=" + data.code : "https://fudic.dev/docs/reference/diagnostics")>
+  <link rel="canonical" href="https://fudic.dev/docs/reference/diagnostics">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Diagnósticos · Fudic">
   <meta property="og:description" content="Qué significa cada código FUD y cómo se arregla.">
@@ -17,16 +13,13 @@
   <meta property="og:site_name" content="Fudic">
 </head>
 
-@* An explanation as its .md writes it: the runs between backticks are code. *@
-@snippet prose(parts: readonly Part[]) {@foreach (const part of parts) key (part.at) {@if (part.code) {<code>@part.text</code>} else {<span>@part.text</span>}}}
-
 @section nav {
   @render docsNav("reference-diagnostics")
 }
 
 <h1>Diagnósticos</h1>
 
-<p>Cada aviso de Fudic lleva un código, <code>FUD</code> y cuatro cifras, y un enlace a esta página con ese código. La explicación sale del mismo fichero que leen el editor y el MCP de Fudic, y está en inglés.</p>
+<p>Cada aviso de Fudic lleva un código, <code>FUD</code> y cuatro cifras, y cada código tiene su página: <code>/docs/reference/diagnostics/FUD0010</code>. La explicación sale del mismo fichero que leen el editor y el MCP de Fudic, y está en inglés.</p>
 
 <form class="diagnostic-search" method="get" action="/docs/reference/diagnostics" role="search">
   <label for="code">Código</label>
@@ -34,27 +27,14 @@
   <button type="submit">Buscar</button>
 </form>
 
-@switch (data.state) {
-  case "found":
-    <article class="diagnostic" lang="en">
-      <h2 id="diagnostic">@data.code — @render prose(@data.title)</h2>
-      <p class="severity">@data.severity</p>
-      <p>@render prose(@data.why)</p>
-      @if (data.fix.length > 0) {
-        <p><strong>Fix:</strong> @render prose(@data.fix)</p>
-      }
-      @if (data.replaced.length > 0) {
-        <p><strong>Replaced by:</strong> @render prose(@data.replaced)</p>
-      }
-    </article>
-  case "missing":
-    <p role="status">No hay ningún diagnóstico <code>@data.query</code>. Un código es <code>FUD</code> y cuatro cifras, como <code>FUD0010</code>; también vale <code>10</code>.</p>
+@if (data.missing) {
+  <p role="status">No hay ningún diagnóstico <code>@data.query</code>. Un código es <code>FUD</code> y cuatro cifras, como <code>FUD0010</code>; también vale <code>10</code>.</p>
 }
 
 <h2 id="source">De dónde sale</h2>
 
 <ul>
-  <li><strong>Del editor.</strong> El código de cada aviso es un enlace a esta página. La bombilla ofrece además «Explain FUDnnnn», que abre el mismo texto sin salir del editor (<a href="/docs/editors/writing">Escribir con el editor</a>).</li>
+  <li><strong>Del editor.</strong> El código de cada aviso es un enlace a su página. La bombilla ofrece además «Explain FUDnnnn», que abre el mismo texto sin salir del editor (<a href="/docs/editors/writing">Escribir con el editor</a>).</li>
   <li><strong>De la terminal.</strong> Cada error de <code>fudic dev</code>, del build o de la CLI termina con el mismo enlace.</li>
   <li><strong>Del MCP.</strong> Un agente lee la misma explicación por su código.</li>
 </ul>
@@ -66,6 +46,6 @@
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/form#method" target="_blank" rel="noopener"><code>&lt;form method="get"&gt;</code></a>: el buscador pone el código en la URL, sin una línea de JavaScript.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/search" target="_blank" rel="noopener"><code>&lt;input type="search"&gt;</code></a>: el campo del código.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/searchParams" target="_blank" rel="noopener"><code>URL.searchParams</code></a>: donde el servidor lo lee.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/302" target="_blank" rel="noopener"><code>302 Found</code></a>: lo que responde el servidor para llevarte a la página del código.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: la explicación va marcada en inglés dentro de una página en español.</li>
 </ul>

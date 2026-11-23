@@ -108,7 +108,7 @@ export interface FormatOptions {
  *       12  <app-badge .tone="@(42)"></app-badge>
  *                      ────
  *
- *       https://…/diagnostics?code=FUD0050
+ *       https://…/diagnostics/FUD0050
  */
 export function format(diagnostic: FudDiagnostic, options: FormatOptions = {}): string {
   const shown = render(diagnostic, options.source);

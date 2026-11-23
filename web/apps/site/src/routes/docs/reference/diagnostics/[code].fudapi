@@ -1,0 +1,19 @@
+# One diagnostic, rendered per request from its .md: the address every diagnostic links to.
+# Its handler is in src/server/routes/docs/reference/diagnostics/[code].ts.
+load ssr
+  # The code as it came in the URL.
+  asked     str
+  found     bool
+  code      str
+  title     Part[]
+  severity  str
+  why       Part[]
+  fix       Part[]
+  replaced  Part[]
+
+# A run of the explanation: plain text, or text written as code between backticks.
+type Part
+  # Its position in the sentence, the loop's key.
+  at    i32
+  text  str
+  code  bool

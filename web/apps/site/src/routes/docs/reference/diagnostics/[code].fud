@@ -1,0 +1,55 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="server" href="./[code].fudapi">
+
+@code {
+  import type { Part } from "fudic:routes/docs/reference/diagnostics/[code]";
+}
+
+<head>
+  <title>@(data.found ? data.code + " · Fudic" : "Diagnóstico no encontrado · Fudic")</title>
+  <meta name="description" content=@(data.found ? "What " + data.code + " means in Fudic and how to fix it." : "No hay ningún diagnóstico de Fudic con ese código.")>
+  <link rel="canonical" href=@("https://fudic.dev/docs/reference/diagnostics/" + data.code)>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content=@(data.code + " · Fudic")>
+  <meta property="og:description" content="What this Fudic diagnostic means and how to fix it.">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@* An explanation as its .md writes it: the runs between backticks are code. *@
+@snippet prose(parts: readonly Part[]) {@foreach (const part of parts) key (part.at) {@if (part.code) {<code>@part.text</code>} else {<span>@part.text</span>}}}
+
+@section nav {
+  @render docsNav("reference-diagnostics")
+}
+
+<form class="diagnostic-search" method="get" action="/docs/reference/diagnostics" role="search">
+  <label for="code">Código</label>
+  <input id="code" name="code" type="search" value=@data.code placeholder="FUD0010" autocomplete="off" spellcheck="false" required>
+  <button type="submit">Buscar</button>
+</form>
+
+@if (data.found) {
+  <article class="diagnostic" data-severity=@data.severity lang="en">
+    <p class="diagnostic-code"><span class="severity">@data.severity</span> @data.code</p>
+    <h1>@render prose(@data.title)</h1>
+    <p class="why">@render prose(@data.why)</p>
+    @if (data.fix.length > 0) {
+      <div class="fix">
+        <p class="fix-label">Fix</p>
+        <p>@render prose(@data.fix)</p>
+      </div>
+    }
+    @if (data.replaced.length > 0) {
+      <div class="fix">
+        <p class="fix-label">Replaced by</p>
+        <p>@render prose(@data.replaced)</p>
+      </div>
+    }
+  </article>
+} else {
+  <h1>Diagnóstico no encontrado</h1>
+  <p role="status">No hay ningún diagnóstico <code>@data.asked</code>. Un código es <code>FUD</code> y cuatro cifras, como <code>FUD0010</code>.</p>
+}
+
+<p class="diagnostic-back"><a href="/docs/reference/diagnostics">Todos los diagnósticos: de dónde salen y cómo se buscan</a></p>

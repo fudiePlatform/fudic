@@ -1,20 +1,7 @@
-# Rendered per request: the code comes in the query string (`?code=FUD0010`), the address every
-# diagnostic links to. Its handler is in src/server/routes/docs/reference/diagnostics.ts.
+# The search, rendered per request: a code in the query string (`?code=FUD0010`) redirects to its
+# own page. Its handler is in src/server/routes/docs/reference/diagnostics.ts.
 load ssr
   # What the reader typed, to keep it in the search box.
-  query     str
-  # "empty" with no code asked, "found" or "missing".
-  state     str
-  code      str
-  title     Part[]
-  severity  str
-  why       Part[]
-  fix       Part[]
-  replaced  Part[]
-
-# A run of the explanation: plain text, or text written as code between backticks.
-type Part
-  # Its position in the sentence, the loop's key.
-  at    i32
-  text  str
-  code  bool
+  query    str
+  # Whether what was typed names no code.
+  missing  bool
