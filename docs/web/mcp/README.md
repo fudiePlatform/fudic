@@ -7,7 +7,8 @@ vive el código. Es la opción «MCP» del menú de [hero.html](../hero.html). R
 ## 1. Qué es
 
 El MCP está hecho para máquinas, pero esta sección se escribe **para personas**: para quien va a
-construir con un agente (Claude Code, Copilot, Cursor, Antigravity, Codex, Gemini…) y quiere saber
+construir con un agente (Claude Code, Copilot, Cursor, Antigravity, Codex, Gemini…) o desde un chat
+(Claude en la web) y quiere saber
 qué le da el MCP, cómo conectarlo y, sobre todo, **cómo dirigir al modelo** para que construya bien.
 Sin dejar de ser la referencia completa: cada herramienta, qué hace, qué recibe y qué responde.
 
@@ -36,7 +37,8 @@ página de la Documentación.
   aspecto de un componente, que el cliente lo aceptó— y el MCP no deja que el modelo las apruebe por
   ella.
 - **Lo ves antes de aprobarlo.** Una pieza se pinta sola (su esquema accesible, su HTML o una
-  captura de un navegador real); la app entera se abre en una URL local.
+  captura de un navegador real) y, en un chat, dentro de la conversación; la app entera se abre en
+  una URL.
 - **Solo toca el proyecto.** Lee y escribe únicamente la carpeta en la que arranca, y los únicos
   comandos que ejecuta son los de un plan de Fudic (`pnpm install` tras `fudic_new` o `fudic_add`).
 
@@ -45,17 +47,22 @@ página de la Documentación.
 1. **Quien trabaja con un agente en su editor o su terminal** (Claude Code, Copilot en VS Code,
    Cursor, Antigravity, Windsurf, Codex, Gemini CLI): quiere conectarlo y saber qué le va a pedir el
    agente.
-2. **Quien empieza con Fudic** y quiere que el agente se lo enseñe construyendo, paso a paso.
+2. **Quien empieza con Fudic desde un chat** (Claude en la web): no tiene un agente en su editor y
+   quiere que el chat construya con él, paso a paso, y le enseñe lo que hace.
 3. **Quien ya conoce otro framework y forma equipos** con IA: quiere entender el método (fases,
    aprobaciones, historial) para exigirlo.
 
-### Fuera por ahora: el chat y el túnel
+### El chat: qué se cuenta y qué no
 
-`fudic-mcp --http --tunnel` existe para probar el MCP desde un chat como Claude en la web, pero la
-infraestructura no está montada y no es prioridad. **No se documenta**, y con él tampoco lo que solo
-existe por HTTP: `fudic_files`, `fudic_read` y `fudic_write`, el secreto de la URL, la puerta con
-cookie de `fudic_preview` y la pieza dibujada en la conversación con MCP Apps. Todo lo de esta
-sección es el MCP por stdio, el que arranca el agente.
+El chat se cuenta entero **en lo que el usuario ve**: que se puede construir desde una
+conversación, que el MCP trae entonces sus propias herramientas de ficheros (`fudic_files`,
+`fudic_read`, `fudic_write`), que cada pieza se dibuja dentro de la conversación (MCP Apps) y que la
+app se abre en una URL, también desde el móvil.
+
+Lo que **no se detalla** es cómo llega el chat al proyecto: el túnel, el secreto de la URL, los
+puertos y la puerta con cookie de `fudic_preview`. Hoy es un túnel de Cloudflare para probar, y
+cambiará cuando la infraestructura esté montada. Las páginas dicen que existe y que se explicará
+entonces, sin comandos ni pasos que luego haya que retirar.
 
 ## 2. Cómo dirigir un modelo con el MCP
 
@@ -73,7 +80,8 @@ Lo que hay que enseñar con ejemplos de conversación reales:
 
 - **Pedir.** «Quiero una librería de componentes: Button, Card, Input». El modelo no construye los
   tres: pregunta primero por el Button (props, tipos, valores por defecto, comportamiento) y propone
-  cuando la petición es vaga. El prompt `new-app` del MCP arranca esto solo.
+  cuando la petición es vaga. El prompt `new-app` del MCP (en el menú del chat, o como orden en
+  el agente) arranca esto solo.
 - **Las fases de una pieza**, en el orden en que pasan: `criteria` → `api` → `red` → `view` →
   `connect` → `document` → `showcase` → `look` → `done`. Qué hace el modelo en cada una y en cuáles
   te toca hablar a ti.
@@ -107,11 +115,11 @@ para validar.
 |---|---|---|---|
 | 1 | **Qué es el MCP** | Una portada: qué es MCP (el estándar abierto, citado), por qué un modelo necesita el de Fudic, lo que hace en una frase por idea (§1), lo único que toca y por dónde seguir. | Por escribir |
 | 2 | **Dirigir un modelo** | Cuatro páginas: El reparto de papeles (tú, el modelo, el MCP), Las fases de una pieza (una por una, quién habla en cada una), Aprobar, caducar y reabrir (`approved`, `look`, `accepted`, `reopened`, `done`) y Una conversación de principio a fin (de «quiero una librería» a la primera pieza `done`, real, con sus capturas). | Por escribir |
-| 3 | **Conectarlo** | Una página por entorno: Claude Code, VS Code (Copilot), Cursor, Antigravity, Windsurf, Codex y Gemini CLI. Cada una con su fichero de configuración tal cual, dónde va y cómo se comprueba que está conectado. Y Otros clientes: cualquiera que arranque un servidor MCP por stdio. | Por escribir |
+| 3 | **Conectarlo** | Una página por entorno: Claude Code, VS Code (Copilot), Cursor, Antigravity, Windsurf, Codex y Gemini CLI. Cada una con su fichero de configuración tal cual, dónde va y cómo se comprueba que está conectado. Otros clientes: cualquiera que arranque un servidor MCP por stdio. Y Desde un chat: lo que cambia (las herramientas de ficheros, la pieza en la conversación, la app en una URL), sin el detalle de cómo se conecta (§1). | Por escribir |
 | 4 | **Lo que genera la CLI** | `fudic new` lo deja listo: `@fudic/mcp` en `devDependencies`, `.mcp.json`, `AGENTS.md` (el estándar que leen Codex, Copilot, Cursor, Antigravity…) y `CLAUDE.md`, que solo dice `@AGENTS.md` para que Claude Code lea el mismo fichero. Qué añadir a `AGENTS.md` y qué no. Las `instructions` que el servidor manda al modelo, línea a línea. Un proyecto creado antes: `pnpm add -D @fudic/mcp`. | Por escribir |
-| 5 | **Ver lo que se construye** | Una pieza (`fudic_render`: su esquema accesible, su HTML, una captura en un navegador real), La app entera (`fudic_preview`, el servidor de desarrollo con HMR), El aspecto (`fudic_look`: `new`, `same`, `changed`, `gone`, el hash de lo que dibuja) y Llamar al servidor (`fudic_call`). | Por escribir |
-| 6 | **Las herramientas** | Una página de grupo con las 18 herramientas y la forma común de la respuesta (versión, commit, diagnósticos con `fichero:línea:columna`, `next`). Fuera del menú, **una página por herramienta**, como los comandos de la CLI: qué hace, sus argumentos, una llamada y su respuesta reales, cuándo la usa el modelo y sus códigos. | Por escribir |
-| 7 | **La guía del modelo** | Lo que lee el modelo: los diez temas de `fudic_guide` (`overview`, `components`, `pages`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow`, `config`), qué cuenta cada uno y su enlace a la Documentación; un código de diagnóstico explicado; el prompt `new-app`. | Por escribir |
+| 5 | **Ver lo que se construye** | Una pieza (`fudic_render`: su esquema accesible, su HTML, una captura en un navegador real; en un chat, la pieza dibujada en la conversación), La app entera (`fudic_preview`, el servidor de desarrollo con HMR; en un chat, una URL que se abre también en el móvil), El aspecto (`fudic_look`: `new`, `same`, `changed`, `gone`, el hash de lo que dibuja) y Llamar al servidor (`fudic_call`). | Por escribir |
+| 6 | **Las herramientas** | Una página de grupo con las 21 herramientas y la forma común de la respuesta (versión, commit, diagnósticos con `fichero:línea:columna`, `next`). Fuera del menú, **una página por herramienta**, como los comandos de la CLI: qué hace, sus argumentos, una llamada y su respuesta reales, cuándo la usa el modelo y sus códigos. | Por escribir |
+| 7 | **La guía del modelo** | Lo que lee el modelo: los diez temas de `fudic_guide` (`overview`, `components`, `pages`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow`, `config`), qué cuenta cada uno y su enlace a la Documentación; un código de diagnóstico explicado; el prompt `new-app`; el recurso `ui://fudic/view.html` con el que un chat dibuja una pieza. | Por escribir |
 | 8 | **Workspaces** | El MCP en la raíz de un workspace (cada app y librería por separado, como su build) o en la carpeta de una app (para sus funciones del `.fudapi`); la librería con showcase y la página de error compartida. | Por escribir |
 
 ### 3.1 Las herramientas, agrupadas
@@ -127,8 +135,9 @@ El grupo 6 las ordena por lo que hacen, no por orden alfabético:
 | Probar | `fudic_test`, `fudic_spec_run` |
 | Ver | `fudic_render`, `fudic_preview`, `fudic_look`, `fudic_call` |
 | Decidir | `fudic_record` |
+| Ficheros (solo desde un chat) | `fudic_files`, `fudic_read`, `fudic_write` |
 
-Sale del código de `packages/mcp` (`server.ts`, `project-tools.ts`), de su README y de su guía
+Sale del código de `packages/mcp` (`server.ts`, `project-tools.ts`, `file-tools.ts`), de su README y de su guía
 (`packages/mcp/guide`). Cada llamada y cada respuesta citadas son de una ejecución real.
 
 ### 3.2 Los entornos
@@ -203,3 +212,4 @@ Decidido, pero **no se hace ahora**: va junto a `robots.txt` y `sitemap.xml`, al
 |---|---|
 | 2026-11-23 | Este documento, para revisión. |
 | 2026-11-23 | Decisiones de Pedro: fuera el túnel y el chat (no se documentan); subapp en `fudic.dev/mcp`; sin componentes propios, los de `ui`; el `llms.txt`, al final con `robots.txt` y `sitemap.xml`. |
+| 2026-11-23 | Corrección de Pedro: el chat **sí** se cuenta (herramientas de ficheros, la pieza en la conversación, la app en una URL); lo que no se detalla es cómo se conecta (túnel, secreto, puertos), porque cambiará con la infraestructura. Vuelven las 21 herramientas. |
