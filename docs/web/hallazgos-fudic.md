@@ -508,3 +508,14 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
     `test/commands/commands.test.ts`, `test/commands/_deps.ts`, `test/extension.test.ts`,
     `test/manifest.test.ts`, `test/vscode-shape.test.ts` y `test/acceptance/criteria.test.ts`.
   - Comprobar que `language-configuration.json` sigue dando a `Ctrl+/` el comentario de VS Code.
+
+## 35. Los diez tests end-to-end de `/ciclo` fallan
+
+- **Qué pasó.** Al pasar a inglés `ciclo-demo` de `examples/basic` (2026-11-23), se ejecutó
+  `tests/ciclo.spec.ts` tras `vite build` y el build sin Service Worker: fallan los diez, también
+  con el código anterior al cambio (comprobado con `git stash`). Todos se paran en `open`
+  (`tests/ciclo.spec.ts:36`): la ruta nunca escribe en el registro su `afterHydrate` ni su
+  `onConnect`, y el registro sigue vacío a los 5 s. El test unitario de `ciclo-demo` (`mount`) sí
+  pasa.
+- **Qué debería hacer.** Averiguar por qué la ruta `/ciclo` no hidrata al cargar en la preview
+  (su `effect` de nivel superior), o, si cambió a propósito, poner al día el test.

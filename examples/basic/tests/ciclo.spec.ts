@@ -5,7 +5,7 @@
  * hook they run into the page's record (`<ol class="registro">`, «who · hook»), so every
  * assertion reads text the page wrote with its own hands, in the order things happened.
  *
- * The route hydrates at load (its top-level `effect`), and hands `.estado` to its four
+ * The route hydrates at load (its top-level `effect`), and hands `.state` to its four
  * `ciclo-demo`, so they hydrate with it. `ciclo-perezoso` is in nobody's tree: it waits for a
  * gesture. The bfcache round trip needs Chrome's back-forward cache, which Playwright turns off
  * by default; this file turns it back on.
@@ -86,17 +86,17 @@ test.describe('the hooks of a component (criterion 1)', () => {
     expect(all.some((l) => l.endsWith('onDispose'))).toBe(false);
   });
 
-  test('changing estado changes the host attribute and its border', async ({ page }) => {
+  test('changing state changes the host attribute and its border', async ({ page }) => {
     await open(page);
     const host = page.locator('ciclo-demo.servidor');
-    await expect(host).toHaveAttribute('estado', 'inactivo');
+    await expect(host).toHaveAttribute('state', 'inactive');
     await expect(host).toHaveCSS('border-top-color', 'rgb(154, 160, 166)');
     await page.locator('button.alternar').click();
-    await expect(host).toHaveAttribute('estado', 'activo');
+    await expect(host).toHaveAttribute('state', 'active');
     await expect(host).toHaveCSS('border-top-color', 'rgb(52, 168, 83)');
-    await expect(page.locator('ciclo-demo.fila').first()).toHaveAttribute('estado', 'activo');
+    await expect(page.locator('ciclo-demo.fila').first()).toHaveAttribute('state', 'active');
     await page.locator('button.alternar').click();
-    await expect(host).toHaveAttribute('estado', 'inactivo');
+    await expect(host).toHaveAttribute('state', 'inactive');
   });
 });
 

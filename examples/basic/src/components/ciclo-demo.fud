@@ -1,26 +1,26 @@
 @code {
   /**
-   * Una instancia que apunta en el registro de la página cada momento de su vida: los siete
-   * hooks. Refleja su prop `estado` en su propio tag, y el borde cambia con él.
+   * An instance that writes down in the page's record every moment of its life: the seven
+   * hooks. It reflects its `state` prop on its own tag, and the border changes with it.
    */
-  const { nombre = "", estado = "inactivo" } = props<{
-    /** Cómo se llama esta instancia en el registro. */
-    nombre?: string;
-    /** "activo" pinta el borde verde. */
-    estado?: "activo" | "inactivo";
+  const { name = "", state = "inactive" } = props<{
+    /** What this instance is called in the record. */
+    name?: string;
+    /** "active" paints the border green. */
+    state?: "active" | "inactive";
   }>();
 
   import { note } from "../store/ciclo.js";
 
-  beforeHydrate(() => note(nombre, "beforeHydrate"));
-  afterHydrate(() => note(nombre, "afterHydrate"));
-  beforeCreate(() => note(nombre, "beforeCreate"));
-  afterCreate(() => note(nombre, "afterCreate"));
+  beforeHydrate(() => note(name, "beforeHydrate"));
+  afterHydrate(() => note(name, "afterHydrate"));
+  beforeCreate(() => note(name, "beforeCreate"));
+  afterCreate(() => note(name, "afterCreate"));
   onConnect(() => {
-    note(nombre, "onConnect");
+    note(name, "onConnect");
   });
-  onDisconnect(() => note(nombre, "onDisconnect"));
-  onDispose(() => note(nombre, "onDispose"));
+  onDisconnect(() => note(name, "onDisconnect"));
+  onDispose(() => note(name, "onDispose"));
 }
 
 <head>
@@ -31,7 +31,7 @@
       border-radius: var(--radius-box);
       padding: 0.5rem 0.8rem;
     }
-    :host([estado="activo"]) {
+    :host([state="active"]) {
       border-color: #34a853;
     }
     p {
@@ -40,8 +40,8 @@
   </style>
 </head>
 
-<ciclo-demo estado=@estado>
+<ciclo-demo state=@state>
   <template shadowrootmode="open">
-    <p><strong>@nombre</strong> · @estado</p>
+    <p><strong>@name</strong> · @state</p>
   </template>
 </ciclo-demo>

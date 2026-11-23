@@ -9,7 +9,7 @@
   import { effect, signal } from "@fudic/core";
   import { clearRecord, note, readNumber, record, saveNumber } from "../store/ciclo.js";
 
-  const estado = signal<"activo" | "inactivo">("inactivo");
+  const estado = signal<"active" | "inactive">("inactive");
   const abierto = signal(false);
   const filas = signal(["fila A", "fila B"]);
   const contador = signal(0);
@@ -43,7 +43,7 @@
   });
 
   function alternar() {
-    estado.set(estado() === "activo" ? "inactivo" : "activo");
+    estado.set(estado() === "active" ? "inactive" : "active");
   }
 
   function abrir() {
@@ -108,14 +108,14 @@
     <button type="button" class="limpiar" @click=@limpiar>Limpiar registro</button>
   </div>
 
-  <ciclo-demo class="servidor" .nombre="servidor" .estado=@estado()></ciclo-demo>
+  <ciclo-demo class="servidor" .name="servidor" .state=@estado()></ciclo-demo>
 
   @if (abierto()) {
-    <ciclo-demo class="creado" .nombre="creado" .estado=@estado()></ciclo-demo>
+    <ciclo-demo class="creado" .name="creado" .state=@estado()></ciclo-demo>
   }
 
   @foreach (const fila of filas()) key (fila) {
-    <ciclo-demo class="fila" .nombre=@fila .estado=@estado()></ciclo-demo>
+    <ciclo-demo class="fila" .name=@fila .state=@estado()></ciclo-demo>
   }
 </div>
 
