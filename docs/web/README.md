@@ -25,7 +25,7 @@ Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 | **Hero** | La portada: [hero.html](hero.html). | Boceto hecho; se porta a `.fud` con el esqueleto. |
 | **Documentación** | La guía completa del framework (§5). La escribimos entre los dos. | **Ahora.** |
 | **Tutorial** | `examples/basic` preparado para abrirse en StackBlitz, con todos los ejemplos revisados. | Segundo proceso, no ahora. |
-| **MCP** | Toda la documentación del MCP. | Después de la Documentación. |
+| **MCP** | Toda la documentación del MCP, en su propia app: [mcp/README.md](mcp/README.md). | **Ahora**: plan en revisión. |
 
 ### Diseño de la Documentación
 
