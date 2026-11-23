@@ -1,13 +1,15 @@
 <link rel="layout" href="@web/ui/layouts/docs.fud">
 <link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
   <title>Qué es el MCP · Fudic</title>
-  <meta name="description" content="El MCP de Fudic enseña Fudic a un modelo que no lo conoce y lo hace construir contigo, paso a paso, demostrando que lo que hace funciona.">
+  <meta name="description" content="Un modelo de lenguaje no conoce Fudic. El MCP de Fudic se lo enseña desde tu proyecto y le da las herramientas para construir contigo, paso a paso, demostrando que lo que hace funciona.">
   <link rel="canonical" href="https://fudic.dev/mcp">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Qué es el MCP · Fudic">
-  <meta property="og:description" content="El MCP de Fudic: un modelo que no conoce Fudic construye contigo y te demuestra que funciona.">
+  <meta property="og:description" content="El MCP de Fudic enseña Fudic a un modelo que no lo conoce y lo hace construir contigo, paso a paso.">
   <meta property="og:url" content="https://fudic.dev/mcp">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -17,6 +19,80 @@
 }
 
 @section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#mcp">MCP, el estándar</a></li>
+        <li><a href="#why">Por qué un modelo lo necesita</a></li>
+        <li><a href="#what">Lo que hace</a></li>
+        <li><a href="#where">Desde un agente o desde un chat</a></li>
+        <li><a href="#scope">Lo que toca</a></li>
+        <li><a href="#standard">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
 }
 
 <h1>Qué es el MCP</h1>
+
+<p>Un modelo de lenguaje no conoce Fudic. El MCP de Fudic se lo enseña desde tu proyecto y le da las herramientas para construir contigo, paso a paso, demostrando que lo que hace funciona.</p>
+
+<h2 id="mcp">MCP, el estándar</h2>
+
+<p>MCP, el Model Context Protocol, es el estándar abierto con el que un modelo usa herramientas de fuera: leer una guía, crear un fichero o ejecutar unas pruebas. Un agente como Claude Code, Copilot o Cursor arranca servidores MCP y le ofrece al modelo las herramientas de cada uno.</p>
+
+<p>Fudic trae su propio servidor MCP, el paquete <code>@@fudic/mcp</code>. Sus herramientas se llaman todas <code>fudic_</code> y algo: <code>fudic_status</code>, <code>fudic_generate</code>, <code>fudic_check</code>…</p>
+
+<h2 id="why">Por qué un modelo lo necesita</h2>
+
+<p>Un modelo conoce React, Angular y Vue porque los vio en millones de ficheros al entrenarse. Fudic no lo ha visto nunca. Y Fudic se parece lo justo para que el modelo escriba de memoria algo que casi funciona. Para escuchar un clic, por ejemplo, escribiría esto:</p>
+
+<ui-code>
+<pre><code>&lt;button onClick=&#123;inc&#125;&gt;+1&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>En Fudic, un evento se escucha con <code>@@</code> delante de su nombre:</p>
+
+<ui-code>
+<pre><code>&lt;button @@click=@@inc&gt;+1&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>Por eso lo primero que el MCP le dice al modelo es que no conoce Fudic. El agente añade estas instrucciones a lo que el modelo lee antes de la conversación, y esta es la primera:</p>
+
+<ui-code>
+<pre><code>fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.</code></pre>
+</ui-code>
+
+<p>Las instrucciones están en inglés, como todo lo que el MCP le dice al modelo. El modelo te habla en tu idioma.</p>
+
+<h2 id="what">Lo que hace</h2>
+
+<ul>
+  <li><strong>Enseña Fudic desde el proyecto.</strong> La guía viaja con el paquete: diez temas, de los componentes a los criterios, y la explicación de cada código de diagnóstico. El modelo lee un tema antes de escribir por primera vez un tipo de fichero.</li>
+  <li><strong>Comprueba con tu Fudic.</strong> El MCP compila, comprueba y ejecuta las pruebas con el Fudic que tiene instalado el proyecto. Lo que dice el MCP es lo que dirá el build.</li>
+  <li><strong>Crea como la CLI.</strong> Para crear un componente, el modelo usa <code>fudic_generate</code>, que hace lo mismo que <a href="/docs/cli/generate"><code>fudic generate</code></a>: la carpeta, el tag, el test, el <code>.fudspec</code> y su fixture. Después el modelo edita lo que se ha creado, sin inventar la estructura.</li>
+  <li><strong>Dice el siguiente paso.</strong> <code>fudic_status</code> lee los ficheros, el historial de cada pieza y los diagnósticos, y responde con <code>next</code>: una sola cosa que hacer.</li>
+  <li><strong>Lo demuestra.</strong> Cada pieza pasa por <a href="/mcp/phases">unas fases</a>, y ninguna se da por terminada sin sus tests y sus <a href="/docs/testing">criterios</a> en verde.</li>
+  <li><strong>Te deja decidir.</strong> Los criterios de cada pieza y el aspecto de un componente los aprueba la persona. El MCP no deja que el modelo los apruebe por ella. Cómo se reparte el trabajo lo explica <a href="/mcp/roles">El reparto de papeles</a>.</li>
+  <li><strong>Te lo enseña.</strong> El MCP pinta una pieza sola y te enseña su HTML, una captura de un navegador de verdad o su estructura accesible: los roles y los nombres con los que la encuentra un lector de pantalla. La app entera se abre en una URL.</li>
+</ul>
+
+<h2 id="where">Desde un agente o desde un chat</h2>
+
+<p>Con un agente en tu editor o en tu terminal, como Claude Code, Copilot en VS Code, Cursor, Antigravity, Windsurf, Codex o Gemini CLI, el agente arranca el MCP en tu proyecto. <a href="/docs/cli/new"><code>fudic new</code></a> ya lo deja configurado. El proyecto lleva <code>@@fudic/mcp</code> entre sus dependencias, un <code>.mcp.json</code> que dice cómo arrancarlo y un <code>AGENTS.md</code> que le pide al agente que lo use.</p>
+
+<p>Desde un chat, como Claude en la web, el MCP funciona igual. Como el chat no tiene herramientas para tus ficheros, el MCP añade tres para leerlos y escribirlos. Además, cada pieza se dibuja dentro de la conversación. Cómo se conecta un chat a tu proyecto se explicará cuando esté listo para usarse.</p>
+
+<h2 id="scope">Lo que toca</h2>
+
+<p>El MCP solo lee y escribe la carpeta en la que arranca. Ejecuta las pruebas del proyecto y los comandos de Fudic, como el <code>pnpm install</code> que sigue a crear un proyecto. Nunca ejecuta un comando que le pase el modelo.</p>
+
+<h2 id="standard">El estándar</h2>
+
+<ul>
+  <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>: qué es MCP, cómo se conectan un agente y un servidor, y la especificación entera.</li>
+  <li><a href="https://modelcontextprotocol.io/specification/latest/server/tools" target="_blank" rel="noopener">Tools</a>: cómo ofrece un servidor sus herramientas y cómo las llama el modelo.</li>
+  <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a>: el fichero que leen los agentes para saber cómo se trabaja en un proyecto.</li>
+  <li><a href="https://modelcontextprotocol.io/extensions/apps/overview" target="_blank" rel="noopener">MCP Apps</a>: la extensión con la que un chat dibuja una pieza dentro de la conversación.</li>
+</ul>

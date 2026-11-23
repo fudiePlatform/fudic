@@ -1,0 +1,112 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El reparto de papeles · Fudic</title>
+  <meta name="description" content="Con el MCP de Fudic, tú decides, el modelo construye y el MCP marca el camino y comprueba lo que se hace. Qué hace cada uno, cómo se pide y qué hacer cuando el modelo se desvía.">
+  <link rel="canonical" href="https://fudic.dev/mcp/roles">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El reparto de papeles · Fudic">
+  <meta property="og:description" content="Tú decides, el modelo construye y el MCP marca el camino y comprueba.">
+  <meta property="og:url" content="https://fudic.dev/mcp/roles">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("roles")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#who">Quién hace qué</a></li>
+        <li><a href="#next">El siguiente paso</a></li>
+        <li><a href="#ask">Pedir</a></li>
+        <li><a href="#tokens">Antes del primer componente</a></li>
+        <li><a href="#drift">Cuando el modelo se desvía</a></li>
+        <li><a href="#standard">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El reparto de papeles</h1>
+
+<p>Cuando construyes con el MCP, tú decides, el modelo construye y el MCP marca el camino y comprueba lo que se hace. Ninguno de los tres hace el trabajo de otro.</p>
+
+<h2 id="who">Quién hace qué</h2>
+
+<ul>
+  <li><strong>Tú</strong> dices qué quieres y respondes a lo que te pregunta el modelo. Apruebas los criterios de cada pieza y cómo se ve cada componente, y dices cuándo algo tiene que cambiar.</li>
+  <li><strong>El modelo</strong> pregunta, propone y construye. Crea los ficheros con las herramientas del MCP, los escribe y los corrige hasta que no queda ningún error. Después ejecuta las pruebas y te enseña el resultado.</li>
+  <li><strong>El MCP</strong> le enseña Fudic al modelo y le dice cuál es el siguiente paso. Comprueba lo que el modelo escribe y apunta en el historial de cada pieza lo que pasa.</li>
+</ul>
+
+<h2 id="next">El siguiente paso</h2>
+
+<p>El modelo no decide por su cuenta por dónde seguir. Llama a <code>fudic_status</code>, que lee el proyecto y responde con <code>next</code>, una sola cosa que hacer. Esta es la respuesta real para un botón cuyos criterios acababan de aprobarse:</p>
+
+<ui-code>
+<pre><code>&#123;
+  "phase": "red",
+  "units": [
+    &#123;
+      "piece": "src/components/tienda-button/tienda-button.fud",
+      "phase": "red",
+      "approval": "valid",
+      "tests": "not run",
+      "spec": "not run",
+      …
+    &#125;,
+    …
+  ],
+  "next": "Write the unit tests of src/components/tienda-button/tienda-button.fud in src/components/tienda-button/tienda-button.test.ts, then run fudic_test and fudic_spec_run: every test and every criterion must fail for the right reason (fail, not broken). Do not write the view yet. Call fudic_guide &#123; topic: \"testing\" &#125; first."
+&#125;</code></pre>
+</ui-code>
+
+<p>Cada pieza sale con su fase, con su aprobación y con el estado de sus pruebas. La fase <code>red</code> pide tests que fallen antes de escribir la vista, y la explica <a href="/mcp/phases">Las fases de una pieza</a>.</p>
+
+<p>El modelo sigue <code>next</code> cuando le has pedido que construya. Si le pides otra cosa, hace lo que pides. En <a href="/mcp/conversation">la conversación de ejemplo</a>, el primer <code>next</code> hablaba de la página de inicio, y la persona había pedido un botón: el modelo empezó por el botón.</p>
+
+<h2 id="ask">Pedir</h2>
+
+<p>Pide lo que quieres como se lo pedirías a una persona: «Quiero tres componentes para mi tienda: un botón, una tarjeta de producto y un campo de texto». El modelo no construye los tres a la vez. Empieza por uno, te pregunta lo que necesita saber y, si tu petición es vaga, te propone algo concreto.</p>
+
+<p>En la conversación de ejemplo, el modelo propuso cinco props y nueve criterios para el botón. También preguntó si hacía falta un botón de ancho completo y si sobraba un tamaño pequeño. No escribió la vista hasta que la persona contestó y aprobó la propuesta.</p>
+
+<p>El MCP trae también un prompt, <code>new-app</code>, que arranca esto por ti: pide al modelo que mire el proyecto y que te pregunte solo lo que necesita. Los agentes que muestran los prompts de MCP lo ofrecen como una orden, y un chat, en su menú.</p>
+
+<h2 id="tokens">Antes del primer componente</h2>
+
+<p>Los tokens de diseño son los colores, los espacios y las tipografías que leen todos los componentes. La guía del MCP le pide al modelo que los acuerde contigo antes de escribir el primer componente. Si el modelo no te pregunta, pídeselo tú: cambiar un token después cambia todo lo que ya aprobaste.</p>
+
+<h2 id="drift">Cuando el modelo se desvía</h2>
+
+<p>Un modelo puede saltarse un paso o afirmar algo que no es cierto. En la conversación de ejemplo pasó dos veces:</p>
+
+<ul>
+  <li>El modelo no acordó los tokens con la persona. Vio que el proyecto ya tenía unos y los dio por buenos.</li>
+  <li>Después de cambiar el botón, el modelo dijo que las capturas de antes seguían guardadas para compararlas. No era cierto: el MCP solo guarda las capturas de cómo está el componente ahora.</li>
+</ul>
+
+<p>Cuando algo no cuadra, pídele al modelo que lo compruebe con el MCP:</p>
+
+<ul>
+  <li><strong>«Llama a <code>fudic_status</code>».</strong> Devuelve al modelo al camino: dónde está cada pieza y qué toca ahora.</li>
+  <li><strong>«Lee la guía de <code>components</code>».</strong> Antes de un tipo de fichero que todavía no ha escrito, el modelo tiene que leer su tema de la guía.</li>
+  <li><strong>«Describe el componente antes de usarlo».</strong> <code>fudic_describe</code> da las props, los slots y los eventos de un componente sin abrir su fichero.</li>
+</ul>
+
+<p>Y si el modelo te propone algo que no quieres, dile que no. Los criterios y el aspecto no avanzan sin tu aprobación.</p>
+
+<h2 id="standard">El estándar</h2>
+
+<ul>
+  <li><a href="https://modelcontextprotocol.io/specification/latest/server/tools" target="_blank" rel="noopener">Tools</a>: cómo ofrece un servidor MCP sus herramientas, como <code>fudic_status</code>, y cómo las llama el modelo.</li>
+  <li><a href="https://modelcontextprotocol.io/specification/latest/server/prompts" target="_blank" rel="noopener">Prompts</a>: las peticiones ya escritas que un servidor ofrece a la persona, como <code>new-app</code>.</li>
+  <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a>: el fichero con el que <code>fudic new</code> le dice al agente que use el MCP.</li>
+</ul>

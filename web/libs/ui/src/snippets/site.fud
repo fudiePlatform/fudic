@@ -218,6 +218,15 @@
     <summary>Páginas</summary>
     <ol>
       <li><a href="/mcp" aria-current=@(current === "mcp" ? "page" : false)>Qué es el MCP</a></li>
+      <li>
+        <span class="chapter">Dirigir un modelo</span>
+        <ol>
+          <li><a href="/mcp/roles" aria-current=@(current === "roles" ? "page" : false)>El reparto de papeles</a></li>
+          <li><a href="/mcp/phases" aria-current=@(current === "phases" ? "page" : false)>Las fases de una pieza</a></li>
+          <li><a href="/mcp/approval" aria-current=@(current === "approval" ? "page" : false)>Aprobar, caducar y reabrir</a></li>
+          <li><a href="/mcp/conversation" aria-current=@(current === "conversation" ? "page" : false)>Una conversación de principio a fin</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

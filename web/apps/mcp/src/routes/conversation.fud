@@ -1,0 +1,159 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Una conversación de principio a fin · Fudic</title>
+  <meta name="description" content="Una conversación real con un agente que no sabía nada de Fudic: de pedir tres componentes a tener el primero, un botón, aprobado y terminado con el MCP de Fudic.">
+  <link rel="canonical" href="https://fudic.dev/mcp/conversation">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Una conversación de principio a fin · Fudic">
+  <meta property="og:description" content="Una conversación real con el MCP de Fudic, de la petición al primer componente terminado.">
+  <meta property="og:url" content="https://fudic.dev/mcp/conversation">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("conversation")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#request">La petición</a></li>
+        <li><a href="#proposal">La propuesta</a></li>
+        <li><a href="#red">El rojo</a></li>
+        <li><a href="#view">La vista</a></li>
+        <li><a href="#look">El aspecto</a></li>
+        <li><a href="#done">Terminado</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Una conversación de principio a fin</h1>
+
+<p>Esta es una conversación real con un agente que no sabía nada de Fudic. Empieza cuando la persona pide tres componentes y termina con el primero, un botón, aprobado y terminado. La página recoge lo que dijo la persona y resume lo que hizo el modelo entre medias.</p>
+
+<p>El proyecto lo creó <a href="/docs/cli/new"><code>fudic new tienda</code></a>, y el agente fue Claude Code con el MCP que el proyecto trae configurado. La conversación fue en español, así que el modelo escribió en español los comentarios y los nombres de los criterios.</p>
+
+<h2 id="request">La petición</h2>
+
+<blockquote>
+  <p>Quiero tres componentes para mi tienda: un botón, una tarjeta de producto y un campo de texto. ¿Por dónde empezamos?</p>
+</blockquote>
+
+<p>El modelo llamó primero a <code>fudic_status</code>, que le dijo que el proyecto no tenía errores y solo tenía la página de inicio. Antes de proponer nada, leyó dos temas de la guía del MCP: <code>overview</code>, qué es Fudic, y <code>workflow</code>, cómo se trabaja. Después miró los tokens de diseño del proyecto y vio que la guía de estilos ya traía unos. Los dio por buenos sin preguntar: es el primero de los dos desvíos de esta conversación.</p>
+
+<p>Empezó por el botón y lo creó con <code>fudic_generate</code>, como haría <a href="/docs/cli/generate/component"><code>fudic g component button</code></a>. Leyó los temas <code>fudspec</code> y <code>components</code> de la guía y escribió una propuesta en los ficheros del botón.</p>
+
+<h2 id="proposal">La propuesta</h2>
+
+<p>El modelo propuso cinco props: la variante (principal, secundaria o de peligro), el tamaño, el tipo de botón, si está deshabilitado y si está ocupado. También escribió nueve criterios en el <code>.fudspec</code>, como estos dos:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fudspec">
+<pre><code># Un producto sin stock no se puede añadir: el botón está ahí, se lee, y no responde.
+criterion sin-stock-no-responde
+  given
+    props deshabilitada
+  then
+    visible role:button/"Sin stock"
+    disabled role:button/"Sin stock"
+
+# Se puede pulsar con el dedo en el móvil, y un texto largo no lo deforma.
+criterion se-pulsa-con-el-dedo
+  given
+    props base
+  then
+    min-height tienda-button 40</code></pre>
+</ui-code>
+
+<p>Cada <code>props</code> nombra un caso del fixture, que el modelo escribió al lado:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fixture.ts">
+<pre><code>export default &#123;
+  base: &#123; $content: 'Añadir al carrito' &#125;,
+  secundaria: &#123; variant: 'secondary', $content: 'Seguir comprando' &#125;,
+  deshabilitada: &#123; disabled: true, $content: 'Sin stock' &#125;,
+  ocupada: &#123; busy: true, $content: 'Añadir al carrito' &#125;,
+  …
+&#125; satisfies Fixtures&lt;$Props&gt;;</code></pre>
+</ui-code>
+
+<p>Comprobó que no había diagnósticos, enseñó la propuesta y preguntó dos cosas: si hacía falta un botón de ancho completo y si sobraba el tamaño pequeño.</p>
+
+<blockquote>
+  <p>Quita el tamaño sm, de momento sobra, y no hace falta ancho completo. Lo demás está bien: apruebo las props y los criterios.</p>
+</blockquote>
+
+<p>El modelo quitó el tamaño y apuntó la aprobación con <code>fudic_record</code>.</p>
+
+<h2 id="red">El rojo</h2>
+
+<p><code>fudic_status</code> pasó el botón a la fase de rojo. El modelo leyó el tema <code>testing</code> y escribió ocho tests unitarios. Las dos primeras veces salieron rotos, no en rojo. Primero, los tests pasaban al componente una prop que solo existe en el fixture. Después, la comprobación del principio de cada test lanzaba un error en vez de fallar. El modelo los corrigió hasta que los ocho fallaron por la razón correcta.</p>
+
+<p>Al ejecutar los criterios, uno dio error. El criterio enfocaba el botón de dentro antes de que existiera, y el paso agotó su tiempo. El modelo lo reescribió para enfocar el componente y comprobar que el foco acaba en el botón. Como había cambiado un criterio aprobado, llamó a <code>fudic_status</code>, que le dijo que la aprobación había caducado. Enseñó el cambio, línea a línea, y preguntó otra vez.</p>
+
+<blockquote>
+  <p>Sí, así está mejor. Apruébalo y sigue con el botón.</p>
+</blockquote>
+
+<h2 id="view">La vista</h2>
+
+<p>El modelo leyó los temas <code>view</code> y <code>html-css</code> de la guía y la hoja de <code>&lt;button&gt;</code> de la guía de estilos del proyecto, que ya daba el color, el foco y el estado deshabilitado. Su vista solo añadió las variantes, la altura para el dedo y un indicador que gira mientras el botón está ocupado.</p>
+
+<p>Los nueve criterios pasaron en el navegador, pero dos de los ocho tests unitarios fallaban. El modelo vio que el error estaba en esos tests, que no esperaban la hoja de la guía, y no los tocó por su cuenta: explicó el problema y enseñó la línea que cambiaría.</p>
+
+<blockquote>
+  <p>Sí, corrige el test. Y enséñame cómo queda.</p>
+</blockquote>
+
+<h2 id="look">El aspecto</h2>
+
+<p>Con los ocho tests en verde, el modelo llamó a <code>fudic_look</code>, que pintó los seis casos del fixture en un navegador. El modelo miró las capturas antes de enseñarlas, y vio un problema que nadie le había pedido buscar: «ocupado» y «deshabilitado» se veían igual de apagados, aunque no significan lo mismo. Propuso que el botón ocupado se viera entero y que avisara solo el indicador.</p>
+
+<blockquote>
+  <p>Tienes razón: deja ocupada a plena opacidad, que avise solo el indicador. No publiques nada, enséñamela otra vez aquí y si queda bien la apruebo.</p>
+</blockquote>
+
+<p>El modelo cambió el CSS, volvió a pasar los tests y los criterios, y repitió <code>fudic_look</code>. Estos son los seis casos que enseñó:</p>
+
+<figure>
+  <img src="../images/tienda-button-look.webp" width="679" height="140" style="aspect-ratio: 679 / 140" loading="lazy" decoding="async" alt="Seis botones. Arriba, Añadir al carrito en azul, Seguir comprando en blanco con borde gris y Vaciar el carrito en rojo. Abajo, Sin stock en azul apagado, Añadir al carrito en azul con un aro que gira, y Añadir al carrito y seguir con la compra en una sola línea.">
+  <figcaption>Los seis casos del fixture: base, secundaria y peligro arriba; deshabilitada, ocupada y texto largo abajo.</figcaption>
+</figure>
+
+<p>Al enseñarlos, el modelo dijo que las capturas de antes seguían guardadas para compararlas. No era cierto: el MCP solo guarda las de cómo está el componente ahora. Es el segundo desvío de la conversación, y lo que se hace con uno así lo explica <a href="/mcp/roles#drift">Cuando el modelo se desvía</a>.</p>
+
+<h2 id="done">Terminado</h2>
+
+<blockquote>
+  <p>Sí, apruebo cómo se ve. Ciérralo; la tarjeta la dejamos para mañana.</p>
+</blockquote>
+
+<p>El modelo apuntó el aspecto, llamó a <code>fudic_status</code>, que le dijo que el botón había pasado por todas sus fases, y lo marcó como terminado. El historial del botón cuenta la conversación entera, del primer test roto al <code>done</code>:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
+<pre><code>2026-11-23T20:01Z 2f3a378 started     by agent  "Un botón para la tienda: …"
+2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d
+2026-11-23T20:16Z 2f3a378 tests       broken 0/8  hash f30f8f283e41
+2026-11-23T20:17Z 2f3a378 tests       broken 0/8  hash 945afa51a450
+2026-11-23T20:18Z 2f3a378 tests       red 0/8  hash 87829e018cf7
+2026-11-23T20:19Z 2f3a378 spec_run    error 0/9  hash 87829e018cf7  …
+2026-11-23T20:20Z 2f3a378 spec_run    error 0/1  hash fa30b29546a0  se-puede-enfocar
+2026-11-23T20:22Z 2f3a378 spec_run    fail 0/1  hash 3ac4bc2fc846  el-foco-llega-al-boton
+2026-11-23T20:24Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 188d180b8c14
+2026-11-23T20:30Z 2f3a378 tests       red 6/8  hash 41f240880583
+2026-11-23T20:31Z 2f3a378 spec_run    pass 9/9  hash 41f240880583
+2026-11-23T20:34Z 2f3a378 tests       pass 8/8  hash e85d66337d36
+2026-11-23T20:52Z 2f3a378 tests       pass 8/8  hash 745e3bc903e8
+2026-11-23T20:54Z 2f3a378 spec_run    pass 9/9  hash 745e3bc903e8
+2026-11-23T20:58Z 2f3a378 look        by Pedro-Hurtado  hash 3619dff483fb
+2026-11-23T21:01Z 2f3a378 documented  4/4
+2026-11-23T21:01Z 2f3a378 done</code></pre>
+</ui-code>
+
+<p>En una hora, la persona escribió seis mensajes, y el historial guarda tres decisiones suyas: los criterios, el criterio reescrito y el aspecto. El resto lo hizo el modelo, guiado por el MCP.</p>

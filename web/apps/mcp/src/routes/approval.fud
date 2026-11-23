@@ -1,0 +1,138 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Aprobar, caducar y reabrir · Fudic</title>
+  <meta name="description" content="Con el MCP de Fudic, solo la persona aprueba los criterios de una pieza y el aspecto de un componente. El MCP lo apunta en el historial y da la aprobación por caducada en cuanto cambia lo aprobado.">
+  <link rel="canonical" href="https://fudic.dev/mcp/approval">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Aprobar, caducar y reabrir · Fudic">
+  <meta property="og:description" content="Qué aprueba la persona, cuándo caduca una aprobación y cómo se reabre una pieza terminada.">
+  <meta property="og:url" content="https://fudic.dev/mcp/approval">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("approval")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#yours">Solo cuenta lo que dices tú</a></li>
+        <li><a href="#criteria">Aprobar los criterios</a></li>
+        <li><a href="#expires">Cuándo caduca</a></li>
+        <li><a href="#look">Aprobar el aspecto</a></li>
+        <li><a href="#other">Aceptar, reabrir y terminar</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Aprobar, caducar y reabrir</h1>
+
+<p>Hay decisiones que solo toma la persona, como que los criterios de una pieza son los buenos o que un componente se ve bien. El MCP apunta cada decisión en el historial de la pieza, y da una aprobación por caducada en cuanto cambia lo que aprobaste.</p>
+
+<h2 id="yours">Solo cuenta lo que dices tú</h2>
+
+<p>El modelo apunta una decisión con <code>fudic_record</code>, y solo después de que tú la hayas tomado en la conversación. Es una de las instrucciones que el MCP le da al modelo:</p>
+
+<ui-code>
+<pre><code>Never approve on the user's behalf: fudic_record "approved" or "look" only after the user said so in this conversation.</code></pre>
+</ui-code>
+
+<p>Que los criterios parezcan obvios no basta. Tampoco basta con que tengas prisa, ni con que hayas pedido muchas piezas a la vez: si pides un botón, una tarjeta y un campo de texto, el modelo te pregunta primero por el botón.</p>
+
+<h2 id="criteria">Aprobar los criterios</h2>
+
+<p>Los criterios del <code>.fudspec</code> y los casos de su fixture se aprueban juntos. Cuando dices que sí, el modelo llama a <code>fudic_record</code> con el evento <code>approved</code>, que hace lo mismo que <a href="/docs/cli/approve"><code>fudic approve</code></a> en la terminal. Apunta en el <code>.fudlog</code> de la pieza tu nombre de git, cuántos criterios aprobaste y un hash del <code>.fudspec</code> y de su fixture:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
+<pre><code>2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d</code></pre>
+</ui-code>
+
+<p>El <code>.fudlog</code> es el historial de la pieza, un fichero de texto en git que solo crece. Lo explica <a href="/docs/testing/history">Historial y aprobación</a>.</p>
+
+<h2 id="expires">Cuándo caduca</h2>
+
+<p>Si el <code>.fudspec</code> o su fixture cambian después de aprobarlos, la aprobación caduca. <code>fudic_status</code> lo dice, y su <code>next</code> le pide al modelo que te enseñe el cambio y que vuelva a preguntarte:</p>
+
+<ui-code>
+<pre><code>&#123;
+  "units": [
+    &#123;
+      "piece": "src/components/tienda-button/tienda-button.fud",
+      "phase": "criteria",
+      "approval": "expired",
+      …
+    &#125;
+  ],
+  "next": "The approval of src/components/tienda-button/tienda-button.fud expired: what the user approved changed since. Show the user the diff in \"expired\", ask them to approve it again, and only then call fudic_record &#123; piece: \"src/components/tienda-button/tienda-button.fud\", event: \"approved\" &#125;."
+&#125;</code></pre>
+</ui-code>
+
+<p>En <a href="/mcp/conversation">la conversación de ejemplo</a> pasó con un criterio que no se podía ejecutar. El modelo lo reescribió, la aprobación caducó, y el modelo enseñó el cambio antes de seguir:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fudspec">
+<pre><code>-criterion se-puede-enfocar
++criterion el-foco-llega-al-boton
+   given
+     props base
+   when
+-    focus role:button/"Añadir al carrito"
++    focus tienda-button
+   then
+     focused role:button/"Añadir al carrito"</code></pre>
+</ui-code>
+
+<p>Así no cambia ningún criterio sin que lo sepas: ni uno nuevo, ni uno que se relaja para que pase.</p>
+
+<h2 id="look">Aprobar el aspecto</h2>
+
+<p>Un componente se aprueba también por cómo se ve. <code>fudic_look</code> pinta en un navegador cada caso de su fixture y guarda una captura de cada uno. Después compara cada captura con la del último aspecto aprobado y responde si el caso es nuevo (<code>new</code>), si está igual (<code>same</code>), si ha cambiado (<code>changed</code>) o si ya no existe (<code>gone</code>):</p>
+
+<ui-code>
+<pre><code>&#123;
+  "piece": "src/components/tienda-button/tienda-button.fud",
+  "look": "none",
+  "cases": [
+    &#123;
+      "case": "base",
+      "criteria": ["dice-su-texto", "la-principal-lleva-el-color-de-marca", "el-foco-llega-al-boton", "se-pulsa-con-el-dedo"],
+      "verdict": "new",
+      "after": ".fudic/looks/tienda-button/3619dff483fb/base.png"
+    &#125;,
+    …
+  ]
+&#125;</code></pre>
+</ui-code>
+
+<p>Cada caso dice también qué criterios lo usan. El modelo te enseña las capturas, y si dices que sí, llama a <code>fudic_record</code> con el evento <code>look</code>.</p>
+
+<p>Ver no es aprobar. <code>fudic_render</code>, <code>fudic_preview</code> y <code>fudic_look</code> enseñan, y solo <code>fudic_record</code> apunta.</p>
+
+<p>El aspecto aprobado caduca cuando cambia un fichero que puede cambiar cómo se dibuja el componente: su vista, lo que enlaza e importa, o las hojas globales del proyecto. Las capturas no cuentan, porque el mismo componente se dibuja con algún píxel distinto en otra máquina. Si el componente ya estaba terminado, se reabre, y el modelo vuelve a pasar por sus tests, sus criterios y <code>fudic_look</code>.</p>
+
+<h2 id="other">Aceptar, reabrir y terminar</h2>
+
+<p><code>fudic_record</code> apunta tres eventos más. Los dos primeros, solo cuando tú lo digas, y con tus palabras en el texto:</p>
+
+<ul>
+  <li><strong><code>accepted</code>.</strong> El cliente aceptó la pieza. Hace lo mismo que <a href="/docs/cli/accept"><code>fudic accept</code></a>.</li>
+  <li><strong><code>reopened</code>.</strong> Pides cambiar el contrato de una pieza terminada, y el texto dice por qué.</li>
+  <li><strong><code>done</code>.</strong> La pieza ha pasado por todas sus fases. Lo apunta el modelo cuando <code>next</code> se lo pide.</li>
+</ul>
+
+<p>El estado de una pieza se ve también desde la terminal con <a href="/docs/cli/history"><code>fudic history</code></a>, sin el MCP.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un aspecto sin enseñar.</strong> Si el modelo apunta un aspecto sin un <code>fudic_look</code> sobre los ficheros tal como están, el MCP responde <a href="/docs/reference/diagnostics/FUD1427"><code>FUD1427</code></a> y no escribe nada.</li>
+  <li><strong>Las capturas</strong> se guardan en <code>.fudic/looks/</code>, que no va a git.</li>
+</ul>

@@ -1,0 +1,104 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Las fases de una pieza · Fudic</title>
+  <meta name="description" content="Cada componente y cada ruta que construye un modelo con el MCP de Fudic pasa por las mismas fases, en el mismo orden: criterios, rojo, vista, documentación y aspecto. En dos de ellas habla la persona.">
+  <link rel="canonical" href="https://fudic.dev/mcp/phases">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Las fases de una pieza · Fudic">
+  <meta property="og:description" content="Las fases por las que pasa cada pieza que construye un modelo con el MCP de Fudic, y en cuáles habla la persona.">
+  <meta property="og:url" content="https://fudic.dev/mcp/phases">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("phases")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#phases">Las fases</a></li>
+        <li><a href="#status">Dónde está cada pieza</a></li>
+        <li><a href="#red">Rojo por la razón correcta</a></li>
+        <li><a href="#judge">Los tests son el juez</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Las fases de una pieza</h1>
+
+<p>Cada componente y cada ruta pasa por las mismas fases, siempre en el mismo orden. La mayoría las hace el modelo. En dos de ellas tiene que hablar la persona.</p>
+
+<h2 id="phases">Las fases</h2>
+
+<ol class="flow">
+  <li><strong>Criterios.</strong> El modelo propone las props de la pieza y sus <a href="/docs/testing">criterios de aceptación</a>, las frases que una persona comprobaría mirándola y tocándola. Los escribe en el <code>.fudspec</code> y en su fixture, un fichero TypeScript con un conjunto de props para cada caso. Después espera: la fase termina cuando tú los apruebas.</li>
+  <li><strong>Contrato.</strong> Si la pieza usa el servidor, el modelo escribe su <a href="/docs/server"><code>.fudapi</code></a>.</li>
+  <li><strong>Rojo.</strong> El modelo escribe los tests unitarios y ejecuta los tests y los criterios. Todos tienen que fallar, y por la razón correcta.</li>
+  <li><strong>Vista.</strong> El modelo escribe el <code>.fud</code> hasta que pasan los tests y los criterios.</li>
+  <li><strong>Conexión.</strong> Si la pieza usa el servidor, cada función de su <code>.fudapi</code> tiene que tener su handler.</li>
+  <li><strong>Documentación.</strong> El componente y cada una de sus props llevan un comentario JSDoc. Es lo que lee quien usa el componente después, sea una persona o un modelo.</li>
+  <li><strong>Showcase.</strong> En una librería con showcase, la página que enseña sus componentes tiene que estar al día.</li>
+  <li><strong>Aspecto.</strong> Si la pieza es un componente, el modelo te enseña cada caso de su fixture pintado en un navegador. La fase termina cuando tú apruebas cómo se ve.</li>
+</ol>
+
+<p>Cuando la pieza ha pasado por todas, el modelo la marca como terminada. Las dos fases en las que hablas tú las explica <a href="/mcp/approval">Aprobar, caducar y reabrir</a>.</p>
+
+<h2 id="status">Dónde está cada pieza</h2>
+
+<p><code>fudic_status</code> dice la fase de cada pieza sin ejecutar nada: la lee de sus ficheros y de su historial. Este es el botón de <a href="/mcp/conversation">la conversación de ejemplo</a>, ya terminado:</p>
+
+<ui-code>
+<pre><code>&#123;
+  "piece": "src/components/tienda-button/tienda-button.fud",
+  "kind": "component",
+  "phase": "done",
+  "approval": "valid",
+  "look": "valid",
+  "tests": "pass 8/8",
+  "spec": "pass 9/9",
+  "documented": "4/4",
+  …
+&#125;</code></pre>
+</ui-code>
+
+<p><code>approval</code> es la aprobación de los criterios y <code>look</code>, la del aspecto. <code>tests</code> y <code>spec</code> son la última ejecución de los tests y de los criterios, y <code>documented</code> cuenta las props documentadas.</p>
+
+<h2 id="red">Rojo por la razón correcta</h2>
+
+<p>Antes de escribir la vista, cada test y cada criterio tiene que fallar porque la pieza aún no hace lo que piden. Ese fallo es un <code>fail</code>. Si un test ni siquiera se puede ejecutar, por un error de tipos o por un fichero que falta, el resultado es <code>broken</code>. Eso no es rojo: es un error en lo que ha escrito el modelo, y el modelo tiene que corregirlo.</p>
+
+<p>El historial del botón de la conversación de ejemplo lo enseña. Los tests salieron rotos dos veces antes de fallar como debían:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
+<pre><code>2026-11-23T20:16Z 2f3a378 tests       broken 0/8  hash f30f8f283e41
+2026-11-23T20:17Z 2f3a378 tests       broken 0/8  hash 945afa51a450
+2026-11-23T20:18Z 2f3a378 tests       red 0/8  hash 87829e018cf7</code></pre>
+</ui-code>
+
+<p>Con los criterios pasa lo mismo. Un criterio que no llega a decir si pasa o falla da <code>error</code>. En la conversación, un criterio quería enfocar el botón antes de que el botón existiera, y el paso agotó su tiempo con <a href="/docs/reference/diagnostics/FUD1202"><code>FUD1202</code></a>. El modelo reescribió el criterio para que fallara sin error.</p>
+
+<h2 id="judge">Los tests son el juez</h2>
+
+<p>En la fase de vista, el modelo escribe el <code>.fud</code> y no toca los tests ni los criterios. Si el modelo cree que un test está mal, te lo dice.</p>
+
+<p>En la conversación de ejemplo pasó. Los nueve criterios pasaban y dos tests unitarios fallaban, porque esperaban que el botón no usara la hoja de estilos de <code>&lt;button&gt;</code> de la guía. El modelo no cambió los tests por su cuenta: explicó por qué estaban mal, enseñó la línea que cambiaría y esperó al sí de la persona.</p>
+
+<p>Si lo que tiene que cambiar es un criterio, hace falta algo más que un sí: una aprobación nueva, como explica <a href="/mcp/approval#expires">Cuándo caduca</a>.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los nombres.</strong> En las respuestas del MCP, las fases se llaman <code>criteria</code>, <code>api</code>, <code>red</code>, <code>view</code>, <code>connect</code>, <code>document</code>, <code>showcase</code>, <code>look</code> y <code>done</code>, en este orden.</li>
+  <li><strong>Una librería</strong> no tiene servidor, así que sus piezas se saltan el contrato y la conexión.</li>
+  <li><strong>Una ejecución caducada.</strong> Si los ficheros de una pieza cambian después de ejecutar sus tests, esa ejecución ya no cuenta: sale como <code>stale</code>, por ejemplo <code>stale (was pass)</code>.</li>
+  <li><strong>Terminar antes de tiempo.</strong> Si el modelo marca como terminada una pieza a la que le falta una fase, el MCP responde <a href="/docs/reference/diagnostics/FUD1407"><code>FUD1407</code></a> y dice qué fase falta.</li>
+</ul>

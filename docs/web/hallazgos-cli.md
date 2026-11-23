@@ -121,6 +121,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `fudic g app mcp --layout @web/ui/layouts/docs.fud` termina con el mismo `ENOENT` sobre
   `examples\vista-errores\package.json`. Fuera del monorepo el mismo comando funciona. El rodeo
   está en el nº 5.
+- **Y peor** con las cuatro páginas de Dirigir un modelo (`web/apps/mcp`, el 2026-11-23): como
+  la app no tiene layout propio, su layout por defecto es el de `@web/ui`, y `fudic g page roles`
+  revienta igual **sin** `--layout`. Con la ruta relativa genera la página, con el `href` frágil
+  y títulos como «Roles», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
