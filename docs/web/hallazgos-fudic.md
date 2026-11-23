@@ -115,6 +115,11 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   - **`isHashedName`** debe contar como con hash un fichero bajo un directorio con hash
     (`/_fudic/<versión>-<hash>/…`), o `checkAssets` debe saber que `_fudic/` es de Fudic.
 
+- **Vuelto a comprobar (capítulo 11, Rendimiento).** El falso positivo de `FUD1552` del punto 3
+  sigue saliendo en cada `pnpm build` de `web/apps/site` (worktree `web-publica`). Pedro no lo ve
+  con build y preview en su copia: falta reproducirlo allí para saber qué lo dispara aquí. Se
+  apuntó por error como nº 28.
+
 ## 6. No hay forma de escribir un estilo en línea que cambie
 
 - **Qué pasó.** Al documentar el capítulo 2 (atributos y propiedades), comprobado con un build
@@ -184,6 +189,11 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   `"false"`, y quitar el atributo solo con `null` o `undefined`. Mientras tanto, un aviso con código
   al pasar un `boolean` a un `aria-*`, con la bombilla que escribe el ternario.
 
+- **Vuelto a comprobar (capítulo 13, Pruebas).** Sigue igual, y ahora un criterio lo caza: en
+  `app-tabs` de `examples/basic`, `aria-selected=@(active() === 1)` pinta `aria-selected=""`, y
+  `attribute role:tab/"Tab B" aria-selected "true"` falla con `actual aria-selected=""`. Con el
+  ternario pasa en verde, y así lo escribe la página «El workbench». Se apuntó por error como nº 29.
+
 ## 10. Un `@evento` en el tag de un hijo recibe el `CustomEvent` de `emit`, y los tipos no lo ven
 
 - **Qué pasó.** Comprobado con un build real. El hijo hace `emit("picked", option)` y el padre
@@ -218,14 +228,15 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
     `@font-face`. En el `<head>` no hay forma de escribir una `@` literal con la sintaxis del
     lenguaje.
 - **Cómo se resolvió en la web.** Con la entidad HTML: `&#64;import`, `&#64;sheet`.
-- **Qué debería hacer.** Que `@@` sea `@` en cualquier atributo, también en el `<head>`. Que una
+- **Qué debería hacer.** Que `@@` sea `@` en cualquier atributo, también en el `<head>` (la misma
+  raíz que la segunda parte del nº 3, con un `href` del `<head>` de un layout). Que una
   palabra reservada tras `@` (`@import`, `@class`, `@new`…) sea un diagnóstico con código y span
   en el `.fud`, como ya lo es `@sheet` con `FUD0907`, en vez de un error de Oxc sobre el código
   generado.
 
 ## 12. El arranque en Node del ejemplo sirve la página de error en vez de un fichero estático
 
-- **Qué pasó.** Al documentar el servidor (capítulo 5). Comprobado cargando la app construida.
+- **Qué pasó.** Al documentar el capítulo Servidor y datos. Comprobado cargando la app construida.
   - `examples/basic/node-server.mjs` y el ejemplo de `packages/server/README.md` montan
     `nodeMiddleware(…, { notFound: true })` **delante** de `staticFiles`.
   - `notFound` pinta un `404` para todo `GET` cuyo `Accept` incluya `text/html`
@@ -242,7 +253,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 13. Los diagnósticos de `sw.json` no salen nunca
 
-- **Qué pasó.** Leído en el código al documentar el Service Worker (capítulo 7); no reproducido.
+- **Qué pasó.** Leído en el código al documentar el capítulo Service Worker; no reproducido.
   - `packages/vite/src/plugin.ts:926` se queda con `readSwConfig(…).config` y tira sus
     `.diagnostics`, y nadie más llama a `readSwConfig`.
   - Un `sw.json` mal escrito deja la app sin Service Worker sin decir nada (`FUD0390`).
@@ -253,7 +264,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 14. El HTML de `page persist` no caduca nunca
 
-- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+- **Qué pasó.** Leído en el código (capítulo Service Worker); no reproducido.
   - La regla es que una ruta no tiene dos TTL: con `page persist`, el HTML caduca con sus datos
     (`FUD0396`, `packages/vite/src/manifest.ts:99-109`).
   - Pero `servePage` (`packages/transport/src/router.ts:272-280`) sirve desde su índice sin mirar la
@@ -265,7 +276,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 15. `"dev": "preview"` registra el Service Worker, pero nunca pinta
 
-- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+- **Qué pasó.** Leído en el código (capítulo Service Worker); no reproducido.
   - El manifiesto de desarrollo marca todas las rutas como `ssr` y sin `deps`
     (`packages/vite/src/dev.ts:94`), y el middleware de desarrollo no sirve `/sw/c/*`.
   - Con `"dev": "preview"`, el Service Worker se registra y deja pasar todas las navegaciones.
@@ -275,7 +286,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 16. `paramFallback: 'notFound'` solo lo respeta el Service Worker
 
-- **Qué pasó.** Leído en el código (capítulo 6); no reproducido.
+- **Qué pasó.** Leído en el código (capítulo Páginas y rutas); no reproducido.
   - El pase edge construye toda ruta no excluida (`packages/vite/src/edge.ts:196`).
   - El servidor pinta cualquier valor sin fichero prerenderizado
     (`packages/server/src/server.ts:229-240`).
@@ -288,7 +299,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 17. Sin red, unos datos que no llegan marcan la ruta como rota hasta reiniciar
 
-- **Qué pasó.** Leído en el código (capítulo 7); no reproducido.
+- **Qué pasó.** Leído en el código (capítulo Service Worker); no reproducido.
   - Si `stores.data.get` rechaza (sin conexión, con `network-first` o `network-only` y sin copia),
     no es un `DataUnavailable`.
   - La ruta queda marcada como muerta hasta que el Service Worker se reinicia, y la respuesta sale
@@ -299,7 +310,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 18. `network-only` guarda igualmente las respuestas `200`
 
-- **Qué pasó.** Leído en el código (capítulo 7).
+- **Qué pasó.** Leído en el código (capítulo Service Worker).
   - `fromNetwork` guarda toda respuesta `200` no privada (`packages/transport/src/store.ts:211-213`),
     también la de `network-only`.
   - La copia no se lee nunca, pero ocupa espacio, y la guía del MCP dice «nunca se guarda».
@@ -308,7 +319,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 19. Una opción cualquiera en la línea de `load` anula los `defaults` del plugin
 
-- **Qué pasó.** Leído en el código (capítulo 6).
+- **Qué pasó.** Leído en el código (capítulo Páginas y rutas).
   - `strategyOfLoad` cuenta cualquier opción como «declarada» (`packages/vite/src/strategy.ts:158`).
   - Un `load ttl 5m`, sin modo, hace que la ruta ignore su entrada de `defaults` y avise con
     `FUD0397`, aunque no declaró ningún modo (`mode.ts:99-110`).
@@ -318,7 +329,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 20. Los patrones de `sw.json` llevan el `base`, y la plantilla de `g app` no
 
-- **Qué pasó.** Leído en el código (capítulo 7).
+- **Qué pasó.** Leído en el código (capítulo Service Worker).
   - El router compara el patrón con la ruta entera, con el `base`
     (`packages/transport/src/router.ts:387-394`). Así lo hace
     `examples/workspace/apps/admin/sw.json` (`/admin/assets/**`).
@@ -331,7 +342,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 21. `paths` solo admite textos en su tipo, aunque el prerender acepta objetos
 
-- **Qué pasó.** Leído en el código (capítulo 6).
+- **Qué pasó.** Leído en el código (capítulo Páginas y rutas).
   - El prerender acepta en `paths` un texto para una ruta de un parámetro, o un objeto por nombre
     para varias (`packages/vite/src/prerender.ts:160-186`).
   - El tipo que genera el `.fudapi` es `() => readonly string[]`
@@ -343,7 +354,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 22. Textos de diagnósticos desfasados
 
-- **Qué pasó.** Al contrastar los diagnósticos con el código (capítulos 5 a 7):
+- **Qué pasó.** Al contrastar los diagnósticos con el código (Servidor y datos, Páginas y rutas, Service Worker):
   - `FUD0397` y `FUD0398` hablan de `strategy()` y `paths()`, que ya no existen: el modo va en la
     línea de `load` y `paths` es una declaración del `.fudapi`. Además, `FUD0398` dice que la ruta
     «se pinta en el Service Worker», cuando sin Service Worker pasa a `ssr`.
@@ -354,7 +365,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 23. Nombres de parámetro y palabras clave en el `.fudapi`
 
-- **Qué pasó.** Comprobado con el validador (capítulo 5):
+- **Qué pasó.** Comprobado con el validador (capítulo Servidor y datos):
   - Un parámetro de middleware en kebab-case (`per-minute  u16`) da en la declaración un `FUD1065`
     («no es válido aquí»), que no dice por qué. En el `use`, el mismo nombre da `FUD1070`, que sí lo
     explica.
@@ -366,7 +377,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 24. SDD con texto superado y sin nota de corrección
 
-- **Qué pasó.** Al documentar los capítulos 5 a 7, varios SDD dicen lo contrario que el código y no
+- **Qué pasó.** Al documentar Servidor y datos, Páginas y rutas y Service Worker, varios SDD dicen lo contrario que el código y no
   llevan la nota «Corregido por…»:
   - SDD-56 §3.1 y §3.5: la API de builders (`put().use().handle`), y un `data` de `_error.fud` sin
     `path`, `back` ni `home`.
@@ -382,7 +393,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 
 ## 25. Un control-componente entrega a un `<form>` ajeno el valor convertido en texto
 
-- **Qué pasó.** Revisando `FudicControlElement` (capítulo 8): `#wire` hace
+- **Qué pasó.** Revisando `FudicControlElement` (capítulo Formularios): `#wire` hace
   `internals.setFormValue(String(value))` con cualquier valor del control
   (`packages/forms/src/element.ts`). Un `<form>` que no es de Fudic, con un `app-input` para un
   campo `file`, recibe en su `FormData` el texto `"[object File]"` en vez del fichero. Un `str[]`
@@ -409,30 +420,14 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   las reglas de un grupo como «its second argument», del API de builders que ya no es pública.
 - **Qué debería hacer.** Ponerlos al día con el `.fudapi`.
 
-## 28. `FUD1552` sobre el runtime, que lleva la versión en la URL
+## 28. ~~`FUD1552` sobre el runtime, que lleva la versión en la URL~~ (duplicado del nº 5)
 
-- **Qué pasó.** Al escribir el capítulo 11, `pnpm build` en `web/apps/site` (worktree
-  `web-publica`) avisa: `immutable on /_fudic/** keeps the old /_fudic/0.0.1-689426ec/core/effect.js
-  in the browser: its name has no hash`. Pero esa URL no cambia nunca: si cambia el runtime, cambia
-  el segmento de versión. Pedro no lo ve con build y preview en su copia, así que falta saber qué
-  lo dispara aquí.
-- **Por qué pasa, en el código.** `checkAssets` (`packages/vite/src/headers.ts`) decide si un
-  fichero tiene hash solo por su nombre (`isHashedName`: `-` y ocho caracteres al final). Los
-  ficheros de `/_fudic/<versión>/` no lo tienen en el nombre, sino en el directorio.
-- **Qué debería hacer.** Contar como con hash lo que cuelga de `/_fudic/<versión>/`. Y reproducirlo
-  en la copia de Pedro para ver por qué allí no sale.
+Es el punto 3 del nº 5. Lo que añadía, que en la copia de Pedro no sale, está allí, en «Vuelto a
+comprobar». El número se conserva porque el registro de `README.md` lo cita.
 
-## 29. Un booleano en un atributo `aria-*` sale vacío
+## 29. ~~Un booleano en un atributo `aria-*` sale vacío~~ (duplicado del nº 9)
 
-- **Qué pasó.** Al escribir el capítulo 13, en `app-tabs` de `examples/basic`,
-  `aria-selected=@(active() === 1)` pinta `aria-selected=""`, y el criterio
-  `attribute role:tab/"Tab B" aria-selected "true"` falla (`actual aria-selected=""`). Es la regla de
-  los atributos booleanos de HTML, pero ARIA no la sigue: sus estados son el texto `"true"` o
-  `"false"`, y un `aria-selected=""` no dice que la pestaña esté elegida.
-- **Cómo se resolvió en la web.** La página «El workbench» escribe
-  `aria-selected=@(active() === 1 ? "true" : "false")`, que pasa en verde.
-- **Qué debería hacer.** Pintar `true`/`false` como texto en los `aria-*` (como hace React), o avisar
-  en el editor de un booleano en un `aria-*`.
+Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vuelto a comprobar».
 
 ## 30. `fudic spec`, `fudic test` y el workbench no apuntan nada en el `.fudlog`
 

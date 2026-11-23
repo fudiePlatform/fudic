@@ -60,7 +60,7 @@ logout.handle((ctx) =&gt; &#123;
 &#125;);</code></pre>
 </ui-code>
 
-<p id="defaults">Sin opciones, la cookie sale segura: <code>HttpOnly</code>, <code>Secure</code> (solo por HTTPS), <code>SameSite=Lax</code> (no viaja en peticiones de otra web) y <code>Path=/</code>. En desarrollo, sin HTTPS, Fudic quita <code>Secure</code> para que funcione en <code>localhost</code>.</p>
+<p id="defaults">Sin opciones, la cookie sale segura: <code>HttpOnly</code>, <code>Secure</code> (solo por HTTPS), <code>SameSite=Lax</code> (no viaja en peticiones de otra web) y <code>Path=/</code>. En <code>fudic dev</code> y en la preview, sin HTTPS, Fudic quita <code>Secure</code>, para que la app funcione también desde otro dispositivo de tu red.</p>
 
 <p id="read">Se lee en el servidor con <code>ctx.cookies.get(SESSION_COOKIE)</code>. Lo habitual es leerla una vez en un middleware y dejar el usuario en el <code>ctx</code> (<a href="/docs/server/middlewares#adds">Middlewares y cadena</a>).</p>
 
