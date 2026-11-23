@@ -1,0 +1,186 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Páginas y flujos · Fudic</title>
+  <meta name="description" content="Criterios de páginas y flujos en Fudic: page abre una ruta por su URL con su layout, y lo que el fixture nombra es falso y el resto real; flow recorre varias páginas contra el servidor de verdad.">
+  <link rel="canonical" href="https://fudic.dev/docs/testing/pages-and-flows">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Páginas y flujos · Fudic">
+  <meta property="og:description" content="Una ruta con sus datos falsos, o varias páginas contra el servidor de verdad.">
+  <meta property="og:url" content="https://fudic.dev/docs/testing/pages-and-flows">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("testing-pages-and-flows")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#page">Una página</a></li>
+        <li><a href="#fixture">Lo que el fixture nombra es falso</a></li>
+        <li><a href="#calls">Lo que se envió</a></li>
+        <li><a href="#params">Rutas con parámetros</a></li>
+        <li><a href="#flow">Un flujo</a></li>
+        <li><a href="#people">Dos personas a la vez</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Páginas y flujos</h1>
+
+<p>Un <code>.fudspec</code> de página abre una ruta por su URL, con su layout: lo que el fixture nombra es falso y lo demás es real. Uno de flujo recorre varias páginas contra el servidor de verdad, como lo haría un usuario.</p>
+
+<h2 id="page">Una página</h2>
+
+<p>El <code>.fudspec</code> va junto a la ruta y empieza por <code>page</code> y la ruta tal como está en disco:</p>
+
+<ui-code .path="src/routes/users.fudspec">
+<pre><code>page /users
+
+criterion lists-the-people
+  given
+    data two-people
+  then
+    count role:button/"Delete" 2
+    text role:row/~"Ana" "ana@@example.com"
+
+criterion searches-as-you-type
+  given
+    data two-people
+    answers finds-luis
+  when
+    type role:searchbox/"Search by name" "lu"
+  then
+    text role:listitem "Luis"
+    sent search q "lu"
+
+criterion down-shows-the-error
+  given
+    data down
+  then
+    status 503</code></pre>
+</ui-code>
+
+<p><code>fudic g spec /users</code> lo crea, con un fixture que ya trae una muestra de lo que devuelve su <code>load</code>.</p>
+
+<h2 id="fixture">Lo que el fixture nombra es falso</h2>
+
+<ui-code .path="src/routes/users.fixture.ts">
+<pre><code>import type &#123; Fixtures, Person &#125; from "fudic:routes/users";
+import &#123; fails, later, redirects &#125; from "@@fudic/spec";
+
+const ana: Person = &#123; id: 1, name: "Ana", email: "ana@@example.com", … &#125;;
+const luis: Person = &#123; id: 2, name: "Luis", email: "luis@@example.com", … &#125;;
+
+export default &#123;
+  data: &#123;
+    "two-people": &#123; users: [ana, luis] &#125;,
+    down: fails(503, "the database does not answer"),
+    "signed-out": redirects("/sign-in"),
+  &#125;,
+  calls: &#123;
+    "finds-luis": &#123; search: [luis] &#125;,
+    searching: &#123; search: later.never() &#125;,
+  &#125;,
+&#125; satisfies Fixtures;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>data</code></strong> ocupa el lugar de <code>load</code>: <code>data two-people</code> pinta la página con esos datos. El layout sí se ejecuta, con ellos.</li>
+  <li><strong><code>calls</code></strong> responde funciones de servidor sin ejecutarlas: con <code>answers finds-luis</code>, <code>search</code> devuelve <code>[luis]</code>. Las que no nombra se ejecutan de verdad.</li>
+  <li><strong><code>fails</code></strong>, <strong><code>redirects</code></strong> y <strong><code>later</code></strong> dicen cómo responde: con un error, con una redirección, o tarde. <code>later.never()</code> no responde nunca, para comprobar lo que se ve mientras espera.</li>
+</ul>
+
+<p>El fixture lleva el tipo que genera el <code>.fudapi</code> de la ruta: unos datos que no son los de su <code>load</code>, o una función que la página no puede llamar, se marcan en el editor (<a href="/docs/server">El contrato <code>.fudapi</code></a>).</p>
+
+<h2 id="calls">Lo que se envió</h2>
+
+<ul>
+  <li><strong><code>sent search q "lu"</code></strong>: la última llamada a <code>search</code> llevó <code>q</code> igual a <code>"lu"</code>.</li>
+  <li><strong><code>called save 1</code></strong>: <code>save</code> se llamó una vez, respondida por el fixture o de verdad.</li>
+  <li><strong><code>status 503</code></strong> y <strong><code>url /sign-in</code></strong>: el estado de la página y dónde acabó, también tras una redirección.</li>
+  <li><strong><code>not-reloaded</code></strong>: el envío no recargó la página.</li>
+</ul>
+
+<h2 id="params">Rutas con parámetros</h2>
+
+<p>Una ruta como <code>/blog/[slug]</code> se abre con <code>path</code>, uno de los valores de su <code>paths</code>, o con <code>url</code>, una URL cualquiera:</p>
+
+<ui-code .path="src/routes/blog/[slug].fudspec">
+<pre><code>page /blog/[slug]
+
+criterion unknown-slug
+  given
+    url /blog/not-there
+    data missing
+  then
+    text h1 "Post not found"</code></pre>
+</ui-code>
+
+<h2 id="flow">Un flujo</h2>
+
+<p>Un flujo prueba lo que cruza varias páginas: entrar, crear algo y encontrarlo después. Vive en <code>src/flows</code>, lo crea <code>fudic g flow sign-up</code>, y aquí el servidor es el de verdad:</p>
+
+<ui-code .path="src/flows/sign-up.fudspec">
+<pre><code>flow sign-up
+
+criterion created-user-is-found
+  given
+    services two-people
+    url /sign-in
+  when
+    type role:textbox/"User" "ana"
+    click role:button/"Sign in"
+    go /users/new
+    type role:textbox/"Name" "Marta"
+    click role:button/"Create"
+  then
+    text role:status/"Sign-up" "Saved: Marta"
+  when
+    go /users
+    type role:searchbox/"Search by name" "mar"
+  then
+    count role:listitem 1</code></pre>
+</ui-code>
+
+<p>Su fixture solo cambia servicios: <code>services two-people</code> pone un almacén en memoria en lugar de la base de datos (<a href="/docs/di/server#testing">Otro servicio en las pruebas</a>). Cada criterio recibe su propia instancia, así que lo que crea uno no lo ve otro, y el orden de los criterios no importa.</p>
+
+<h2 id="people">Dos personas a la vez</h2>
+
+<p><code>as</code> pasa lo que sigue a otra persona, con su navegador y sus cookies. Así se prueba que uno no ve lo de otro:</p>
+
+<ui-code .path="src/flows/sign-up.fudspec">
+<pre><code>criterion luis-does-not-see-ana
+  given
+    services two-people
+    url /sign-in
+  when
+    type role:textbox/"User" "ana"
+    click role:button/"Sign in"
+    as luis
+    go /account
+  then
+    text main "You are not signed in."
+    as main
+    text main "Hello, Ana."</code></pre>
+</ui-code>
+
+<p><code>as main</code> vuelve a la primera persona.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong><code>cookie</code></strong> en <code>given</code> pone una cookie antes de abrir, por ejemplo una sesión de verdad: <code>cookie session ana</code>.</li>
+  <li><strong><code>offline</code></strong> en <code>given</code> abre sin red, para probar el <a href="/docs/service-worker">Service Worker</a>; en <code>when</code>, <code>offline</code> y <code>online</code> cortan y devuelven la red a mitad del criterio.</li>
+  <li><strong><code>fails(0, "network")</code></strong> en un flujo simula que la llamada no llega: un fallo de red.</li>
+  <li><strong>Un fichero</strong> se sube con <code>upload</code> y se responde con <code>file("./fixtures/people.csv")</code>; <code>downloaded "people.csv"</code> comprueba la descarga.</li>
+</ul>

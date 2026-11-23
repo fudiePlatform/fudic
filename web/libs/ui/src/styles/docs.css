@@ -200,6 +200,12 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
+/* A screenshot is light on a light page: a line marks where it ends. */
+.docs-page figure img {
+  border: 1px solid var(--guide-line);
+  border-radius: var(--guide-radius-md);
+}
+
 /* A link that opens in another tab says so: an arrow for the eye and, where the browser takes
    alternative text for generated content, words for a screen reader (WCAG technique G201). The
    first declaration is the fallback for a browser that does not read the second. */

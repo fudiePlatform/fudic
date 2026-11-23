@@ -134,6 +134,17 @@
           <li><a href="/docs/security/trusted-types" aria-current=@(current === "security-trusted-types" ? "page" : false)>HTML seguro</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Pruebas</span>
+        <ol>
+          <li><a href="/docs/testing" aria-current=@(current === "testing" ? "page" : false)>Criterios</a></li>
+          <li><a href="/docs/testing/workbench" aria-current=@(current === "testing-workbench" ? "page" : false)>El workbench</a></li>
+          <li><a href="/docs/testing/pages-and-flows" aria-current=@(current === "testing-pages-and-flows" ? "page" : false)>Páginas y flujos</a></li>
+          <li><a href="/docs/testing/terms" aria-current=@(current === "testing-terms" ? "page" : false)>Tus propios pasos</a></li>
+          <li><a href="/docs/testing/unit" aria-current=@(current === "testing-unit" ? "page" : false)>Tests unitarios</a></li>
+          <li><a href="/docs/testing/history" aria-current=@(current === "testing-history" ? "page" : false)>Historial y aprobación</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

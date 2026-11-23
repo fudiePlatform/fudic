@@ -421,3 +421,35 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   ficheros de `/_fudic/<versión>/` no lo tienen en el nombre, sino en el directorio.
 - **Qué debería hacer.** Contar como con hash lo que cuelga de `/_fudic/<versión>/`. Y reproducirlo
   en la copia de Pedro para ver por qué allí no sale.
+
+## 29. Un booleano en un atributo `aria-*` sale vacío
+
+- **Qué pasó.** Al escribir el capítulo 13, en `app-tabs` de `examples/basic`,
+  `aria-selected=@(active() === 1)` pinta `aria-selected=""`, y el criterio
+  `attribute role:tab/"Tab B" aria-selected "true"` falla (`actual aria-selected=""`). Es la regla de
+  los atributos booleanos de HTML, pero ARIA no la sigue: sus estados son el texto `"true"` o
+  `"false"`, y un `aria-selected=""` no dice que la pestaña esté elegida.
+- **Cómo se resolvió en la web.** La página «El workbench» escribe
+  `aria-selected=@(active() === 1 ? "true" : "false")`, que pasa en verde.
+- **Qué debería hacer.** Pintar `true`/`false` como texto en los `aria-*` (como hace React), o avisar
+  en el editor de un booleano en un `aria-*`.
+
+## 30. `fudic spec`, `fudic test` y el workbench no apuntan nada en el `.fudlog`
+
+- **Qué pasó.** El README de `@fudic/history` dice que el `.fudlog` guarda «every run of its tests
+  and criteria», pero solo lo escriben las herramientas `fudic_test` y `fudic_spec_run` del servidor
+  MCP (`packages/mcp/src/runs.ts`). Quien trabaja sin agente aprueba con `fudic approve`, pero
+  `fudic history` le dirá siempre `tests not run · spec not run`.
+- **Cómo se resolvió en la web.** «Historial y aprobación» dice que las ejecuciones las apunta el
+  servidor MCP.
+- **Qué debería hacer.** Que `fudic spec` y `fudic test` (y quizá el workbench, al ejecutar todos)
+  apunten su ejecución, o decir en el README quién la apunta.
+
+## 31. El workbench se queda con un `.fudspec` a medio escribir
+
+- **Qué pasó.** Al reescribir `app-tabs.fudspec` con `cat > fichero` (que primero lo vacía y luego
+  escribe), el workbench enseñó `FUD0922 the header is missing` y no volvió a ejecutar cuando el
+  fichero quedó completo. Un `touch` después lo arregló. Un editor guarda de una vez, así que es raro
+  que pase trabajando, pero sí con herramientas o agentes que escriben por partes.
+- **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher, o esperar a que
+  deje de cambiar antes de ejecutar.

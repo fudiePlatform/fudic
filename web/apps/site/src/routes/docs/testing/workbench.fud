@@ -1,0 +1,107 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El workbench · Fudic</title>
+  <meta name="description" content="El workbench de Fudic: Ctrl+K V abre junto al editor un componente con sus criterios, que se ejecutan en un navegador de verdad en cada guardado. Capturas, esperado contra obtenido, y Live para tocarlo.">
+  <link rel="canonical" href="https://fudic.dev/docs/testing/workbench">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El workbench · Fudic">
+  <meta property="og:description" content="Un componente y sus criterios, en verde o en rojo en cada guardado.">
+  <meta property="og:url" content="https://fudic.dev/docs/testing/workbench">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("testing-workbench")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#open">Abrirlo</a></li>
+        <li><a href="#read">Leer un fallo</a></li>
+        <li><a href="#live">Live: tocarlo</a></li>
+        <li><a href="#controls">Mientras trabajas</a></li>
+        <li><a href="#editor">En el editor</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El workbench</h1>
+
+<p>Con <kbd>Ctrl+K V</kbd> se abre, junto al editor, el componente con todos sus criterios. Se ejecutan en un navegador de verdad y se vuelven a ejecutar cada vez que guardas: escribes el criterio, lo ves en rojo, arreglas el componente y lo ves en verde, sin salir del editor.</p>
+
+<h2 id="open">Abrirlo</h2>
+
+<p>Abre en VS Code el <code>.fud</code> de un componente, o su <code>.fudspec</code>, y pulsa <kbd>Ctrl+K V</kbd> (<kbd>Cmd+K V</kbd> en un Mac). También está el icono de vista previa de la barra del editor y la orden <em>Fudic: Open Workbench</em>.</p>
+
+<p>Necesita la extensión de Fudic para VS Code y un navegador: usa el Chrome del sistema, o Edge, que viene con Windows. Lo demás ya lo instaló <code>fudic new</code>. Funciona igual con un <code>.fudspec</code> de página o de flujo (<a href="/docs/testing/pages-and-flows">Páginas y flujos</a>).</p>
+
+<h2 id="read">Leer un fallo</h2>
+
+<p>A <code>app-tabs</code> le añadimos un criterio: la pestaña que eliges tiene que decir que es la elegida.</p>
+
+<ui-code .path="src/components/app-tabs/app-tabs.fudspec">
+<pre><code>criterion marks-the-tab
+  when
+    click role:tab/"Tab B"
+  then
+    attribute role:tab/"Tab B" aria-selected "true"</code></pre>
+</ui-code>
+
+<p>Al guardar, el workbench lo ejecuta:</p>
+
+<figure>
+  <img src="../../../images/workbench.webp" width="760" height="564" loading="lazy" alt="El workbench de app-tabs: dos de tres criterios pasan. La tarjeta de marks-the-tab, en rojo, enseña el clic en Tab B, el paso que falla, aria-selected esperado true y obtenido ninguno, y dos capturas, antes y después del clic, con un recuadro en la pestaña que se pulsó.">
+  <figcaption>Un criterio en rojo: el paso que falla, lo esperado contra lo obtenido y lo que vio el navegador.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>Cada criterio es una tarjeta</strong> con su veredicto. Los que fallan van primero.</li>
+  <li><strong>El paso que falla</strong> sale en rojo, con lo que esperaba (<code>aria-selected="true"</code>) contra lo que encontró: ningún <code>aria-selected</code>.</li>
+  <li><strong>Dos capturas</strong>, antes del primer <code>when</code> y al final, con un recuadro en cada elemento que tocó un paso. Aquí se ve que el clic llegó y el panel cambió: lo que falta es el atributo.</li>
+</ul>
+
+<p>El arreglo va en el componente: cada pestaña dice si es la elegida.</p>
+
+<ui-code .path="src/components/app-tabs/app-tabs.fud">
+<pre><code>&lt;button role="tab" aria-selected=@@(active() === 0 ? "true" : "false") @@click=@@pickA&gt;Tab A&lt;/button&gt;
+&lt;button role="tab" aria-selected=@@(active() === 1 ? "true" : "false") @@click=@@pickB&gt;Tab B&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la tarjeta se pone en verde. <code>aria-selected</code> lleva el texto <code>"true"</code> o <code>"false"</code>, como pide ARIA.</p>
+
+<h2 id="live">Live: tocarlo</h2>
+
+<p><strong>Live</strong> abre la página del criterio viva, en el estado en que la dejó: puedes pulsar, escribir y mirarla con las herramientas del navegador. Es el componente de verdad, no una captura.</p>
+
+<h2 id="controls">Mientras trabajas</h2>
+
+<p>Guardar el <code>.fud</code>, un componente que enlaza, el <code>.fudspec</code>, el fixture o un paso propio vuelve a ejecutar los criterios.</p>
+
+<ul>
+  <li><strong><kbd>r</kbd></strong> los ejecuta todos, y <strong><kbd>f</kbd></strong> solo los que fallaron.</li>
+  <li><strong>Pin</strong> en una tarjeta hace que al guardar solo se ejecute ese criterio, el que estás arreglando.</li>
+  <li><strong>Pause</strong> deja de ejecutar al guardar; al quitar la pausa, ejecuta una vez si guardaste algo.</li>
+  <li><strong><kbd>j</kbd> y <kbd>k</kbd></strong> pasan de una tarjeta a otra, <kbd>Enter</kbd> la abre y <kbd>l</kbd> abre Live.</li>
+</ul>
+
+<h2 id="editor">En el editor</h2>
+
+<p>El <code>.fudspec</code> lleva una marca en el margen de cada criterio, verde o roja, y un «▶ Run» encima para ejecutar solo ese. Los que fallan salen en el panel Problems, y la barra de estado dice cuántos pasan: <code>app-tabs 2/3</code>.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Un solo proceso</strong> sirve todos los componentes del proyecto: abrir el segundo no arranca nada. Al cerrar la última pestaña se para, y el navegador con él.</li>
+  <li><strong>«Open in browser»</strong> abre la misma página del workbench en tu navegador.</li>
+  <li><strong>Si un elemento falla</strong>, el informe dice también la línea del <code>.fud</code> que lo escribió.</li>
+  <li><strong>Un layout no se abre</strong>, ni una ruta sin su <code>.fudspec</code>: <code>FUD0970</code>. Sin navegador, <code>FUD0975</code>.</li>
+</ul>

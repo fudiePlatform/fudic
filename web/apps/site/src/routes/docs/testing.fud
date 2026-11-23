@@ -1,0 +1,148 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Criterios · Fudic</title>
+  <meta name="description" content="Criterios de aceptación en Fudic: lo que un componente tiene que cumplir, escrito al lado en un .fudspec con given, when y then, y ejecutado en un navegador de verdad con fudic spec.">
+  <link rel="canonical" href="https://fudic.dev/docs/testing">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Criterios · Fudic">
+  <meta property="og:description" content="Lo que un componente tiene que cumplir, en un .fudspec que se ejecuta en un navegador de verdad.">
+  <meta property="og:url" content="https://fudic.dev/docs/testing">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("testing")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#criterion">Un criterio</a></li>
+        <li><a href="#references">Nombrar un elemento</a></li>
+        <li><a href="#fixture">Las props de cada caso</a></li>
+        <li><a href="#create">Crearlo</a></li>
+        <li><a href="#run">Ejecutarlo: fudic spec</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Criterios</h1>
+
+<p>Lo que un componente tiene que cumplir se escribe a su lado, en un <code>.fudspec</code>, con frases cortas: cómo empieza, qué hace el usuario y qué se tiene que ver. Cada criterio se ejecuta en un navegador de verdad, con su layout, su CSS y su foco.</p>
+
+<h2 id="criterion">Un criterio</h2>
+
+<ui-code .path="src/components/app-tabs/app-tabs.fudspec">
+<pre><code>component app-tabs
+
+# The first tab is the one open when the page loads.
+criterion starts-on-a
+  then
+    text role:tabpanel "panel A"
+
+criterion switches-tab
+  when
+    click role:tab/"Tab B"
+  then
+    text role:tabpanel "panel B"</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>component app-tabs</code></strong> dice qué se prueba: el componente, montado solo.</li>
+  <li><strong><code>criterion</code></strong> abre un criterio, con un nombre en kebab-case que lo identifica en los resultados.</li>
+  <li><strong><code>given</code></strong> dice cómo empieza, <strong><code>when</code></strong> lo que hace el usuario y <strong><code>then</code></strong> lo que se comprueba. <code>given</code> va primero y una sola vez; <code>when</code> y <code>then</code> se pueden alternar, y el criterio acaba en <code>then</code>.</li>
+  <li><strong>Cada línea es un paso</strong>: <code>click</code>, <code>type</code>, <code>press</code> para actuar; <code>text</code>, <code>visible</code>, <code>count</code>, <code>focused</code> para comprobar. Fudic trae unos cincuenta, y puedes escribir los tuyos (<a href="/docs/testing/terms">Tus propios pasos</a>).</li>
+</ul>
+
+<p>El segundo criterio vale aunque el componente aún no se haya hidratado: el primer clic nunca se pierde (<a href="/docs/reactivity/hydration">Hidratación</a>).</p>
+
+<h2 id="references">Nombrar un elemento</h2>
+
+<p>Un paso nombra el elemento como lo encuentra una persona: por su <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles" target="_blank" rel="noopener">rol</a> y su nombre accesible, no por una clase ni un id.</p>
+
+<ul>
+  <li><strong><code>role:button/"Save"</code></strong>: el botón que se llama exactamente «Save».</li>
+  <li><strong><code>role:row/~"Ana"</code></strong>: la fila cuyo nombre contiene «Ana».</li>
+  <li><strong><code>role:row/~"Ana"&gt;role:button/"Delete"</code></strong>: el botón «Delete» dentro de esa fila. Con <code>&gt;</code> se busca dentro del anterior.</li>
+  <li><strong><code>app-card</code></strong>, <code>main</code>: una etiqueta, cuando no hay rol que valga.</li>
+</ul>
+
+<p>Las referencias atraviesan el shadow DOM. Y como buscan por rol, un botón sin nombre accesible no se puede nombrar: el criterio te obliga a que el componente sea accesible antes de probarlo.</p>
+
+<h2 id="fixture">Las props de cada caso</h2>
+
+<p>Si el componente tiene props, cada caso se escribe en un fixture, al lado, con su nombre:</p>
+
+<ui-code .path="src/components/app-card/app-card.fixture.ts">
+<pre><code>import type &#123; $Props &#125; from "./app-card.fud";
+
+export default &#123;
+  "long-title": &#123; title: "A title long enough to wrap onto a second line", href: "/blog/long" &#125;,
+  featured: &#123; title: "Featured", href: "/blog/featured", variant: "highlight" &#125;,
+&#125; satisfies Record&lt;string, $Props&gt;;</code></pre>
+</ui-code>
+
+<p>Un criterio elige su caso con <code>props</code>:</p>
+
+<ui-code .path="src/components/app-card/app-card.fudspec">
+<pre><code>criterion long-title-is-visible
+  given
+    props long-title
+    viewport 360 640
+  then
+    visible app-card
+    text app-card "A title long enough"</code></pre>
+</ui-code>
+
+<p>El fixture es TypeScript con el tipo de las props: un caso al que le falta una prop obligatoria se marca en el editor.</p>
+
+<h2 id="create">Crearlo</h2>
+
+<p><code>fudic g component</code> ya crea el <code>.fudspec</code> y su fixture junto al componente. Para uno que no los tiene:</p>
+
+<ui-code>
+<pre><code>fudic g spec app-card</code></pre>
+</ui-code>
+
+<p>El editor comprueba cada línea mientras escribes: un paso que no existe, un argumento que no le toca o un caso que el fixture no tiene.</p>
+
+<h2 id="run">Ejecutarlo: <code>fudic spec</code></h2>
+
+<p>Mientras trabajas, el <a href="/docs/testing/workbench">workbench</a> los ejecuta en cada guardado. Desde la terminal, <code>fudic spec</code> ejecuta todos los del proyecto:</p>
+
+<ui-code>
+<pre><code>app-card
+  ✓ long-title-is-visible          252 ms
+  ✗ featured-on-variant            268 ms
+      then role:link/"Featured" is visible
+        expected  visible
+        actual    not there
+2 criteria · 1 pass · 1 fail · 0 error · 2.4 s · chrome</code></pre>
+</ui-code>
+
+<p>Solo acaba bien si pasan todos, así que sirve tal cual como paso de CI. Usa el Chrome del sistema, o Edge, que viene con Windows.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Una referencia, un elemento.</strong> Si encuentra varios, el criterio no da veredicto y te dice cuántos: <code>FUD1203</code>. Solo <code>count</code> admite varios, o ninguno.</li>
+  <li><strong>Un paso que tarda demasiado</strong>, como esperar un texto que nunca llega, para el criterio con <code>FUD1202</code>.</li>
+  <li><strong><code>fudic fmt</code></strong> ordena también los <code>.fudspec</code>: sangría de dos en dos y una línea en blanco entre criterios.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles" target="_blank" rel="noopener">Roles de ARIA</a>: los que nombra <code>role:</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Accessible_name" target="_blank" rel="noopener">Nombre accesible</a>: de dónde sale el nombre entre comillas.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/What_is_accessibility" target="_blank" rel="noopener">Qué es la accesibilidad</a>: por qué nombrar por rol es probar como una persona.</li>
+</ul>
