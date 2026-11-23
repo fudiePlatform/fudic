@@ -164,6 +164,15 @@
           <li><a href="/docs/vite/build" aria-current=@(current === "vite-build" ? "page" : false)>El build y la preview</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Editores</span>
+        <ol>
+          <li><a href="/docs/editors" aria-current=@(current === "editors" ? "page" : false)>VS Code y compatibles</a></li>
+          <li><a href="/docs/editors/writing" aria-current=@(current === "editors-writing" ? "page" : false)>Escribir con el editor</a></li>
+          <li><a href="/docs/editors/reference" aria-current=@(current === "editors-reference" ? "page" : false)>Snippets, órdenes y ajustes</a></li>
+          <li><a href="/docs/editors/other" aria-current=@(current === "editors-other" ? "page" : false)>Otros editores</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

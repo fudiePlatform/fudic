@@ -95,6 +95,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   con la ruta relativa no revienta, pero escribe el mismo `href` frágil y el `<title>` «Binding».
 - **Y otra vez** con las tres páginas del capítulo Plugin de Vite (`docs/vite/…`), el 2026-11-23:
   mismo `href` frágil, corregido a mano.
+- **Y otra vez** con las cuatro páginas del capítulo Editores (`docs/editors/…`), el 2026-11-23.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

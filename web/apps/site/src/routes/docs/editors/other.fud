@@ -1,0 +1,92 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Otros editores · Fudic</title>
+  <meta name="description" content="Todo el IntelliSense de Fudic vive en un language server estándar: fudic-language-server --stdio funciona en Neovim y en cualquier editor con cliente LSP.">
+  <link rel="canonical" href="https://fudic.dev/docs/editors/other">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Otros editores · Fudic">
+  <meta property="og:description" content="El language server de Fudic, en cualquier editor con cliente LSP.">
+  <meta property="og:url" content="https://fudic.dev/docs/editors/other">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("editors-other")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#lsp">Un language server estándar</a></li>
+        <li><a href="#run">Arrancarlo</a></li>
+        <li><a href="#neovim">Neovim</a></li>
+        <li><a href="#vscode-only">Lo que solo tiene VS Code</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Otros editores</h1>
+
+<p>Todo el IntelliSense de Fudic vive en un language server, no en la extensión de VS Code. Habla el protocolo estándar de los editores, así que funciona en cualquiera que tenga un cliente LSP.</p>
+
+<h2 id="lsp">Un language server estándar</h2>
+
+<p>El <a href="https://microsoft.github.io/language-server-protocol/" target="_blank" rel="noopener">Language Server Protocol</a> (LSP) es el estándar con el que un editor le pide a un programa aparte el completado, la ayuda, los errores o el formato de un lenguaje. Neovim, Helix, Emacs y Sublime Text tienen cliente.</p>
+
+<p>El de Fudic, <code>@@fudic/language-server</code>, responde por los <code>.fud</code>, los <code>.fudapi</code>, los <code>.fudspec</code>, los <code>.headers</code> y <code>fudic.json</code>: lo mismo que cuenta <a href="/docs/editors/writing">Escribir con el editor</a>.</p>
+
+<h2 id="run">Arrancarlo</h2>
+
+<ui-code>
+<pre><code>pnpm add -D @@fudic/language-server
+fudic-language-server --stdio</code></pre>
+</ui-code>
+
+<p>El editor lo arranca y le habla por la entrada y la salida estándar. También admite <code>--node-ipc</code> y <code>--socket=&lt;puerto&gt;</code>.</p>
+
+<p>Al iniciarse, el editor le pasa la ruta absoluta del TypeScript del proyecto en <code>typescript.tsdk</code>, para que compruebe los tipos con la misma versión que el build. Sin ella usa el TypeScript que trae el paquete.</p>
+
+<h2 id="neovim">Neovim</h2>
+
+<p>Con Neovim 0.11 o posterior:</p>
+
+<ui-code .path="init.lua">
+<pre><code>vim.filetype.add(&#123; extension = &#123; fud = "fudic", fudapi = "fudapi", fudspec = "fudspec" &#125; &#125;)
+
+vim.lsp.config("fudic", &#123;
+  cmd = &#123; "fudic-language-server", "--stdio" &#125;,
+  filetypes = &#123; "fudic", "fudapi", "fudspec" &#125;,
+  root_markers = &#123; "fudic.json", "package.json" &#125;,
+  before_init = function(params, config)
+    params.initializationOptions = &#123;
+      typescript = &#123; tsdk = config.root_dir .. "/node_modules/typescript/lib" &#125;,
+    &#125;
+  end,
+&#125;)
+vim.lsp.enable("fudic")</code></pre>
+</ui-code>
+
+<p>En otro editor es lo mismo: la orden, los tipos de fichero y el <code>tsdk</code>.</p>
+
+<h2 id="vscode-only">Lo que solo tiene VS Code</h2>
+
+<ul>
+  <li><strong>El workbench</strong>, que abre una vista al lado del editor (<a href="/docs/testing/workbench">El workbench</a>). Fuera de VS Code, los criterios se ejecutan con <code>fudic spec</code>.</li>
+  <li><strong>Las órdenes de los enlaces del <code>.fudapi</code></strong>, como ver los tipos generados. Los enlaces salen, pero las órdenes son de la extensión.</li>
+  <li><strong>El color de la primera vista</strong>, antes de que responda el servidor, y la barra de estado.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>: con <code>shadowrootmode</code>, el elemento con el que empieza cada componente que lee el servidor.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: lo que el servidor le enseña a TypeScript de cada <code>.fud</code>.</li>
+</ul>

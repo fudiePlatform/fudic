@@ -5,8 +5,8 @@ virtual projection of [`@fudic/language-core`](../language-core) (SDD-23) and fr
 that already exist — TypeScript, HTML and CSS. This package decides how they are assembled,
 which requests are served, and when state is thrown away.
 
-Editor-agnostic by design, not by taste: the same binary serves VS Code (SDD-25), Zed and
-Neovim. Nothing from `vscode-*` beyond the protocol packages enters here.
+Editor-agnostic by design, not by taste: the same binary serves VS Code (SDD-25), Neovim and
+any editor with an LSP client. Nothing from `vscode-*` beyond the protocol packages enters here.
 
 ## Running it
 
@@ -16,10 +16,29 @@ fudic-language-server --node-ipc
 fudic-language-server --socket=6009
 ```
 
-The client passes `initializationOptions.typescript.tsdk`. **The project's TypeScript
-always wins**: a server that typechecks with a different version than the build produces
-diagnostics CI cannot reproduce. Without a usable `tsdk` the server degrades to HTML+CSS
-and says so in the log, rather than dying.
+The client passes `initializationOptions.typescript.tsdk`, the absolute path of the project's
+`node_modules/typescript/lib`. **The project's TypeScript always wins**: a server that
+typechecks with a different version than the build produces diagnostics CI cannot reproduce.
+Without a usable `tsdk` it takes the TypeScript this package depends on; if even that cannot be
+loaded, it degrades to HTML+CSS and says so in the log, rather than dying.
+
+Neovim 0.11:
+
+```lua
+vim.filetype.add({ extension = { fud = 'fudic', fudapi = 'fudapi', fudspec = 'fudspec' } })
+
+vim.lsp.config('fudic', {
+  cmd = { 'fudic-language-server', '--stdio' },
+  filetypes = { 'fudic', 'fudapi', 'fudspec' },
+  root_markers = { 'fudic.json', 'package.json' },
+  before_init = function(params, config)
+    params.initializationOptions = {
+      typescript = { tsdk = config.root_dir .. '/node_modules/typescript/lib' },
+    }
+  end,
+})
+vim.lsp.enable('fudic')
+```
 
 ## How a request is answered
 
@@ -29,10 +48,23 @@ route: it answers empty. That is what stops a rename from touching scaffolding.
 
 | Region | Service |
 |---|---|
-| `@code`, `@server`, `@client`, expressions, control headers, template | TypeScript, over the SDD-23 virtual |
+| `@code`, expressions, control headers, template | TypeScript, over the SDD-23 virtual |
 | `<style>` | CSS, over the `.css` virtual |
 | HTML markup | HTML |
 | `href` of `<link rel="component"\|"layout">` | this package |
+
+## The other files
+
+The same server answers the rest of a Fudic app, each file with its own service:
+
+- **`.fudapi`** — completion, hover, definition, references, CodeLens (what it generates, who
+  implements each declaration), quick fixes and semantic tokens.
+- **`.fudspec`** — completion of tags, routes, terms and fixtures; quick fixes that create a term
+  module or a fixture; semantic tokens.
+- **`page.headers`, `sw.headers`, `assets.headers`** — diagnostics, completion, hover and quick
+  fixes, from the same parser the build uses.
+- **`fudic.json`** — diagnostics and quick fixes for `baseline` and `diagnostics`; its JSON
+  Schema is the client's.
 
 ## Own requests
 
@@ -66,6 +98,7 @@ adapter of this same table.
 
 ## Not here
 
-The VS Code client, TextMate grammar and packaging (SDD-25); the formatting algorithm
-(SDD-26) — the capability is declared and delegated; the generation of the virtuals
-(SDD-23); incremental reparsing, workspace-wide diagnostics and refactors.
+The VS Code client, TextMate grammar, workbench and packaging (SDD-25); the formatting
+algorithm, which is `@fudic/formatter`'s (SDD-26) — the server routes the three formatting
+requests to it; the generation of the virtuals (SDD-23); incremental reparsing, workspace-wide
+diagnostics and refactors.

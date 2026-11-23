@@ -1,0 +1,138 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Snippets, órdenes y ajustes · Fudic</title>
+  <meta name="description" content="Todos los snippets de .fud, .fudapi y .fudspec, las órdenes de la paleta y los ajustes de la extensión de Fudic para VS Code.">
+  <link rel="canonical" href="https://fudic.dev/docs/editors/reference">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Snippets, órdenes y ajustes · Fudic">
+  <meta property="og:description" content="La referencia de la extensión de Fudic para VS Code.">
+  <meta property="og:url" content="https://fudic.dev/docs/editors/reference">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("editors-reference")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#snippets-fud">Snippets de <code>.fud</code></a></li>
+        <li><a href="#snippets-fudapi">Snippets de <code>.fudapi</code></a></li>
+        <li><a href="#snippets-fudspec">Snippets de <code>.fudspec</code></a></li>
+        <li><a href="#commands">Órdenes</a></li>
+        <li><a href="#settings">Ajustes</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Snippets, órdenes y ajustes</h1>
+
+<p>Todo lo que añade la extensión de Fudic a VS Code. Cada snippet sale en el completado solo donde encaja: <code>@@RenderBody</code> en un layout, <code>props</code> en un componente.</p>
+
+<h2 id="snippets-fud">Snippets de <code>.fud</code></h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Snippet</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>component</code>, <code>route</code>, <code>layout</code></td><td>El fichero entero, en un documento vacío.</td></tr>
+    <tr><td><code>@@if</code>, <code>@@if else</code>, <code>@@switch</code></td><td>Una condición.</td></tr>
+    <tr><td><code>@@foreach</code>, <code>@@for</code>, <code>@@while</code></td><td>Un bucle.</td></tr>
+    <tr><td><code>@@empty</code></td><td>Lo que pinta el bucle cuando no da ninguna vuelta.</td></tr>
+    <tr><td><code>@@await</code>, <code>@@catch</code></td><td>Una parte que se pinta cuando llega un campo <code>later</code>, y lo que pinta si falla.</td></tr>
+    <tr><td><code>@@code</code></td><td>El bloque de código, con lo que toca según sea componente, ruta o layout.</td></tr>
+    <tr><td><code>props</code></td><td>El contrato de props de un componente, o las que un layout pide a sus rutas.</td></tr>
+    <tr><td><code>link-component</code>, <code>link-snippet</code>, <code>link-layout</code></td><td>Un <code>&lt;link&gt;</code>, con el cursor en su <code>href</code> y la lista de ficheros abierta.</td></tr>
+    <tr><td><code>@@render</code></td><td>Pinta un snippet.</td></tr>
+    <tr><td><code>@@section</code></td><td>Rellena un hueco del layout.</td></tr>
+    <tr><td><code>@@RenderBody</code>, <code>@@RenderHead</code>, <code>@@RenderSection</code></td><td>Los huecos de un layout: el cuerpo de la ruta, su parte del <code>&lt;head&gt;</code> y una sección.</td></tr>
+    <tr><td><code>beforeHydrate</code>, <code>afterHydrate</code></td><td>Antes y después de adoptar lo que pintó el servidor.</td></tr>
+    <tr><td><code>beforeCreate</code>, <code>afterCreate</code></td><td>Antes y después de crearlo en el navegador. Solo en un componente.</td></tr>
+    <tr><td><code>onConnect</code></td><td>Cada vez que entra en el documento, con el <code>return</code> de su limpieza.</td></tr>
+    <tr><td><code>onDisconnect</code>, <code>onDispose</code></td><td>Cada vez que sale del documento; una vez, al destruirse.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="snippets-fudapi">Snippets de <code>.fudapi</code></h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Snippet</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code></td><td>Una función.</td></tr>
+    <tr><td><code>load</code></td><td>Los datos de una página.</td></tr>
+    <tr><td><code>form</code></td><td>Un formulario y sus reglas.</td></tr>
+    <tr><td><code>type</code>, <code>enum</code>, <code>pattern</code></td><td>Un tipo, un enum, un patrón con nombre.</td></tr>
+    <tr><td><code>rule</code>, <code>rule remote</code></td><td>Una regla de validación; una que el navegador pregunta al servidor mientras escribes.</td></tr>
+    <tr><td><code>middleware</code>, <code>chain</code>, <code>use</code></td><td>Un middleware; los de todas las funciones de debajo; ejecutarlos.</td></tr>
+    <tr><td><code>pipe</code></td><td>Un pipe.</td></tr>
+    <tr><td><code>fails</code>, <code>catches</code>, <code>invalidates</code>, <code>query</code>, <code>-&gt;</code></td><td>Las cláusulas de una función.</td></tr>
+    <tr><td><code>summary</code>, <code>validate-on</code></td><td>Las cláusulas de un formulario.</td></tr>
+    <tr><td><code>file argument</code>, <code>file field</code></td><td>Un fichero, con sus reglas de tamaño y tipo.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="snippets-fudspec">Snippets de <code>.fudspec</code></h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Snippet</th><th scope="col">Escribe</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>component</code>, <code>page</code>, <code>flow</code></td><td>La línea de cabecera. Propone la que toca según dónde esté el fichero.</td></tr>
+    <tr><td><code>criterion</code></td><td>Un criterio entero, con <code>given</code>, <code>when</code> y <code>then</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="commands">Órdenes</h2>
+
+<p>Desde la paleta de órdenes, <kbd>Ctrl+Shift+P</kbd>:</p>
+
+<table>
+  <thead>
+    <tr><th scope="col">Orden</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Fudic: Open Workbench</strong> (<kbd>Ctrl+K V</kbd>)</td><td>El workbench del <code>.fud</code> o el <code>.fudspec</code> abierto.</td></tr>
+    <tr><td><strong>Fudic: Format Document</strong></td><td>Formatea el fichero abierto.</td></tr>
+    <tr><td><strong>Fudic: Toggle Comment</strong> (<kbd>Ctrl+/</kbd>)</td><td>Comenta con <code>@@* … *@@</code> en un <code>.fud</code>.</td></tr>
+    <tr><td><strong>Fudic: Show API Types</strong></td><td>Los tipos que genera el <code>.fudapi</code> abierto.</td></tr>
+    <tr><td><strong>Fudic: Show API Server Module</strong></td><td>El módulo de servidor que genera.</td></tr>
+    <tr><td><strong>Fudic: Show API Browser Module</strong></td><td>El módulo del navegador que genera.</td></tr>
+    <tr><td><strong>Fudic: Regenerate API Types</strong></td><td>Vuelve a escribir lo generado.</td></tr>
+    <tr><td><strong>Fudic: Restart Language Server</strong></td><td>Vuelve a leer los ajustes, el servidor y el TypeScript. Tras instalar una dependencia o cambiar de rama.</td></tr>
+    <tr><td><strong>Fudic: Show Component Registry</strong></td><td>Cada tag, su <code>href</code> y a qué fichero llega: por qué un componente no se completa.</td></tr>
+    <tr><td><strong>Fudic: Show Virtual Files</strong></td><td>Lo que el servidor le enseña a TypeScript. Para depurar.</td></tr>
+  </tbody>
+</table>
+
+<p>Las cuatro de API también salen como enlaces en la primera línea del <code>.fudapi</code>.</p>
+
+<h2 id="settings">Ajustes</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Ajuste</th><th scope="col">Por defecto</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>fudic.templateDiagnostics</code></td><td><code>true</code></td><td>Comprueba el markup contra sus tipos.</td></tr>
+    <tr><td><code>fudic.format.enable</code></td><td><code>true</code></td><td>Deja que la extensión formatee los <code>.fud</code>.</td></tr>
+    <tr><td><code>fudic.workbench.browser</code></td><td><code>auto</code></td><td>El navegador del workbench. <code>auto</code> prueba Chrome, después Edge y después el Chromium de Playwright.</td></tr>
+    <tr><td><code>fudic.workbench.workers</code></td><td><code>4</code></td><td>Cuántos criterios ejecuta a la vez.</td></tr>
+    <tr><td><code>fudic.workbench.node</code></td><td><code>null</code></td><td>El Node que ejecuta el workbench. Vacío, el del <code>PATH</code>.</td></tr>
+    <tr><td><code>fudic.trace.server</code></td><td><code>off</code></td><td>Registra el tráfico con el language server.</td></tr>
+    <tr><td><code>fudic.server.path</code></td><td><code>null</code></td><td>Usa otro language server en vez del que trae la extensión.</td></tr>
+    <tr><td><code>fudic.exposeVirtualFiles</code></td><td><code>false</code></td><td>Enseña los ficheros virtuales que recibe TypeScript. Solo para depurar.</td></tr>
+  </tbody>
+</table>
+
+<p>La extensión también deja puestos, para los ficheros de Fudic, dos espacios de sangría y formatear al guardar.</p>

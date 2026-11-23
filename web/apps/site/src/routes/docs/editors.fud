@@ -1,0 +1,87 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>VS Code y compatibles · Fudic</title>
+  <meta name="description" content="La extensión de Fudic da IntelliSense a todos los ficheros de una app: .fud, .fudapi, .fudspec, los .headers y fudic.json. En VS Code y, por Open VSX, en Antigravity, Cursor, Windsurf y VSCodium.">
+  <link rel="canonical" href="https://fudic.dev/docs/editors">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="VS Code y compatibles · Fudic">
+  <meta property="og:description" content="IntelliSense para todos los ficheros de una app de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/editors">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("editors")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Qué te da</a></li>
+        <li><a href="#install">Instalarla</a></li>
+        <li><a href="#typescript">El TypeScript del proyecto</a></li>
+        <li><a href="#status">La barra de estado</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>VS Code y compatibles</h1>
+
+<p>La extensión de Fudic da IntelliSense a todos los ficheros de una app: completado, ayuda al pasar el ratón, ir a la definición, referencias, errores mientras escribes, arreglos rápidos, formato, snippets y órdenes propias. Trae su propio language server, así que no hay nada más que instalar.</p>
+
+<h2 id="what">Qué te da</h2>
+
+<ul>
+  <li><strong><code>.fud</code></strong>: los componentes, sus props y sus eventos, los datos de la página, los tokens de CSS y los enlaces, con los tipos del <code>.fudapi</code> y del <code>@@code</code> comprobados en el markup.</li>
+  <li><strong><code>.fudapi</code></strong>: cada declaración y cada cláusula, y encima de cada una quién la implementa.</li>
+  <li><strong><code>.fudspec</code></strong>: los tags, las rutas, los pasos y los fixtures, y el workbench con <kbd>Ctrl+K V</kbd>.</li>
+  <li><strong>Los <code>.headers</code> y <code>fudic.json</code></strong>: completado, ayuda y errores en cada campo.</li>
+</ul>
+
+<p>Cómo se nota al escribir está en <a href="/docs/editors/writing">Escribir con el editor</a>. Todos los snippets, órdenes y ajustes, en <a href="/docs/editors/reference">Snippets, órdenes y ajustes</a>.</p>
+
+<h2 id="install">Instalarla</h2>
+
+<p>En VS Code, búscala como <strong>Fudic</strong> en la vista de extensiones, o desde la paleta de órdenes:</p>
+
+<ui-code>
+<pre><code>ext install fudic.fudic-vscode</code></pre>
+</ui-code>
+
+<p>Antigravity, Cursor, Windsurf y VSCodium instalan sus extensiones desde <a href="https://open-vsx.org/" target="_blank" rel="noopener">Open VSX</a>, y la extensión de Fudic está también allí, igual.</p>
+
+<p>Se activa sola en cuanto el proyecto tiene un <code>.fud</code>, un <code>.fudapi</code> o un <code>.fudspec</code>. Cada sistema tiene su propia versión, porque el parser y el formateador son nativos; la tienda te da la tuya.</p>
+
+<h2 id="typescript">El TypeScript del proyecto</h2>
+
+<p>La extensión comprueba los tipos con el TypeScript que tiene instalado tu proyecto, el mismo que usa el build. Así el editor y el build dicen siempre lo mismo. <code>fudic new</code> ya lo deja instalado.</p>
+
+<p>Si el proyecto no lo tiene, el HTML y el CSS siguen funcionando, y la barra de estado lo avisa. Lo que falta son los tipos, el completado de TypeScript y sus errores.</p>
+
+<h2 id="status">La barra de estado</h2>
+
+<p>Mientras tienes abierto un fichero de Fudic, la barra de estado dice cómo está el language server:</p>
+
+<ul>
+  <li><strong><code>Fudic ✓</code></strong>: listo.</li>
+  <li><strong><code>Fudic ⟳</code></strong>: arrancando.</li>
+  <li><strong><code>Fudic ⚠</code></strong>: sin el TypeScript del proyecto. El HTML y el CSS funcionan.</li>
+  <li><strong><code>Fudic ✕</code></strong>: parado.</li>
+</ul>
+
+<p>Al pulsarla se abre la salida <strong>Fudic</strong>, con el motivo. Después de instalar una dependencia o cambiar de rama, <strong>Fudic: Restart Language Server</strong> lo vuelve a leer todo.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a>: lo que la extensión sabe leer en cada componente.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">Propiedades personalizadas de CSS</a>: los tokens que completa tras <code>var(--</code>.</li>
+</ul>

@@ -482,3 +482,12 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Decidir. O el compilador escribe esa `aspect-ratio` en un `<img>` con
   `loading="lazy"` y `width`/`height` literales, o se documenta que Chrome avisa y no hay salto.
   Cuando `attr()` con tipo entre en Baseline, la guía puede ponerlo en `img.css`.
+
+## 33. El snippet `load` del `.fudapi` ofrece un modo que no existe
+
+- **Qué pasó.** Leído en el código (capítulo Editores). El snippet `load` ofrece a elegir
+  `ssr`, `ssg` o `isr` (`packages/language-server/src/fudapi/snippets.ts:32`). `isr` no es un modo:
+  los tres son `ssg`, `ssr` y `sw`. Elegirlo deja una línea de `load` que el parser rechaza. Es la
+  única aparición de `isr` en los paquetes.
+- **Qué debería hacer.** Ofrecer `ssg`, `ssr` y `sw`. Mejor aún, que no proponga ninguno por
+  defecto, porque sin modo se deduce.

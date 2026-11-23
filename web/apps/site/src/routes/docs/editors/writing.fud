@@ -1,0 +1,130 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Escribir con el editor · Fudic</title>
+  <meta name="description" content="El editor lee un .fud como un solo lenguaje: los tipos llegan al markup, cada componente se explica al pasar el ratón y la bombilla arregla lo que se puede arreglar.">
+  <link rel="canonical" href="https://fudic.dev/docs/editors/writing">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Escribir con el editor · Fudic">
+  <meta property="og:description" content="Un .fud, un solo lenguaje: tipos, componentes y arreglos rápidos.">
+  <meta property="og:url" content="https://fudic.dev/docs/editors/writing">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("editors-writing")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#one-language">Un solo lenguaje</a></li>
+        <li><a href="#components">Componentes</a></li>
+        <li><a href="#css">CSS y tokens</a></li>
+        <li><a href="#fudapi">En un <code>.fudapi</code></a></li>
+        <li><a href="#fudspec">En un <code>.fudspec</code></a></li>
+        <li><a href="#config">Los <code>.headers</code> y <code>fudic.json</code></a></li>
+        <li><a href="#fixes">La bombilla</a></li>
+        <li><a href="#format">Formato</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Escribir con el editor</h1>
+
+<p>Un <code>.fud</code> mezcla HTML, CSS y TypeScript, y el editor lo lee como un solo lenguaje. Los tipos llegan al markup, cada componente se explica al pasar el ratón y la bombilla arregla lo que se puede arreglar sin riesgo.</p>
+
+<h2 id="one-language">Un solo lenguaje</h2>
+
+<p>Los datos de la página salen de su <code>.fudapi</code>, y el editor los conoce en el markup:</p>
+
+<ui-code .path="src/routes/blog/index.fud">
+<pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
+@@foreach (const post of data.posts) key (post.slug) &#123;
+  &lt;h2&gt;@@post.titel&lt;/h2&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Al escribir <code>data.</code>, completa los campos de <code>load</code>. <code>post.titel</code> sale subrayado en esa línea del <code>.fud</code>, con el error de TypeScript, y no en un fichero generado que nunca has visto. <kbd>F12</kbd> sobre un campo lleva al <code>.fudapi</code>.</p>
+
+<p>Los errores son los mismos que da el build, y cada código enlaza a su explicación.</p>
+
+<h2 id="components">Componentes</h2>
+
+<ul>
+  <li><strong>Al escribir <code>&lt;app-card </code></strong>, completa las props que declara ese componente, con sus tipos. Una expresión dentro se completa con el tipo de la prop.</li>
+  <li><strong>Al pasar el ratón por el tag</strong>, una tarjeta con lo que hay que saber para usarlo: su descripción, cada prop con su tipo, su valor por defecto y su documentación, sus slots, los eventos que emite y lo que llevan, sus parts y los tokens que lee. Si viene de una librería, dice de cuál.</li>
+  <li><strong><kbd>F12</kbd></strong> sobre el tag abre su fichero, y <strong>Buscar todas las referencias</strong> lista dónde se usa, en tu proyecto y en tus librerías.</li>
+  <li><strong>Dentro de <code>href=""</code></strong> de un <code>&lt;link rel="component"&gt;</code>, la lista de lo que puedes enlazar: tus ficheros por su ruta relativa y los de una librería por el nombre de su paquete.</li>
+</ul>
+
+<p>Cada componente se distingue de un tag nativo también en el color: <code>&lt;app-card&gt;</code> y <code>&lt;article&gt;</code> no se pintan igual.</p>
+
+<h2 id="css">CSS y tokens</h2>
+
+<p>Dentro del <code>&lt;style&gt;</code> de un <code>.fud</code> funciona el completado estándar de CSS. Tras <code>var(--</code>, además, los tokens de tus hojas y de las de tus librerías, con su valor:</p>
+
+<ui-code .path="src/components/app-card.fud">
+<pre><code>:host &#123;
+  padding: var(--space-m);
+  color: var(--color-text);
+&#125;</code></pre>
+</ui-code>
+
+<p>Al pasar el ratón por un token, de dónde viene; <kbd>F12</kbd> abre la hoja que lo declara. En el markup funciona Emmet: <code>ul&gt;li*3</code> y <kbd>Tab</kbd>.</p>
+
+<h2 id="fudapi">En un <code>.fudapi</code></h2>
+
+<ul>
+  <li><strong>Completado</strong> de cada declaración y cada cláusula, y de los tipos del proyecto.</li>
+  <li><strong>Encima de cada declaración</strong>, quién la implementa: un enlace al <code>.ts</code> de su handler, o <code>not implemented</code> si aún no lo tiene.</li>
+  <li><strong>En la primera línea</strong>, lo que genera el fichero: los tipos, el módulo de servidor y el del navegador, y cómo volver a generarlos.</li>
+  <li><strong>Al pasar el ratón</strong> por una regla, un <code>catches</code> o un fichero, qué hace; <kbd>F12</kbd> y las referencias funcionan de un contrato a otro.</li>
+</ul>
+
+<h2 id="fudspec">En un <code>.fudspec</code></h2>
+
+<p><kbd>Ctrl+K V</kbd> abre el workbench al lado del editor: el componente o la página, sus criterios ejecutados en un navegador de verdad en cada guardado y <em>Live</em> para tocarlo a mano (<a href="/docs/testing/workbench">El workbench</a>). El mismo botón está en la barra del editor de un <code>.fud</code>.</p>
+
+<p>Al escribir, completa los tags, las rutas, los pasos con sus parámetros y los nombres del fixture. Si un criterio nombra un paso o un fixture que no existe, la bombilla lo crea.</p>
+
+<h2 id="config">Los <code>.headers</code> y <code>fudic.json</code></h2>
+
+<ul>
+  <li><strong><code>page.headers</code>, <code>sw.headers</code> y <code>assets.headers</code></strong>: completado, ayuda y errores, con el mismo lector que el build (<a href="/docs/security/headers">Las cabeceras</a>).</li>
+  <li><strong><code>fudic.json</code></strong>: cada campo se completa y se explica, y un valor que no vale sale subrayado (<a href="/docs/configuration#editor">El schema en el editor</a>).</li>
+</ul>
+
+<h2 id="fixes">La bombilla</h2>
+
+<p>Cuando un error tiene un arreglo seguro, aparece la bombilla, o <kbd>Ctrl+.</kbd>. Algunos:</p>
+
+<ul>
+  <li>Un tag sin su <code>&lt;link rel="component"&gt;</code>: <strong>Add &lt;link rel="component"&gt; for &lt;app-card&gt;</strong>.</li>
+  <li>Un <code>@@foreach</code> sin <code>key</code>: <strong>Add key (post.slug)</strong>.</li>
+  <li>Un componente sin sus props obligatorias: <strong>Add the required props of &lt;app-card&gt;</strong>.</li>
+  <li>Un enlace a un fichero que no existe: <strong>Create components/app-card.fud</strong>.</li>
+  <li>CSS fuera de tu Baseline: <strong>Wrap in @@supports selector(…)</strong> (<a href="/docs/configuration/baseline">Baseline</a>).</li>
+  <li>Un aviso que quieres callar: <strong>Silence FUDnnnn on this line</strong>, y después <strong>Write the reason</strong> (<a href="/docs/configuration/diagnostics">Diagnósticos</a>).</li>
+</ul>
+
+<p>Si hay varios arreglos posibles, eliges tú. Si ninguno es seguro, no aparece ninguno.</p>
+
+<h2 id="format">Formato</h2>
+
+<p>La extensión formatea los <code>.fud</code>, los <code>.fudapi</code> y los <code>.fudspec</code> al guardar: el markup, las directivas, el TypeScript y el CSS de dentro, de una pasada. Es el mismo formateador que usa la CLI. <kbd>Ctrl+/</kbd> comenta con <code>@@* … *@@</code>, nunca con un <code>//</code> que no compilaría.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">Propiedades personalizadas de CSS</a>: los tokens que completa tras <code>var(--</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@supports" target="_blank" rel="noopener"><code>@@supports</code></a>: lo que escribe la bombilla para el CSS fuera de tu Baseline.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>: los huecos que enseña la tarjeta de un componente.</li>
+</ul>
