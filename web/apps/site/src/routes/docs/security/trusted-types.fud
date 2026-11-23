@@ -48,7 +48,7 @@
 
 <h2 id="raw">HTML a propósito: <code>@@raw</code></h2>
 
-<p>Para escribir un valor como HTML, por ejemplo un artículo que viene de un CMS, está <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>). Solo escribe HTML si el valor viene marcado con <code>trustedHtml(…)</code>; si no, lo escribe como texto, igual que una expresión.</p>
+<p>Para escribir un valor como HTML está <code>@@raw</code> (<a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>). Solo escribe HTML si el valor viene marcado con <code>trustedHtml(…)</code>; si no, lo escribe como texto, igual que una expresión. La marca se pone en el <code>@@code</code> y no viaja: un HTML que llega del servidor se escribe como texto.</p>
 
 <ul>
   <li><strong>La marca va en el valor</strong>, no en la plantilla: quien crea el valor es quien responde de él.</li>

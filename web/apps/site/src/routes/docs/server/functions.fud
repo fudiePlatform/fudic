@@ -177,7 +177,7 @@ find.handle(async (ctx) =&gt; &#123;
 <p>Para un cliente que no es una página de Fudic, por ejemplo <code>curl</code> u otra app, la función se declara con <code>use json</code> y viaja en JSON normal:</p>
 
 <ui-code>
-<pre><code>get search-json
+<pre><code>get searchJson
   use json
   q  str
   -&gt; Person[]</code></pre>

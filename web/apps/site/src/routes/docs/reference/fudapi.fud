@@ -1,0 +1,381 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El lenguaje .fudapi · Fudic</title>
+  <meta name="description" content="La gramática completa del .fudapi: líneas y sangría, funciones y sus cláusulas, load, paths, layout, chain, type, enum, form, messages, rule, middleware, pattern y pipe, los tipos, las reglas y lo que genera.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/fudapi">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El lenguaje .fudapi · Fudic">
+  <meta property="og:description" content="Cada declaración y cláusula del .fudapi, con su sintaxis.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/fudapi">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-fudapi")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#lines">Líneas</a></li>
+        <li><a href="#files">Ficheros y nombres</a></li>
+        <li><a href="#functions">Funciones</a></li>
+        <li><a href="#load"><code>load</code>, <code>paths</code> y <code>layout</code></a></li>
+        <li><a href="#chain"><code>chain</code></a></li>
+        <li><a href="#types"><code>type</code>, <code>enum</code> y los tipos</a></li>
+        <li><a href="#forms"><code>form</code> y <code>messages</code></a></li>
+        <li><a href="#extensions">Reglas, middlewares, patrones y pipes</a></li>
+        <li><a href="#builtins">Lo que trae Fudic</a></li>
+        <li><a href="#generated">Lo que genera</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El lenguaje <code>.fudapi</code></h1>
+
+<p>El contrato del servidor de una ruta o un componente: sus datos, sus funciones y sus tipos, en un fichero al lado de su <code>.fud</code>. Fudic genera de él los tipos de TypeScript, las llamadas del navegador y la validación de los dos lados. No depende de TypeScript: está diseñado para generar también el servidor en otros lenguajes. Guía: <a href="/docs/server">Servidor y datos</a>.</p>
+
+<h2 id="lines">Líneas</h2>
+
+<ul>
+  <li><strong>Una declaración por línea</strong>, y debajo, sangradas, sus partes. La sangría es de dos espacios por nivel: un tabulador, un número impar o saltarse un nivel es <code>FUD1061</code>.</li>
+  <li><strong>Las palabras</strong> se separan con espacios. Un texto va entre comillas, <code>"…"</code>, con <code>\"</code> y <code>\\</code> como únicos escapes, y no pasa de una línea.</li>
+  <li><strong><code>#</code></strong> al empezar una palabra comenta el resto de la línea. Las líneas <code>#</code> justo encima de una declaración, un campo o un argumento son su documentación: salen en el editor y en los tipos generados. Una línea en blanco las corta.</li>
+  <li><strong>Una línea que empieza por un texto</strong> y va más sangrada de la cuenta continúa la de arriba.</li>
+</ul>
+
+<ui-code .path="src/routes/users.fudapi">
+<pre><code># Turns a person on or off.
+put save
+  use auth
+  id      i32
+  active  bool</code></pre>
+</ui-code>
+
+<h2 id="files">Ficheros y nombres</h2>
+
+<p>Un <code>.fudapi</code> es de uno de dos tipos, según su primera declaración:</p>
+
+<ul>
+  <li><strong>Un contrato</strong>, al lado de una ruta o un componente: funciones, <code>load</code>, <code>paths</code>, <code>layout</code>, <code>chain</code>, <code>form</code> y <code>messages</code>.</li>
+  <li><strong>Extensiones</strong>, en cualquier carpeta: <code>rule</code>, <code>middleware</code>, <code>pattern</code> y <code>pipe</code>.</li>
+</ul>
+
+<p><code>type</code> y <code>enum</code> caben en los dos. Mezclarlos es <code>FUD1078</code>. <code>load</code>, <code>paths</code> y <code>layout</code> solo van al lado de una ruta, y <code>src/http.fudapi</code> guarda la <code>chain</code> de toda la app.</p>
+
+<p>Cada nombre tiene su forma (<code>FUD1070</code>):</p>
+
+<ul>
+  <li><strong>Funciones, formularios, campos y argumentos</strong>: un identificador, <code>saveUser</code>.</li>
+  <li><strong>Middlewares, reglas, patrones, pipes y códigos de error</strong>: en kebab-case, <code>email-taken</code>. En TypeScript salen en camelCase, <code>emailTaken</code>.</li>
+  <li><strong><code>type</code> y <code>enum</code></strong>: en PascalCase, <code>Person</code>.</li>
+</ul>
+
+<p>Los tipos, los formularios, las reglas, los middlewares, los patrones y los pipes se ven en todo el proyecto sin importarlos: dos con el mismo nombre son <code>FUD1081</code>.</p>
+
+<h2 id="functions">Funciones</h2>
+
+<ui-code>
+<pre><code>get|post|put|patch|delete &lt;name&gt; [&lt;route&gt;]</code></pre>
+</ui-code>
+
+<p>Una función de servidor que el navegador llama por su nombre. <code>&lt;route&gt;</code>, si se da, añade segmentos a su URL: <code>/items/:id</code>, y cada <code>:param</code> necesita un argumento con ese nombre. Guía: <a href="/docs/server/functions">Funciones</a>.</p>
+
+<p>Debajo van sus cláusulas:</p>
+
+<ul>
+  <li><strong><code>&lt;arg&gt;  &lt;type&gt;</code></strong>: un argumento, con sus <a href="#builtin-rules">reglas</a> debajo. Va en la ruta si se llama como un parámetro; si no, en el cuerpo, o en la query en una <code>get</code>.</li>
+  <li><strong><code>query &lt;arg&gt;  &lt;type&gt;</code></strong>: un argumento que va en la query string.</li>
+  <li><strong><code>-&gt; &lt;type&gt;</code></strong>: lo que devuelve. Sin ella, nada.</li>
+  <li><strong><code>use &lt;middleware&gt;…</code></strong>: añade middlewares a su cadena. Sus parámetros van en líneas debajo, y son del último de la línea.</li>
+  <li><strong><code>skip &lt;middleware&gt;…</code></strong> o <strong><code>skip *</code></strong>: quita middlewares heredados.</li>
+  <li><strong><code>form &lt;formName&gt;</code></strong>: recibe un formulario. No va con argumentos de cuerpo.</li>
+  <li><strong><code>fails &lt;code&gt; &lt;status&gt; ["&lt;text&gt;"]</code></strong>: un rechazo con nombre, que el handler lanza y el navegador pinta con su texto. Status entre <code>400</code> y <code>599</code>.</li>
+  <li><strong><code>catches &lt;status&gt;…</code></strong>: los status que llegan a quien llama, en vez de al middleware <code>error-pages</code>.</li>
+  <li><strong><code>invalidates &lt;path&gt;…</code></strong>: al terminar bien, la página de esa ruta pide sus datos otra vez. <code>/users</code> o <code>/users/:id</code>.</li>
+  <li><strong><code>compress gzip|deflate|deflate-raw [&lt;bytes&gt;]</code></strong> o <strong><code>compress off</code></strong>: comprime la respuesta a partir de ese tamaño.</li>
+</ul>
+
+<ui-code .path="src/routes/users.fudapi">
+<pre><code>get search
+  q  str
+    max-length 80
+  -&gt; Person[]
+
+get find /:id
+  id  i32
+  query q  str?
+  -&gt; Person?
+
+put save
+  use auth
+  catches 409
+  fails protected 409 "This person cannot be turned off."
+  id      i32
+  active  bool
+
+post signIn
+  invalidates /users
+  user  str</code></pre>
+</ui-code>
+
+<p>Los argumentos que van en la URL (los de la ruta, los de <code>query</code> y todos los de una <code>get</code>) tienen que ser un tipo simple o un <code>enum</code> (<code>FUD1101</code>), y nunca <code>file</code> (<code>FUD1480</code>).</p>
+
+<h2 id="load"><code>load</code>, <code>paths</code> y <code>layout</code></h2>
+
+<ui-code>
+<pre><code>load [ssg|ssr|sw] [ttl &lt;duration&gt;] [&lt;policy&gt;] [page never|persist [&lt;duration&gt;]] [buffer &lt;bytes&gt;]
+  &lt;field&gt;  &lt;type&gt;  [later]</code></pre>
+</ui-code>
+
+<p>Los datos de la página, que el handler devuelve y la vista lee como <code>data</code>. Guía: <a href="/docs/routing/data">Los datos de la página</a> y <a href="/docs/routing/rendering">Los modos</a>.</p>
+
+<ul>
+  <li><strong>El modo</strong>: <code>ssg</code>, en el build; <code>ssr</code>, en cada petición; <code>sw</code>, en el Service Worker. Sin él, una ruta sin parámetros es <code>sw</code> con <code>load</code> y <code>ssg</code> sin él; con parámetros, <code>ssg</code> si tiene <code>paths</code> y <code>sw</code> si no. <code>ssr</code> nunca se deduce.</li>
+  <li><strong><code>ttl</code></strong>: cuánto valen los datos en la caché, <code>30s</code>, <code>5m</code>, <code>2h</code>, <code>7d</code>.</li>
+  <li><strong>La política</strong>: <code>cache-first</code>, <code>network-first</code>, <code>stale-while-revalidate</code> o <code>network-only</code>.</li>
+  <li><strong><code>page</code></strong>: si la página pintada se guarda, <code>never</code> o <code>persist</code>, con su duración (<a href="/docs/service-worker/caching">Datos y páginas en caché</a>).</li>
+  <li><strong><code>buffer</code></strong>: cuántos bytes junta antes de mandar el primer trozo, <code>0</code>, <code>4096</code> o <code>16k</code>.</li>
+  <li><strong><code>later</code></strong> en un campo: no retiene la página; el handler lo devuelve como promesa y llega después (<a href="/docs/template-syntax/await"><code>@@await</code></a>).</li>
+  <li><strong>Debajo</strong> van también <code>use</code> y <code>skip</code>. <code>fails</code> no: <code>load</code> lanza el error (<code>FUD1360</code>).</li>
+</ul>
+
+<ui-code .path="src/routes/dashboard.fudapi">
+<pre><code>load ssr
+  title    str
+  summary  Summary  later</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>paths</code></strong>, sola: el handler dice qué valores del parámetro existen, y el build pinta una página por cada uno. Solo en una ruta con parámetros.</li>
+  <li><strong><code>layout</code></strong>, sola: el handler da las props del layout.</li>
+</ul>
+
+<h2 id="chain"><code>chain</code></h2>
+
+<p>La cadena de middlewares de un fichero, o de toda la app en <code>src/http.fudapi</code>. Lleva <code>use</code>, <code>skip</code> y <code>compress</code>. Una función hereda la global, menos lo que quite el <code>skip</code> de su fichero, más lo que añada su <code>chain</code>. Guía: <a href="/docs/server/middlewares#chain">Middlewares</a>.</p>
+
+<ui-code .path="src/http.fudapi">
+<pre><code>chain
+  use log
+  use error-pages
+    routes  403 /sign-in
+  use csrf
+  compress gzip 200</code></pre>
+</ui-code>
+
+<h2 id="types"><code>type</code>, <code>enum</code> y los tipos</h2>
+
+<ui-code .path="src/routes/users.fudapi">
+<pre><code>type Person
+  id      i32
+  name    str
+  email   str?
+  tags    str[]
+
+enum Tone
+  info
+  warning</code></pre>
+</ui-code>
+
+<p>Un <code>type</code> sale como <code>interface</code> y un <code>enum</code> como una unión de textos. Un <code>type</code> no puede contenerse a sí mismo por campos obligatorios (<code>FUD1088</code>). Guía: <a href="/docs/server/types">Tipos</a>.</p>
+
+<p>Cómo se escribe un tipo:</p>
+
+<ul>
+  <li><strong><code>T[]</code></strong>: una lista, <code>readonly T[]</code>. Se puede repetir, <code>T[][]</code>.</li>
+  <li><strong><code>T?</code></strong>: opcional. La <code>?</code> va al final, <code>T[]?</code>.</li>
+  <li><strong><code>map K V</code></strong>: un diccionario. La clave es <code>str</code>, <code>uuid</code> o un entero.</li>
+</ul>
+
+<table>
+  <thead><tr><th>Tipo</th><th>En TypeScript</th><th>Valores</th></tr></thead>
+  <tbody>
+    <tr><td><code>str</code></td><td><code>string</code></td><td></td></tr>
+    <tr><td><code>bool</code></td><td><code>boolean</code></td><td></td></tr>
+    <tr><td><code>date</code></td><td><code>Date</code></td><td></td></tr>
+    <tr><td><code>uuid</code></td><td><code>string</code></td><td></td></tr>
+    <tr><td><code>html</code></td><td><code>TrustedHTML</code></td><td>se pinta escapado (<a href="/docs/reference/dom#trusted-html"><code>trustedHtml</code></a>)</td></tr>
+    <tr><td><code>file</code></td><td><code>File</code></td><td>solo argumentos y respuestas</td></tr>
+    <tr><td><code>u8</code> · <code>i8</code></td><td><code>number</code></td><td>0 a 255 · −128 a 127</td></tr>
+    <tr><td><code>u16</code> · <code>i16</code></td><td><code>number</code></td><td>0 a 65535 · −32768 a 32767</td></tr>
+    <tr><td><code>u32</code> · <code>i32</code></td><td><code>number</code></td><td>0 a 4294967295 · −2147483648 a 2147483647</td></tr>
+    <tr><td><code>f32</code> · <code>f64</code></td><td><code>number</code></td><td>cualquier número finito</td></tr>
+  </tbody>
+</table>
+
+<p>No hay <code>number</code>: se elige el ancho, porque cada lenguaje del servidor lo necesita.</p>
+
+<h2 id="forms"><code>form</code> y <code>messages</code></h2>
+
+<ui-code>
+<pre><code>form &lt;name&gt;
+  validate-on submit|blur|input…
+  validity rules|interacted
+  catches &lt;status&gt;…
+  &lt;field&gt;  &lt;type&gt;  [= &lt;initial&gt;]
+    &lt;rule&gt; &lt;arg&gt;… ["&lt;text&gt;"]
+  &lt;group&gt;  group
+  summary
+    &lt;rule&gt;
+    require &lt;code&gt; &lt;expr&gt; ["&lt;text&gt;"] [on &lt;field&gt;]
+    when &lt;expr&gt;
+      require …</code></pre>
+</ui-code>
+
+<p>Un formulario: sus campos, sus reglas y cuándo valida. Guía: <a href="/docs/forms">El formulario</a> y <a href="/docs/forms/validation">Validación y validez</a>.</p>
+
+<ul>
+  <li><strong>Un campo</strong>: su tipo, su valor inicial (un texto, un número, <code>true</code>, <code>false</code> o <code>[]</code>) y sus reglas. Un <code>file</code> no tiene valor inicial.</li>
+  <li><strong><code>validate-on</code></strong>: cuándo valida: al enviar, al salir del campo, al escribir. En el formulario, en un grupo o en un campo.</li>
+  <li><strong><code>validity</code></strong>: <code>rules</code>, cuenta en cuanto se cumplen las reglas; <code>interacted</code>, por defecto, solo cuando el usuario pasó por el campo.</li>
+  <li><strong><code>catches</code></strong>: los status de un rechazo que se quedan en el formulario. Por defecto, <code>400</code>, <code>409</code> y <code>422</code>.</li>
+  <li><strong><code>group</code></strong>: un grupo, con sus campos, su <code>validate-on</code>, su <code>validity</code> y su <code>summary</code>.</li>
+  <li><strong><code>range "&lt;text&gt;"</code></strong> en un campo: el texto de <code>min</code> y <code>max</code> juntos, con <code>&#123;min&#125;</code> y <code>&#123;max&#125;</code>.</li>
+  <li><strong><code>summary</code></strong>: las reglas del formulario o del grupo: reglas declaradas <code>on form</code> u <code>on group</code>, <code>require</code> con una expresión y <code>when</code>, que agrupa <code>require</code> bajo una condición.</li>
+</ul>
+
+<p>Una expresión lee campos por su ruta desde el formulario o el grupo de su <code>summary</code> (<code>password</code> dentro de <code>access</code>, <code>access.password</code> desde el formulario) y usa <code>or</code>, <code>and</code>, <code>not</code>, las comparaciones <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code> y <code>&gt;=</code>, <code>contains</code>, y <code>valid x</code>, <code>empty x</code> y <code>length x</code>. Las de orden son para números y fechas.</p>
+
+<ui-code .path="src/forms/user.fudapi">
+<pre><code>form userForm
+  validate-on blur
+  name  str
+    required
+    min-length 2
+  access  group
+    password  str
+      required
+      min-length 8
+    confirm  str
+    summary
+      require same-password  password == confirm  "The passwords do not match."  on confirm</code></pre>
+</ui-code>
+
+<p><code>messages</code>, una por proyecto, da el texto por defecto de cada código de error:</p>
+
+<ui-code .path="src/messages.fudapi">
+<pre><code>messages
+  required  "This field is required."
+  min-length  "At least &#123;n&#125; characters."</code></pre>
+</ui-code>
+
+<p>Un texto solo puede usar los huecos que le corresponden: los parámetros del <code>fails</code> de su regla, como <code>&#123;n&#125;</code>, y <code>&#123;detail&#125;</code> en una regla <code>server</code> o <code>remote</code> (<code>FUD1085</code>).</p>
+
+<h2 id="extensions">Reglas, middlewares, patrones y pipes</h2>
+
+<h3 id="rule"><code>rule</code></h3>
+
+<ui-code>
+<pre><code>rule &lt;name&gt;
+  on field &lt;type&gt;… | on group | on form
+  runs both|server|remote
+  async
+  debounce &lt;ms&gt;
+  use|skip …
+  &lt;param&gt;  &lt;type&gt;
+  fails &lt;code&gt; [&lt;param&gt;…]</code></pre>
+</ui-code>
+
+<p>Una regla propia, que se implementa con <code>check</code>. <code>on</code>, <code>runs</code> y al menos un <code>fails</code> son obligatorios (<code>FUD1097</code>). En <code>on field</code>, <code>*</code> es cualquier tipo y <code>*[]</code> cualquier lista. <code>debounce</code>, por defecto 300 ms, solo en una <code>remote</code>; <code>use</code> y <code>skip</code>, no en una <code>both</code>. Guía: <a href="/docs/server/rules">Reglas</a>.</p>
+
+<ui-code .path="src/rules/people.fudapi">
+<pre><code>rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken</code></pre>
+</ui-code>
+
+<h3 id="middleware"><code>middleware</code></h3>
+
+<ui-code>
+<pre><code>middleware &lt;name&gt;
+  client
+  server
+  &lt;param&gt;  &lt;type&gt;
+  adds
+    &lt;field&gt;  &lt;type&gt;
+  fails &lt;code&gt; &lt;status&gt; ["&lt;text&gt;"]</code></pre>
+</ui-code>
+
+<p><code>client</code> y <code>server</code> dicen qué mitades tiene. <code>adds</code>, lo que añade al <code>ctx</code> de quien viene detrás. Sin mitades, es una marca que lee el compilador. Guía: <a href="/docs/server/middlewares">Middlewares</a>.</p>
+
+<ui-code .path="src/middlewares/auth.fudapi">
+<pre><code>middleware auth
+  server
+  adds
+    user  User</code></pre>
+</ui-code>
+
+<p>Los parámetros se le dan debajo de cada <code>use</code>, uno por línea; una lista lleva sus valores o <code>[]</code>, y un <code>map</code> repite la línea <code>clave valor</code> (<code>FUD1087</code>).</p>
+
+<h3 id="pattern"><code>pattern</code></h3>
+
+<ui-code>
+<pre><code>pattern web-url  https?://.+</code></pre>
+</ui-code>
+
+<p>Una expresión regular con nombre, para la regla <code>pattern</code>. Es todo lo que va detrás del nombre, <code>#</code> incluido, sin <code>^</code> ni <code>$</code>: Fudic la ajusta a todo el valor.</p>
+
+<h3 id="pipe"><code>pipe</code></h3>
+
+<ui-code>
+<pre><code>pipe initials
+  on str</code></pre>
+</ui-code>
+
+<p>Un pipe propio, para <code>@@(x | initials)</code>. <code>on</code> dice qué tipos formatea (<code>FUD1340</code>), y debajo van sus parámetros. Guía: <a href="/docs/server/pipes#own">Pipes</a>.</p>
+
+<h2 id="builtins">Lo que trae Fudic</h2>
+
+<h3 id="builtin-rules">Las reglas</h3>
+
+<ul>
+  <li><strong><code>required</code></strong>: cualquier tipo.</li>
+  <li><strong><code>min &lt;n&gt;</code></strong> y <strong><code>max &lt;n&gt;</code></strong>: números.</li>
+  <li><strong><code>min-length &lt;n&gt;</code></strong> y <strong><code>max-length &lt;n&gt;</code></strong>: textos y listas.</li>
+  <li><strong><code>pattern &lt;name&gt;</code></strong>: textos. Fudic trae <code>email</code>, la del estándar HTML.</li>
+  <li><strong><code>max-size &lt;n&gt;</code></strong>: ficheros, con tamaños como <code>2mb</code>, <code>500kb</code> o <code>1.5gb</code>.</li>
+  <li><strong><code>accept "&lt;types&gt;"</code></strong>: ficheros, con la sintaxis del atributo <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>.</li>
+</ul>
+
+<p>Las ocho valen en los argumentos de una función y en los campos de un formulario, y se comprueban en los dos lados. Un texto al final de la línea es su mensaje: <code>required "Tell us your name."</code>.</p>
+
+<h3 id="builtin-middlewares">Los middlewares</h3>
+
+<ul>
+  <li><strong><code>csrf</code></strong>: rechaza las llamadas de otro sitio con un <code>403</code>. Con <code>token true</code>, además exige un token firmado (<a href="/docs/server/middlewares#csrf">Middlewares</a>).</li>
+  <li><strong><code>error-pages</code></strong>: lleva el navegador a la página de error de un status, o a la ruta de <code>routes</code>.</li>
+  <li><strong><code>json</code></strong>: la función habla JSON, para un cliente que no es una página de Fudic.</li>
+</ul>
+
+<h2 id="generated">Lo que genera</h2>
+
+<p>Cada <code>.fudapi</code> es un módulo <code>fudic:&lt;id&gt;</code>, con <code>&lt;id&gt;</code> su ruta dentro de <code>src</code> sin extensión: <code>fudic:routes/users</code>, <code>fudic:forms/user</code>. Exporta, con el mismo nombre en el servidor y en el navegador:</p>
+
+<ul>
+  <li><strong>Cada función</strong>, para llamarla en el navegador e implementarla con <code>.handle</code> en el servidor, más <code>&lt;Name&gt;Ctx</code>, <code>&lt;Name&gt;Handler</code> y <code>&lt;Name&gt;Fails</code>.</li>
+  <li><strong><code>load</code>, <code>paths</code> y <code>layout</code></strong>, con <code>LoadData</code> y <code>LoadCtx</code>.</li>
+  <li><strong>Cada <code>type</code> y <code>enum</code></strong>.</li>
+  <li><strong>Cada formulario</strong>, y su <code>&lt;Name&gt;Value</code>.</li>
+  <li><strong>Cada regla, middleware, patrón y pipe</strong>, para implementarlos.</li>
+  <li><strong><code>Fixtures</code> y <code>Calls</code></strong> en una ruta, para tipar su fixture.</li>
+</ul>
+
+<p>Qué hace cada pieza al implementarla: <a href="/docs/reference/http#handlers"><code>@@fudic/http</code></a>.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los diagnósticos del <code>.fudapi</code></strong> van de <code>FUD1060</code> a <code>FUD1101</code>, más algunos sueltos: <code>FUD1324</code>, <code>later</code> fuera de <code>load</code>; <code>FUD1360</code>, <code>fails</code> en <code>load</code>; <code>FUD1460</code> y <code>FUD1461</code>, reglas; <code>FUD1480</code> a <code>FUD1487</code>, ficheros y tamaños. Cada uno tiene su explicación en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</li>
+  <li><strong>Un tamaño</strong> (<code>kb</code>, <code>mb</code>, <code>gb</code>, en base 1024) es un número: vale en cualquier parámetro numérico.</li>
+  <li><strong><code>fud-disable</code></strong> se escribe en un comentario <code>#</code> (<a href="/docs/configuration/diagnostics#line">Diagnósticos de la configuración</a>).</li>
+</ul>

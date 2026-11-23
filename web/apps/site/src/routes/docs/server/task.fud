@@ -81,7 +81,7 @@
 
 <h2 id="run"><code>run</code>: un cambio</h2>
 
-<p>Sin fuente, la tarea llama cuando se lo pides, con <code>run(args)</code>. <code>run</code> nunca lanza: devuelve <code>&#123; ok: true, value &#125;</code> o <code>&#123; ok: false, error &#125;</code>. Así un cambio optimista se escribe sin <code>try</code>:</p>
+<p>Sin fuente, la tarea llama cuando se lo pides, con <code>run(args)</code>. <code>run</code> nunca lanza: devuelve <code>&#123; ok: true, value &#125;</code>, <code>&#123; ok: false, error &#125;</code> o, si se canceló, <code>&#123; ok: false &#125;</code> sin <code>error</code> (<a href="/docs/reference/core#task-result"><code>TaskResult</code></a>). Así un cambio optimista se escribe sin <code>try</code>:</p>
 
 <ui-code>
 <pre><code>async function activar(p: Person, active: boolean) &#123;

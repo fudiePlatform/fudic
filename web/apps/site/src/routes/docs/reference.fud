@@ -1,0 +1,63 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>La referencia · Fudic</title>
+  <meta name="description" content="La API de cada paquete de Fudic que usa una app, miembro a miembro, y la gramática completa del .fudapi y del .fudspec.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="La referencia · Fudic">
+  <meta property="og:description" content="Cada paquete de Fudic, miembro a miembro, y la gramática del .fudapi y del .fudspec.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#packages">Los paquetes</a></li>
+        <li><a href="#languages">Los lenguajes</a></li>
+        <li><a href="#diagnostics">Los diagnósticos</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>La referencia</h1>
+
+<p>Cada export que usa una app, con su firma, qué hace y sus opciones. La guía explica cómo se usa cada cosa; esta parte dice exactamente qué hay. Cada entrada enlaza a la página de la guía que la explica.</p>
+
+<p>Solo están los paquetes que importa quien hace una app. El compilador, el plugin de Vite, el language server y el resto son piezas internas: los usa Fudic, no tu código.</p>
+
+<h2 id="packages">Los paquetes</h2>
+
+<ul>
+  <li><a href="/docs/reference/core"><code>@@fudic/core</code></a>: signals, efectos, tareas, pipes y el ciclo de vida, en el navegador.</li>
+  <li><a href="/docs/reference/dom"><code>@@fudic/dom</code></a>: eventos que cruzan el shadow DOM y los valores de confianza para HTML y URLs.</li>
+  <li><a href="/docs/reference/forms"><code>@@fudic/forms</code></a>: el objeto formulario que genera el <code>.fudapi</code> y lo que la vista enlaza.</li>
+  <li><a href="/docs/reference/di"><code>@@fudic/di</code></a>: servicios, tokens y contenedores.</li>
+  <li><a href="/docs/reference/i18n"><code>@@fudic/i18n</code></a>: textos traducidos y URLs por idioma.</li>
+  <li><a href="/docs/reference/http"><code>@@fudic/http</code></a>: el <code>ctx</code> de un handler, los middlewares, los errores HTTP y las cookies.</li>
+  <li><a href="/docs/reference/server"><code>@@fudic/server</code></a>: servir una app ya construida, en Node o detrás de cualquier adaptador.</li>
+  <li><a href="/docs/reference/testing"><code>@@fudic/testing</code></a>: montar un componente o visitar una ruta en un test unitario.</li>
+</ul>
+
+<h2 id="languages">Los lenguajes</h2>
+
+<ul>
+  <li><a href="/docs/reference/fudapi">El lenguaje <code>.fudapi</code></a>: el contrato del servidor de una ruta o un componente, declaración a declaración.</li>
+  <li><a href="/docs/reference/fudspec">El lenguaje <code>.fudspec</code></a>: los criterios de aceptación de un componente o una página, y los términos que los ejecutan.</li>
+</ul>
+
+<p>La sintaxis del <code>.fud</code> está en la guía, empezando por <a href="/docs/template-syntax">El lenguaje .fud</a>.</p>
+
+<h2 id="diagnostics">Los diagnósticos</h2>
+
+<p>Cada código <code>FUDnnnn</code> que ves en el editor o en la terminal tiene su explicación en <a href="/docs/reference/diagnostics">Diagnósticos</a>, con un buscador.</p>

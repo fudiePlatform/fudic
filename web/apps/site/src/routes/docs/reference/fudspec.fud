@@ -1,0 +1,242 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El lenguaje .fudspec · Fudic</title>
+  <meta name="description" content="La gramática completa del .fudspec: cabeceras, criterios, given, when y then, pasos y referencias, líneas de fixture, as, cómo se resuelven los términos y todos los términos que trae Fudic.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/fudspec">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El lenguaje .fudspec · Fudic">
+  <meta property="og:description" content="Cada línea del .fudspec y cada término que trae Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/fudspec">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-fudspec")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#lines">Líneas</a></li>
+        <li><a href="#header">La cabecera</a></li>
+        <li><a href="#criteria">Criterios y bloques</a></li>
+        <li><a href="#steps">Pasos y referencias</a></li>
+        <li><a href="#fixture-lines">Líneas de fixture</a></li>
+        <li><a href="#as"><code>as</code></a></li>
+        <li><a href="#terms">Los términos</a></li>
+        <li><a href="#builtin-terms">Los términos de Fudic</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El lenguaje <code>.fudspec</code></h1>
+
+<p>Los criterios de aceptación de un componente, una página o un flujo, escritos al lado de su código. <code>fudic spec</code> y el workbench los ejecutan en un navegador de verdad. Cada paso es un término: Fudic trae los suyos y el proyecto puede añadir más. Guía: <a href="/docs/testing">Probar</a>.</p>
+
+<ui-code .path="src/components/app-counter.fudspec">
+<pre><code>component app-counter
+
+criterion adds-one
+  given
+    props from-two
+  when
+    click role:button/"+1"
+  then
+    text output "3"</code></pre>
+</ui-code>
+
+<h2 id="lines">Líneas</h2>
+
+<ul>
+  <li><strong>La sangría</strong> es exactamente de 0, 2 o 4 espacios: la cabecera y <code>criterion</code> en 0, los bloques en 2, los pasos en 4. Otra cosa es <code>FUD0921</code>.</li>
+  <li><strong>Las palabras</strong> se separan con espacios; un texto va entre comillas, con <code>\"</code> y <code>\\</code> como escapes.</li>
+  <li><strong><code>#</code></strong> al empezar una palabra comenta el resto de la línea, también al final de un paso. <code>fud-disable</code> se escribe ahí.</li>
+</ul>
+
+<h2 id="header">La cabecera</h2>
+
+<p>La primera línea dice qué se prueba. Hay una por fichero.</p>
+
+<ul>
+  <li><strong><code>component &lt;tag&gt;</code></strong>: un componente, en <code>&lt;tag&gt;.fudspec</code> al lado de su <code>.fud</code>.</li>
+  <li><strong><code>page &lt;route&gt;</code></strong>: una página, con la ruta como en disco: <code>/</code>, <code>/users</code>, <code>/blog/[slug]</code>.</li>
+  <li><strong><code>flow &lt;name&gt;</code></strong>: un recorrido por varias páginas, en <code>src/flows/&lt;name&gt;.fudspec</code>.</li>
+</ul>
+
+<h2 id="criteria">Criterios y bloques</h2>
+
+<ui-code>
+<pre><code>criterion &lt;slug&gt;
+  given
+    …
+  when
+    …
+  then
+    …</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>criterion</code></strong>: un criterio, con un nombre único en el fichero.</li>
+  <li><strong><code>given</code></strong>: cómo empieza. Como mucho uno, y el primero.</li>
+  <li><strong><code>when</code></strong> y <strong><code>then</code></strong>: lo que hace el usuario y lo que tiene que pasar. Se alternan, y el criterio termina siempre en <code>then</code> (<code>FUD0933</code>).</li>
+</ul>
+
+<p>Un bloque no puede quedar vacío, ni ir dos del mismo tipo seguidos.</p>
+
+<h2 id="steps">Pasos y referencias</h2>
+
+<ui-code>
+<pre><code>&lt;term&gt; &lt;arg&gt;…</code></pre>
+</ui-code>
+
+<p>Un paso es un término y sus argumentos. El nombre del término va sin comillas, y uno en camelCase se lee en kebab-case: <code>minHeight</code> es <code>min-height</code>.</p>
+
+<p>Un argumento es una palabra (<code>2</code>, <code>/sign-in</code>, <code>app-card</code>), un texto entre comillas o una referencia a un elemento. La referencia es una cadena de pasos separados por <code>&gt;</code>, cada uno buscado dentro del anterior y entrando en los shadow roots:</p>
+
+<ul>
+  <li><strong><code>app-tabs</code></strong>: por su tag.</li>
+  <li><strong><code>role:button</code></strong>: por su rol <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles" target="_blank" rel="noopener">ARIA</a>.</li>
+  <li><strong><code>role:button/"Save"</code></strong>: por su rol y su nombre accesible exacto.</li>
+  <li><strong><code>role:row/~"Ada"</code></strong>: por su rol y un nombre que contiene ese texto.</li>
+</ul>
+
+<ui-code>
+<pre><code>  when
+    uncheck role:row/~"Ada"&gt;role:checkbox/"Active"
+  then
+    checked role:row/~"Ada"&gt;role:checkbox/"Active"</code></pre>
+</ui-code>
+
+<p>Cada parámetro de un término tiene su tipo, y acepta unas formas (<code>FUD0948</code>):</p>
+
+<ul>
+  <li><strong><code>number</code></strong>: un número.</li>
+  <li><strong><code>string</code></strong>: una palabra o un texto.</li>
+  <li><strong><code>token</code></strong>: una palabra.</li>
+  <li><strong><code>element</code></strong>: una referencia, o un tag.</li>
+</ul>
+
+<h2 id="fixture-lines">Líneas de fixture</h2>
+
+<p>En <code>given</code>, dicen qué datos usa el criterio. Cada nombre es uno de la fixture: <code>&lt;tag&gt;.fixture.ts</code>, <code>&lt;ruta&gt;.fixture.ts</code> (<code>index.fixture.ts</code> para <code>/</code>) o <code>src/flows/&lt;name&gt;.fixture.ts</code>. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
+
+<ul>
+  <li><strong><code>props &lt;case&gt;</code></strong>, en un componente: sus props. Obligatoria si tiene props obligatorias.</li>
+  <li><strong><code>data &lt;name&gt;…</code></strong>, en una página: lo que devuelve <code>load</code>; el primero para la página y los siguientes para cada vez que pide sus datos otra vez.</li>
+  <li><strong><code>answers &lt;name&gt;…</code></strong>, en una página o un flujo: lo que responden sus funciones, del grupo <code>calls</code>.</li>
+  <li><strong><code>services &lt;name&gt;</code></strong>, en una página o un flujo: servicios en lugar de los reales.</li>
+  <li><strong><code>path &lt;value&gt;</code></strong>, en una página: el valor del parámetro, uno de los que da <code>paths</code>.</li>
+  <li><strong><code>url &lt;url&gt;</code></strong>, en una página o un flujo: la URL entera, con query.</li>
+</ul>
+
+<p>Cada una va una vez. Una página con parámetros necesita <code>path</code> o <code>url</code> (<code>FUD1504</code>).</p>
+
+<ui-code .path="src/routes/blog/[slug].fudspec">
+<pre><code>page /blog/[slug]
+
+criterion lists-the-first-post
+  given
+    path declarative-shadow-dom
+  then
+    lists declarative-shadow-dom
+    attribute html lang "en"</code></pre>
+</ui-code>
+
+<h2 id="as"><code>as</code></h2>
+
+<p><code>as &lt;who&gt;</code>, en cualquier bloque: lo que sigue lo hace otra persona, con su navegador y sus cookies. <code>as main</code> vuelve a la primera. Sirve para probar lo que ve cada usuario en un flujo.</p>
+
+<ui-code .path="src/flows/sign-up.fudspec">
+<pre><code>  when
+    as luis
+    go "/users"
+  then
+    count role:row 1</code></pre>
+</ui-code>
+
+<h2 id="terms">Los términos</h2>
+
+<p>Un término es un fichero <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>. Fudic los busca, en orden, en:</p>
+
+<ol>
+  <li><strong><code>fudic/terms/</code></strong> del proyecto.</li>
+  <li><strong><code>@@fudic/terms</code></strong>, los que trae Fudic.</li>
+</ol>
+
+<p>Gana el primero que tiene el fichero. El editor los lee sin ejecutarlos, así que su <code>meta</code> tiene que ser literal:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export const meta = &#123;
+  name: "cart-has",
+  block: "then",
+  params: [&#123; name: "n", type: "number" &#125;],
+  describe: "the cart has &#123;n&#125; items",
+&#125;;
+
+export async function run(page, n) &#123; … &#125;
+
+export const selfTest = &#123; … &#125;;</code></pre>
+</ui-code>
+
+<p>Un término del proyecto necesita también <code>selfTest</code>. <code>fudic g term</code> lo crea con todo. Guía: <a href="/docs/testing/terms">Términos propios</a>.</p>
+
+<h2 id="builtin-terms">Los términos de Fudic</h2>
+
+<h3 id="given-terms">En <code>given</code></h3>
+
+<ul>
+  <li><strong><code>clock &lt;at&gt;</code></strong>: el reloj marca esa hora, <code>2026-11-08T10:00:00Z</code>.</li>
+  <li><strong><code>cookie &lt;name&gt; &lt;value&gt;</code></strong>: el navegador tiene esa cookie.</li>
+  <li><strong><code>locale &lt;tag&gt;</code></strong>: el idioma del navegador.</li>
+  <li><strong><code>media &lt;feature&gt; &lt;value&gt;</code></strong>: una media query, como <code>prefers-color-scheme dark</code>.</li>
+  <li><strong><code>offline</code></strong>: sin red.</li>
+  <li><strong><code>viewport &lt;width&gt; &lt;height&gt;</code></strong>: el tamaño de la ventana.</li>
+</ul>
+
+<h3 id="when-terms">En <code>when</code></h3>
+
+<ul>
+  <li><strong><code>click</code></strong>, <strong><code>focus</code></strong>, <strong><code>hover</code></strong>, <strong><code>check</code></strong> y <strong><code>uncheck</code></strong> <code>&lt;target&gt;</code>.</li>
+  <li><strong><code>type &lt;target&gt; &lt;text&gt;</code></strong>: escribe en un campo.</li>
+  <li><strong><code>press &lt;target&gt; &lt;key&gt;</code></strong>: pulsa una tecla, <code>Enter</code>.</li>
+  <li><strong><code>select &lt;target&gt; &lt;option&gt;</code></strong>: elige una opción de un <code>&lt;select&gt;</code>.</li>
+  <li><strong><code>upload &lt;target&gt; &lt;file&gt;</code></strong>: sube un fichero, relativo a la carpeta del <code>.fudspec</code>.</li>
+  <li><strong><code>set-attribute &lt;target&gt; &lt;attribute&gt; &lt;value&gt;</code></strong>: cambia un atributo.</li>
+  <li><strong><code>go &lt;url&gt;</code></strong>, <strong><code>back</code></strong>, <strong><code>forward</code></strong> y <strong><code>reload</code></strong>: navega.</li>
+  <li><strong><code>offline</code></strong> y <strong><code>online</code></strong>: quita o devuelve la red.</li>
+  <li><strong><code>wait &lt;ms&gt;</code></strong>: avanza el reloj del criterio.</li>
+</ul>
+
+<h3 id="then-terms">En <code>then</code></h3>
+
+<ul>
+  <li><strong><code>text &lt;target&gt; &lt;expected&gt;</code></strong>: su texto contiene ese.</li>
+  <li><strong><code>value &lt;target&gt; &lt;expected&gt;</code></strong> y <strong><code>attribute &lt;target&gt; &lt;attribute&gt; &lt;expected&gt;</code></strong>.</li>
+  <li><strong><code>visible</code></strong>, <strong><code>hidden</code></strong>, <strong><code>present</code></strong>, <strong><code>focused</code></strong>, <strong><code>enabled</code></strong>, <strong><code>disabled</code></strong>, <strong><code>checked</code></strong> y <strong><code>unchecked</code></strong> <code>&lt;target&gt;</code>.</li>
+  <li><strong><code>count &lt;target&gt; &lt;n&gt;</code></strong>: cuántos hay. Con <code>0</code>, que no hay ninguno.</li>
+  <li><strong><code>slotted &lt;target&gt; &lt;slot&gt;</code></strong>: en qué slot está; <code>none</code>, en ninguno.</li>
+  <li><strong><code>min-width</code></strong> y <strong><code>min-height</code></strong> <code>&lt;target&gt; &lt;px&gt;</code>: su tamaño mínimo.</li>
+  <li><strong><code>url &lt;expected&gt;</code></strong>, <strong><code>title &lt;expected&gt;</code></strong>, <strong><code>status &lt;code&gt;</code></strong> y <strong><code>header &lt;name&gt; &lt;expected&gt;</code></strong>: de la página y su respuesta.</li>
+  <li><strong><code>called &lt;fn&gt; &lt;times&gt;</code></strong>: cuántas veces se llamó a una función de servidor.</li>
+  <li><strong><code>sent &lt;fn&gt; &lt;field&gt; &lt;expected&gt;</code></strong>: lo que se le mandó en un argumento.</li>
+  <li><strong><code>requests &lt;n&gt;</code></strong>: cuántas peticiones hizo la página.</li>
+  <li><strong><code>not-reloaded</code></strong>: la página no se recargó.</li>
+  <li><strong><code>downloaded &lt;name&gt;</code></strong>: se descargó un fichero con ese nombre.</li>
+  <li><strong><code>lists &lt;value&gt;</code></strong>: <code>paths</code> incluye ese valor.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los diagnósticos del <code>.fudspec</code></strong>: <code>FUD0920</code> a <code>FUD0935</code>, la forma del fichero; <code>FUD0940</code> a <code>FUD0954</code>, términos y fixtures; <code>FUD1500</code> a <code>FUD1513</code>, páginas y flujos. Los más comunes: <code>FUD0940</code>, un término que no existe, con la lista de los que hay; <code>FUD0947</code> y <code>FUD0948</code>, sus argumentos; <code>FUD0950</code>, un nombre que no está en la fixture.</li>
+  <li><strong>Una línea de fixture fuera de <code>given</code></strong> se lee como término si hay uno con ese nombre en el bloque: <code>url</code> en <code>then</code> es el término.</li>
+  <li><strong>Un nombre de <code>as</code></strong> no puede ser el de un término (<code>FUD1512</code>).</li>
+</ul>

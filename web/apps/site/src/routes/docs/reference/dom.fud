@@ -1,0 +1,133 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/dom · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/dom: emit para el bus de eventos, trustedHtml y trustedUrl para marcar HTML y URLs de confianza, y la guarda de URLs.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/dom">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/dom · Fudic">
+  <meta property="og:description" content="emit, trustedHtml, trustedUrl y la guarda de URLs.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/dom">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-dom")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#emit"><code>emit</code></a></li>
+        <li><a href="#trusted-html"><code>trustedHtml</code></a></li>
+        <li><a href="#trusted-url"><code>trustedUrl</code></a></li>
+        <li><a href="#url-guard">La guarda de URLs</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/dom</code></h1>
+
+<p>Lo que el código de un componente necesita del DOM: anunciar un evento a toda la página y marcar un HTML o una URL como de confianza. El resto del paquete lo usa el runtime.</p>
+
+<ui-code>
+<pre><code>import &#123; emit, trustedHtml, trustedUrl &#125; from "@@fudic/dom";</code></pre>
+</ui-code>
+
+<h2 id="emit"><code>emit</code></h2>
+
+<ui-code>
+<pre><code>emit&lt;K extends string&gt;(name: K, ...detail: BusArgs&lt;K&gt;): void</code></pre>
+</ui-code>
+
+<p>Anuncia un evento del bus desde el componente. Sale como un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar con <code>bubbles</code> y <code>composed</code>, así que cruza los shadow roots, y lo recibe cualquier elemento con <code>bus:name</code>. Fudic hidrata antes a los receptores, y el primer evento no se pierde. Guía: <a href="/docs/template-syntax/events#event-bus">Eventos</a>.</p>
+
+<ui-code .path="src/components/item-picker.fud">
+<pre><code>@@code &#123;
+  import &#123; emit &#125; from "@@fudic/dom";
+
+  function pick(label: string) &#123;
+    emit("picked", label);
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&lt;p bus:picked=@@onPicked&gt;…&lt;/p&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>name</code></strong> es un texto fijo: el nombre del canal.</li>
+  <li><strong><code>detail</code></strong> va tipado por los receptores de ese nombre: tiene que valer para el parámetro de todos. Es opcional solo si todos aceptan <code>undefined</code>.</li>
+  <li><strong>Solo funciona en el <code>@@code</code> de un <code>.fud</code></strong> que importa <code>emit</code> de <code>@@fudic/dom</code>: el compilador le da el componente desde el que sale. Desde un módulo <code>.ts</code> lanza un error.</li>
+</ul>
+
+<p>Los tipos que lo calculan: <code>BusDetail&lt;K&gt;</code>, lo que tiene que llevar el evento <code>K</code>; <code>BusParam&lt;F&gt;</code>, el primer parámetro de un handler; y <code>BusArgs&lt;K&gt;</code>, los argumentos de <code>emit</code> después del nombre.</p>
+
+<h2 id="trusted-html"><code>trustedHtml</code></h2>
+
+<ui-code>
+<pre><code>trustedHtml(html: string): TrustedHTML
+isTrustedHtml(value: unknown): value is TrustedHTML</code></pre>
+</ui-code>
+
+<p>Marca un texto como HTML del que respondes tú, para que <code>@@raw(…)</code> lo escriba como markup. Sin la marca, <code>@@raw</code> lo escapa. No limpia nada. Guía: <a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>.</p>
+
+<ui-code .path="src/components/post-body.fud">
+<pre><code>@@code &#123;
+  import &#123; trustedHtml &#125; from "@@fudic/dom";
+
+  const intro = trustedHtml("&lt;p&gt;With &lt;em&gt;emphasis&lt;/em&gt;.&lt;/p&gt;");
+&#125;
+
+&lt;div class="post"&gt;@@raw(intro)&lt;/div&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La marca está en el valor</strong> y JSON no la lleva: un HTML que llega del servidor o de una petición nunca es de confianza, y <code>@@raw</code> lo escapa. Solo vale el que se marca en el <code>@@code</code>.</li>
+  <li><strong><code>@@raw</code> es el único contenido</strong> de su elemento (<code>FUD0990</code>).</li>
+  <li><strong>En el navegador</strong> se escribe por la política de <a href="/docs/security/trusted-types">Trusted Types</a> de Fudic.</li>
+</ul>
+
+<h2 id="trusted-url"><code>trustedUrl</code></h2>
+
+<ui-code>
+<pre><code>trustedUrl(url: string): TrustedURL
+isTrustedUrl(value: unknown): value is TrustedURL</code></pre>
+</ui-code>
+
+<p>Marca una URL para que la guarda la deje pasar, sea cual sea su esquema. Como con el HTML, la marca se pone en el <code>@@code</code>, donde la ve quien revisa el código, y ningún dato la lleva.</p>
+
+<ui-code>
+<pre><code>const open = trustedUrl("myapp:open");
+…
+&lt;a href=@@open&gt;Open in the app&lt;/a&gt;</code></pre>
+</ui-code>
+
+<h2 id="url-guard">La guarda de URLs</h2>
+
+<p>Un <code>href</code> o un <code>src</code> cuyo origen no fija el texto del atributo pasa por la guarda antes de escribirse, igual en el servidor y en el navegador. Si no es segura, se escribe <code>INERT_URL</code>, que vale <code>"about:blank"</code>. Guía: <a href="/docs/template-syntax/attributes-and-properties#safe-urls">Atributos y propiedades</a>.</p>
+
+<ul>
+  <li><strong>Pasan</strong> <code>http:</code>, <code>https:</code>, <code>mailto:</code>, <code>tel:</code>, las URLs relativas y una <code>trustedUrl</code>.</li>
+  <li><strong><code>data:image/…</code></strong> solo en el <code>src</code> y el <code>srcset</code> de una imagen.</li>
+  <li><strong>No pasan</strong> <code>javascript:</code> ni otro esquema, ni una URL que empieza por <code>//</code>, que apunta a otro origen.</li>
+  <li><strong>En una lista</strong> (<code>srcset</code>, <code>ping</code>) tiene que pasar cada URL, o se cambia el valor entero.</li>
+</ul>
+
+<p><code>href="/posts/@@id"</code> no pasa por la guarda: el texto ya fija el origen. En desarrollo, cada URL cambiada avisa en la consola.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong><code>safeUrl</code> y <code>guardUrl</code></strong> son la guarda: la primera es la regla, la segunda la usa el runtime y avisa en desarrollo. Tu código no las llama.</li>
+  <li><strong>Lo que la guarda no cubre</strong> lo avisa el compilador con <code>FUD0915</code>: un <code>javascript:</code> escrito a mano, <code>srcdoc</code>, un <code>&lt;meta http-equiv="refresh"&gt;</code>, un <code>&lt;base&gt;</code> dinámico o un <code>style</code> dinámico.</li>
+  <li><strong>El resto de exports</strong> (<code>browserDom</code>, <code>escapeText</code>, <code>escapeAttr</code>, <code>template</code>, los diffs de atributos y clases) los usa el código que genera el compilador.</li>
+</ul>

@@ -61,13 +61,13 @@
 
 <h2 id="raw"><code>@@raw</code>: escribir HTML</h2>
 
-<p>Lo que escribe una expresión siempre llega como texto. Para escribir un valor como HTML, por ejemplo un artículo que viene de un CMS, está <code>@@raw</code>:</p>
+<p>Lo que escribe una expresión siempre llega como texto. Para escribir un valor como HTML está <code>@@raw</code>, con un valor marcado en el <code>@@code</code>:</p>
 
 <ui-code .path="src/components/miapp-article/miapp-article.fud">
 <pre><code>@@code &#123;
-  import type &#123; TrustedHTML &#125; from "@@fudic/dom";
+  import &#123; trustedHtml &#125; from "@@fudic/dom";
 
-  const &#123; body &#125; = props&lt;&#123; body: TrustedHTML &#125;&gt;();
+  const body = trustedHtml("&lt;p&gt;Written by &lt;em&gt;us&lt;/em&gt;.&lt;/p&gt;");
 &#125;
 
 &lt;miapp-article&gt;
@@ -79,6 +79,7 @@
 
 <ul>
   <li><strong>El valor tiene que venir de <code>trustedHtml(…)</code></strong>, de <code>@@fudic/dom</code>. Así dices «este HTML lo avalo yo». Un string normal se escribe como texto.</li>
+  <li><strong>La marca no viaja.</strong> Un HTML que llega en los datos de la página o de una función, también uno de tipo <code>html</code>, se escribe escapado.</li>
   <li><strong><code>@@raw</code> es lo único que hay dentro de su elemento.</strong></li>
 </ul>
 

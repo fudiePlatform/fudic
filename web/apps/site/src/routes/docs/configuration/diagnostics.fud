@@ -86,7 +86,7 @@
   <li><strong><code>fud-disable</code></strong> silencia el fichero entero.</li>
 </ul>
 
-<p>Se escribe en el comentario que ya tiene cada lenguaje: <code>@@* … *@@</code> en el markup de un <code>.fud</code>, <code>/* … */</code> en CSS, <code>//</code> en TypeScript y <code>#</code> en un <code>.fudapi</code> o un <code>.headers</code>. Varios códigos van separados por comas: <code>fud-disable-next-line FUD1380, FUD1524: why it is fine here</code>.</p>
+<p>Se escribe en el comentario que ya tiene cada lenguaje: <code>@@* … *@@</code> en el markup de un <code>.fud</code>, <code>/* … */</code> en CSS, <code>//</code> en TypeScript y <code>#</code> en un <code>.fudapi</code>, un <code>.fudspec</code> o un <code>.headers</code>. Varios códigos van separados por comas: <code>fud-disable-next-line FUD1380, FUD1524: why it is fine here</code>.</p>
 
 <p>El motivo es obligatorio. Quien lea el código después sabrá que el aviso se vio y se dejó a propósito.</p>
 

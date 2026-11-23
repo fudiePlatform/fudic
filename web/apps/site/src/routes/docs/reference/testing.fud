@@ -1,0 +1,216 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/testing · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/testing: fudicTest, mount, visit, renderLayout, renderSnippet, las consultas y los gestos, shadowOf, outline, respond y las fixtures de &#64;fudic/spec.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/testing">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/testing · Fudic">
+  <meta property="og:description" content="mount, visit, las consultas, los gestos y las fixtures.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/testing">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-testing")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#config"><code>fudicTest</code></a></li>
+        <li><a href="#mount"><code>mount</code></a></li>
+        <li><a href="#visit"><code>visit</code></a></li>
+        <li><a href="#layouts-and-snippets">Layouts y snippets</a></li>
+        <li><a href="#harness">Consultas y gestos</a></li>
+        <li><a href="#inspect">Inspeccionar</a></li>
+        <li><a href="#fake">Respuestas y servicios falsos</a></li>
+        <li><a href="#fixtures">Las fixtures</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/testing</code></h1>
+
+<p>Tests unitarios en <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a>: monta un componente o visita una ruta con el HTML que pinta el servidor y la hidratación del navegador, en un DOM simulado. Para probar en un navegador de verdad, los criterios del <code>.fudspec</code> con <code>fudic spec</code> (<a href="/docs/testing">Probar</a>). Guía: <a href="/docs/testing/unit">El test unitario</a>.</p>
+
+<ui-code>
+<pre><code>import &#123; mount, visit &#125; from "@@fudic/testing";</code></pre>
+</ui-code>
+
+<h2 id="config"><code>fudicTest</code></h2>
+
+<ui-code .path="vitest.config.ts">
+<pre><code>import &#123; defineConfig &#125; from "vitest/config";
+import &#123; fudicTest &#125; from "@@fudic/testing/config";
+
+export default defineConfig(&#123;
+  plugins: [fudicTest()],
+  test: &#123; include: ["src/**/*.test.ts"] &#125;,
+&#125;);</code></pre>
+</ui-code>
+
+<p>Compila los <code>.fud</code> como lo hace el plugin de Vite, con sus mismas opciones, y prepara el entorno: un DOM de <a href="https://github.com/capricorn86/happy-dom" target="_blank" rel="noopener">happy-dom</a>, los matchers de <a href="https://github.com/testing-library/jest-dom" target="_blank" rel="noopener">jest-dom</a> y un servidor en memoria. Después de cada test deja la página en blanco y limpia la URL, las cookies y lo que se cambió.</p>
+
+<h2 id="mount"><code>mount</code></h2>
+
+<ui-code>
+<pre><code>mount&lt;P&gt;(component: FudModule, options?: MountOptions&lt;P&gt;): Promise&lt;Mounted&lt;P&gt;&gt;</code></pre>
+</ui-code>
+
+<p>Monta un componente. <code>component</code> es el módulo del <code>.fud</code>, <code>import * as AppCounter from "./app-counter.fud"</code>.</p>
+
+<ul>
+  <li><strong><code>props</code></strong>: sus props. Un nombre que el componente no declara lanza un error.</li>
+  <li><strong><code>via</code></strong>: <code>"ssr"</code>, por defecto, lo pinta el servidor y el navegador lo hidrata; las props tienen que ser JSON o <code>Date</code>. <code>"client"</code> lo crea el navegador.</li>
+  <li><strong><code>url</code></strong>: la URL de la página. Por defecto, <code>"/"</code>.</li>
+  <li><strong><code>providers</code></strong>, <strong><code>fetch</code></strong> y <strong><code>sw</code></strong>: <a href="#fake">Respuestas y servicios falsos</a>.</li>
+</ul>
+
+<p>Devuelve un <code>Mounted</code>: las <a href="#harness">consultas y los gestos</a>, y además:</p>
+
+<ul>
+  <li><strong><code>host</code></strong> y <strong><code>root</code></strong>: el elemento y su shadow root.</li>
+  <li><strong><code>props(next)</code></strong>: cambia props como lo haría el padre, y espera a que se repinte.</li>
+  <li><strong><code>unmount()</code></strong>: lo quita.</li>
+</ul>
+
+<ui-code .path="src/components/app-counter.test.ts">
+<pre><code>const t = await mount(AppCounter, &#123; props: &#123; start: 2 &#125; &#125;);
+await t.click(t.getByRole("button", &#123; name: "+1" &#125;));
+expect(t.query("output")).toHaveTextContent("3");</code></pre>
+</ui-code>
+
+<p><code>renderToHtml(component, &#123; props?, url? &#125;)</code> devuelve solo el HTML de la página que responde el servidor, sin DOM.</p>
+
+<h2 id="visit"><code>visit</code></h2>
+
+<ui-code>
+<pre><code>visit(url: string, options?: VisitOptions): Promise&lt;Visited&gt;</code></pre>
+</ui-code>
+
+<p>Pinta una ruta como la pinta <code>fudic dev</code>, con su <code>load</code> de verdad y su layout. Si <code>load</code> lanza, pinta <code>_error.fud</code> con su status.</p>
+
+<ul>
+  <li><strong><code>data</code></strong>: ocupa el lugar de lo que devuelve <code>load</code>. <code>layout</code> se ejecuta igual.</li>
+  <li><strong><code>fixture</code></strong>: un nombre de los <code>data</code> de la fixture de la ruta, o varios: el primero para la página y los siguientes para cada vez que pide sus datos otra vez. No va con <code>data</code>.</li>
+  <li><strong><code>answers</code></strong> y <strong><code>services</code></strong>: grupos <code>calls</code> y <code>services</code> de la fixture.</li>
+</ul>
+
+<p>Devuelve un <code>Visited</code>: las consultas y los gestos, <code>document</code> y <code>status</code>. Una redirección lanza un error que dice adónde.</p>
+
+<ui-code .path="src/routes/blog/[slug].test.ts">
+<pre><code>const page = await visit("/blog/hello", &#123; data: &#123; title: "Hello", lang: "en" &#125; &#125;);
+expect(page.getByRole("heading", &#123; level: 1 &#125;)).toHaveTextContent("Hello");</code></pre>
+</ui-code>
+
+<h2 id="layouts-and-snippets">Layouts y snippets</h2>
+
+<ui-code>
+<pre><code>renderLayout(layout: FudModule, options?: LayoutOptions): Promise&lt;Visited&gt;
+renderSnippet(file: string, call: string, options?: SnippetOptions): Promise&lt;Mounted&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>renderLayout</code></strong>: pinta un layout solo. <code>props</code>, o cada una con su valor por defecto; <code>body</code>, el HTML de <code>@@RenderBody()</code>; <code>sections</code>, el de cada <code>@@RenderSection</code>; <code>head</code>, el de <code>@@RenderHead()</code>.</li>
+  <li><strong><code>renderSnippet</code></strong>: pinta un snippet. <code>file</code> es relativo al test, <code>call</code> lo que va detrás de <code>@@render</code>, y <code>scope</code> los valores que lee con <code>@@</code>.</li>
+</ul>
+
+<ui-code>
+<pre><code>const t = await renderSnippet("./ui.fud", "note(@@text)", &#123; scope: &#123; text: "Saved" &#125; &#125;);</code></pre>
+</ui-code>
+
+<h2 id="harness">Consultas y gestos</h2>
+
+<p>Lo que tienen <code>Mounted</code> y <code>Visited</code>. Las consultas buscan dentro de cada shadow root. Las de rol y texto siguen a <a href="https://testing-library.com/docs/queries/about" target="_blank" rel="noopener">Testing Library</a>.</p>
+
+<ul>
+  <li><strong><code>getByRole(role, options?)</code></strong>, <strong><code>getByLabelText(text)</code></strong> y <strong><code>getByText(text)</code></strong>: exactamente un elemento, o lanza un error.</li>
+  <li><strong><code>queryByRole(role, options?)</code></strong>: el elemento, o <code>null</code>.</li>
+  <li><strong><code>query(selector)</code></strong>: un selector CSS que también entra en los shadow roots.</li>
+  <li><strong><code>errorOf(label)</code></strong>: el texto del error del campo con esa etiqueta, o <code>null</code>.</li>
+</ul>
+
+<p>Cada gesto resuelve cuando ha terminado todo lo que provocó: peticiones, chunks y signals.</p>
+
+<ul>
+  <li><strong><code>click(el)</code></strong>, <strong><code>type(el, text)</code></strong>, <strong><code>clear(el)</code></strong> y <strong><code>blur(el)</code></strong>.</li>
+  <li><strong><code>upload(el, files)</code></strong>: uno o varios <code>File</code>.</li>
+  <li><strong><code>submit(form?)</code></strong>: pulsa el botón de enviar del único formulario, o del que se da.</li>
+  <li><strong><code>settled()</code></strong>: espera a que no quede nada pendiente.</li>
+  <li><strong><code>invalidated</code></strong>: las rutas que se mandaron invalidar al Service Worker simulado.</li>
+</ul>
+
+<h2 id="inspect">Inspeccionar</h2>
+
+<ul>
+  <li><strong><code>shadowOf(host)</code></strong>: cómo se pidió el shadow root: <code>mode</code>, <code>delegatesFocus</code>, <code>clonable</code>, <code>serializable</code>, <code>referenceTarget</code> y <code>adoptedStyleSheets</code>, con <code>"self"</code> para la hoja del propio componente.</li>
+  <li><strong><code>outline(root)</code></strong>: el árbol de accesibilidad en texto, con el formato de los snapshots ARIA de <a href="https://playwright.dev/docs/aria-snapshots" target="_blank" rel="noopener">Playwright</a>, cruzando shadow roots y slots.</li>
+  <li><strong><code>expect(clientGraphOf(Component)).toReach(path)</code></strong>: si el código que llega al navegador incluye un fichero. Guía: <a href="/docs/testing/unit#client-graph">El test unitario</a>.</li>
+  <li><strong><code>expect(html).toContainTemplate(attrs)</code></strong>: el primer <code>&lt;template&gt;</code> declarativo lleva exactamente esos atributos <code>shadowroot*</code>.</li>
+</ul>
+
+<ui-code>
+<pre><code>expect(outline(t.root)).toBe('- button "Save" [disabled]');</code></pre>
+</ui-code>
+
+<h2 id="fake">Respuestas y servicios falsos</h2>
+
+<ul>
+  <li id="provider-override"><strong><code>providers</code></strong>: <code>[&#123; provide: Cart, use: () =&gt; fakeCart &#125;]</code>, servicios en lugar de los reales, en el servidor y en el navegador (<code>ProviderOverride</code>).</li>
+  <li><strong><code>fetch</code></strong>: responde a cada petición en lugar del servidor en memoria. Con <code>respond(fn, value)</code> la respuesta va en el formato de esa función; con <code>respondProblem(fn, problem)</code>, un error.</li>
+  <li><strong><code>sw</code></strong>: un Service Worker simulado.</li>
+</ul>
+
+<h2 id="fixtures">Las fixtures</h2>
+
+<p>Las respuestas de una fixture (<code>&lt;ruta&gt;.fixture.ts</code>, <code>&lt;tag&gt;.fixture.ts</code>) se escriben con los ayudantes de <code>@@fudic/spec</code>. Devuelven datos, no promesas: el editor lee la fixture sin ejecutarla. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
+
+<ui-code>
+<pre><code>fails(status: number, title: string): Failed
+fails(code: string): Failed                         // a fails code of the .fudapi
+redirects(location: string, status = 303): Redirected
+file(path: string, options?: &#123; type?: string; name?: string &#125;): FileAnswer
+later(ms: number, value: T): Later&lt;T&gt;
+later.never(): Later&lt;never&gt;
+later.fails(ms: number, status: number, title: string): Later&lt;never&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/users.fixture.ts">
+<pre><code>import &#123; fails, file, later, redirects &#125; from "@@fudic/spec";
+import type &#123; Fixtures &#125; from "fudic:routes/users";
+
+export default &#123;
+  data: &#123;
+    down: fails(503, "Service unavailable"),
+    "signed-out": redirects("/sign-in"),
+  &#125;,
+  calls: &#123;
+    searching: &#123; search: later.never() &#125;,
+    protected: &#123; save: fails("protected") &#125;,
+    csv: &#123; exportCsv: file("./fixtures/people.csv", &#123; type: "text/csv" &#125;) &#125;,
+  &#125;,
+&#125; satisfies Fixtures;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>fails</code></strong> con status <code>0</code> es un fallo de red.</li>
+  <li><strong><code>file</code></strong>: la ruta es relativa a la fixture, y solo vale para una función <code>-&gt; file</code>.</li>
+  <li><strong><code>later</code></strong> va con el reloj del criterio.</li>
+  <li><strong>Una fixture de flujo</strong> se tipa con <code>FlowFixtures</code>: <code>services</code> y <code>calls</code>.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los matchers de jest-dom</strong> ya están registrados. No hay <code>getAll*</code> ni <code>findBy*</code>: un gesto ya espera a que todo termine.</li>
+  <li><strong>Los errores de una fixture</strong> en el editor: <code>FUD1510</code>, un valor que no se puede leer sin ejecutarla, como un spread; <code>FUD1514</code>, una respuesta del tipo equivocado.</li>
+  <li><strong><code>@@fudic/testing/run</code> y <code>/render</code></strong> los usan <code>fudic test</code> y el workbench.</li>
+</ul>

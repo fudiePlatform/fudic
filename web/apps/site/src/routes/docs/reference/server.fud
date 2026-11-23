@@ -1,0 +1,105 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/server · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/server: createServer y sus opciones, FudicServer, y el adaptador de Node con nodeMiddleware, staticPages, staticFiles y diskSpool.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/server">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/server · Fudic">
+  <meta property="og:description" content="createServer, sus opciones y el adaptador de Node.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/server">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-server")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#create-server"><code>createServer</code></a></li>
+        <li><a href="#options"><code>ServerOptions</code></a></li>
+        <li><a href="#fudic-server"><code>FudicServer</code></a></li>
+        <li><a href="#node">En Node</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/server</code></h1>
+
+<p>Sirve una app ya construida: recibe un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> estándar y devuelve un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>. Es el mismo código en <code>fudic dev</code>, en <code>fudic preview</code> y detrás de cualquier adaptador. Hoy el adaptador es Node; la vista y el <code>.fudapi</code> están diseñados para servirse también desde otros lenguajes. Guía: <a href="/docs/server/running">Ponerlo en marcha</a>.</p>
+
+<h2 id="create-server"><code>createServer</code></h2>
+
+<ui-code>
+<pre><code>createServer(app: ServerApp, options?: ServerOptions): FudicServer</code></pre>
+</ui-code>
+
+<p><code>app</code> la construye el build: es <code>createApp(&#123; prerendered &#125;)</code>, del <code>server.mjs</code> que escribe en <code>.fudic/edge</code>. Ese módulo exporta también <code>config</code>, la sección <code>serve</code> de <code>fudic.json</code>.</p>
+
+<p>Para cada petición responde, en orden: las funciones de servidor, las páginas de las rutas, ya pintadas o pintadas en ese momento, y la página de error en su propia URL. Lo que no es suyo, un fichero estático, devuelve <code>null</code> para que lo sirva quien lo monta.</p>
+
+<h2 id="options"><code>ServerOptions</code></h2>
+
+<p>Todas son opcionales, y por defecto valen lo que necesita producción.</p>
+
+<ul>
+  <li><strong><code>trustProxy</code></strong>: lee la URL pública de <code>Forwarded</code> o de <code>X-Forwarded-Proto</code> y <code>X-Forwarded-Host</code>. Por defecto, <code>false</code>. Guía: <a href="/docs/security#proxy">Seguridad</a>.</li>
+  <li><strong><code>secureCookies</code></strong>: si las cookies llevan <code>Secure</code> por defecto. Por defecto, <code>true</code>; <code>fudic dev</code> y <code>fudic preview</code> sin HTTPS lo ponen a <code>false</code>.</li>
+  <li><strong><code>secret</code></strong>: la clave que firma el token CSRF de <code>use csrf</code> con <code>token true</code>. En producción se le da con <code>FUDIC_SECRET</code>; en desarrollo, sin ella, se crea una por proceso.</li>
+  <li><strong><code>uploads</code></strong>: los límites de una llamada con ficheros. Por defecto, <code>maxFileSize</code> 10 MB por fichero, <code>maxFiles</code> 20 y <code>maxArgs</code> 1 MB para el resto. Pasar uno es un <code>413</code>. Guía: <a href="/docs/forms/files#limits">Ficheros</a>.</li>
+  <li><strong><code>spool</code></strong>: dónde esperan los ficheros subidos. Por defecto, en memoria; en Node, <a href="#disk-spool"><code>diskSpool</code></a>.</li>
+  <li><strong><code>onError</code></strong>: recibe cada error que no es un <code>HttpError</code>, para registrarlo.</li>
+  <li><strong><code>dev</code></strong>: un <code>500</code> lleva su mensaje. Por defecto, <code>false</code>.</li>
+</ul>
+
+<p><code>trustProxy</code> y <code>uploads</code> se escriben en el <code>serve</code> de <code>fudic.json</code> (<a href="/docs/configuration/fields#serve">Estilos, idiomas y servidor</a>); el resto se pasa al montar el servidor.</p>
+
+<h2 id="fudic-server"><code>FudicServer</code></h2>
+
+<ul>
+  <li><strong><code>fetch(request, hooks?)</code></strong>: la respuesta de la app, o <code>null</code> si la URL no es suya. <code>hooks.earlyHints</code> recibe una vez las cabeceras del <code>103</code>.</li>
+  <li><strong><code>notFound(request, hooks?)</code></strong>: la página de error con un <code>404</code>, para una navegación que nada respondió. <code>null</code> si no es un <code>GET</code> o un <code>HEAD</code> que pide HTML.</li>
+  <li><strong><code>staticHeaders(request)</code></strong>: las cabeceras de <code>assets.headers</code> para un fichero estático, o <code>null</code>.</li>
+</ul>
+
+<h2 id="node">En Node</h2>
+
+<p><code>@@fudic/server/node</code> lo monta en un servidor de Node, o como middleware de Connect, Express o Vite. Guía: <a href="/docs/server/running#node">Ponerlo en marcha</a>.</p>
+
+<ui-code .path="server.mjs">
+<pre><code>import &#123; createServer &#125; from "@@fudic/server";
+import &#123; diskSpool, nodeMiddleware, staticFiles, staticPages &#125; from "@@fudic/server/node";
+import &#123; config, createApp &#125; from "./.fudic/edge/server.mjs";
+
+const app = createApp(&#123; prerendered: staticPages("dist") &#125;);
+const server = createServer(app, &#123;
+  ...config,
+  spool: diskSpool,
+  secret: process.env.FUDIC_SECRET,
+&#125;);
+const serve = nodeMiddleware(server, &#123; notFound: true &#125;);
+const files = staticFiles("dist");</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>nodeMiddleware(server, &#123; notFound? &#125;)</code></strong>: un middleware <code>(req, res, next)</code>. Envía el <code>103 Early Hints</code> en HTTP/2. Con <code>notFound: true</code>, lo que nada respondió recibe la página de error; si no, pone las cabeceras de los estáticos y llama a <code>next()</code>.</li>
+  <li><strong><code>staticPages(dir)</code></strong>: lee las páginas que pintó el build, los <code>index.html</code> de <code>dist</code>.</li>
+  <li><strong><code>staticFiles(dir)</code></strong>: sirve los ficheros de <code>dist</code> con su tipo.</li>
+  <li id="disk-spool"><strong><code>diskSpool</code></strong>: los ficheros subidos esperan en ficheros temporales, que se borran al terminar.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong><code>fudic preview</code></strong> hace esto mismo con <code>secret</code> aleatorio si no hay <code>FUDIC_SECRET</code> (<a href="/docs/vite/build#preview">El build y la preview</a>).</li>
+  <li><strong>El resto de exports</strong> (<code>matchRoute</code>, <code>renderPage</code>, los ayudantes de errores e idiomas, <code>publicRequest</code>; y en <code>/node</code>, <code>toRequest</code>, <code>sendResponse</code>…) son para escribir otro adaptador.</li>
+</ul>

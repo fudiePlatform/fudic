@@ -87,7 +87,7 @@
 <h2 id="inferred">Si no se declara</h2>
 
 <ul>
-  <li>Sin <code>load</code>: <code>ssg</code>.</li>
+  <li>Sin parámetros y sin <code>load</code>: <code>ssg</code>.</li>
   <li>Con parámetros y con <code>paths</code>: <code>ssg</code>, una página por valor.</li>
   <li>En el resto de casos: <code>sw</code>.</li>
 </ul>

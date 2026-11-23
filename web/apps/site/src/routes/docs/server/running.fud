@@ -42,13 +42,14 @@
 
 <ui-code>
 <pre><code>import &#123; createServer &#125; from "@@fudic/server";
+import &#123; staticPages &#125; from "@@fudic/server/node";
 import &#123; config, createApp &#125; from "./.fudic/edge/server.mjs";
 
-const server = createServer(createApp(), config);
+const server = createServer(createApp(&#123; prerendered: staticPages("dist") &#125;), config);
 const response = await server.fetch(request);</code></pre>
 </ui-code>
 
-<p><code>server.mjs</code> lo escribe el build: es la app, con sus rutas, sus contratos y sus handlers. Es el mismo código en desarrollo, en la preview y en producción.</p>
+<p><code>server.mjs</code> lo escribe el build: es la app, con sus rutas, sus contratos y sus handlers. <code>prerendered</code> le dice dónde leer las páginas que ya pintó el build. Es el mismo código en desarrollo, en la preview y en producción.</p>
 
 <p id="order">Responde a las funciones de servidor, a los datos de las páginas, a la página de error y a las páginas, que salen prerenderizadas o pintadas en el momento (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</p>
 

@@ -1,0 +1,354 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/core · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/core: signal, computed, effect, batch, untrack, task y sus miembros, now, los pipes, locale, format y los hooks del ciclo de vida.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/core">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/core · Fudic">
+  <meta property="og:description" content="Signals, efectos, tareas, pipes y hooks, export a export.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/core">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-core")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#state">Estado</a></li>
+        <li><a href="#effects">Efectos</a></li>
+        <li><a href="#tasks">Tareas</a></li>
+        <li><a href="#time">El instante</a></li>
+        <li><a href="#pipes">Pipes</a></li>
+        <li><a href="#hooks">Hooks del ciclo de vida</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/core</code></h1>
+
+<p>El runtime del navegador: el estado reactivo, los efectos, las llamadas al servidor con su estado y los pipes que formatean. Se importa en el <code>@@code</code> de un <code>.fud</code> o en un módulo TypeScript de la app.</p>
+
+<ui-code>
+<pre><code>import &#123; signal, computed, effect, task &#125; from "@@fudic/core";</code></pre>
+</ui-code>
+
+<h2 id="state">Estado</h2>
+
+<h3 id="signal"><code>signal</code></h3>
+
+<ui-code>
+<pre><code>signal&lt;T&gt;(initial: T): Signal&lt;T&gt;</code></pre>
+</ui-code>
+
+<p>Un valor reactivo. El servidor pinta cada signal con su <code>initial</code>; en el navegador, quien lo lee se actualiza cuando cambia. Guía: <a href="/docs/reactivity#signal">Reactividad</a>.</p>
+
+<ul>
+  <li><strong><code>count()</code></strong> lo lee. Dentro de un <code>effect</code> o un <code>computed</code>, la lectura queda registrada como dependencia.</li>
+  <li><strong><code>count.set(v)</code></strong> lo escribe. Solo avisa si el valor nuevo es distinto según <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is" target="_blank" rel="noopener"><code>Object.is</code></a>.</li>
+</ul>
+
+<p>No tiene más miembros. Para leer sin registrar la dependencia, <a href="#untrack"><code>untrack</code></a>.</p>
+
+<h3 id="computed"><code>computed</code></h3>
+
+<ui-code>
+<pre><code>computed&lt;T&gt;(fn: () =&gt; T): Computed&lt;T&gt;</code></pre>
+</ui-code>
+
+<p>Un valor derivado. Se calcula al leerlo, solo si alguna de las fuentes que leyó la última vez cambió; uno que nadie lee nunca se ejecuta. No hay que liberarlo. Guía: <a href="/docs/reactivity#computed">Reactividad</a>.</p>
+
+<ui-code>
+<pre><code>const double = computed(() =&gt; value() * 2);</code></pre>
+</ui-code>
+
+<p>Su único miembro es la lectura, <code>double()</code>. Si el resultado no cambia, quien depende de él no se entera.</p>
+
+<h3 id="readable"><code>Readable</code></h3>
+
+<ui-code>
+<pre><code>type Readable&lt;T&gt; = () =&gt; T</code></pre>
+</ui-code>
+
+<p>Cualquier cosa que se lee de forma reactiva: un <code>signal</code> o un <code>computed</code>. Es el tipo de las dependencias de <code>effect</code> y de cada lectura de un <code>Task</code>.</p>
+
+<h3 id="batch"><code>batch</code></h3>
+
+<ui-code>
+<pre><code>batch&lt;T&gt;(fn: () =&gt; T): T</code></pre>
+</ui-code>
+
+<p>Agrupa varias escrituras: quien depende de ellas se ejecuta una vez, al salir del <code>batch</code> más externo. Dentro, las lecturas ya ven los valores nuevos, y el aviso sale aunque <code>fn</code> lance. Devuelve lo que devuelve <code>fn</code>. Guía: <a href="/docs/reactivity#batch-untrack">Reactividad</a>.</p>
+
+<ui-code>
+<pre><code>batch(() =&gt; &#123;
+  first.set("Ada");
+  last.set("Lovelace");
+&#125;);</code></pre>
+</ui-code>
+
+<h3 id="untrack"><code>untrack</code></h3>
+
+<ui-code>
+<pre><code>untrack&lt;T&gt;(fn: () =&gt; T): T</code></pre>
+</ui-code>
+
+<p>Ejecuta <code>fn</code> sin registrar lo que lee como dependencia. Devuelve lo que devuelve <code>fn</code>.</p>
+
+<ui-code>
+<pre><code>effect(() =&gt; log(a() + untrack(() =&gt; b())));   // re-runs when a changes, not b</code></pre>
+</ui-code>
+
+<h2 id="effects">Efectos</h2>
+
+<h3 id="effect"><code>effect</code></h3>
+
+<ui-code>
+<pre><code>effect(fn: () =&gt; void | Cleanup, deps?: readonly Readable&lt;unknown&gt;[]): () =&gt; void</code></pre>
+</ui-code>
+
+<p>Ejecuta <code>fn</code> en el navegador nada más crearse, y otra vez cada vez que cambia algo de lo que depende. El servidor nunca lo ejecuta. Guía: <a href="/docs/reactivity#effect">Reactividad</a>.</p>
+
+<ul>
+  <li><strong><code>fn</code></strong> puede devolver una función de limpieza, que se ejecuta antes de cada repetición y al final.</li>
+  <li><strong><code>deps</code></strong>, si se da, dice de qué depende: solo esas fuentes cuentan, y lo que lea <code>fn</code> no. Con <code>[]</code>, se ejecuta una vez.</li>
+  <li><strong>Devuelve</strong> la función que lo para y ejecuta la limpieza pendiente.</li>
+</ul>
+
+<ui-code>
+<pre><code>effect(() =&gt; &#123;
+  const id = setInterval(() =&gt; current.set(new Date()), 1000);
+  return () =&gt; clearInterval(id);
+&#125;);</code></pre>
+</ui-code>
+
+<p>Creado en el nivel superior del <code>@@code</code>, muere con su componente. Un efecto que escribe un signal que él mismo lee entra en bucle: a las 100 vueltas encadenadas, lanza un error.</p>
+
+<h3 id="cleanup"><code>Cleanup</code></h3>
+
+<ui-code>
+<pre><code>type Cleanup = () =&gt; void</code></pre>
+</ui-code>
+
+<p>Lo que puede devolver el cuerpo de un <code>effect</code>.</p>
+
+<h2 id="tasks">Tareas</h2>
+
+<h3 id="task"><code>task</code></h3>
+
+<ui-code>
+<pre><code>task&lt;A, R&gt;(fn: Callable&lt;A, R&gt;, source?: () =&gt; A, options?: TaskOptions&lt;R&gt;): Task&lt;A, R&gt;</code></pre>
+</ui-code>
+
+<p>Envuelve una llamada, normalmente una función de servidor, con su estado reactivo, su cancelación y su orden. Recibe la función, no una llamada. Guía: <a href="/docs/server/task">La tarea</a>.</p>
+
+<ul>
+  <li><strong><code>fn</code></strong>: lo que se llama. Recibe los argumentos y <code>&#123; signal, onProgress &#125;</code>.</li>
+  <li><strong><code>source</code></strong>: una función que devuelve los argumentos. Cada vez que cambia lo que lee, la tarea llama sola. Crear la tarea no llama.</li>
+  <li><strong><code>options</code></strong>: <a href="#task-options"><code>TaskOptions</code></a>. Con <code>initial</code>, <code>value()</code> deja de poder ser <code>undefined</code>.</li>
+</ul>
+
+<ui-code .path="src/routes/users.fud">
+<pre><code>@@code &#123;
+  import &#123; signal, task &#125; from "@@fudic/core";
+
+  const query = signal("");
+  const found = task(search, () =&gt; (&#123; q: query() &#125;), &#123; initial: [] &#125;);
+  const saving = task(save);
+&#125;</code></pre>
+</ui-code>
+
+<p>En el servidor una tarea nunca llama: <code>state()</code> es <code>"idle"</code> y <code>value()</code>, su <code>initial</code>. Creada en el nivel superior del <code>@@code</code>, se cancela cuando muere su componente.</p>
+
+<h3 id="task-members"><code>Task</code></h3>
+
+<p>Lo que devuelve <code>task</code>. Cada lectura es reactiva y se puede usar en la vista.</p>
+
+<ul>
+  <li><strong><code>value()</code></strong>: la última respuesta que llegó, o <code>initial</code>. Se mantiene mientras hay otra llamada en curso.</li>
+  <li><strong><code>state()</code></strong>: <code>"idle"</code>, <code>"pending"</code>, <code>"done"</code>, <code>"cancelled"</code> o <code>"failed"</code>.</li>
+  <li><strong><code>pending()</code></strong>: si hay una llamada en curso.</li>
+  <li><strong><code>progress()</code></strong>: los bytes que mueve la llamada actual, <a href="#task-progress"><code>TaskProgress</code></a>, o <code>null</code>.</li>
+  <li><strong><code>error()</code></strong>: con qué falló la última llamada terminada, o <code>undefined</code>.</li>
+  <li><strong><code>message()</code></strong>: el <code>message</code> de ese error, o <code>""</code> si salió bien.</li>
+  <li><strong><code>run(args)</code></strong>: lanza una llamada y devuelve una promesa con su <a href="#task-result"><code>TaskResult</code></a>. Nunca rechaza.</li>
+  <li><strong><code>cancel()</code></strong>: aborta la llamada en curso y descarta las que esperan.</li>
+</ul>
+
+<h3 id="task-result"><code>TaskResult</code></h3>
+
+<p>Lo que resuelve <code>run</code>. Basta con mirar <code>ok</code>:</p>
+
+<ui-code>
+<pre><code>&#123; ok: true,  status: "done",      value: R &#125;
+&#123; ok: false, status: "failed",    error: unknown &#125;
+&#123; ok: false, status: "cancelled" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>const r = await saving.run(&#123; id, active &#125;);
+if (!r.ok) undo(id);</code></pre>
+</ui-code>
+
+<h3 id="task-options"><code>TaskOptions</code></h3>
+
+<ul>
+  <li><strong><code>mode</code></strong>: <code>"latest"</code> o <code>"queue"</code>, el <code>TaskMode</code>. Con <code>"latest"</code>, una llamada nueva aborta la que está en curso, y la respuesta de una llamada sustituida nunca se escribe. Con <code>"queue"</code>, cada llamada espera a que termine la anterior, y ninguna se pierde. Por defecto, <code>"latest"</code> para un <code>GET</code> y <code>"queue"</code> para <code>POST</code>, <code>PUT</code>, <code>PATCH</code> y <code>DELETE</code>.</li>
+  <li><strong><code>initial</code></strong>: lo que devuelve <code>value()</code> antes de la primera respuesta. Por defecto, <code>undefined</code>.</li>
+</ul>
+
+<h3 id="callable"><code>Callable</code> y <code>CallSignals</code></h3>
+
+<ui-code>
+<pre><code>type Callable&lt;A, R&gt; = ((args: A, options: CallSignals) =&gt; Promise&lt;R&gt;) &amp; &#123; readonly method?: string &#125;
+
+interface CallSignals &#123;
+  signal: AbortSignal;
+  onProgress?: (progress: TaskProgress | null) =&gt; void;
+&#125;</code></pre>
+</ui-code>
+
+<p>Una función de servidor ya es un <code>Callable</code>, con su verbo HTTP en <code>method</code>. Una función propia también vale: si respeta <code>signal</code>, se puede cancelar.</p>
+
+<h3 id="task-progress"><code>TaskProgress</code></h3>
+
+<ui-code>
+<pre><code>interface TaskProgress &#123;
+  loaded: number;
+  total: number | null;    // null when the size is unknown
+  phase: "up" | "down";
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="time">El instante</h2>
+
+<h3 id="now"><code>now</code></h3>
+
+<ui-code>
+<pre><code>now(): Date</code></pre>
+</ui-code>
+
+<p>El instante actual. En el <code>@@code</code> de un <code>.fud</code> solo puede ser el argumento entero de un <code>signal</code>: el servidor lo calcula una vez por render, viaja con la página y el navegador lo lee de ahí sin volver a llamarlo. En cualquier otro sitio del <code>@@code</code> da <code>FUD0912</code>. Guía: <a href="/docs/reactivity#batch-untrack">Reactividad</a>.</p>
+
+<ui-code>
+<pre><code>const current = signal(now());</code></pre>
+</ui-code>
+
+<h2 id="pipes">Pipes</h2>
+
+<p>Un pipe formatea un valor como texto para un idioma: en la vista, <code>@@(x | p)</code>. Los seis de <code>@@fudic/core</code> usan el <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a> estándar, y sus opciones son datos, para que otro backend formatee igual con su ICU. Guía: <a href="/docs/server/pipes">Pipes</a>.</p>
+
+<h3 id="date"><code>date</code></h3>
+
+<ui-code>
+<pre><code>date(options: Intl.DateTimeFormatOptions &amp; &#123; timeZone: string &#125;): Pipe&lt;Date | number&gt;</code></pre>
+</ui-code>
+
+<p><code>timeZone</code> es obligatorio, para que el servidor y el navegador pinten la misma hora.</p>
+
+<ui-code>
+<pre><code>const time = date(&#123; timeStyle: "medium", timeZone: "Europe/Madrid" &#125;);
+…
+&lt;time&gt;@@(current() | time)&lt;/time&gt;</code></pre>
+</ui-code>
+
+<h3 id="number"><code>number</code>, <code>currency</code> y <code>percent</code></h3>
+
+<ui-code>
+<pre><code>number(options?: Intl.NumberFormatOptions): Pipe&lt;number | bigint&gt;
+currency(code: string, options?: Intl.NumberFormatOptions): Pipe&lt;number | bigint&gt;
+percent(options?: Intl.NumberFormatOptions): Pipe&lt;number&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>number()</code></strong>: <code>1234.5</code> sale <code>1,234.5</code> en inglés.</li>
+  <li><strong><code>currency("EUR")</code></strong>: <code>3.5</code> sale <code>3,50 €</code> en español y <code>€3.50</code> en inglés. Fija <code>style</code> y <code>currency</code>.</li>
+  <li><strong><code>percent()</code></strong>: <code>0.25</code> sale <code>25%</code>. Fija <code>style</code>.</li>
+</ul>
+
+<h3 id="relative-time"><code>relativeTime</code></h3>
+
+<ui-code>
+<pre><code>relativeTime(unit: Intl.RelativeTimeFormatUnit, options?: Intl.RelativeTimeFormatOptions): Pipe&lt;number&gt;</code></pre>
+</ui-code>
+
+<p><code>relativeTime("day")</code> pinta <code>-1</code> como <code>1 day ago</code>; con <code>&#123; numeric: "auto" &#125;</code>, <code>yesterday</code>.</p>
+
+<h3 id="list"><code>list</code></h3>
+
+<ui-code>
+<pre><code>list(options?: Intl.ListFormatOptions): Pipe&lt;readonly string[]&gt;</code></pre>
+</ui-code>
+
+<p><code>list()</code> pinta <code>["a", "b", "c"]</code> como <code>a, b, and c</code>; <code>list(&#123; type: "disjunction" &#125;)</code> en español, <code>a o b</code>.</p>
+
+<h3 id="pipe"><code>Pipe</code></h3>
+
+<ui-code>
+<pre><code>interface Pipe&lt;T&gt; &#123;
+  kind: "date" | "number" | "currency" | "percent" | "relative-time" | "list" | "pipe";
+  name?: string;
+  options: Readonly&lt;Record&lt;string, unknown&gt;&gt;;
+  format(value: T, locale: string): string;
+&#125;</code></pre>
+</ui-code>
+
+<p><code>kind</code> es <code>"pipe"</code> para un pipe del proyecto, declarado en un <code>.fudapi</code>, con su <code>name</code>.</p>
+
+<h3 id="locale"><code>locale</code></h3>
+
+<ui-code>
+<pre><code>const locale: string</code></pre>
+</ui-code>
+
+<p>El idioma de la página. El compilador cambia cada uso por el texto fijo, <code>"en"</code> o <code>"es"</code>, en el <code>.fud</code> y en los módulos <code>.ts</code> de la app. Guía: <a href="/docs/i18n/code#content">Idiomas en el código</a>.</p>
+
+<h3 id="format"><code>format</code></h3>
+
+<ui-code>
+<pre><code>format&lt;T&gt;(value: T, pipe: Pipe&lt;T&gt;): string</code></pre>
+</ui-code>
+
+<p>Aplica un pipe desde el código: lo mismo que <code>@@(x | p)</code> en la vista. El compilador lo cambia por <code>pipe.format(value, "en")</code>.</p>
+
+<ui-code>
+<pre><code>const total = format(2, currency("USD"));   // "$2.00"</code></pre>
+</ui-code>
+
+<h2 id="hooks">Hooks del ciclo de vida</h2>
+
+<p>Siete funciones del <code>@@code</code> que no se importan: <code>beforeHydrate</code>, <code>afterHydrate</code>, <code>beforeCreate</code>, <code>afterCreate</code>, <code>onConnect</code>, <code>onDisconnect</code> y <code>onDispose</code>. Guía: <a href="/docs/reactivity/lifecycle">El ciclo de vida</a>.</p>
+
+<ui-code>
+<pre><code>beforeHydrate(fn: (host: HTMLElement) =&gt; void): void
+afterHydrate(fn: (host: HTMLElement) =&gt; void | (() =&gt; void) | Promise&lt;void&gt;): void
+beforeCreate(fn: (host: HTMLElement) =&gt; void): void
+afterCreate(fn: (host: HTMLElement) =&gt; void | (() =&gt; void) | Promise&lt;void&gt;): void
+onConnect(fn: (host: HTMLElement) =&gt; void | (() =&gt; void) | Promise&lt;void&gt;): void
+onDisconnect(fn: (host: HTMLElement) =&gt; void): void
+onDispose(fn: (host: HTMLElement) =&gt; void): void</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>host</code></strong> es el elemento del componente, o el <code>&lt;body&gt;</code> en una ruta o un layout.</li>
+  <li><strong>La función que devuelven</strong> <code>afterHydrate</code>, <code>afterCreate</code> y <code>onConnect</code> es su limpieza. Una promesa no se espera.</li>
+  <li><strong>El orden</strong>: un componente que pintó el servidor pasa por <code>beforeHydrate</code>, <code>afterHydrate</code> y <code>onConnect</code>; uno creado en el navegador, por <code>beforeCreate</code>, <code>afterCreate</code> y <code>onConnect</code>. Al quitarlo, <code>onDisconnect</code> y, en la siguiente microtarea, <code>onDispose</code>. Si solo se mueve, <code>onDisconnect</code> y <code>onConnect</code>.</li>
+</ul>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los hooks</strong> van en el nivel superior del <code>@@code</code> (<code>FUD1560</code>). Una ruta o un layout no tienen <code>beforeCreate</code> ni <code>afterCreate</code>, porque nunca se crean en el navegador (<code>FUD1561</code>). Declarar algo con el nombre de un hook lo tapa (<code>FUD1562</code>).</li>
+  <li><strong>El resto de exports</strong> de <code>@@fudic/core</code> (<code>FudicElement</code>, <code>installHydration</code>, <code>painted</code>, <code>owned</code>, <code>hooks</code>, <code>subscribe</code>, <code>written</code>, <code>onStaleData</code>, los bloques de hidratación y los canales de precalentado) los usa el código que genera el compilador. Tu código no los necesita.</li>
+  <li><strong>El modo de render</strong> de una ruta no se elige en <code>@@fudic/core</code>: es la línea <code>load</code> de su <code>.fudapi</code> (<a href="/docs/routing/rendering">Los modos</a>).</li>
+</ul>

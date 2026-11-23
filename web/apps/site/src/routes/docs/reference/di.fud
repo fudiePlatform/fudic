@@ -1,0 +1,137 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/di · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/di: Service, inject, provide, token y publish, con sus opciones y el orden en que se resuelve un servicio.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/di">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/di · Fudic">
+  <meta property="og:description" content="Service, inject, provide, token y publish.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/di">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-di")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#service"><code>Service</code></a></li>
+        <li><a href="#inject"><code>inject</code></a></li>
+        <li><a href="#provide"><code>provide</code></a></li>
+        <li><a href="#token"><code>token</code></a></li>
+        <li><a href="#publish"><code>publish</code></a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/di</code></h1>
+
+<p>Inyección de dependencias: una clase o un token se registra una vez y se pide donde haga falta, en el navegador y en el servidor. Guía: <a href="/docs/di">Inyección de dependencias</a>.</p>
+
+<ui-code>
+<pre><code>import &#123; Service, inject, provide, token, publish &#125; from "@@fudic/di";</code></pre>
+</ui-code>
+
+<h2 id="service"><code>Service</code></h2>
+
+<ui-code>
+<pre><code>Service&lt;T extends abstract new () =&gt; unknown&gt;(target: T): T</code></pre>
+</ui-code>
+
+<p>Registra una clase en la raíz, con una instancia por contenedor raíz. Devuelve la clase tal cual. Es un decorador de clase estándar, pero las herramientas aún no lo transforman, así que se llama debajo de la clase. Su constructor no recibe argumentos: lo que necesita, lo pide con <code>inject</code> en sus campos.</p>
+
+<ui-code .path="src/services/cart.ts">
+<pre><code>export class Cart &#123;
+  private readonly log = inject(Logger);
+  …
+&#125;
+Service(Cart);</code></pre>
+</ui-code>
+
+<h2 id="inject"><code>inject</code></h2>
+
+<ui-code>
+<pre><code>inject&lt;T&gt;(provider: Provider&lt;T&gt;): T
+inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#125;): T | undefined</code></pre>
+</ui-code>
+
+<p>Pide una clase o un token. Guía: <a href="/docs/di#inject">Inyección de dependencias</a>.</p>
+
+<ul>
+  <li><strong>Dónde se puede llamar</strong>: en el <code>@@code</code> de un <code>.fud</code>, en los campos y el constructor de un servicio, y en un handler del servidor, donde resuelve con el contenedor de la petición.</li>
+  <li><strong>El orden</strong>: el primer componente de arriba que lo provee con <code>provide</code>; si no, la raíz (<code>Service</code> o <code>provide</code> en un módulo); si no, lo que publicó el servidor con <code>publish</code>, solo para tokens.</li>
+  <li><strong>Si no lo encuentra</strong>, lanza <code>no registration for &lt;name&gt;</code>; con <code>&#123; optional: true &#125;</code>, devuelve <code>undefined</code>.</li>
+  <li><strong>Un ciclo</strong> (<code>A</code> pide <code>B</code> y <code>B</code> pide <code>A</code>) lanza un error con la cadena.</li>
+</ul>
+
+<p>Un componente que usa <code>inject</code> se hidrata.</p>
+
+<h2 id="provide"><code>provide</code></h2>
+
+<ui-code>
+<pre><code>provide&lt;T&gt;(provider: Provider&lt;T&gt;, factory: () =&gt; T, options?: &#123; transient?: true &#125;): void</code></pre>
+</ui-code>
+
+<p>Registra cómo se construye algo. Guía: <a href="/docs/di/providers">Proveedores</a>.</p>
+
+<ul>
+  <li><strong>En un módulo <code>.ts</code></strong>, en la raíz, como <code>Service</code> pero con su fábrica.</li>
+  <li><strong>En el <code>@@code</code> de un componente</strong>, para ese componente y todo lo que tiene dentro. Ese componente no se hidrata por proveer.</li>
+  <li><strong><code>transient</code></strong>: una instancia nueva cada vez que se pide. Por defecto, una por contenedor.</li>
+</ul>
+
+<ui-code .path="src/components/cart-owner.fud">
+<pre><code>@@code &#123;
+  import &#123; provide &#125; from "@@fudic/di";
+  import &#123; Cart &#125; from "../services/cart";
+
+  provide(Cart, () =&gt; new Cart());
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="token"><code>token</code></h2>
+
+<ui-code>
+<pre><code>token&lt;T&gt;(name: string): Token&lt;T&gt;</code></pre>
+</ui-code>
+
+<p>Una clave tipada para algo que no es una clase: una configuración, una lista. El nombre tiene que ser único en la ruta, porque es la clave con la que viaja lo publicado.</p>
+
+<ui-code .path="src/services/cart.ts">
+<pre><code>export const LINES = token&lt;readonly string[]&gt;("lines");</code></pre>
+</ui-code>
+
+<h2 id="publish"><code>publish</code></h2>
+
+<ui-code>
+<pre><code>publish&lt;T&gt;(token: Token&lt;T&gt;, value: T): void</code></pre>
+</ui-code>
+
+<p>En el servidor, durante una petición: deja un valor para el navegador. Viaja con la página y los dos lados construyen sus servicios a partir de él. Viajan valores, nunca instancias. Fuera de una petición, lanza un error. Guía: <a href="/docs/di/server#publish">En el servidor</a>.</p>
+
+<ui-code .path="src/server/cart.ts">
+<pre><code>load.handle(async () =&gt; &#123;
+  const lines = await readLines();
+  publish(LINES, lines);
+  return &#123; … &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los tipos</strong>: <code>Token&lt;T&gt;</code> es <code>&#123; name: string &#125;</code>; <code>Provider&lt;T&gt;</code>, una clase o un token; <code>InjectOptions</code> y <code>ProvideOptions</code>, las opciones de arriba.</li>
+  <li><strong>En los tests</strong>, un servicio se cambia con <code>providers</code> en <code>mount</code> y <code>visit</code> (<a href="/docs/reference/testing#provider-override"><code>@@fudic/testing</code></a>), o con el grupo <code>services</code> de una fixture.</li>
+  <li><strong>Los diagnósticos</strong>: <code>FUD0680</code>, se inyecta una clase que nadie registra; <code>FUD0684</code>, el mismo proveedor dos veces en un <code>@@code</code>.</li>
+  <li><strong><code>createRoot</code>, <code>createChild</code>, <code>destroy</code>, <code>injectFrom</code>, <code>provideIn</code>, <code>publishIn</code>, <code>seedOf</code> y <code>setAmbient</code></strong> los usan el compilador y el servidor. El compilador convierte cada <code>inject</code> y <code>provide</code> de un <code>@@code</code> en una de ellas.</li>
+</ul>

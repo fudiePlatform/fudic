@@ -183,6 +183,17 @@
       <li>
         <span class="chapter">Referencia</span>
         <ol>
+          <li><a href="/docs/reference" aria-current=@(current === "reference" ? "page" : false)>La referencia</a></li>
+          <li><a href="/docs/reference/core" aria-current=@(current === "reference-core" ? "page" : false)><code>@@fudic/core</code></a></li>
+          <li><a href="/docs/reference/dom" aria-current=@(current === "reference-dom" ? "page" : false)><code>@@fudic/dom</code></a></li>
+          <li><a href="/docs/reference/forms" aria-current=@(current === "reference-forms" ? "page" : false)><code>@@fudic/forms</code></a></li>
+          <li><a href="/docs/reference/di" aria-current=@(current === "reference-di" ? "page" : false)><code>@@fudic/di</code></a></li>
+          <li><a href="/docs/reference/i18n" aria-current=@(current === "reference-i18n" ? "page" : false)><code>@@fudic/i18n</code></a></li>
+          <li><a href="/docs/reference/http" aria-current=@(current === "reference-http" ? "page" : false)><code>@@fudic/http</code></a></li>
+          <li><a href="/docs/reference/server" aria-current=@(current === "reference-server" ? "page" : false)><code>@@fudic/server</code></a></li>
+          <li><a href="/docs/reference/testing" aria-current=@(current === "reference-testing" ? "page" : false)><code>@@fudic/testing</code></a></li>
+          <li><a href="/docs/reference/fudapi" aria-current=@(current === "reference-fudapi" ? "page" : false)>El lenguaje <code>.fudapi</code></a></li>
+          <li><a href="/docs/reference/fudspec" aria-current=@(current === "reference-fudspec" ? "page" : false)>El lenguaje <code>.fudspec</code></a></li>
           <li><a href="/docs/reference/diagnostics" aria-current=@(current === "reference-diagnostics" ? "page" : false)>Diagnósticos</a></li>
         </ol>
       </li>

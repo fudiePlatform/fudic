@@ -377,6 +377,10 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
     Este quedó arreglado en el mismo commit del capítulo.
 - **Qué debería hacer.** Actualizar los `.md` y los mensajes. Quitar `strategy()` de
   `@fudic/core` o marcarlo como retirado.
+- **Vuelto a comprobar (Referencia), el 2026-11-23.** Sigue igual. Además, el TSDoc de
+  `StrategyDecl.page` dice que no tiene `ttl` propio y el tipo lo tiene (`strategy.ts:24`), y
+  `RouteMode` y `CachePolicy` están repetidos en `@fudic/transport`, de donde los toma el plugin.
+  La referencia de `@fudic/core` no documenta `strategy()`.
 
 ## 23. Nombres de parámetro y palabras clave en el `.fudapi`
 
@@ -546,3 +550,78 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Resuelto el 2026-11-23**, con el visto bueno de Pedro: `withRequest` toma la query de la
   petición cuando el contexto se hizo solo con la ruta, y `visit` pasa la query a la página. Un
   test en cada paquete; los dos siguen al 100 %. Lo que dice la web pasa a ser verdad.
+
+## 38. TSDoc que no dice lo que hace el código
+
+- **Qué pasó.** Al escribir la Referencia (2026-11-23), contrastando cada export con su código:
+  - `date` (`packages/core/src/pipes/date.ts:3-5`) cita `FUD0912` para el `timeZone` obligatorio;
+    `FUD0912` es «`now()` outside a signal's initializer». Ningún diagnóstico lo comprueba: solo el
+    tipo.
+  - `packages/core/src/tracking.ts` aún explica `sig.peek()`, que ya no existe (`signal.ts:8`).
+  - `emit` (`packages/dom/src/emit.ts:9`) habla de un «`@client` compilado»; hoy vale en cualquier
+    `@code` que lo importe.
+  - `Task.progress` dice «`null` when no call is in flight» (`task.ts:77-80`); ver el hallazgo 39.
+  - `Control.dirty` (`packages/forms/src/types.ts:63`) dice «differs from the initial one»; compara
+    con el valor de partida, que mueven `$set` y `reset(v)` (`control.ts:136-141`).
+  - `Validator` (`types.ts:149-157`) dice que lo escribe el autor; desde SDD-60 las reglas se
+    declaran en el `.fudapi` y se implementan con `check`.
+  - `token()` (`packages/di/src/token.ts:4`) dice que la identidad es el objeto y nunca el nombre;
+    lo publicado con `publish` se guarda por nombre (`seed.ts:24`, `resolve.ts:126-130`), y dos
+    tokens con el mismo nombre chocan.
+  - `CookieOptions.secure` dice «true unless it said otherwise»: es así con `createServer`, pero
+    `fudic dev` y `fudic preview` sin HTTPS lo ponen a `false` (`packages/vite/src/plugin.ts:584-591`).
+- **Cómo se resolvió en la web.** La Referencia dice lo que hace el código.
+- **Qué debería hacer.** Poner al día cada TSDoc.
+
+## 39. `Task.progress` no vuelve a `null` al terminar una llamada
+
+- **Qué pasó.** En `packages/core/src/task.ts`, solo `cancel()` o una llamada sustituida ponen
+  `progress` a `null`. Al terminar una llamada, se queda con su último valor salvo que la propia
+  función mande `onProgress(null)`, como hace la llamada de `@fudic/http` (`client/send.ts`). Una
+  función propia que no lo haga deja la barra llena.
+- **Cómo se resolvió en la web.** La Referencia dice «o `null`» sin precisar cuándo.
+- **Qué debería hacer.** Ponerlo a `null` al terminar cualquier llamada, como dice su TSDoc.
+
+## 40. El tipo `html` del `.fudapi` no se puede pintar como HTML
+
+- **Qué pasó.** `html` sale en TypeScript como `TrustedHTML`, pero la marca de confianza es un
+  símbolo y no viaja en el formato de los datos (`packages/dom/src/html.ts:16-20`): `@raw` lo
+  escapa. `examples/basic/src/components/raw-demo.fud` lo enseña a propósito. No hay forma de pintar
+  como HTML un contenido que llega del servidor, como un artículo de un CMS o un Markdown ya
+  convertido.
+- **Cómo se resolvió en la web.** `ref` y `@raw`, Trusted Types y Tipos decían que `@raw` pinta el
+  HTML que llega del servidor, con el ejemplo de un CMS. Se corrigieron: la marca se pone en el
+  `@code` y no viaja. La página de Diagnósticos parte el texto en trozos en vez de usar `@raw`.
+- **Qué debería hacer.** Decidir si un campo `html` del contrato llega marcado, porque el servidor
+  responde de él, o quitar el tipo y decir cómo se pinta HTML del servidor.
+
+## 41. Tipos de `@fudic/forms` que se usan y no se exportan
+
+- **Qué pasó.** `Progress`, el tipo de `$progress()`, y `Patch<S>`, el parámetro de `$patch`, no
+  salen de `@fudic/forms` (`src/index.ts:34-57`): no se pueden nombrar. `ValidateOn`, `Validity` y
+  `setMessages` solo salen de `./contract`, que es interno.
+- **Qué debería hacer.** Exportar `Progress` y `Patch` desde la entrada pública.
+
+## 42. `ClientStep` y `ServerStep` se exportan y nadie los usa
+
+- **Qué pasó.** `@fudic/http` exporta `ClientStep` y `ServerStep` (`types.ts:41-47`), sin el
+  tercer argumento con los parámetros del `use`. Las mitades de un middleware son `ClientHalf` y
+  `ServerHalf` de `./contract`, y el módulo generado exporta `<Name>Client` y `<Name>Server`.
+- **Cómo se resolvió en la web.** La Referencia recomienda `<Name>Server` y `<Name>Client`.
+- **Qué debería hacer.** Quitarlos, o que sean los tipos de las mitades.
+
+## 43. Detalles del `.fudapi`
+
+- **Qué pasó.** Comprobado con el validador (Referencia, 2026-11-23):
+  - `validate-on` o `validity` sin valor dan `FUD1063` (`packages/api/src/form.ts:53,70`), cuyo
+    `.md` solo habla de una declaración sin nombre.
+  - Un sufijo de tamaño vale en cualquier número: `max-length 80kb` es válido y vale 81920.
+- **Qué debería hacer.** Un código propio, o ampliar el `.md` de `FUD1063`. Aceptar `kb`, `mb` y
+  `gb` solo donde se espera un tamaño.
+
+## 44. `destroy` de `@fudic/di` no alcanza a los hijos
+
+- **Qué pasó.** `destroy(container)` vacía sus instancias y lo marca muerto, pero no a sus hijos.
+  `inject()` y `publishIn` no miran si está vivo; solo `injectFrom` lanza
+  (`packages/di/src/container.ts:89`, `resolve.ts`).
+- **Qué debería hacer.** Que `destroy` llegue a los hijos, y que todas las entradas lo comprueben.

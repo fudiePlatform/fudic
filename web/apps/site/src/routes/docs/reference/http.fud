@@ -1,0 +1,227 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/http · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/http: el ctx de un handler, los handle de load, paths, layout y las funciones, los middlewares, los errores HTTP y las cookies.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/http">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/http · Fudic">
+  <meta property="og:description" content="El ctx, los handlers, los middlewares, los errores y las cookies.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/http">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-http")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#handlers">Los handlers</a></li>
+        <li><a href="#ctx">El <code>ctx</code></a></li>
+        <li><a href="#middlewares">Los middlewares</a></li>
+        <li><a href="#calls">Llamar desde el navegador</a></li>
+        <li><a href="#errors">Los errores</a></li>
+        <li><a href="#cookies">Las cookies</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/http</code></h1>
+
+<p>Lo que ve el código del servidor: el <code>ctx</code> de cada handler, los errores que se lanzan y las cookies. Las piezas que se implementan (<code>load</code>, cada función, cada middleware) llegan del módulo <code>fudic:&lt;id&gt;</code> que genera su <code>.fudapi</code>. Guía: <a href="/docs/server">Servidor y datos</a>.</p>
+
+<ui-code>
+<pre><code>import &#123; notFound, redirect, setCookie &#125; from "@@fudic/http";</code></pre>
+</ui-code>
+
+<h2 id="handlers">Los handlers</h2>
+
+<p>Cada pieza del <code>.fudapi</code> se implementa con <code>.handle</code>, en un fichero de <code>src/server</code>. Implementarla dos veces, o fuera de esa carpeta, lanza un error. Una función sin handler responde <code>404</code>.</p>
+
+<ui-code>
+<pre><code>load.handle((ctx: LoadCtx) =&gt; LoadData | Promise&lt;LoadData&gt;)
+paths.handle(() =&gt; readonly string[] | Promise&lt;readonly string[]&gt;)
+layout.handle((ctx, data) =&gt; LayoutProps | Promise&lt;LayoutProps&gt;)
+save.handle((ctx: SaveCtx) =&gt; R | Promise&lt;R&gt;)</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>load</code></strong>: los datos de la página. Un campo <code>later</code> se devuelve como promesa. Guía: <a href="/docs/routing/data">Los datos de la página</a>.</li>
+  <li><strong><code>paths</code></strong>: los valores del parámetro que el build pinta como páginas.</li>
+  <li><strong><code>layout</code></strong>: las props del layout. Recibe lo que devolvió <code>load</code>, o <code>undefined</code> si la ruta no tiene, o la <a href="#error-page"><code>ErrorPage</code></a> en <code>_error.fud</code>.</li>
+  <li><strong>Una función</strong>: su <code>ctx.args</code> son los argumentos, <code>ctx.query</code> los de la query y, con <code>form</code>, <code>ctx.form</code> el formulario ya validado. Guía: <a href="/docs/server/functions#handler">Funciones</a>.</li>
+</ul>
+
+<p>Por cada <code>fails</code>, el módulo exporta <code>&lt;Name&gt;Fails</code>, con una función por código que devuelve el error:</p>
+
+<ui-code .path="src/server/users.ts">
+<pre><code>import &#123; save, SaveFails &#125; from "fudic:routes/users";
+
+save.handle(async (ctx) =&gt; &#123;
+  if (ctx.args.id === ADA) throw SaveFails.protected();
+  await store(ctx.args);
+&#125;);</code></pre>
+</ui-code>
+
+<h2 id="ctx">El <code>ctx</code></h2>
+
+<p><code>ServerContext</code>, lo que recibe cada handler y cada mitad de servidor de un middleware:</p>
+
+<ul>
+  <li><strong><code>params</code></strong>: los parámetros de la ruta. El tipo generado los nombra, <code>ctx.params.slug</code>.</li>
+  <li><strong><code>url</code></strong>: la URL pedida, con su query string (<a href="https://developer.mozilla.org/en-US/docs/Web/API/URL" target="_blank" rel="noopener"><code>URL</code></a>).</li>
+  <li><strong><code>headers</code></strong>: las cabeceras de la petición (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Headers" target="_blank" rel="noopener"><code>Headers</code></a>).</li>
+  <li><strong><code>cookies</code></strong>: las cookies de la petición, ya decodificadas, en un <code>ReadonlyMap</code>.</li>
+  <li><strong><code>response</code></strong>: <code>&#123; status, headers &#125;</code> de la respuesta. <code>status</code> se puede escribir; las cabeceras que se añaden salen también si después se lanza un error.</li>
+  <li><strong><code>signal</code></strong>: se aborta cuando el navegador se va. En el build nunca se aborta.</li>
+  <li><strong><code>method</code></strong>, <strong><code>name</code></strong> y <strong><code>args</code></strong>: el verbo, el nombre exportado (<code>save</code>, <code>load</code>) y los argumentos.</li>
+  <li><strong><code>side</code></strong>: <code>"server"</code>.</li>
+</ul>
+
+<p>Leer la sesión hace privada la respuesta: cualquier lectura de <code>ctx.cookies</code>, o de las cabeceras <code>cookie</code> o <code>authorization</code>, la manda con <code>Cache-Control: private, no-store</code>, salvo que el handler ponga la suya.</p>
+
+<p><code>ClientContext</code> es el de la mitad del navegador de un middleware: lo mismo sin <code>params</code>, <code>cookies</code> ni <code>response</code>, con <code>headers</code> que se pueden cambiar antes de enviar, <code>catches</code>, los status que la función deja a quien llama, y <code>base</code>, la de la app.</p>
+
+<h2 id="middlewares">Los middlewares</h2>
+
+<p>Un middleware se declara en un <code>.fudapi</code> y cada mitad se implementa en su carpeta: <code>.server</code> en <code>src/server</code>, <code>.client</code> en <code>src/browser</code>. Guía: <a href="/docs/server/middlewares">Middlewares</a>.</p>
+
+<ui-code .path="src/server/log.ts">
+<pre><code>import &#123; log &#125; from "fudic:middlewares/log";
+
+log.server(async (ctx, next) =&gt; &#123;
+  const start = performance.now();
+  try &#123;
+    return await next(ctx);
+  &#125; finally &#123;
+    console.info(`$&#123;ctx.method&#125; $&#123;ctx.name&#125; $&#123;Math.round(performance.now() - start)&#125; ms`);
+  &#125;
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>next(ctx)</code></strong> llama al resto de la cadena y resuelve con lo que devolvió. Se puede llamar más de una vez.</li>
+  <li><strong>Lo que declara <code>adds</code></strong> se pasa en el <code>ctx</code>: <code>next(Object.assign(ctx, &#123; user &#125;))</code>. Los handlers que vienen después lo ven tipado.</li>
+  <li><strong>El tercer argumento</strong> son los parámetros que le da cada <code>use</code>.</li>
+  <li><strong>Para tipar una mitad aparte</strong>, el módulo exporta <code>&lt;Name&gt;Server</code> y <code>&lt;Name&gt;Client</code>.</li>
+</ul>
+
+<h2 id="calls">Llamar desde el navegador</h2>
+
+<p>En el navegador, una función del <code>.fudapi</code> es una función asíncrona, <code>ServerFunction</code>, con su verbo en <code>method</code>. Lo normal es pasarla a <a href="/docs/reference/core#task"><code>task</code></a>.</p>
+
+<ui-code>
+<pre><code>save(args, options?: CallOptions): Promise&lt;R&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>signal</code></strong>: para cancelarla. No hay timeout.</li>
+  <li><strong><code>params</code></strong>: los parámetros de la página, para una función de ruta. Por defecto, los de la página en la que está el navegador.</li>
+  <li><strong><code>onProgress</code></strong>: recibe los bytes que se mueven, <code>&#123; loaded, total, phase &#125;</code>, y <code>null</code> al terminar.</li>
+</ul>
+
+<p id="url">Una <code>get</code> tiene además <code>url(args?)</code>: la URL de la llamada, con la <code>base</code> y la firma, para un <code>href</code> o un <code>src</code>. Funciona también al pintar en el servidor. Guía: <a href="/docs/server/functions#url">Funciones</a>.</p>
+
+<ui-code>
+<pre><code>&lt;img src=@@avatar.url(&#123; id: p.id &#125;) alt=""&gt;
+&lt;a href=@@exportCsv.url() download&gt;Download&lt;/a&gt;</code></pre>
+</ui-code>
+
+<h2 id="errors">Los errores</h2>
+
+<p>Lo que lanza un handler sale como un problema <a href="https://www.rfc-editor.org/rfc/rfc9457" target="_blank" rel="noopener">RFC 9457</a> con su status. Cualquier otro error es un <code>500</code>, con su mensaje solo en desarrollo. Guía: <a href="/docs/server/functions#errors">Funciones</a>.</p>
+
+<h3 id="helpers"><code>badRequest</code>, <code>unauthorized</code>, <code>forbidden</code>, <code>notFound</code> y <code>conflict</code></h3>
+
+<ui-code>
+<pre><code>notFound(detail?: string): HttpError</code></pre>
+</ui-code>
+
+<p>Devuelven el error con su status: <code>400</code>, <code>401</code>, <code>403</code>, <code>404</code> y <code>409</code>. <code>detail</code> va al problema solo si se da.</p>
+
+<ui-code>
+<pre><code>if (post === undefined) throw notFound(`no post "$&#123;ctx.params.slug&#125;"`);</code></pre>
+</ui-code>
+
+<h3 id="redirect"><code>redirect</code></h3>
+
+<ui-code>
+<pre><code>redirect(location: string, status: 301 | 302 | 303 | 307 | 308 = 303): Redirect</code></pre>
+</ui-code>
+
+<p>Desde <code>load</code> o <code>layout</code>, es una redirección de verdad, con <code>Location</code>. Desde una función, viaja en el problema y la sigue el middleware <code>error-pages</code>; sin él, quien llama recibe el <code>Redirect</code>. Las cookies que se pusieron antes salen con ella.</p>
+
+<h3 id="http-error"><code>HttpError</code>, <code>ValidationError</code> y <code>Redirect</code></h3>
+
+<ul>
+  <li><strong><code>new HttpError(problem)</code></strong>: <code>status</code>, <code>problem</code> y <code>message</code>, que es el <code>detail</code> o el <code>title</code>. En el navegador llega la misma clase.</li>
+  <li><strong><code>ValidationError</code></strong>: un <code>422</code> con <code>errors</code> por campo y <code>summary</code>. Lo lanza el navegador antes de enviar un formulario que no valida, y el servidor si su copia no valida.</li>
+  <li><strong><code>Redirect</code></strong>: añade <code>location</code>.</li>
+</ul>
+
+<h3 id="problem"><code>Problem</code></h3>
+
+<ui-code>
+<pre><code>interface Problem &#123;
+  status: number;
+  title: string;
+  detail?: string;
+  code?: string;               // a fails code, sent in the fud-code header
+  errors?: ErrorMap | null;
+  summary?: Errors | null;
+  location?: string;
+&#125;</code></pre>
+</ui-code>
+
+<h3 id="error-page"><code>ErrorPage</code></h3>
+
+<p>Los <code>data</code> de <code>_error.fud</code>. Guía: <a href="/docs/routing/error-page">La página de error</a>.</p>
+
+<ul>
+  <li><strong><code>status</code></strong> y <strong><code>title</code></strong>.</li>
+  <li><strong><code>detail</code></strong>: solo si el error se lanzó en la misma petición que pinta la página. Nunca se lee de la URL.</li>
+  <li><strong><code>path</code></strong>: la ruta pedida, sin el origen ni la <code>base</code>.</li>
+  <li><strong><code>back</code></strong>: de dónde venía, si es de la misma app.</li>
+  <li><strong><code>home</code></strong>: la <code>base</code> de la app.</li>
+</ul>
+
+<h2 id="cookies">Las cookies</h2>
+
+<ui-code>
+<pre><code>setCookie(ctx: ServerContext, name: string, value: string, options?: CookieOptions): void
+deleteCookie(ctx: ServerContext, name: string, options?: &#123; path?; domain?; secure? &#125;): void</code></pre>
+</ui-code>
+
+<p><code>setCookie</code> añade un <code>Set-Cookie</code> a la respuesta, con el valor codificado. <code>deleteCookie</code> la borra: <code>path</code> y <code>domain</code> tienen que coincidir con los de la cookie. Guía: <a href="/docs/server/session">La sesión</a>.</p>
+
+<h3 id="cookie-options"><code>CookieOptions</code></h3>
+
+<ul>
+  <li><strong><code>httpOnly</code></strong>: por defecto, <code>true</code>.</li>
+  <li><strong><code>sameSite</code></strong>: <code>"strict"</code>, <code>"lax"</code> o <code>"none"</code>. Por defecto, <code>"lax"</code>.</li>
+  <li><strong><code>secure</code></strong>: por defecto, lo que diga el servidor (<a href="/docs/reference/server#options"><code>secureCookies</code></a>). Siempre <code>true</code> con un nombre <code>__Host-</code> o <code>__Secure-</code>.</li>
+  <li><strong><code>path</code></strong>: por defecto, <code>"/"</code>.</li>
+  <li><strong><code>maxAge</code></strong> en segundos, o <strong><code>expires</code></strong>. Sin ninguno, dura lo que la sesión del navegador.</li>
+  <li><strong><code>domain</code></strong>: sin él, solo este host.</li>
+  <li><strong><code>partitioned</code></strong>: por defecto, <code>false</code>.</li>
+</ul>
+
+<p>Lanza un <code>TypeError</code> con un nombre que no vale, con <code>sameSite: "none"</code> o <code>partitioned</code> sin <code>secure</code>, y con un <code>__Host-</code> que lleva <code>domain</code> o un <code>path</code> que no es <code>/</code>.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong><code>serializeCookie</code></strong> da el texto del <code>Set-Cookie</code> sin <code>ctx</code>.</li>
+  <li><strong><code>ErrorRoutes</code></strong> es el tipo de <code>routes</code> en <code>use error-pages</code>: de status a ruta.</li>
+  <li><strong><code>ClientStep</code> y <code>ServerStep</code></strong> son la forma de una mitad de middleware sin sus parámetros. Para tipar una, mejor <code>&lt;Name&gt;Server</code> y <code>&lt;Name&gt;Client</code>.</li>
+  <li><strong>Los subpaths</strong> <code>@@fudic/http/contract</code>, <code>/server</code>, <code>/client</code> y <code>/wire</code> los usan el código generado, el plugin y los adaptadores.</li>
+</ul>

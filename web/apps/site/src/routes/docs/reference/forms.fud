@@ -1,0 +1,195 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>&#64;fudic/forms · Fudic</title>
+  <meta name="description" content="Referencia de &#64;fudic/forms: cada miembro del formulario y de un campo, los tipos Issue, Errors y Messages, y los atributos que enlazan la vista.">
+  <link rel="canonical" href="https://fudic.dev/docs/reference/forms">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="&#64;fudic/forms · Fudic">
+  <meta property="og:description" content="El formulario y sus campos, miembro a miembro.">
+  <meta property="og:url" content="https://fudic.dev/docs/reference/forms">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("reference-forms")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#form">El formulario</a></li>
+        <li><a href="#control">Un campo</a></li>
+        <li><a href="#types">Los tipos</a></li>
+        <li><a href="#view">En la vista</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>@@fudic/forms</code></h1>
+
+<p>El formulario que declara un <code>.fudapi</code> llega ya hecho, desde <code>fudic:forms/&lt;id&gt;</code>: es un objeto con sus campos por nombre y una API que empieza por <code>$</code>. De <code>@@fudic/forms</code> solo se importan tipos. Guía: <a href="/docs/forms">El formulario</a>.</p>
+
+<ui-code .path="src/components/user-editor.fud">
+<pre><code>@@code &#123;
+  import &#123; userForm &#125; from "fudic:forms/user";
+  import type &#123; Issue &#125; from "@@fudic/forms";
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="form">El formulario</h2>
+
+<p><code>Form&lt;S&gt;</code> es la API de abajo más cada campo por su nombre: <code>userForm.name</code>, <code>userForm.access.password</code>. Un grupo es otro formulario, con la misma API: <code>userForm.access.$valid()</code>. Lo que va con paréntesis es una lectura reactiva, y la vista solo puede usar lecturas (<code>FUD1140</code>).</p>
+
+<h3 id="read">Leer</h3>
+
+<ul>
+  <li><strong><code>$value()</code></strong>: el valor entero, por nombre.</li>
+  <li><strong><code>$positional()</code></strong>: el valor como array, en el orden en que se declaró; un grupo es un array dentro. <code>undefined</code> sale <code>null</code>.</li>
+  <li><strong><code>$fields()</code></strong>: los nombres de los campos, en orden.</li>
+  <li><strong><code>$schema</code></strong>: la declaración tal cual. No es reactiva.</li>
+</ul>
+
+<h3 id="write">Escribir</h3>
+
+<ul>
+  <li><strong><code>$set(value)</code></strong>: lo escribe entero, por nombre o en array. Es una carga: el valor nuevo pasa a ser el de partida, así que nada queda modificado ni tocado, y se limpian los errores. Un campo que falta o sobra lanza un error antes de escribir nada.</li>
+  <li><strong><code>$patch(value)</code></strong>: escribe solo lo que trae, a cualquier profundidad. Los campos que cambia quedan modificados.</li>
+  <li><strong><code>$reset()</code></strong>: vuelve a los valores declarados y limpia errores, tocados, modificados, el resumen y <code>$submitted</code>.</li>
+  <li><strong><code>$touch()</code></strong>: marca como tocados todos los campos.</li>
+</ul>
+
+<h3 id="validate">Validar</h3>
+
+<ul>
+  <li><strong><code>$validate(options?)</code></strong>: ejecuta las reglas, publica los errores y resuelve si es válido. <a href="#validate-options"><code>ValidateOptions</code></a>.</li>
+  <li><strong><code>$valid()</code></strong>: si se cumplen todas las reglas, según el <code>validity</code> de cada campo. No publica nada: es para la vista, no lo que decide el envío.</li>
+  <li><strong><code>$pending()</code></strong>: si alguna regla asíncrona no ha contestado.</li>
+  <li><strong><code>$errors()</code></strong>: los errores de la última validación, por ruta (<code>"access.password"</code>), o <code>null</code>.</li>
+  <li><strong><code>$setErrors(errors, summary?)</code></strong>: publica errores que vienen de fuera, por ruta. Una ruta que no existe se ignora; <code>null</code> lo limpia todo.</li>
+</ul>
+
+<h3 id="summary">El resumen</h3>
+
+<ul>
+  <li><strong><code>$summary()</code></strong>: el error del propio formulario, el de sus reglas de resumen, o <code>null</code>.</li>
+  <li><strong><code>$message()</code></strong> y <strong><code>$messages()</code></strong>: el primer texto de ese resumen, o <code>""</code>, y todos.</li>
+  <li><strong><code>$issues()</code></strong>: sus textos y, después de un envío, el error visible de cada campo, en orden. Cada uno es un <a href="#issue"><code>Issue</code></a>. Es lo que pinta un resumen con <code>fields</code>.</li>
+</ul>
+
+<h3 id="send">El envío</h3>
+
+<ul>
+  <li><strong><code>$submitted()</code></strong>: si se intentó enviar.</li>
+  <li><strong><code>$progress()</code></strong>: los bytes que mueve el envío de <code>form:=</code> en curso, <code>&#123; loaded, total, phase &#125;</code>, o <code>null</code>.</li>
+  <li><strong><code>$cancel()</code></strong>: aborta ese envío, con la subida incluida. No llega resultado ni error.</li>
+  <li><strong><code>$catches(status)</code></strong>: si un rechazo con ese status se queda en el formulario. Por defecto, <code>400</code>, <code>409</code> y <code>422</code>.</li>
+  <li><strong><code>$fresh()</code></strong>: un formulario nuevo con la misma declaración, en su estado inicial. Es el que valida el servidor en cada petición.</li>
+</ul>
+
+<ui-code>
+<pre><code>&lt;button type="submit" disabled=@@(!userForm.$valid())&gt;Save&lt;/button&gt;
+&lt;progress max="1" value=@@(userForm.$progress()?.loaded ?? 0)&gt;&lt;/progress&gt;</code></pre>
+</ui-code>
+
+<h2 id="control">Un campo</h2>
+
+<p><code>Control&lt;T&gt;</code>. El que genera el <code>.fudapi</code> es un <code>TypedControl&lt;T&gt;</code>, que además dice su tipo. Guía: <a href="/docs/forms#state">El formulario</a>.</p>
+
+<ul>
+  <li><strong><code>name()</code></strong>: lee el valor. Es la única forma de leerlo.</li>
+  <li><strong><code>name.set(v)</code></strong>: lo escribe. <code>undefined</code> se guarda como <code>null</code>.</li>
+  <li><strong><code>message()</code></strong>: el texto del error actual, o <code>""</code>. Busca primero los textos del campo, luego los <code>messages</code> del proyecto y, si no hay, el código de la regla.</li>
+  <li><strong><code>errors()</code></strong>: los errores en bruto, como <code>&#123; minLength: 3 &#125;</code>, o <code>null</code>.</li>
+  <li><strong><code>valid()</code></strong> y <strong><code>pending()</code></strong>: si es válido, según su <code>validity</code>, y si una regla asíncrona no ha contestado.</li>
+  <li><strong><code>touched()</code></strong> y <strong><code>dirty()</code></strong>: si el usuario pasó por él, y si su valor ya no es el de partida.</li>
+  <li><strong><code>touch()</code></strong>: lo marca como tocado.</li>
+  <li><strong><code>reset(v?)</code></strong>: vuelve al valor declarado, o a <code>v</code>, que pasa a ser el de partida.</li>
+  <li><strong><code>validate(options?)</code></strong>: valida solo este campo.</li>
+  <li><strong><code>validateOn()</code></strong>: cuándo valida, el suyo o el de su formulario.</li>
+  <li><strong><code>type</code></strong>: <code>"str"</code>, <code>"bool"</code>, <code>"date"</code>, <code>"file"</code>, <code>"file[]"</code>, <code>"arr"</code> o uno de los numéricos (<code>"u8"</code>, <code>"i32"</code>, <code>"f64"</code>…). En un <code>arr</code>, <code>of</code> dice el tipo de cada elemento.</li>
+</ul>
+
+<p>Un componente que hace de campo recibe el control como prop:</p>
+
+<ui-code .path="src/components/app-input.fud">
+<pre><code>@@code &#123;
+  import type &#123; Control &#125; from "@@fudic/forms";
+
+  const &#123; ctrl &#125; = props&lt;&#123; ctrl: Control&lt;unknown&gt; &#125;&gt;();
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="types">Los tipos</h2>
+
+<h3 id="issue"><code>Issue</code></h3>
+
+<ui-code>
+<pre><code>interface Issue &#123;
+  path: string;      // "" for the form's own error
+  message: string;
+  href?: string;     // "#id" of the field, when it has one
+&#125;</code></pre>
+</ui-code>
+
+<p>Una línea de <code>$issues()</code>. Guía: <a href="/docs/forms/binding#own-summary">Enlazar la vista</a>.</p>
+
+<h3 id="errors"><code>Errors</code> y <code>ErrorMap</code></h3>
+
+<ui-code>
+<pre><code>type Errors = Readonly&lt;Record&lt;string, unknown&gt;&gt;;      // &#123; required: true &#125;
+type ErrorMap = Readonly&lt;Record&lt;string, Errors&gt;&gt;;     // &#123; "access.password": &#123; minLength: 8 &#125; &#125;</code></pre>
+</ui-code>
+
+<h3 id="messages"><code>Messages</code></h3>
+
+<ui-code>
+<pre><code>type Messages = Readonly&lt;Record&lt;string, (value: unknown) =&gt; string&gt;&gt;</code></pre>
+</ui-code>
+
+<p>De cada regla, su frase. Se escriben en el bloque <code>messages</code> del <code>.fudapi</code> (<a href="/docs/forms/validation#messages">Validación y validez</a>).</p>
+
+<h3 id="validate-options"><code>ValidateOptions</code></h3>
+
+<ul>
+  <li><strong><code>server</code></strong>: si se ejecutan también las reglas que solo corren en el servidor. Por defecto, no.</li>
+  <li><strong><code>ctx</code></strong>: el <code>ctx</code> de la petición, que recibe una regla del servidor.</li>
+</ul>
+
+<h3 id="constants"><code>DEFAULT_CATCHES</code>, <code>SERVER_RULE</code> y <code>errorText</code></h3>
+
+<ul>
+  <li><strong><code>DEFAULT_CATCHES</code></strong>: <code>[400, 409, 422]</code>, los status que se quedan en el formulario si el <code>.fudapi</code> no dice otros con <code>catches</code>.</li>
+  <li><strong><code>SERVER_RULE</code></strong>: <code>"server"</code>, la regla con la que se publica un rechazo que no trae errores de campo. Su texto es el <code>detail</code> del problema, o su <code>title</code>; se cambia con una entrada <code>server</code> en <code>messages</code>.</li>
+  <li><strong><code>errorText(errors)</code></strong>: la frase de la primera regla que falla, con los textos del proyecto.</li>
+</ul>
+
+<h2 id="view">En la vista</h2>
+
+<p>Los atributos que enlazan un formulario en un <code>.fud</code>. Guía: <a href="/docs/forms/binding">Enlazar la vista</a> y <a href="/docs/forms/submitting">Enviar al servidor</a>.</p>
+
+<ul>
+  <li><strong><code>control=@@node</code></strong>: en un <code>&lt;form&gt;</code>, el formulario; en un <code>&lt;input&gt;</code>, un <code>&lt;textarea&gt;</code> o un <code>&lt;select&gt;</code>, un campo, según su <code>type</code>; en un <code>&lt;fieldset&gt;</code> u otro elemento, un grupo; en un componente, se le pasa el control.</li>
+  <li><strong><code>error=@@control</code></strong>: el elemento que muestra el error del campo. Fudic le pone un <code>id</code> y enlaza el campo con <code>aria-describedby</code> y <code>aria-invalid</code>.</li>
+  <li><strong><code>summary=@@form</code></strong>: el elemento que muestra el resumen como lista, con <code>aria-live="polite"</code>. Con <strong><code>fields</code></strong>, también el error de cada campo, enlazado, y recibe el foco tras un envío fallido.</li>
+  <li><strong><code>form:=@@fn</code></strong>: en el <code>&lt;form control&gt;</code>, envía a una función de servidor en vez de navegar.</li>
+  <li><strong><code>@@fudic:result</code></strong> y <strong><code>@@fudic:error</code></strong>: los eventos que lanza ese envío, con <code>bubbles</code> y <code>composed</code> (<a href="/docs/forms/events">Resultado y error</a>).</li>
+  <li><strong><code>formassociated</code></strong> y <strong><code>shadowrootreferencetarget</code></strong>: en el <code>&lt;template&gt;</code> raíz de un componente que hace de campo (<a href="/docs/forms/form-associated">Controles form-associated</a>).</li>
+</ul>
+
+<p><code>validate-on</code>, <code>validity</code> y <code>catches</code> no son atributos: son líneas del <code>.fudapi</code> (<a href="/docs/reference/fudapi#forms">El lenguaje .fudapi</a>).</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Los errores de <code>control</code></strong>: <code>FUD0590</code> a <code>FUD0595</code> (un elemento que no admite enlace, un campo enlazado dos veces, dentro de un bucle o fuera de su <code>&lt;form control&gt;</code>). Los de <code>error</code> y <code>summary</code>: <code>FUD0596</code> a <code>FUD0602</code>.</li>
+  <li><strong><code>$set</code> y <code>$patch</code></strong> lanzan un <code>TypeError</code> o un <code>RangeError</code> con un valor que no encaja: son API del navegador, no del compilador.</li>
+  <li><strong>Los subpaths</strong> <code>@@fudic/forms/dom</code>, <code>/contract</code> y <code>/element</code> los usa el código que generan el compilador y el <code>.fudapi</code>. Tu código no los importa.</li>
+</ul>

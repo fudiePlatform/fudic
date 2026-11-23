@@ -103,6 +103,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   2026-11-23: mismo `href` frágil, corregido a mano, y títulos como «Error-page».
 - **Y otra vez** con la página de diagnósticos de Referencia (`docs/reference/diagnostics`), el
   2026-11-23: sin `--layout` escribe `../../../layouts/_layout.fud`, corregido a mano.
+- **Y otra vez** con las otras once páginas de Referencia (`docs/reference`, `docs/reference/…`), el
+  2026-11-23: el mismo `href` y títulos como «Fudapi», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

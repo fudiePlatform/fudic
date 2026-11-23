@@ -104,7 +104,7 @@ entrar.handle((ctx) =&gt; &#123;
   fails reserved 409 "Ese nombre está reservado."</code></pre>
 </ui-code>
 
-<p>Un <code>422</code> se pinta en cada campo. Un <code>409</code>, que no es de un campo, se pinta en el resumen. En los dos casos el foco va al primer error.</p>
+<p>Un <code>422</code> se pinta en cada campo. Un <code>409</code>, que no es de un campo, se pinta en el resumen. En los dos casos el foco va al resumen, si tiene <code>fields</code>, o al primer campo con error.</p>
 
 <h2 id="wire">Cómo viaja</h2>
 
