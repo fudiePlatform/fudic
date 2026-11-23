@@ -200,9 +200,8 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
-/* A screenshot is light on a light page: a line marks where it ends. */
+/* A screenshot, dark like the code blocks: rounded like them. */
 .docs-page figure img {
-  border: 1px solid var(--guide-line);
   border-radius: var(--guide-radius-md);
 }
 
