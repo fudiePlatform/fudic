@@ -1,0 +1,111 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate page · Fudic</title>
+  <meta name="description" content="fudic generate page crea la página que responde a una ruta, enlazada a su layout, y su test unitario. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/page">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate page · Fudic">
+  <meta property="og:description" content="fudic generate page crea la página que responde a una ruta, enlazada a su layout, y su test unitario. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/page">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate page</code></h1>
+
+<p>Crea la página que responde a una ruta, en <code>src/routes</code>, enlazada al layout más cercano, y su test unitario.</p>
+
+<ui-code>
+<pre><code>fudic generate page &lt;route&gt;</code></pre>
+</ui-code>
+
+<p>Su alias es <code>fudic g p</code>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;route&gt;</code></td><td><code>about</code> es <code>/about</code>, <code>blog/:slug</code> es <code>/blog/lo-que-sea</code> y <code>/</code> es la página de inicio. Los ficheros son <code>src/routes/about.fud</code>, <code>src/routes/blog/[slug].fud</code> y <code>src/routes/index.fud</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta para las rutas. Por defecto, <code>src/routes</code>.</td></tr>
+    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Este layout en vez del más cercano. El de una librería, por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
+    <tr><td><code>--server</code></td><td>Con un <code>load</code> declarado en su <code>.fudapi</code> e implementado en <code>src/server</code>. Añade <code>@@fudic/http</code> al proyecto si no lo tiene.</td></tr>
+    <tr><td><code>--sections &lt;a,b&gt;</code></td><td>Rellena solo esas secciones del layout. Por defecto, todas.</td></tr>
+    <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g page about
+fudic g p blog/:slug --server</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g page blog/:slug --server --dry-run
+dry run — nothing written
+  create  src/routes/blog/[slug].fud
+  create  src/routes/blog/[slug].fudapi
+  create  src/server/routes/blog/[slug].ts
+  create  src/routes/blog/[slug].test.ts
+  modify  package.json
+  run     pnpm install (in .)
+--- package.json
++++ package.json
+@@@@ line 14 @@@@
++    "@@fudic/http": "0.0.1",</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>Toda página enlaza un layout. Si no hay ninguno que enlazar, no escribe nada y dice cómo crearlo, <code>fudic g layout _layout</code>, o cómo elegir uno con <code>--layout</code>.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/routing">Rutas por carpetas</a>: cómo una carpeta se convierte en una URL.</li>
+  <li><a href="/docs/routing/data">Los datos de la página</a>: el <code>load</code> que escribe <code>--server</code>.</li>
+</ul>

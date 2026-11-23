@@ -1,0 +1,102 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic fmt · Fudic</title>
+  <meta name="description" content="fudic fmt formatea los .fud, .fudspec y .fudapi, y con --check lo comprueba en CI. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/fmt">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic fmt · Fudic">
+  <meta property="og:description" content="fudic fmt formatea los .fud, .fudspec y .fudapi, y con --check lo comprueba en CI. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/fmt">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic fmt</code></h1>
+
+<p>Formatea en su sitio los <code>.fud</code>, <code>.fudspec</code> y <code>.fudapi</code>: los de cada ruta que le pases, o los de la carpeta en la que estás.</p>
+
+<ui-code>
+<pre><code>fudic fmt [path…]</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>[path…]</code></td><td>Ficheros o carpetas. Sin ninguno, la carpeta en la que estás.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--check</code></td><td>No escribe nada, y falla si algún fichero no está formateado. Para la integración continua.</td></tr>
+    <tr><td><code>--print-width &lt;n&gt;</code></td><td>La columna a partir de la cual parte las líneas. Por defecto, 100.</td></tr>
+    <tr><td><code>--tab-width &lt;n&gt;</code></td><td>Espacios por nivel de sangría. Por defecto, 2.</td></tr>
+    <tr><td><code>--use-tabs</code></td><td>Sangra con tabuladores.</td></tr>
+    <tr><td><code>--quote &lt;double|single&gt;</code></td><td>Las comillas de los atributos. Por defecto, <code>double</code>.</td></tr>
+    <tr><td><code>--end-of-line &lt;lf|crlf|auto&gt;</code></td><td>El final de línea. Por defecto, <code>lf</code>. Con <code>auto</code>, el que ya usa cada fichero.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña el diff de cada fichero, sin escribir nada.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic fmt
+fudic fmt src --check</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic fmt src --check
+  would format  src/components/shop-cart/shop-cart.fud</code></pre>
+</ui-code>
+
+<p>Sale con código 1 si algún fichero está sin formatear, y con 0 si todos lo están.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Las opciones de ancho, sangría, comillas y final de línea son para el <code>.fud</code>. El <code>.fudspec</code> y el <code>.fudapi</code> tienen una forma fija.</li>
+  <li>Un fichero que no se puede leer no se toca: se dice qué le pasa, y el comando sale con código 2.</li>
+</ul>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/tools/format">El formateador</a>: lo que formatea, en el editor y en la terminal.</li>
+</ul>

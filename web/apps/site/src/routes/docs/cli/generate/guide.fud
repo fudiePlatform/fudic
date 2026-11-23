@@ -1,0 +1,101 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate guide · Fudic</title>
+  <meta name="description" content="fudic generate guide crea una guía de estilos: tokens con modo oscuro, una fuente, un favicon y una hoja por elemento. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/guide">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate guide · Fudic">
+  <meta property="og:description" content="fudic generate guide crea una guía de estilos: tokens con modo oscuro, una fuente, un favicon y una hoja por elemento. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/guide">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate guide</code></h1>
+
+<p>Crea una guía de estilos: tokens con modo oscuro, una fuente, un favicon y una hoja por elemento. En un workspace es una librería en <code>libs/</code>, y la enlazan todas las páginas de los proyectos que dependen de ella. En una app va en <code>src/guide/</code>.</p>
+
+<ui-code>
+<pre><code>fudic generate guide [name]</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>[name]</code></td><td>La carpeta y el nombre de la librería. Por defecto, <code>guide</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta del workspace. Por defecto, <code>libs</code>.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g guide
+fudic g guide brand</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g guide brand --dry-run
+dry run — nothing written
+  create  libs/brand/README.md
+  create  libs/brand/fonts/InterVariable-Italic.woff2 (378.9 KB)
+  create  libs/brand/fonts/InterVariable.woff2 (344.0 KB)
+  create  libs/brand/fonts/OFL.txt (4.3 KB)
+  create  libs/brand/fudic.json
+  create  libs/brand/icons/arrow.svg (189 B)
+  create  libs/brand/logo.svg (176 B)
+  create  libs/brand/package.json
+  …</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>Hay una por proyecto, y <code>fudic new</code> ya la crea. En un proyecto que ya tiene la suya, no escribe nada y lo dice.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/styles/guide">La guía de estilos</a>: cómo está hecha y cómo se cambia.</li>
+</ul>

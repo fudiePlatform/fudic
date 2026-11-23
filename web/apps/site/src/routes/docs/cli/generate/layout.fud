@@ -1,0 +1,115 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate layout · Fudic</title>
+  <meta name="description" content="fudic generate layout crea un layout, el marco de las páginas de debajo, y su test unitario. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/layout">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate layout · Fudic">
+  <meta property="og:description" content="fudic generate layout crea un layout, el marco de las páginas de debajo, y su test unitario. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/layout">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate layout</code></h1>
+
+<p>Crea un layout en <code>src/layouts</code>, el marco en el que se escriben las páginas de debajo, y su test unitario.</p>
+
+<ui-code>
+<pre><code>fudic generate layout &lt;name&gt;</code></pre>
+</ui-code>
+
+<p>Su alias es <code>fudic g l</code>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;name&gt;</code></td><td><code>docs</code> es <code>src/layouts/docs.fud</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta para los layouts. Por defecto, <code>src/layouts</code>.</td></tr>
+    <tr><td><code>--sections &lt;a,b&gt;</code></td><td>Las secciones con nombre que sus páginas pueden rellenar, como <code>nav</code> o <code>aside</code>.</td></tr>
+    <tr><td><code>--no-head</code></td><td>Sus páginas no pueden añadir nada al <code>&lt;head&gt;</code>.</td></tr>
+    <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g layout docs
+fudic g l docs --sections nav,aside</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<p>El layout que escribe <code>fudic g layout docs --sections nav,aside</code>:</p>
+
+<ui-code .path="src/layouts/docs.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    @@RenderSection(nav)
+    @@RenderSection(aside)
+
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>En una librería, las apps que lo usan lo enlazan por el nombre del paquete: <code>&lt;link rel="layout" href="@@shop/ui/layouts/main.fud"&gt;</code>.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>: los huecos de un layout y cómo los rellena una página.</li>
+</ul>

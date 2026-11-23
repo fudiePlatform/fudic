@@ -1,0 +1,97 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate snippet · Fudic</title>
+  <meta name="description" content="fudic generate snippet añade un snippet a un fichero de snippets, y su test unitario. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/snippet">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate snippet · Fudic">
+  <meta property="og:description" content="fudic generate snippet añade un snippet a un fichero de snippets, y su test unitario. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/snippet">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate snippet</code></h1>
+
+<p>Añade un snippet a <code>src/snippets/&lt;file&gt;.fud</code>, y crea el fichero con el primero, y su test unitario a <code>&lt;file&gt;.test.ts</code>.</p>
+
+<ui-code>
+<pre><code>fudic generate snippet &lt;file&gt; &lt;name&gt;</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;file&gt;</code></td><td>El fichero de snippets, en kebab-case: <code>ui</code> es <code>src/snippets/ui.fud</code>.</td></tr>
+    <tr><td><code>&lt;name&gt;</code></td><td>Lo que llama <code>@@render</code>: letras, dígitos y <code>_</code>, como <code>productCard</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta para el fichero. Por defecto, <code>src/snippets</code>.</td></tr>
+    <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g snippet ui productCard --project ui
+fudic g snippet fields textField</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g snippet ui productCard --dry-run
+dry run — nothing written
+  create  src/snippets/ui.fud
+  create  src/snippets/ui.test.ts</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>En una librería, las apps enlazan el fichero por el nombre del paquete: <code>&lt;link rel="snippet" href="@@shop/ui/snippets/ui.fud"&gt;</code>.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/template-syntax/snippets">Snippets</a>: qué es un snippet y cómo se pinta.</li>
+</ul>

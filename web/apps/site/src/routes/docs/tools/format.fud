@@ -1,0 +1,131 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El formateador · Fudic</title>
+  <meta name="description" content="El formateador de Fudic formatea los .fud, .fudapi y .fudspec: markup, directivas, TypeScript y CSS de una pasada. El mismo en el editor y en la terminal con fudic fmt, y en CI con --check.">
+  <link rel="canonical" href="https://fudic.dev/docs/tools/format">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El formateador · Fudic">
+  <meta property="og:description" content="Un formateador para .fud, .fudapi y .fudspec, el mismo en el editor y en la terminal.">
+  <meta property="og:url" content="https://fudic.dev/docs/tools/format">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("tools-format")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#what">Lo que formatea</a></li>
+        <li><a href="#terminal">Desde la terminal</a></li>
+        <li><a href="#ci">En la integración continua</a></li>
+        <li><a href="#options">Las opciones</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>El formateador</h1>
+
+<p>Fudic trae un formateador para los <code>.fud</code>, los <code>.fudapi</code> y los <code>.fudspec</code>. Es el mismo en el editor, al guardar, y en la terminal, con <code>fudic fmt</code>.</p>
+
+<h2 id="what">Lo que formatea</h2>
+
+<p>Un <code>.fud</code> mezcla cuatro lenguajes, y el formateador los trata de una pasada: el markup, las directivas con <code>@@</code>, el TypeScript de <code>@@code</code> y el CSS del <code>&lt;style&gt;</code>. Un componente escrito con prisa:</p>
+
+<ui-code .path="src/components/shop-cart/shop-cart.fud">
+<pre><code>&lt;head&gt;
+&lt;style&gt;
+:host&#123;display:block&#125;
+  ul&#123;margin:0;padding:0&#125;
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;shop-cart&gt;
+&lt;template shadowrootmode="open"&gt;
+&lt;ul&gt;
+@@foreach (const item of items) &#123;
+&lt;li class='line'&gt;@@item.name &lt;span&gt;@@item.price&lt;/span&gt;&lt;/li&gt;
+&#125;
+&lt;/ul&gt;
+@@if (items.length===0) &#123;&lt;p&gt;Empty cart&lt;/p&gt;&#125;
+&lt;/template&gt;
+&lt;/shop-cart&gt;
+@@code &#123;
+let items:&#123;name:string,price:number&#125;[]=[]
+&#125;</code></pre>
+</ui-code>
+
+<p>Después de <code>fudic fmt</code>:</p>
+
+<ui-code .path="src/components/shop-cart/shop-cart.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    :host &#123;
+      display: block;
+    &#125;
+    ul &#123;
+      margin: 0;
+      padding: 0;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;shop-cart&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;ul&gt;
+      @@foreach (const item of items) &#123;
+        &lt;li class="line"&gt;@@item.name &lt;span&gt;@@item.price&lt;/span&gt;&lt;/li&gt;
+      &#125;
+    &lt;/ul&gt;
+    @@if (items.length === 0) &#123;&lt;p&gt;Empty cart&lt;/p&gt;&#125;
+  &lt;/template&gt;
+&lt;/shop-cart&gt;
+@@code &#123;
+  let items: &#123; name: string; price: number &#125;[] = [];
+&#125;</code></pre>
+</ui-code>
+
+<p>Sangra el markup y el contenido de cada bloque, ordena el CSS en una declaración por línea, pone comillas dobles en los atributos y formatea el TypeScript.</p>
+
+<h2 id="terminal">Desde la terminal</h2>
+
+<ui-code>
+<pre><code>fudic fmt                 # everything under the folder you are in
+fudic fmt src/components  # only there
+fudic fmt --dry-run       # show the diff, write nothing</code></pre>
+</ui-code>
+
+<p>Las opciones, una a una, en <a href="/docs/cli/fmt">la página de <code>fudic fmt</code></a>. En el editor no hay nada que lanzar: la extensión formatea al guardar (<a href="/docs/editors/writing#format">Escribir con el editor</a>).</p>
+
+<h2 id="ci">En la integración continua</h2>
+
+<p>Con <code>--check</code> no escribe nada: dice qué ficheros están sin formatear y sale con código 1.</p>
+
+<ui-code>
+<pre><code>fudic fmt src --check
+  would format  src/components/shop-cart/shop-cart.fud</code></pre>
+</ui-code>
+
+<p>Si un fichero no se puede leer, sale con código 2, para distinguir «sin formatear» de «roto».</p>
+
+<h2 id="options">Las opciones</h2>
+
+<p>Por defecto, líneas de hasta 100 columnas, dos espacios de sangría, comillas dobles y final de línea <code>lf</code>. En la terminal se cambian con <code>--print-width</code>, <code>--tab-width</code>, <code>--use-tabs</code>, <code>--quote</code> y <code>--end-of-line</code>.</p>
+
+<p>En el editor, la sangría sale de sus ajustes, <code>editor.tabSize</code> y <code>editor.insertSpaces</code>, que la extensión pone a dos espacios para estos ficheros. El final de línea es el que ya usa el fichero.</p>
+
+<p>El <code>.fudapi</code> y el <code>.fudspec</code> tienen una forma fija, sin opciones: se leen igual en cualquier proyecto.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Un fichero que no se puede leer no se formatea: se dice qué le pasa y se deja como está. Nunca se reescribe a partir de un árbol a medias.</li>
+  <li>Una expresión que no se puede leer, como un <code>@@(…)</code> a medio escribir, se deja tal cual, y se formatea el resto del fichero.</li>
+</ul>

@@ -1,0 +1,75 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic translate · Fudic</title>
+  <meta name="description" content="fudic translate extrae los textos de la app a sus catálogos, uno por idioma de fudic.json, sin perder lo traducido.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/translate">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic translate · Fudic">
+  <meta property="og:description" content="fudic translate extrae los textos de la app a sus catálogos, uno por idioma de fudic.json, sin perder lo traducido.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/translate">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic translate</code></h1>
+
+<p>Extrae los textos que hay que traducir a <code>src/locales/&lt;locale&gt;/</code>, un fichero por cada fichero de código, para cada idioma de <code>fudic.json</code>. Lo que ya tradujiste se conserva.</p>
+
+<ui-code>
+<pre><code>fudic translate</code></pre>
+</ui-code>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app cuyos textos extrae. Por defecto, en la que estás.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic translate
+fudic translate --project web</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Lee los <code>.fud</code>, <code>.fudapi</code> y <code>.ts</code> de <code>src</code>, y los de las librerías de Fudic de las que depende la app. Dos ejecuciones sobre el mismo código dan los mismos ficheros.</li>
+  <li>Una app en un solo idioma no tiene nada que traducir: hay que añadir los demás a <code>locales</code> en <code>fudic.json</code>, o con <code>fudic add i18n --locales es,en</code>.</li>
+  <li>Ni <code>fudic dev</code> ni el build lo ejecutan: los catálogos solo cambian cuando lo ejecutas tú.</li>
+</ul>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/i18n/catalogs">Los catálogos</a>: el formato de cada fichero, plurales y lo que falta.</li>
+</ul>

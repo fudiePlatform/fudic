@@ -1,0 +1,82 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate · Fudic</title>
+  <meta name="description" content="fudic generate añade una pieza a un proyecto: un componente, una página, un layout, un servicio, un formulario y más.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate · Fudic">
+  <meta property="og:description" content="fudic generate añade una pieza a un proyecto: un componente, una página, un layout, un servicio, un formulario y más.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#types">Lo que crea</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate</code></h1>
+
+<p>Añade una pieza a un proyecto: la app o la librería en la que estás, o la que nombra <code>--project</code>. Cada tipo tiene su página, con sus opciones.</p>
+
+<ui-code>
+<pre><code>fudic generate &lt;type&gt; &lt;name&gt;</code></pre>
+</ui-code>
+
+<p>Su alias es <code>fudic g</code>.</p>
+
+<h2 id="types">Lo que crea</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Tipo</th><th scope="col">Qué crea</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><a href="/docs/cli/generate/component"><code>component</code></a> <code>c</code></td><td>Un componente en su carpeta, con su test unitario, sus criterios y su fixture.</td></tr>
+    <tr><td><a href="/docs/cli/generate/page"><code>page</code></a> <code>p</code></td><td>Una página y su test unitario.</td></tr>
+    <tr><td><a href="/docs/cli/generate/layout"><code>layout</code></a> <code>l</code></td><td>Un layout y su test unitario.</td></tr>
+    <tr><td><a href="/docs/cli/generate/app"><code>app</code></a> <code>a</code></td><td>Otra app en el workspace.</td></tr>
+    <tr><td><a href="/docs/cli/generate/lib"><code>lib</code></a></td><td>Una librería de componentes en el workspace.</td></tr>
+    <tr><td><a href="/docs/cli/generate/guide"><code>guide</code></a></td><td>La guía de estilos: tokens, una fuente, un favicon y una hoja por elemento.</td></tr>
+    <tr><td><a href="/docs/cli/generate/service"><code>service</code></a></td><td>Un servicio que se pide con <code>inject()</code>.</td></tr>
+    <tr><td><a href="/docs/cli/generate/form"><code>form</code></a></td><td>Un formulario y su test unitario.</td></tr>
+    <tr><td><a href="/docs/cli/generate/pipe"><code>pipe</code></a></td><td>Un pipe: su contrato, su implementación y su test unitario.</td></tr>
+    <tr><td><a href="/docs/cli/generate/style"><code>style</code></a></td><td>Una hoja global del proyecto.</td></tr>
+    <tr><td><a href="/docs/cli/generate/snippet"><code>snippet</code></a></td><td>Un snippet en un fichero de snippets, y su test unitario.</td></tr>
+    <tr><td><a href="/docs/cli/generate/spec"><code>spec</code></a> <code>s</code></td><td>Los criterios <code>.fudspec</code> de un componente o de una página.</td></tr>
+    <tr><td><a href="/docs/cli/generate/flow"><code>flow</code></a></td><td>Los criterios <code>.fudspec</code> de un flujo entre páginas.</td></tr>
+    <tr><td><a href="/docs/cli/generate/term"><code>term</code></a> <code>t</code></td><td>Un paso propio para los criterios.</td></tr>
+    <tr><td><a href="/docs/cli/generate/api"><code>api</code></a></td><td>El servidor de una ruta o de un componente: su <code>.fudapi</code>, su handler y su enlace.</td></tr>
+    <tr><td><a href="/docs/cli/generate/showcase"><code>showcase</code></a></td><td>Una página por componente que enseña cada caso de su fixture.</td></tr>
+    <tr><td><a href="/docs/cli/generate/error-page"><code>error-page</code></a></td><td>La página de error: la de una app, o la que una librería ofrece a sus apps.</td></tr>
+  </tbody>
+</table>
+
+<p>La letra al lado de un tipo es su alias: <code>fudic g c button</code> es <code>fudic generate component button</code>.</p>
+
+<h2 id="options">Opciones</h2>
+
+<p>Las de cada tipo, en su página. Sirven además las de todos los comandos, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g component button --project ui
+fudic g page about</code></pre>
+</ui-code>

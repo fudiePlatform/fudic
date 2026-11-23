@@ -1,0 +1,74 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic test · Fudic</title>
+  <meta name="description" content="fudic test ejecuta los tests unitarios de un proyecto, o de todos desde la raíz del workspace.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/test">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic test · Fudic">
+  <meta property="og:description" content="fudic test ejecuta los tests unitarios de un proyecto, o de todos desde la raíz del workspace.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/test">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic test</code></h1>
+
+<p>Ejecuta los tests unitarios, <code>src/**/*.test.ts</code>, del proyecto en el que estás, o los de todos los proyectos desde la raíz del workspace.</p>
+
+<ui-code>
+<pre><code>fudic test</code></pre>
+</ui-code>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>Solo esa app o librería.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic test
+fudic test --project ui</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Desde la raíz ejecuta el script <code>test</code> de cada proyecto que lo tiene, en el orden del workspace. No para en el primero que falla: al final dice cómo fue cada uno.</li>
+  <li>Si todos usan el <code>vitest run</code> que escribe <code>fudic new</code>, un solo Vitest los ejecuta juntos.</li>
+</ul>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/testing/unit">Tests unitarios</a>: <code>mount</code>, <code>visit</code> y cuándo usar cada uno.</li>
+</ul>

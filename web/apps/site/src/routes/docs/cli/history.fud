@@ -1,0 +1,90 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic history · Fudic</title>
+  <meta name="description" content="fudic history dice si la aprobación de una pieza sigue valiendo y si sus tests y criterios pasaron con los ficheros como están.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/history">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic history · Fudic">
+  <meta property="og:description" content="fudic history dice si la aprobación de una pieza sigue valiendo y si sus tests y criterios pasaron con los ficheros como están.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/history">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic history</code></h1>
+
+<p>Enseña lo que dice ahora el historial de una pieza: si su aprobación sigue valiendo y si sus tests y sus criterios pasaron con los ficheros como están.</p>
+
+<ui-code>
+<pre><code>fudic history &lt;piece&gt;</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;piece&gt;</code></td><td>El <code>.fud</code> de un componente o de una ruta, o su carpeta.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--json</code></td><td>El estado entero, en JSON.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic history src/components/shop-cart
+fudic history src/routes/blog --json</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<p>Una pieza recién creada:</p>
+
+<ui-code>
+<pre><code>fudic history src/components/shop-cart
+shop-cart  not approved · tests not run · spec not run</code></pre>
+</ui-code>
+
+<p>Cuando hay historia, cada parte dice algo así: <code>approved by ana (valid)</code> o <code>(expired)</code>, <code>tests pass 6/6</code>, y <code>spec stale (was pass)</code> si pasó pero los ficheros han cambiado desde entonces.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/testing/history#state">¿Sigue valiendo?</a>: cómo se calcula el estado.</li>
+</ul>

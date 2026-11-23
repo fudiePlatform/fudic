@@ -1,0 +1,84 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic accept · Fudic</title>
+  <meta name="description" content="fudic accept apunta en el .fudlog que el cliente aceptó una pieza, y etiqueta el commit.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/accept">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic accept · Fudic">
+  <meta property="og:description" content="fudic accept apunta en el .fudlog que el cliente aceptó una pieza, y etiqueta el commit.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/accept">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic accept</code></h1>
+
+<p>Apunta en el <code>.fudlog</code> de una pieza que el cliente la aceptó, y etiqueta el commit en el que estás como <code>accepted/&lt;name&gt;/&lt;date&gt;</code>.</p>
+
+<ui-code>
+<pre><code>fudic accept &lt;piece&gt; "&lt;text&gt;"</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;piece&gt;</code></td><td>El <code>.fud</code> de un componente o de una ruta, o su carpeta.</td></tr>
+    <tr><td><code>&lt;text&gt;</code></td><td>Lo que dijo el cliente.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--dry-run</code></td><td>Enseña la línea del <code>.fudlog</code> y la etiqueta, sin escribir ninguna.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic accept src/components/shop-cart "Client accepted it"
+fudic accept src/routes/blog "Approved in the demo" --dry-run</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>La etiqueta de <code>src/components/shop-cart</code>, aceptado el 23 de noviembre de 2026, es <code>accepted/shop-cart/2026-11-23</code>.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/testing/history#accept">La aceptación del cliente</a>: qué queda en el <code>.fudlog</code> y en git.</li>
+</ul>

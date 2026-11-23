@@ -1,0 +1,113 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate app · Fudic</title>
+  <meta name="description" content="fudic generate app crea otra app en el workspace, servida en su propia URL base. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/app">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate app · Fudic">
+  <meta property="og:description" content="fudic generate app crea otra app en el workspace, servida en su propia URL base. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/app">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate app</code></h1>
+
+<p>Crea otra app en el workspace, en <code>apps/</code>, servida en su propia URL base, e instala sus dependencias.</p>
+
+<ui-code>
+<pre><code>fudic generate app &lt;name&gt;</code></pre>
+</ui-code>
+
+<p>Su alias es <code>fudic g a</code>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;name&gt;</code></td><td>La carpeta y el nombre de la app.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--base &lt;path&gt;</code></td><td>La URL en la que se sirve. Por defecto, <code>/&lt;name&gt;/</code>.</td></tr>
+    <tr><td><code>--uses &lt;lib&gt;</code></td><td>Una librería del workspace que usa. Se repite.</td></tr>
+    <tr><td><code>--prefix &lt;p&gt;</code></td><td>Lo que convierte <code>button</code> en <code>&lt;p-button&gt;</code>. Por defecto, el nombre de la app.</td></tr>
+    <tr><td><code>--layout &lt;name|href&gt;</code></td><td>Un nombre: su propio layout, por defecto <code>_layout</code>. Un href: el de una librería, que entonces usa.</td></tr>
+    <tr><td><code>--locale &lt;tag&gt;</code></td><td>Su idioma, una etiqueta BCP 47. Por defecto, <code>en</code>.</td></tr>
+    <tr><td><code>--id &lt;id&gt;</code></td><td>La identidad de la app para sus cachés. Por defecto, su nombre. Una vez publicada, no se cambia.</td></tr>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta del workspace. Por defecto, <code>apps</code>.</td></tr>
+    <tr><td><code>--no-sw</code></td><td>Sin Service Worker.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g app admin --uses ui
+fudic g app admin --layout @@shop/ui/layouts/main.fud</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g app admin --uses ui --dry-run
+dry run — nothing written
+  create  apps/admin/package.json
+  create  apps/admin/vite.config.ts
+  …
+  create  apps/admin/fudic.json
+  create  apps/admin/sw.json
+  create  apps/admin/page.headers
+  create  apps/admin/sw.headers
+  create  apps/admin/assets.headers
+  create  apps/admin/src/layouts/_layout.fud
+  create  apps/admin/src/routes/index.fud
+  …
+  run     pnpm install (in .)</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>Solo funciona dentro de un workspace. Fuera, dice que crees uno con <code>fudic new &lt;name&gt; --workspace</code>.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/cli/dev"><code>fudic dev</code></a>: todas las apps del workspace en un solo puerto.</li>
+</ul>

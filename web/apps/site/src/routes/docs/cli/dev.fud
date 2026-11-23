@@ -1,0 +1,76 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic dev · Fudic</title>
+  <meta name="description" content="fudic dev sirve todas las apps del workspace en un solo puerto, cada una en su URL base, mientras trabajas.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/dev">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic dev · Fudic">
+  <meta property="og:description" content="fudic dev sirve todas las apps del workspace en un solo puerto, cada una en su URL base, mientras trabajas.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/dev">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic dev</code></h1>
+
+<p>Sirve todas las apps del workspace en un solo puerto, cada una en su URL base, mientras trabajas: <code>/</code> es una app y <code>/admin/</code> otra. Dentro de una app, solo esa.</p>
+
+<ui-code>
+<pre><code>fudic dev</code></pre>
+</ui-code>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>Solo esa app.</td></tr>
+    <tr><td><code>--port &lt;n&gt;</code></td><td>El puerto. Por defecto, 5173.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic dev
+fudic dev --project admin
+fudic dev --port 3000</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Cada app corre su propio Vite, con su configuración, en un puerto libre que no hace falta conocer. Delante, un proxy manda cada petición a la app cuya base encaja más larga: <code>/admin/x</code> va a <code>admin</code> antes que a la app de <code>/</code>.</li>
+  <li>El runtime de Fudic, en <code>/_fudic/</code>, es del origen y no de una app: lo sirve la primera que lo tiene.</li>
+</ul>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/vite/dev">En desarrollo</a>: qué pasa en cada petición y al guardar.</li>
+</ul>

@@ -1,0 +1,68 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic preview · Fudic</title>
+  <meta name="description" content="fudic preview sirve el build de cada app en un solo puerto: lo que desplegarías.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/preview">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic preview · Fudic">
+  <meta property="og:description" content="fudic preview sirve el build de cada app en un solo puerto: lo que desplegarías.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/preview">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic preview</code></h1>
+
+<p>Lo mismo que <code>fudic dev</code>, con el build de cada app: lo que desplegarías. Antes hay que construir con <code>pnpm build</code>.</p>
+
+<ui-code>
+<pre><code>fudic preview</code></pre>
+</ui-code>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>Solo esa app.</td></tr>
+    <tr><td><code>--port &lt;n&gt;</code></td><td>El puerto. Por defecto, 4173.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic preview
+pnpm build &amp;&amp; fudic preview
+fudic preview --port 8080</code></pre>
+</ui-code>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/vite/build#preview">La preview</a>: lo que sirve y lo que se prueba en ella.</li>
+</ul>

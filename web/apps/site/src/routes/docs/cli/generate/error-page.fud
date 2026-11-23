@@ -1,0 +1,87 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate error-page · Fudic</title>
+  <meta name="description" content="fudic generate error-page escribe la página de error de una app o la que una librería ofrece a sus apps. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/error-page">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate error-page · Fudic">
+  <meta property="og:description" content="fudic generate error-page escribe la página de error de una app o la que una librería ofrece a sus apps. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/error-page">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate error-page</code></h1>
+
+<p>Escribe la página de error del proyecto, una página que enlaza un layout como cualquier otra.</p>
+
+<ui-code>
+<pre><code>fudic generate error-page [--layout &lt;href&gt;]</code></pre>
+</ui-code>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--layout &lt;path|href&gt;</code></td><td>Este layout en lugar del que elegiría. El de una librería, por su href, como <code>@@shop/ui/layouts/main.fud</code>.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g error-page
+fudic g error-page --project ui</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g error-page --dry-run
+dry run — nothing written
+  create  src/routes/_error.fud</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>En una app es <code>src/routes/_error.fud</code>, y enlaza el layout que elegiría <code>fudic g page</code>.</li>
+  <li>En una librería es <code>src/_error.fud</code>, y enlaza el <code>src/layouts/_layout.fud</code> de la librería. Toda app que depende de ella y no tiene su propio <code>_error.fud</code> pinta sus errores con ella.</li>
+  <li>Sin layout que enlazar, no escribe nada y dice cómo crear uno.</li>
+</ul>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/routing/error-page">La página de error</a>: qué recibe y cuándo se pinta.</li>
+</ul>

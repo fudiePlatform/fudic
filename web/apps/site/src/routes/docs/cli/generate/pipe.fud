@@ -1,0 +1,97 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate pipe · Fudic</title>
+  <meta name="description" content="fudic generate pipe crea un pipe: su contrato en .fudapi, su implementación y su test unitario. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/pipe">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate pipe · Fudic">
+  <meta property="og:description" content="fudic generate pipe crea un pipe: su contrato en .fudapi, su implementación y su test unitario. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/pipe">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate pipe</code></h1>
+
+<p>Crea un pipe en <code>src/pipes</code>: su contrato en <code>&lt;name&gt;.fudapi</code>, su única implementación en <code>&lt;name&gt;.ts</code>, que importan la vista, el servidor y el navegador, y su test unitario. Una vista lo usa como <code>@@(value | name)</code>.</p>
+
+<ui-code>
+<pre><code>fudic generate pipe &lt;name&gt;</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;name&gt;</code></td><td><code>truncate</code> es el pipe <code>truncate</code> en <code>src/pipes/truncate.fudapi</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--on &lt;type&gt;</code></td><td>Lo que formatea: un tipo del <code>.fudapi</code>. Por defecto, <code>str</code>.</td></tr>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g pipe truncate
+fudic g pipe initials --on Person --project ui</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<p>El contrato y la implementación que escribe <code>fudic g pipe truncate</code>:</p>
+
+<ui-code .path="src/pipes/truncate.fudapi">
+<pre><code>pipe truncate
+  on str</code></pre>
+</ui-code>
+
+<ui-code .path="src/pipes/truncate.ts">
+<pre><code>import &#123; truncate &#125; from 'fudic:pipes/truncate';
+
+export default truncate.implement((value, locale) =&gt; value);</code></pre>
+</ui-code>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/server/pipes">Pipes</a>: qué es un pipe y los que trae Fudic de serie.</li>
+</ul>

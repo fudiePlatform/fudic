@@ -173,6 +173,13 @@
           <li><a href="/docs/editors/other" aria-current=@(current === "editors-other" ? "page" : false)>Otros editores</a></li>
         </ol>
       </li>
+      <li>
+        <span class="chapter">Herramientas</span>
+        <ol>
+          <li><a href="/docs/cli" aria-current=@(current === "cli" ? "page" : false)>La CLI</a></li>
+          <li><a href="/docs/tools/format" aria-current=@(current === "tools-format" ? "page" : false)>El formateador</a></li>
+        </ol>
+      </li>
     </ol>
   </details>
 }

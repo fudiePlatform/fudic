@@ -1,0 +1,181 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>La CLI · Fudic</title>
+  <meta name="description" content="La CLI de Fudic crea proyectos, les añade piezas y los ejecuta. Nunca pregunta nada, así que funciona igual en un script o en la integración continua. Todos sus comandos.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="La CLI · Fudic">
+  <meta property="og:description" content="fudic crea proyectos, les añade piezas y los ejecuta. Todos sus comandos.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#start">Arrancar</a></li>
+        <li><a href="#words">Cuatro palabras</a></li>
+        <li><a href="#commands">Los comandos</a></li>
+        <li><a href="#example">Un workspace, de principio a fin</a></li>
+        <li><a href="#global">Opciones de todos los comandos</a></li>
+        <li><a href="#errors">Cuando algo falla</a></li>
+        <li><a href="#build">El build y los tipos</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>La CLI</h1>
+
+<p><code>fudic</code> crea proyectos, les añade piezas y los ejecuta. Nunca pregunta nada: si le falta algo, lo dice en una línea y sale con un código de error, así que funciona igual en la terminal, en un script o en la integración continua.</p>
+
+<h2 id="start">Arrancar</h2>
+
+<p>El primer proyecto se crea sin instalar nada:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new shop</code></pre>
+</ui-code>
+
+<p><code>fudic new</code> deja la CLI en el proyecto como dependencia de desarrollo. Dentro, se usa con <code>npx fudic</code>, o desde los scripts de <code>package.json</code>.</p>
+
+<p><code>fudic --help</code> enseña todos los comandos, y <code>fudic &lt;comando&gt; --help</code>, las opciones de uno: lo mismo que hay en esta página y en la de cada comando.</p>
+
+<h2 id="words">Cuatro palabras</h2>
+
+<p>La ayuda y los mensajes usan estas cuatro palabras, siempre con este sentido:</p>
+
+<ul>
+  <li><strong>App</strong>: lo que se sirve. Tiene páginas y una URL base, como <code>/</code> o <code>/admin/</code>.</li>
+  <li><strong>Librería</strong>: componentes que usan tus apps. No se sirve.</li>
+  <li><strong>Workspace</strong>: un solo repo con <code>apps/</code> y <code>libs/</code>.</li>
+  <li><strong>Proyecto</strong>: una app o una librería. Dentro de un workspace, <code>--project</code> elige una.</li>
+</ul>
+
+<h2 id="commands">Los comandos</h2>
+
+<p>Cada comando enlaza a su página, con todas sus opciones explicadas y lo que escribe.</p>
+
+<h3 id="commands-start">Empezar</h3>
+
+<ul>
+  <li><a href="/docs/cli/new"><code>fudic new</code></a>: crea una app, o con <code>--workspace</code>, un workspace con varias apps y librerías.</li>
+</ul>
+
+<h3 id="commands-add">Añadir a un proyecto</h3>
+
+<p><code>fudic generate</code>, o <code>fudic g</code>, añade una pieza al proyecto en el que estás. Sus tipos, juntos, en <a href="/docs/cli/generate">la página de <code>fudic generate</code></a>:</p>
+
+<ul>
+  <li><a href="/docs/cli/generate/component"><code>generate component</code></a>: un componente en su carpeta, con su test unitario, sus criterios y su fixture.</li>
+  <li><a href="/docs/cli/generate/page"><code>generate page</code></a>: una página y su test unitario.</li>
+  <li><a href="/docs/cli/generate/layout"><code>generate layout</code></a>: un layout y su test unitario.</li>
+  <li><a href="/docs/cli/generate/app"><code>generate app</code></a>: otra app en el workspace.</li>
+  <li><a href="/docs/cli/generate/lib"><code>generate lib</code></a>: una librería de componentes en el workspace.</li>
+  <li><a href="/docs/cli/generate/guide"><code>generate guide</code></a>: la guía de estilos.</li>
+  <li><a href="/docs/cli/generate/service"><code>generate service</code></a>: un servicio que se pide con <code>inject()</code>.</li>
+  <li><a href="/docs/cli/generate/form"><code>generate form</code></a>: un formulario y su test unitario.</li>
+  <li><a href="/docs/cli/generate/pipe"><code>generate pipe</code></a>: un pipe, con su contrato y su implementación.</li>
+  <li><a href="/docs/cli/generate/style"><code>generate style</code></a>: una hoja global del proyecto.</li>
+  <li><a href="/docs/cli/generate/snippet"><code>generate snippet</code></a>: un snippet en un fichero de snippets.</li>
+  <li><a href="/docs/cli/generate/spec"><code>generate spec</code></a>: los criterios <code>.fudspec</code> de un componente o de una página.</li>
+  <li><a href="/docs/cli/generate/flow"><code>generate flow</code></a>: los criterios de un flujo entre páginas.</li>
+  <li><a href="/docs/cli/generate/term"><code>generate term</code></a>: un paso propio para los criterios.</li>
+  <li><a href="/docs/cli/generate/api"><code>generate api</code></a>: el servidor de una ruta o de un componente.</li>
+  <li><a href="/docs/cli/generate/showcase"><code>generate showcase</code></a>: una página por componente con cada caso de su fixture.</li>
+  <li><a href="/docs/cli/generate/error-page"><code>generate error-page</code></a>: la página de error.</li>
+  <li><a href="/docs/cli/add"><code>fudic add</code></a>: un módulo opcional (<code>di</code>, <code>forms</code>, <code>http</code>, <code>i18n</code>) o una librería del workspace.</li>
+</ul>
+
+<h3 id="commands-run">Ejecutar</h3>
+
+<ul>
+  <li><a href="/docs/cli/dev"><code>fudic dev</code></a>: sirve todas las apps en un solo puerto, cada una en su URL base.</li>
+  <li><a href="/docs/cli/preview"><code>fudic preview</code></a>: lo mismo, con el build de cada app.</li>
+  <li><a href="/docs/cli/test"><code>fudic test</code></a>: ejecuta los tests unitarios.</li>
+  <li><a href="/docs/cli/spec"><code>fudic spec</code></a>: ejecuta los criterios <code>.fudspec</code> en un navegador.</li>
+</ul>
+
+<h3 id="commands-maintain">Mantener</h3>
+
+<ul>
+  <li><a href="/docs/cli/fmt"><code>fudic fmt</code></a>: formatea los <code>.fud</code>, <code>.fudspec</code> y <code>.fudapi</code>.</li>
+  <li><a href="/docs/cli/translate"><code>fudic translate</code></a>: extrae los textos que hay que traducir a <code>src/locales/</code>.</li>
+</ul>
+
+<h3 id="commands-history">El historial de una pieza</h3>
+
+<ul>
+  <li><a href="/docs/cli/approve"><code>fudic approve</code></a>: aprueba sus criterios y sus props.</li>
+  <li><a href="/docs/cli/accept"><code>fudic accept</code></a>: apunta que el cliente la aceptó, y etiqueta el commit.</li>
+  <li><a href="/docs/cli/history"><code>fudic history</code></a>: dice si su aprobación y sus últimas ejecuciones siguen valiendo.</li>
+</ul>
+
+<h2 id="example">Un workspace, de principio a fin</h2>
+
+<p>Un workspace con una app y una librería, y un botón en la librería. Con <code>--dry-run</code>, el último comando enseña lo que haría sin escribir nada:</p>
+
+<ui-code>
+<pre><code>fudic new acme --workspace --app web --lib ui
+cd acme
+fudic g component button --project ui --dry-run
+dry run — nothing written
+  create  libs/ui/src/components/ui-button/ui-button.fud
+  create  libs/ui/src/components/ui-button/ui-button.test.ts
+  create  libs/ui/src/components/ui-button/ui-button.fudspec
+  create  libs/ui/src/components/ui-button/ui-button.fixture.ts
+  delete  libs/ui/src/components/.gitkeep</code></pre>
+</ui-code>
+
+<p><code>button</code> se ha convertido en <code>ui-button</code>, con el prefijo de la librería delante. El estándar exige un guion en el nombre de un custom element, y el prefijo lo pone por ti.</p>
+
+<p>Desde la raíz, <code>fudic dev</code> sirve la app, <code>fudic spec</code> ejecuta los criterios de los dos proyectos y <code>fudic test</code>, sus tests.</p>
+
+<h2 id="global">Opciones de todos los comandos</h2>
+
+<ul>
+  <li><strong><code>--project &lt;name&gt;</code></strong>: el proyecto sobre el que actúa. Sin ella, el del <code>fudic.json</code> más cercano subiendo desde donde estás. Nunca elige uno por su cuenta.</li>
+  <li><strong><code>--dry-run</code></strong>: enseña los ficheros que crearía, cambiaría o borraría, con el diff de los que cambian, y no escribe nada.</li>
+  <li><strong><code>--force</code></strong>: sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</li>
+  <li><strong><code>--json</code></strong>: lo que haría, en JSON y con el contenido de cada fichero, para que lo lea otro programa. Los mensajes para personas van entonces a la salida de error.</li>
+  <li><strong><code>--cwd &lt;path&gt;</code></strong>: ejecuta el comando como si estuvieras en esa carpeta.</li>
+  <li><strong><code>--help</code></strong>: la ayuda del comando.</li>
+</ul>
+
+<h2 id="errors">Cuando algo falla</h2>
+
+<p>Un error dice qué pasó, cómo seguir y dónde está la ayuda del comando. Nunca la ayuda entera:</p>
+
+<ui-code>
+<pre><code>fudic g component
+
+error  fudic generate component needs a name
+       e.g. fudic g component button
+
+"fudic generate component --help" for more.</code></pre>
+</ui-code>
+
+<p>El código de salida es 0 si todo fue bien, 1 si no pudo hacer lo que se le pidió y 2 si no puede leer un fichero de código que tenía que leer. Un script o la integración continua deciden con eso.</p>
+
+<h2 id="build">El build y los tipos</h2>
+
+<p>El build lo hace Vite, con <code>pnpm build</code>, y comprueba los tipos de todo el proyecto antes de empaquetar (<a href="/docs/vite/build">El build y la preview</a>). En desarrollo, los mismos tipos se comprueban en vivo (<a href="/docs/vite/dev">En desarrollo</a>). El aviso de lo que aún no está en Baseline se configura en <a href="/docs/configuration/baseline">Baseline</a>.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define" target="_blank" rel="noopener"><code>customElements.define()</code></a>: por qué el nombre de un componente lleva un guion.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument" target="_blank" rel="noopener">Etiquetas de idioma BCP 47</a>: lo que esperan <code>--locale</code> y <code>--locales</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode" target="_blank" rel="noopener"><code>shadowrootmode</code></a>: el <code>&lt;template&gt;</code> que escribe cada componente nuevo.</li>
+</ul>

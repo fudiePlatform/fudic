@@ -1,0 +1,95 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate flow · Fudic</title>
+  <meta name="description" content="fudic generate flow escribe los criterios .fudspec de un flujo entre páginas, y su fixture. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/flow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate flow · Fudic">
+  <meta property="og:description" content="fudic generate flow escribe los criterios .fudspec de un flujo entre páginas, y su fixture. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/flow">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate flow</code></h1>
+
+<p>Escribe los criterios <code>.fudspec</code> de un flujo entre páginas en <code>src/flows/&lt;name&gt;.fudspec</code>, y su fixture, todavía sin servicios.</p>
+
+<ui-code>
+<pre><code>fudic generate flow &lt;name&gt;</code></pre>
+</ui-code>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;name&gt;</code></td><td>Palabras en minúscula unidas por guiones: <code>sign-up</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g flow sign-up
+fudic g flow checkout --project web</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code>
+<pre><code>fudic g flow checkout --dry-run
+dry run — nothing written
+  create  src/flows/checkout.fudspec
+  create  src/flows/checkout.fixture.ts</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<p>Cada criterio se ejecuta contra el servidor real. Un grupo de servicios en el fixture pone en su lugar unos en memoria.</p>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/testing/pages-and-flows">Páginas y flujos</a>: cómo se escribe un <code>flow</code>.</li>
+</ul>

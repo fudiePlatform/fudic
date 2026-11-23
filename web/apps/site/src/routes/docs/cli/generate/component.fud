@@ -1,0 +1,114 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic generate component · Fudic</title>
+  <meta name="description" content="fudic generate component crea un componente en su carpeta, con su test unitario, sus criterios .fudspec y su fixture. Todas sus opciones.">
+  <link rel="canonical" href="https://fudic.dev/docs/cli/generate/component">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic generate component · Fudic">
+  <meta property="og:description" content="fudic generate component crea un componente en su carpeta, con su test unitario, sus criterios .fudspec y su fixture. Todas sus opciones.">
+  <meta property="og:url" content="https://fudic.dev/docs/cli/generate/component">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("cli")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#options">Opciones</a></li>
+        <li><a href="#examples">Ejemplos</a></li>
+        <li><a href="#output">Lo que escribe</a></li>
+        <li><a href="#guide">En la guía</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1><code>fudic generate component</code></h1>
+
+<p>Crea una carpeta en <code>src/components</code> con el componente, su test unitario, sus criterios <code>.fudspec</code> y su fixture.</p>
+
+<ui-code>
+<pre><code>fudic generate component &lt;name&gt;</code></pre>
+</ui-code>
+
+<p>Su alias es <code>fudic g c</code>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>&lt;name&gt;</code></td><td><code>button</code> se convierte en <code>&lt;shop-button&gt;</code> con el prefijo del proyecto. Un nombre con guion, como <code>shop-button</code>, se usa tal cual.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="options">Opciones</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Opción</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--project &lt;name&gt;</code></td><td>La app o la librería donde se crea. Por defecto, en la que estás.</td></tr>
+    <tr><td><code>--dir &lt;path&gt;</code></td><td>Otra carpeta del proyecto, como <code>src/routes/blog/components</code>.</td></tr>
+    <tr><td><code>--skip-test</code></td><td>Sin test unitario.</td></tr>
+    <tr><td><code>--skip-spec</code></td><td>Sin <code>.fudspec</code> y sin fixture.</td></tr>
+    <tr><td><code>--slot</code></td><td>Pone un <code>&lt;slot&gt;</code> en el markup, para que el componente pinte lo que le pongan dentro.</td></tr>
+    <tr><td><code>--no-style</code></td><td>Sin <code>&lt;style&gt;</code>.</td></tr>
+    <tr><td><code>--in &lt;file&gt;</code></td><td>Además lo enlaza desde esa página o ese layout, con su <code>&lt;link rel="component"&gt;</code>. Se repite.</td></tr>
+    <tr><td><code>--dry-run</code></td><td>Enseña lo que crearía y lo que cambiaría, sin escribir nada.</td></tr>
+    <tr><td><code>--force</code></td><td>Sobrescribe los ficheros que ya existen. Sin ella, si alguno existe, no escribe ninguno.</td></tr>
+  </tbody>
+</table>
+
+<p>Sirven además las opciones de todos los comandos: <code>--json</code>, <code>--cwd</code> y <code>--help</code>, en <a href="/docs/cli#global">Opciones de todos los comandos</a>.</p>
+
+<h2 id="examples">Ejemplos</h2>
+
+<ui-code>
+<pre><code>fudic g component button --project ui
+fudic g c card --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<h2 id="output">Lo que escribe</h2>
+
+<ui-code .path="src/components/shop-button/shop-button.fud">
+<pre><code>fudic g component button --dry-run
+dry run — nothing written
+  create  src/components/shop-button/shop-button.fud
+  create  src/components/shop-button/shop-button.test.ts
+  create  src/components/shop-button/shop-button.fudspec
+  create  src/components/shop-button/shop-button.fixture.ts</code></pre>
+</ui-code>
+
+<p>El componente que escribe:</p>
+
+<ui-code .path="src/components/shop-button/shop-button.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;&lt;/style&gt;
+&lt;/head&gt;
+
+&lt;shop-button&gt;
+  &lt;template shadowrootmode="open"&gt;
+  &lt;/template&gt;
+&lt;/shop-button&gt;</code></pre>
+</ui-code>
+
+<h2 id="guide">En la guía</h2>
+
+<ul>
+  <li><a href="/docs/template-syntax/components">Componentes</a>: qué es un componente y cómo se escribe.</li>
+  <li><a href="/docs/testing">Criterios</a>: el <code>.fudspec</code> y su fixture.</li>
+</ul>

@@ -70,6 +70,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Ante dos proyectos con el mismo nombre, no escoger uno: decir que el
   nombre es ambiguo y listar las rutas. Y preferir el proyecto más cercano al directorio actual. Se
   relaciona con el nº 2: la CLI no sabe vivir dentro de un monorepo que no ha creado ella.
+- **Vuelto a comprobar (Herramientas), el 2026-11-23.** Desde `web/apps/site`,
+  `fudic dev --project nope` responde con los 23 proyectos del repo, entre ellos fixtures de tests
+  como `FUD0744` o `FUD1442`, y `admin` y `ui` repetidos.
 
 ## 6. `fudic g page --layout @web/ui/…` revienta, y la alternativa escribe una ruta frágil
 
@@ -96,6 +99,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con las tres páginas del capítulo Plugin de Vite (`docs/vite/…`), el 2026-11-23:
   mismo `href` frágil, corregido a mano.
 - **Y otra vez** con las cuatro páginas del capítulo Editores (`docs/editors/…`), el 2026-11-23.
+- **Y otra vez** con las 31 páginas del capítulo Herramientas (`docs/cli/…`, `docs/tools/format`), el
+  2026-11-23: mismo `href` frágil, corregido a mano, y títulos como «Error-page».
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -170,3 +175,46 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué pasó.** `generate pipe` está en `packages/cli/src/help/commands.ts:248`, pero no en la ayuda
   general (`help/general.ts`). `run.ts:306` tiene un comando `check` que ninguna ayuda menciona.
 - **Qué debería hacer.** Que la ayuda general liste todos los comandos que existen.
+- **Vuelto a comprobar (Herramientas), el 2026-11-23.** Sigue sin `generate pipe`. Además, la línea
+  de `fmt` dice «format .fud and .fudspec files», y `fudic fmt` formatea también los `.fudapi`
+  (su propia ayuda sí lo dice).
+
+## 14. Los diagnósticos enlazan a `http://localhost:8080/diagnostic`
+
+- **Qué pasó.** Al documentar la CLI. Cada error de la CLI, y cada aviso del build, termina con un
+  enlace como `http://localhost:8080/diagnostic#FUD0443`. La dirección sale de `fudic.docs` en el
+  `package.json` de `@fudic/diagnostics` (`packages/diagnostics/src/docs.ts`), y la versión
+  publicada lleva la de desarrollo.
+- **Cómo se resolvió en la web.** Las salidas citadas en la documentación no copian esa línea.
+- **Qué debería hacer.** Publicar con la dirección pública del catálogo de diagnósticos, o no
+  imprimir el enlace mientras no exista.
+
+## 15. `fudic --version` enseña la ayuda entera
+
+- **Qué pasó.** No hay `--version` ni `-v`: `fudic --version` imprime la ayuda general, con la
+  versión en la primera línea, y sale con 0.
+- **Cómo se resolvió en la web.** La documentación no lo menciona.
+- **Qué debería hacer.** `fudic --version` y `fudic -v` imprimen solo la versión, como cualquier CLI.
+
+## 16. `fudic g api` sobre un fichero que no existe dice que no es una ruta
+
+- **Qué pasó.** `fudic g api src/routes/about.fud` con `about.fud` sin crear responde
+  `FUD1240: src/routes/about.fud is not a route or a component: only they have a server`. Lo es; lo
+  que pasa es que no existe.
+- **Cómo se resolvió en la web.** El ejemplo se ejecutó con la página ya creada.
+- **Qué debería hacer.** Decir que el fichero no existe, y cómo crearlo (`fudic g page about`).
+
+## 17. `--force --dry-run` sobre un fichero idéntico enseña un cambio vacío
+
+- **Qué pasó.** `fudic g page about --force --dry-run` con la página recién generada lista
+  `modify src/routes/about.fud` y `modify src/routes/about.test.ts`, cada uno con una cabecera de
+  diff (`@@ line 9 @@`) y ninguna línea debajo.
+- **Qué debería hacer.** No listar como cambio un fichero que queda igual.
+
+## 18. `fudic accept --dry-run` dice `(in )`
+
+- **Qué pasó.** Desde la raíz del proyecto, dentro de un repo git, la línea de la etiqueta sale como
+  `run git tag accepted/shop-cart/2026-11-23 (in )`: la carpeta vacía. El resto de comandos dicen
+  `(in .)`.
+- **Cómo se resolvió en la web.** La página de `fudic accept` no cita la salida; lo dice en prosa.
+- **Qué debería hacer.** `(in .)`, como los demás.
