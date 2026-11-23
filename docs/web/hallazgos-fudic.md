@@ -519,3 +519,11 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   pasa.
 - **Qué debería hacer.** Averiguar por qué la ruta `/ciclo` no hidrata al cargar en la preview
   (su `effect` de nivel superior), o, si cambió a propósito, poner al día el test.
+
+## 36. `fudic spec` no ejecuta nada en `examples/basic`
+
+- **Qué pasó.** En `examples/basic`, `fudic spec` responde «no project here has a "spec" script —
+  nothing to run» (2026-11-23). El `package.json` del ejemplo no tiene el script `spec`
+  (`fudic-workbench run --pass-with-no-specs`) que sí deja `fudic new`. Con
+  `pnpm exec fudic-workbench run` los 29 criterios pasan.
+- **Qué debería hacer.** Añadir el script `spec` al ejemplo, para que se pruebe como cualquier app.
