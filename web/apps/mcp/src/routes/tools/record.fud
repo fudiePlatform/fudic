@@ -1,0 +1,105 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_record · Fudic</title>
+  <meta name="description" content="fudic_record, la herramienta del MCP de Fudic: apunta en el historial de una pieza lo que decidió la persona. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/record">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_record · Fudic">
+  <meta property="og:description" content="fudic_record, la herramienta del MCP de Fudic: apunta en el historial de una pieza lo que decidió la persona. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/record">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_record</h1>
+
+<p><code>fudic_record</code> escribe en el <code>.fudlog</code> de una pieza lo que decidió la persona, o que la pieza está terminada. Es la única herramienta que aprueba algo, y el modelo solo la llama cuando tú lo has dicho en la conversación.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>piece</code></td><td>texto</td><td>El <code>.fud</code> de un componente o de una ruta, o su carpeta.</td></tr>
+    <tr><td><code>event</code></td><td><code>approved</code>, <code>accepted</code>, <code>reopened</code>, <code>look</code>, <code>done</code></td><td><code>approved</code>, los criterios; <code>look</code>, el aspecto; <code>accepted</code>, que el cliente la aceptó; <code>reopened</code>, un cambio en su contrato; <code>done</code>, todas las fases terminadas.</td></tr>
+    <tr><td><code>text</code> <small>opcional</small></td><td>texto</td><td>Con <code>accepted</code> y <code>reopened</code>, lo que dijiste, con tus palabras.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Sin un <code>fudic_look</code> de los ficheros tal como están, no escribe nada:</p>
+
+<ui-code>
+<pre><code>fudic_record &#123; "piece": "src/components/tienda-button", "event": "look" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "piece": "src/components/tienda-button/tienda-button.fud",
+  "diagnostics": [
+    &#123;
+      "code": "FUD1427",
+      "severity": "error",
+      "message": "the look of src/components/tienda-button/tienda-button.fud as it is now was never shown: run fudic_look first",
+      "at": "src/components/tienda-button/tienda-button.fud"
+    &#125;
+  ],
+  "codes": &#123;
+    "FUD1427": &#123;
+      "title": "The look was not shown",
+      "why": "A look is approved over the screenshots the user saw. None were taken of the piece as its files are now — nobody ran …",
+      "fix": "run `fudic_look`, show the user the result, and record the look only if they approve it."
+    &#125;
+  &#125;,
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>Después de <code>fudic_look</code>:</p>
+
+<ui-code>
+<pre><code>fudic_record &#123; "piece": "src/components/tienda-button", "event": "look" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "piece": "src/components/tienda-button/tienda-button.fud",
+  "recorded": [
+    "look"
+  ],
+  "hash": "adb1110ddcd3",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>Qué significa cada evento y cuándo caduca lo cuenta <a href="/mcp/approval">Aprobar, caducar y reabrir</a>. Leer el historial es cosa de <a href="/docs/cli/history"><code>fudic history</code></a>.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><a href="/docs/reference/diagnostics/FUD1427"><code>FUD1427</code></a>: el aspecto no se ha enseñado. <a href="/docs/reference/diagnostics/FUD1407"><code>FUD1407</code></a>: <code>done</code> con una fase pendiente, que la respuesta nombra.</li>
+</ul>

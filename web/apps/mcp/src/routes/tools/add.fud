@@ -1,0 +1,86 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_add · Fudic</title>
+  <meta name="description" content="fudic_add, la herramienta del MCP de Fudic: añade un módulo o una librería del workspace, como fudic add. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/add">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_add · Fudic">
+  <meta property="og:description" content="fudic_add, la herramienta del MCP de Fudic: añade un módulo o una librería del workspace, como fudic add. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/add">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_add</h1>
+
+<p><code>fudic_add</code> añade al proyecto <code>di</code>, <code>forms</code>, <code>http</code>, <code>i18n</code> o una librería del workspace, igual que <a href="/docs/cli/add"><code>fudic add</code></a>, y lo instala.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>module</code></td><td>texto</td><td><code>di</code>, <code>forms</code>, <code>http</code>, <code>i18n</code> o el nombre de una librería del workspace.</td></tr>
+    <tr><td><code>project</code> <small>opcional</small></td><td>texto</td><td>En un workspace, la app o la librería que lo recibe.</td></tr>
+    <tr><td><code>locales</code> <small>opcional</small></td><td>lista</td><td>Con <code>i18n</code>, los idiomas. El primero es el de por defecto.</td></tr>
+    <tr><td><code>dryRun</code> <small>opcional</small></td><td>booleano</td><td>Solo dice qué escribiría y qué ejecutaría. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Las reglas de un argumento, como <code>min-length</code>, son de <code>@@fudic/forms</code>:</p>
+
+<ui-code>
+<pre><code>fudic_add &#123; "module": "forms" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "command": "fudic add forms",
+  "changes": [
+    &#123;
+      "modify": "package.json"
+    &#125;
+  ],
+  "commands": [
+    "pnpm install"
+  ],
+  "written": true,
+  "ran": [
+    &#123;
+      "command": "pnpm install",
+      "dir": ".",
+      "status": 0
+    &#125;
+  ],
+  "report": [
+    "",
+    "Added @@fudic/forms 0.0.1 to tienda",
+    "  Installed dependencies (pnpm)"
+  ],
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

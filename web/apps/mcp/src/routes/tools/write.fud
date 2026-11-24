@@ -1,0 +1,91 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_write · Fudic</title>
+  <meta name="description" content="fudic_write, la herramienta del MCP de Fudic: escribe un fichero y responde sus diagnósticos. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/write">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_write · Fudic">
+  <meta property="og:description" content="fudic_write, la herramienta del MCP de Fudic: escribe un fichero y responde sus diagnósticos. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/write">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_write</h1>
+
+<p><code>fudic_write</code> escribe un fichero entero, con <code>content</code>, o lo cambia por trozos, con <code>edits</code>, y responde enseguida los diagnósticos de lo escrito, como <code>fudic_check</code>. No ejecuta nada. Solo existe <a href="/mcp/connect/chat">desde un chat</a>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>path</code></td><td>texto</td><td>Relativo a la raíz del proyecto. Las carpetas que falten se crean.</td></tr>
+    <tr><td><code>content</code> <small>opcional</small></td><td>texto</td><td>El texto nuevo entero del fichero.</td></tr>
+    <tr><td><code>edits</code> <small>opcional</small></td><td>lista</td><td>Sustituciones <code>&#123; old, new &#125;</code>, en orden. Cada <code>old</code> aparece una sola vez en el fichero; si uno no coincide, no se escribe nada.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_write &#123; "path": "src/routes/index.fud", "edits": [ &#123; "old": "&lt;h1&gt;Tienda&lt;/h1&gt;", "new": "&lt;h1&gt;@@title&lt;/h1&gt;" &#125; ] &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "written": "src/routes/index.fud",
+  "summary": &#123;
+    "errors": 1,
+    "warnings": 0,
+    "fixable": 0,
+    "files": 1
+  &#125;,
+  "diagnostics": [
+    &#123;
+      "code": "FUD0907",
+      "severity": "error",
+      "message": "this name is not available to the view: the only global is `undefined`; declare or import the rest in `@@code`",
+      "at": "src/routes/index.fud:7:6",
+      "quote": "&lt;h1&gt;@@title&lt;/h1&gt;",
+      "fixable": false
+    &#125;
+  ],
+  "codes": &#123;
+    "FUD0907": &#123;
+      "title": "Name not available to the view",
+      "why": "The view reads only what the file or the template declares and what the file's role provides. Its one global is …",
+      "fix": "import or declare it in `@@code` with a value that reads no JS global (`const pi = 3.14159`, not `Math.PI`, which the …"
+    &#125;
+  &#125;,
+  "next": "Fix FUD0907 at src/routes/index.fud:7:6, then run fudic_check again."
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Va <code>content</code> o <code>edits</code>, uno de los dos, nunca los dos ni ninguno.</li>
+</ul>

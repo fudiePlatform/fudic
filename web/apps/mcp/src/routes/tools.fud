@@ -1,0 +1,117 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Las herramientas · Fudic</title>
+  <meta name="description" content="Las 21 herramientas del MCP de Fudic, agrupadas por lo que hacen, y la forma común de sus respuestas: versión, commit, diagnósticos y el siguiente paso.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Las herramientas · Fudic">
+  <meta property="og:description" content="Las 21 herramientas del MCP de Fudic, agrupadas por lo que hacen, y la forma común de sus respuestas: versión, commit, diagnósticos y el siguiente paso.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#list">Las 21</a></li>
+        <li><a href="#answer">La respuesta</a></li>
+        <li><a href="#errors">Cuando no puede</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Las herramientas</h1>
+
+<p>El MCP ofrece 21 herramientas. Todas responden JSON con la misma forma, y las tres de ficheros solo existen cuando lo usa un chat.</p>
+
+<h2 id="list">Las 21</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Herramienta</th><th scope="col">Qué hace</th></tr>
+  </thead>
+  <tbody>
+    <tr><th scope="rowgroup" colspan="2">Orientarse</th></tr>
+    <tr><td><a href="/mcp/tools/status"><code>fudic_status</code></a></td><td>Dónde está el proyecto y el siguiente paso.</td></tr>
+    <tr><td><a href="/mcp/tools/guide"><code>fudic_guide</code></a></td><td>Un tema de la guía, o un código de diagnóstico explicado.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Crear</th></tr>
+    <tr><td><a href="/mcp/tools/new"><code>fudic_new</code></a></td><td>Crea la app, o un workspace, en la carpeta del MCP.</td></tr>
+    <tr><td><a href="/mcp/tools/generate"><code>fudic_generate</code></a></td><td>Crea una pieza como <code>fudic generate</code>.</td></tr>
+    <tr><td><a href="/mcp/tools/add"><code>fudic_add</code></a></td><td>Añade un módulo o una librería del workspace, como <code>fudic add</code>.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Comprobar y corregir</th></tr>
+    <tr><td><a href="/mcp/tools/check"><code>fudic_check</code></a></td><td>Lo que diría el build, sin construir.</td></tr>
+    <tr><td><a href="/mcp/tools/fix"><code>fudic_fix</code></a></td><td>Aplica las reparaciones que tienen una sola opción.</td></tr>
+    <tr><td><a href="/mcp/tools/format"><code>fudic_format</code></a></td><td>Formatea como <code>fudic fmt</code>.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Conocer el proyecto</th></tr>
+    <tr><td><a href="/mcp/tools/symbols"><code>fudic_symbols</code></a></td><td>Rutas, componentes, tipos, funciones, middlewares, pipes y tokens.</td></tr>
+    <tr><td><a href="/mcp/tools/describe"><code>fudic_describe</code></a></td><td>Una cosa del proyecto entera, con un ejemplo de uso que compila.</td></tr>
+    <tr><td><a href="/mcp/tools/contract"><code>fudic_contract</code></a></td><td>Lo que pide implementar un <code>.fudapi</code>, y un esqueleto.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Probar</th></tr>
+    <tr><td><a href="/mcp/tools/test"><code>fudic_test</code></a></td><td>Los tests unitarios.</td></tr>
+    <tr><td><a href="/mcp/tools/spec-run"><code>fudic_spec_run</code></a></td><td>Los criterios de los <code>.fudspec</code>, en un navegador.</td></tr>
+    <tr><td><a href="/mcp/tools/call"><code>fudic_call</code></a></td><td>Lo que responde una función de un <code>.fudapi</code>.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Ver</th></tr>
+    <tr><td><a href="/mcp/tools/render"><code>fudic_render</code></a></td><td>Una pieza pintada: su estructura, su HTML o una captura.</td></tr>
+    <tr><td><a href="/mcp/tools/preview"><code>fudic_preview</code></a></td><td>La app entera, en una URL.</td></tr>
+    <tr><td><a href="/mcp/tools/look"><code>fudic_look</code></a></td><td>Cada caso de un componente fotografiado, junto al último aspecto aprobado.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Decidir</th></tr>
+    <tr><td><a href="/mcp/tools/record"><code>fudic_record</code></a></td><td>Apunta en el historial de una pieza lo que decidió la persona.</td></tr>
+    <tr><th scope="rowgroup" colspan="2">Ficheros, solo desde un chat</th></tr>
+    <tr><td><a href="/mcp/tools/files"><code>fudic_files</code></a></td><td>Los ficheros del proyecto.</td></tr>
+    <tr><td><a href="/mcp/tools/read"><code>fudic_read</code></a></td><td>Un fichero, con sus números de línea.</td></tr>
+    <tr><td><a href="/mcp/tools/write"><code>fudic_write</code></a></td><td>Escribe un fichero y responde sus diagnósticos.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="answer">La respuesta</h2>
+
+<p>Cada respuesta empieza con la versión de Fudic del proyecto y el commit en el que está, sigue con lo que dice la herramienta y termina con sus diagnósticos y <code>next</code>, el siguiente paso en una frase, o <code>null</code>. Los ejemplos de cada herramienta omiten la versión y el commit.</p>
+
+<ui-code>
+<pre><code>&#123;
+  "fudicVersion": "0.0.1",
+  "commit": "c6e20ef",
+  "written": "src/routes/index.fud",
+  "summary": &#123;
+    "errors": 1,
+    "warnings": 0,
+    "fixable": 0,
+    "files": 1
+  &#125;,
+  "diagnostics": [
+    &#123;
+      "code": "FUD0907",
+      "severity": "error",
+      "message": "this name is not available to the view: the only global is `undefined`; declare or import the rest in `@@code`",
+      "at": "src/routes/index.fud:7:6",
+      "quote": "&lt;h1&gt;@@title&lt;/h1&gt;",
+      "fixable": false
+    &#125;
+  ],
+  "codes": &#123;
+    "FUD0907": &#123;
+      "title": "Name not available to the view",
+      "why": "The view reads only what the file or the template declares and what the file's role provides. Its one global is `undefined`: `Math`, `JSON`, `Date`, `Intl`, `NaN` and the rest exist only in JS.",
+      "fix": "import or declare it in `@@code` with a value that reads no JS global (`const pi = 3.14159`, not `Math.PI`, which the server evaluates too), or compute the value in `load()`."
+    &#125;
+  &#125;,
+  "next": "Fix FUD0907 at src/routes/index.fud:7:6, then run fudic_check again."
+&#125;</code></pre>
+</ui-code>
+
+<p>Cada diagnóstico lleva su <code>fichero:línea:columna</code> en <code>at</code> y la línea en <code>quote</code>. Cada código de Fudic se explica una sola vez, en <code>codes</code>, con su título, por qué pasa y cómo se arregla. Su página está en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</p>
+
+<h2 id="errors">Cuando no puede</h2>
+
+<p>Una herramienta que no puede hacer lo que se le pide responde igual, con un diagnóstico que dice por qué, y no escribe nada. Dos valen para todas. <a href="/docs/reference/diagnostics/FUD1404"><code>FUD1404</code></a> dice que en la carpeta no hay un proyecto de Fudic, y <a href="/docs/reference/diagnostics/FUD1400"><code>FUD1400</code></a>, que una ruta sale del proyecto.</p>

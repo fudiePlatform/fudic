@@ -1,0 +1,88 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_new · Fudic</title>
+  <meta name="description" content="fudic_new, la herramienta del MCP de Fudic: crea la app, o un workspace, en la carpeta del MCP. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/new">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_new · Fudic">
+  <meta property="og:description" content="fudic_new, la herramienta del MCP de Fudic: crea la app, o un workspace, en la carpeta del MCP. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/new">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_new</h1>
+
+<p><code>fudic_new</code> crea una app, o un workspace, en la carpeta en la que arrancó el MCP, igual que <a href="/docs/cli/new"><code>fudic new</code></a>, y la instala. Antes, el modelo pregunta para qué es y cómo se llama.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>texto</td><td>El nombre de la app o del workspace: el de su paquete y su <code>id</code>.</td></tr>
+    <tr><td><code>workspace</code> <small>opcional</small></td><td>booleano</td><td>Crea un workspace en vez de una app.</td></tr>
+    <tr><td><code>app</code> <small>opcional</small></td><td>texto</td><td>En un workspace, su primera app.</td></tr>
+    <tr><td><code>lib</code> <small>opcional</small></td><td>lista</td><td>En un workspace, sus primeras librerías.</td></tr>
+    <tr><td><code>prefix</code> <small>opcional</small></td><td>texto</td><td>El prefijo de los tags de sus componentes. Por defecto, sale del nombre.</td></tr>
+    <tr><td><code>dryRun</code> <small>opcional</small></td><td>booleano</td><td>Solo dice qué escribiría y qué ejecutaría. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<p>Los demás argumentos (<code>uses</code>, <code>id</code>, <code>layout</code>, <code>noSw</code>, <code>target</code>, <code>locale</code>) son las opciones de <a href="/docs/cli/new"><code>fudic new</code></a>, con el nombre en camelCase: <code>noSw</code> es <code>--no-sw</code>.</p>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>En una carpeta vacía, sin escribir nada:</p>
+
+<ui-code>
+<pre><code>fudic_new &#123; "name": "tienda", "dryRun": true &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "command": "fudic new tienda",
+  "changes": [
+    &#123;
+      "create": "package.json"
+    &#125;,
+    &#123;
+      "create": "vite.config.ts"
+    &#125;,
+    &#123;
+      "create": "vitest.config.ts"
+    &#125;,
+    …
+  ],
+  "commands": [
+    "pnpm install",
+    "git init -b main",
+    "git add -A",
+    "git commit -m chore: create app tienda"
+  ],
+  "written": false,
+  "diagnostics": [],
+  "next": "Call fudic_status."
+&#125;</code></pre>
+</ui-code>

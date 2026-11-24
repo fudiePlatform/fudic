@@ -1,0 +1,65 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_files · Fudic</title>
+  <meta name="description" content="fudic_files, la herramienta del MCP de Fudic: los ficheros del proyecto. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/files">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_files · Fudic">
+  <meta property="og:description" content="fudic_files, la herramienta del MCP de Fudic: los ficheros del proyecto. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/files">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_files</h1>
+
+<p><code>fudic_files</code> lista los ficheros del proyecto, relativos a su raíz, sin <code>node_modules</code>, <code>dist</code>, <code>.git</code>, <code>.fudic</code> ni lo que git ignora. Solo existe <a href="/mcp/connect/chat">desde un chat</a>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>under</code> <small>opcional</small></td><td>texto</td><td>Una carpeta, para listar solo lo que hay dentro.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_files &#123; "under": "src" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "files": [
+    "src/browser/.gitkeep",
+    "src/components/tienda-button/tienda-button.fixture.ts",
+    "src/components/tienda-button/tienda-button.fud",
+    …
+  ],
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

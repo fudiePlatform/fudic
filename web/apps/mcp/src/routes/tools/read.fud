@@ -1,0 +1,65 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_read · Fudic</title>
+  <meta name="description" content="fudic_read, la herramienta del MCP de Fudic: un fichero, con sus números de línea. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/read">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_read · Fudic">
+  <meta property="og:description" content="fudic_read, la herramienta del MCP de Fudic: un fichero, con sus números de línea. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/read">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_read</h1>
+
+<p><code>fudic_read</code> lee un fichero del proyecto con sus números de línea. Solo existe <a href="/mcp/connect/chat">desde un chat</a>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>path</code></td><td>texto</td><td>Relativo a la raíz del proyecto.</td></tr>
+    <tr><td><code>offset</code> <small>opcional</small></td><td>entero</td><td>La primera línea, desde 1. Por defecto, <code>1</code>.</td></tr>
+    <tr><td><code>limit</code> <small>opcional</small></td><td>entero</td><td>Cuántas líneas. Por defecto, <code>400</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_read &#123; "path": "src/routes/index.fud" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "path": "src/routes/index.fud",
+  "lines": "1-7",
+  "total": 7,
+  "text": "  1→&lt;link rel=\"layout\" href=\"../layouts/_layout.fud\"&gt;\n  2→\n  3→&lt;head&gt;\n  4→  &lt;title&gt;Home&lt;/title&gt;\n  5→&lt;/head&gt;\n  6→\n  7→&lt;h1&gt;Tienda&lt;/h1&gt;",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

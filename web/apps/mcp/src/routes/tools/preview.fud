@@ -1,0 +1,75 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_preview · Fudic</title>
+  <meta name="description" content="fudic_preview, la herramienta del MCP de Fudic: la app entera, en una URL. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/preview">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_preview · Fudic">
+  <meta property="og:description" content="fudic_preview, la herramienta del MCP de Fudic: la app entera, en una URL. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/preview">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_preview</h1>
+
+<p><code>fudic_preview</code> arranca la primera vez el servidor de desarrollo del proyecto y lo mantiene mientras el MCP sigue en marcha. Responde la URL y las rutas concretas que se pueden abrir. Lo que escribe el modelo se ve sin volver a llamar.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>route</code> <small>opcional</small></td><td>texto</td><td>Una URL concreta en la que abrir la app: <code>/products/42</code>.</td></tr>
+    <tr><td><code>fixture</code> <small>opcional</small></td><td>objeto</td><td>Lo que se le pide al fixture de la ruta: la app se abre con él, como en su <code>.fudspec</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Desde un agente:</p>
+
+<ui-code>
+<pre><code>fudic_preview &#123; "route": "/products" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "state": "ready",
+  "local": "http://127.0.0.1:4318/products",
+  "routes": [
+    "/products",
+    "/"
+  ],
+  "diagnostics": [],
+  "next": "Give the user the local URL. Opening it is how they see the app; it does not approve anything."
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Desde un agente, escucha en <code>127.0.0.1:4318</code>, o en el siguiente puerto libre. Desde un chat, la URL se abre también en el móvil.</li>
+</ul>

@@ -1,0 +1,97 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_generate · Fudic</title>
+  <meta name="description" content="fudic_generate, la herramienta del MCP de Fudic: crea una pieza como fudic generate. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/generate">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_generate · Fudic">
+  <meta property="og:description" content="fudic_generate, la herramienta del MCP de Fudic: crea una pieza como fudic generate. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/generate">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_generate</h1>
+
+<p><code>fudic_generate</code> crea una pieza exactamente como <a href="/docs/cli/generate"><code>fudic generate</code></a>: la carpeta, el tag, el test, el <code>.fudspec</code> y su fixture. El modelo nunca escribe estos ficheros desde cero.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>kind</code></td><td><code>component</code>, <code>page</code>, <code>layout</code>, <code>snippet</code>, <code>app</code>, <code>lib</code>, <code>guide</code>, <code>spec</code>, <code>flow</code>, <code>term</code>, <code>api</code>, <code>showcase</code>, <code>service</code>, <code>form</code>, <code>pipe</code>, <code>style</code>, <code>error-page</code></td><td>Qué se crea.</td></tr>
+    <tr><td><code>name</code> <small>opcional</small></td><td>texto</td><td>Su nombre: el tag de un componente, la ruta de una página (<code>products/[id]</code>).</td></tr>
+    <tr><td><code>purpose</code> <small>opcional</small></td><td>texto</td><td>En un componente y una página, lo que pidió la persona, en una frase. Queda en su historial.</td></tr>
+    <tr><td><code>project</code> <small>opcional</small></td><td>texto</td><td>En un workspace, la app o la librería en la que va.</td></tr>
+    <tr><td><code>server</code> <small>opcional</small></td><td>booleano</td><td>En una página, la crea con su <code>.fudapi</code>.</td></tr>
+    <tr><td><code>dryRun</code> <small>opcional</small></td><td>booleano</td><td>Solo dice qué escribiría. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<p>Los demás argumentos son las opciones de cada <a href="/docs/cli/generate"><code>fudic generate</code></a>, con el nombre en camelCase: <code>skipSpec</code> es <code>--skip-spec</code>.</p>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_generate &#123; "kind": "component", "name": "button", "purpose": "A button for the shop actions: buy, add to cart, cancel" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "command": "fudic g component button",
+  "changes": [
+    &#123;
+      "create": "src/components/tienda-button/tienda-button.fud"
+    &#125;,
+    &#123;
+      "create": "src/components/tienda-button/tienda-button.test.ts"
+    &#125;,
+    &#123;
+      "create": "src/components/tienda-button/tienda-button.fudspec"
+    &#125;,
+    &#123;
+      "create": "src/components/tienda-button/tienda-button.fixture.ts"
+    &#125;
+  ],
+  "commands": [],
+  "written": true,
+  "ran": [],
+  "report": [
+    "",
+    "Created &lt;tienda-button&gt; in src/components/tienda-button/",
+    "",
+    …
+  ],
+  "diagnostics": [],
+  "next": "Call fudic_status."
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><code>error-page</code> no lleva nombre. Una página enlaza el layout más cercano, y sin ninguno responde <a href="/docs/reference/diagnostics/FUD1582"><code>FUD1582</code></a> y no escribe nada.</li>
+</ul>

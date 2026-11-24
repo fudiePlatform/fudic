@@ -1,0 +1,86 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_status · Fudic</title>
+  <meta name="description" content="fudic_status, la herramienta del MCP de Fudic: dónde está el proyecto y el siguiente paso. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/status">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_status · Fudic">
+  <meta property="og:description" content="fudic_status, la herramienta del MCP de Fudic: dónde está el proyecto y el siguiente paso. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/status">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_status</h1>
+
+<p><code>fudic_status</code> lee los ficheros, el historial de cada pieza y los diagnósticos, y responde la fase de cada componente y de cada ruta y <code>next</code>, una sola cosa que hacer. Es la primera llamada de cualquier tarea.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<p>No tiene argumentos.</p>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>En un proyecto recién creado con <code>fudic new tienda</code>:</p>
+
+<ui-code>
+<pre><code>fudic_status &#123;&#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "phase": "criteria",
+  "project": &#123;
+    "name": "tienda",
+    "kind": "app",
+    "prefix": "tienda",
+    "errorPage": &#123;
+      "from": "none"
+    &#125;
+  &#125;,
+  "summary": &#123;
+    "errors": 0,
+    "warnings": 0
+  &#125;,
+  "units": [
+    &#123;
+      "piece": "src/routes/index.fud",
+      "kind": "route",
+      "name": "/",
+      "phase": "criteria",
+      "approval": "none",
+      "server": false,
+      "tests": "not run",
+      "spec": "not run",
+      "documented": "0/0",
+      "functions": &#123;
+        "connected": 0,
+        "missing": 0
+      &#125;
+    &#125;
+  ],
+  "diagnostics": [],
+  "next": "Ask the user for what the page shows and does of /. Propose them, wait for their approval, then write …"
+&#125;</code></pre>
+</ui-code>
+
+<p>En una carpeta sin proyecto, <code>phase</code> es <code>"none"</code> y <code>next</code> dice qué preguntar para crearlo con <a href="/mcp/tools/new"><code>fudic_new</code></a>. Las fases y lo que hace el modelo en cada una las cuenta <a href="/mcp/phases">Las fases de una pieza</a>.</p>

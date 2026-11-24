@@ -1,0 +1,91 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_render · Fudic</title>
+  <meta name="description" content="fudic_render, la herramienta del MCP de Fudic: una pieza pintada: su estructura, su HTML o una captura. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/render">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_render · Fudic">
+  <meta property="og:description" content="fudic_render, la herramienta del MCP de Fudic: una pieza pintada: su estructura, su HTML o una captura. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/render">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_render</h1>
+
+<p><code>fudic_render</code> pinta una pieza al momento, sin arrancar ningún servidor. Responde su estructura accesible, que son los roles, nombres y estados con los que la encuentra un <code>.fudspec</code>, o su HTML con el Declarative Shadow DOM. Un componente se pinta con un caso de su fixture, y una ruta, por una URL concreta.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>component</code> <small>opcional</small></td><td>texto</td><td>El tag de un componente.</td></tr>
+    <tr><td><code>route</code> <small>opcional</small></td><td>texto</td><td>Una URL concreta de una ruta: <code>/products/42</code>.</td></tr>
+    <tr><td><code>fixture</code> <small>opcional</small></td><td>texto u objeto</td><td>En un componente, un caso de su fixture. En una ruta, lo que se le pide a su fixture: <code>data</code>, <code>answers</code> y <code>services</code>.</td></tr>
+    <tr><td><code>props</code> <small>opcional</small></td><td>objeto</td><td>Props en JSON, encima del caso.</td></tr>
+    <tr><td><code>as</code> <small>opcional</small></td><td><code>outline</code>, <code>html</code></td><td><code>outline</code>, la estructura, o <code>html</code>. Por defecto, <code>"outline"</code>.</td></tr>
+    <tr><td><code>select</code> <small>opcional</small></td><td>texto</td><td>Un selector CSS, que atraviesa los shadow roots, para responder solo una parte.</td></tr>
+    <tr><td><code>engine</code> <small>opcional</small></td><td><code>happy-dom</code>, <code>browser</code></td><td><code>happy-dom</code>, el de los tests unitarios, o <code>browser</code>, un navegador de verdad, para cuando importan el CSS y la maquetación. Por defecto, <code>"happy-dom"</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_render &#123; "component": "tienda-button", "fixture": "disabled" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "component": "tienda-button",
+  "fixture": "disabled",
+  "engine": "happy-dom",
+  "as": "outline",
+  "outline": "- button [disabled]",
+  "calls": [],
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>En un navegador, con la captura. Desde un agente, la captura es un fichero; desde un chat, se dibuja en la conversación:</p>
+
+<ui-code>
+<pre><code>fudic_render &#123; "component": "tienda-button", "fixture": "secondary", "engine": "browser" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "component": "tienda-button",
+  "fixture": "secondary",
+  "engine": "browser",
+  "as": "outline",
+  "outline": "- button",
+  "calls": [],
+  "shot": ".fudic/renders/tienda-button/secondary-c23d7820c2d0.png",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

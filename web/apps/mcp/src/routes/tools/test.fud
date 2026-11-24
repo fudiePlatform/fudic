@@ -1,0 +1,71 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_test · Fudic</title>
+  <meta name="description" content="fudic_test, la herramienta del MCP de Fudic: los tests unitarios. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/test">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_test · Fudic">
+  <meta property="og:description" content="fudic_test, la herramienta del MCP de Fudic: los tests unitarios. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/test">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_test</h1>
+
+<p><code>fudic_test</code> ejecuta los tests unitarios del proyecto y apunta la ejecución en el historial de cada pieza. Cuenta los que pasan, los que fallan, porque la comprobación dijo que no, y los rotos, que no llegaron a comprobar nada. Solo detalla lo que no pasó.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>paths</code> <small>opcional</small></td><td>lista</td><td>Ficheros o carpetas de tests. Sin ellos, todos.</td></tr>
+    <tr><td><code>names</code> <small>opcional</small></td><td>lista</td><td>Solo los tests cuyo nombre completo contiene uno de estos.</td></tr>
+    <tr><td><code>failing</code> <small>opcional</small></td><td>booleano</td><td>Solo lo que no pasó en la última ejecución. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_test &#123;&#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "summary": &#123;
+    "pass": 4,
+    "fail": 0,
+    "broken": 0,
+    "skipped": 0
+  &#125;,
+  "tests": [],
+  "ms": 4789,
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>La diferencia entre fallar y estar roto es la del <a href="/mcp/phases">rojo por la razón correcta</a>.</p>

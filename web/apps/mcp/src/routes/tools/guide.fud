@@ -1,0 +1,90 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_guide · Fudic</title>
+  <meta name="description" content="fudic_guide, la herramienta del MCP de Fudic: un tema de la guía, o un código de diagnóstico explicado. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/guide">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_guide · Fudic">
+  <meta property="og:description" content="fudic_guide, la herramienta del MCP de Fudic: un tema de la guía, o un código de diagnóstico explicado. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/guide">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#topics">Los temas</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_guide</h1>
+
+<p><code>fudic_guide</code> responde un tema de la guía que viaja con el paquete, o la explicación de un código de diagnóstico: por qué pasa y cómo se arregla. El modelo lee un tema antes de escribir por primera vez un tipo de fichero.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>topic</code></td><td>texto</td><td>Un tema de la tabla de abajo, o un código: <code>FUD</code> y cuatro cifras.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_guide &#123; "topic": "FUD0907" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "topic": "FUD0907",
+  "related": [
+    "components",
+    "view"
+  ],
+  "body": "# FUD0907 — Name not available to the view\n**error**\n\nThe view reads only what the file or the template declares and …",
+  "title": "Name not available to the view",
+  "severity": "error",
+  "why": "The view reads only what the file or the template declares and what the file's role provides. Its one global is …",
+  "fix": "import or declare it in `@@code` with a value that reads no JS global (`const pi = 3.14159`, not `Math.PI`, which the …",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="topics">Los temas</h2>
+<table>
+  <thead>
+    <tr><th scope="col">Tema</th><th scope="col">Lo que cuenta</th><th scope="col">En la Documentación</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>overview</code></td><td>Qué es Fudic, los ficheros de un proyecto y cómo se organizan una app, una librería y un workspace.</td><td><a href="/docs/getting-started">Primeros pasos</a></td></tr>
+    <tr><td><code>workflow</code></td><td>Las fases de una pieza, quién aprueba qué y el ciclo de escribir, comprobar y corregir.</td><td><a href="/mcp/phases">Las fases de una pieza</a></td></tr>
+    <tr><td><code>components</code></td><td>La forma de un componente: props, slots, eventos y formularios.</td><td><a href="/docs/template-syntax">Sintaxis de plantillas</a></td></tr>
+    <tr><td><code>pages</code></td><td>Rutas, páginas y layouts: parámetros, <code>load</code>, secciones y sesiones.</td><td><a href="/docs/routing">Rutas</a></td></tr>
+    <tr><td><code>view</code></td><td>Lo que puede escribir la vista en una expresión, una condición o un bucle.</td><td><a href="/docs/template-syntax">Sintaxis de plantillas</a></td></tr>
+    <tr><td><code>fudapi</code></td><td>El contrato con el servidor y sus handlers.</td><td><a href="/docs/server">Servidor</a></td></tr>
+    <tr><td><code>fudspec</code></td><td>Los criterios de aceptación y sus fixtures.</td><td><a href="/docs/testing">Pruebas</a></td></tr>
+    <tr><td><code>testing</code></td><td>Los tests unitarios.</td><td><a href="/docs/testing/unit">Tests unitarios</a></td></tr>
+    <tr><td><code>html-css</code></td><td>El subconjunto de HTML, el CSS con scope y los tokens.</td><td><a href="/docs/styles">Estilos</a></td></tr>
+    <tr><td><code>config</code></td><td><code>fudic.json</code>, <code>sw.json</code> y los <code>.headers</code> de una app.</td><td><a href="/docs/configuration">Configuración</a></td></tr>
+  </tbody>
+</table>
+<p>La guía está en inglés, como todo lo que el MCP le dice al modelo.</p>

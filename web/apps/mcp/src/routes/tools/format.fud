@@ -1,0 +1,66 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_format · Fudic</title>
+  <meta name="description" content="fudic_format, la herramienta del MCP de Fudic: formatea como fudic fmt. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/format">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_format · Fudic">
+  <meta property="og:description" content="fudic_format, la herramienta del MCP de Fudic: formatea como fudic fmt. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/format">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_format</h1>
+
+<p><code>fudic_format</code> formatea los <code>.fud</code>, <code>.fudspec</code> y <code>.fudapi</code> como <a href="/docs/cli/fmt"><code>fudic fmt</code></a>, y responde el diff.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>paths</code> <small>opcional</small></td><td>lista</td><td>Ficheros o carpetas. Sin ellos, el proyecto entero.</td></tr>
+    <tr><td><code>dryRun</code> <small>opcional</small></td><td>booleano</td><td>Solo dice qué cambiaría. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_format &#123; "dryRun": true &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "formatted": [
+    "src/components/tienda-button/tienda-button.fud",
+    "src/layouts/_layout.fud"
+  ],
+  "written": false,
+  "diff": "--- src/components/tienda-button/tienda-button.fud\n+++ src/components/tienda-button/tienda-button.fud\n@@@@ line 5 @@@@\n- …",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

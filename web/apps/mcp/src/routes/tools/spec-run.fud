@@ -1,0 +1,70 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_spec_run · Fudic</title>
+  <meta name="description" content="fudic_spec_run, la herramienta del MCP de Fudic: los criterios de los .fudspec, en un navegador. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/spec-run">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_spec_run · Fudic">
+  <meta property="og:description" content="fudic_spec_run, la herramienta del MCP de Fudic: los criterios de los .fudspec, en un navegador. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/spec-run">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_spec_run</h1>
+
+<p><code>fudic_spec_run</code> ejecuta los criterios de los <code>.fudspec</code> en un navegador de verdad y apunta la ejecución en el historial de cada pieza. De lo que no pasa, responde el paso en rojo, lo esperado y lo que salió, el elemento en su <code>.fud</code> y una captura. Es <a href="/docs/cli/spec"><code>fudic spec</code></a> para el modelo.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>spec</code> <small>opcional</small></td><td>texto</td><td>Un tag, una ruta (<code>/blog/[slug]</code>), un flujo por su nombre o un <code>.fudspec</code>. Sin él, todos.</td></tr>
+    <tr><td><code>criteria</code> <small>opcional</small></td><td>lista</td><td>Solo los criterios con estos ids.</td></tr>
+    <tr><td><code>failing</code> <small>opcional</small></td><td>booleano</td><td>Solo lo que no pasó en la última ejecución. Por defecto, <code>false</code>.</td></tr>
+    <tr><td><code>record</code> <small>opcional</small></td><td>booleano</td><td>Solo páginas y flujos: los ejecuta contra el servidor de verdad y escribe sus respuestas en sus fixtures. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_spec_run &#123; "spec": "tienda-button" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "summary": &#123;
+    "pass": 1,
+    "fail": 0,
+    "error": 0
+  &#125;,
+  "browser": "chrome",
+  "criteria": [],
+  "ms": 1706,
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>

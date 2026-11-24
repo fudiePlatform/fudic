@@ -1,0 +1,89 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_contract · Fudic</title>
+  <meta name="description" content="fudic_contract, la herramienta del MCP de Fudic: lo que pide implementar un .fudapi, y un esqueleto. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/contract">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_contract · Fudic">
+  <meta property="og:description" content="fudic_contract, la herramienta del MCP de Fudic: lo que pide implementar un .fudapi, y un esqueleto. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/contract">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_contract</h1>
+
+<p><code>fudic_contract</code> lista cada declaración de un <code>.fudapi</code> que necesita un handler: su firma en TypeScript, el fichero en el que va y si está escrito. Para lo que falta, responde un esqueleto que compila. Lo cuenta <a href="/docs/server">Servidor</a>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>texto</td><td>El id del <code>.fudapi</code>: su ruta bajo <code>src/</code>, sin la extensión (<code>routes/products</code>).</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Con la función <code>search</code> recién declarada y sin handler:</p>
+
+<ui-code>
+<pre><code>fudic_contract &#123; "id": "routes/products" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "id": "routes/products",
+  "handlers": [
+    &#123;
+      "name": "routes/products.load",
+      "exported": "load",
+      "state": "connected",
+      "file": "src/server/routes/products.ts",
+      "signature": "/** The data of the page, read on the server: its handler is in src/server/routes/products.ts. */\nexport interface …",
+      "implementedIn": [
+        "src/server/routes/products.ts"
+      ]
+    &#125;,
+    &#123;
+      "name": "routes/products.search",
+      "exported": "search",
+      "state": "missing",
+      "file": "src/server/routes/products.ts",
+      "signature": "/** The products whose name contains q. */\nexport type SearchCtx = FnContext&lt;&#123;&#125;, &#123;&#125;, &#123; readonly q: string &#125;&gt;;\nexport …",
+      "implementedIn": []
+    &#125;
+  ],
+  "skeleton": [
+    &#123;
+      "file": "src/server/routes/products.ts",
+      "exists": true,
+      "text": "import &#123; search &#125; from 'fudic:routes/products';\n\nsearch.handle(() =&gt; &#123;\n  throw new Error('routes/products.search: not written yet');\n&#125;);\n"
+    &#125;
+  ],
+  "diagnostics": [],
+  "next": "Write the skeleton in src/server/routes/products.ts (add to a file that exists), then replace each throw with the real …"
+&#125;</code></pre>
+</ui-code>

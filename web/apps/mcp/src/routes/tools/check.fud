@@ -1,0 +1,86 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_check · Fudic</title>
+  <meta name="description" content="fudic_check, la herramienta del MCP de Fudic: lo que diría el build, sin construir. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/check">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_check · Fudic">
+  <meta property="og:description" content="fudic_check, la herramienta del MCP de Fudic: lo que diría el build, sin construir. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/check">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_check</h1>
+
+<p><code>fudic_check</code> comprueba el proyecto entero como lo haría el build, sin construir: los <code>.fud</code>, el TypeScript, los <code>.fudapi</code>, los <code>.fudspec</code> y los <code>.headers</code>. Cada diagnóstico lleva su <code>fichero:línea:columna</code> y la línea en la que está.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>paths</code> <small>opcional</small></td><td>lista</td><td>Ficheros o carpetas de los que listar los diagnósticos. Siempre se comprueba el proyecto entero.</td></tr>
+    <tr><td><code>limit</code> <small>opcional</small></td><td>entero</td><td>Cuántos diagnósticos listar como mucho. El resumen los cuenta todos. Por defecto, <code>20</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Con una función <code>get</code> que recibe un tipo entero, que no cabe en una URL:</p>
+
+<ui-code>
+<pre><code>fudic_check &#123; "paths": [ "src/routes" ] &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "summary": &#123;
+    "errors": 1,
+    "warnings": 0,
+    "fixable": 0,
+    "files": 1
+  &#125;,
+  "diagnostics": [
+    &#123;
+      "code": "FUD1101",
+      "severity": "error",
+      "message": "`product` travels in the URL, so it is one value: text, a number, a boolean, a date, a uuid or an enum",
+      "at": "src/routes/products.fudapi:13:12",
+      "quote": "product  Product",
+      "fixable": false
+    &#125;
+  ],
+  "codes": &#123;
+    "FUD1101": &#123;
+      "title": "Argument that does not fit in a URL",
+      "why": "Route and `query` arguments, and every argument of a `get`, travel in the URL, one value each: `str`, `bool`, a number, …",
+      "fix": "give it a scalar type, or move it to the body of a verb that has one (`post`, `put`)."
+    &#125;
+  &#125;,
+  "next": "Fix FUD1101 at src/routes/products.fudapi:13:12, then run fudic_check again."
+&#125;</code></pre>
+</ui-code>
+
+<p>Un código de Fudic se explica una sola vez, en <code>codes</code>: su título, por qué pasa y cómo se arregla. Un código <code>TS</code> es el mensaje de TypeScript, en su posición dentro del <code>.fud</code>.</p>

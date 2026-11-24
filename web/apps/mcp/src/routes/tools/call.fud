@@ -1,0 +1,102 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_call · Fudic</title>
+  <meta name="description" content="fudic_call, la herramienta del MCP de Fudic: lo que responde una función de un .fudapi. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/call">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_call · Fudic">
+  <meta property="og:description" content="fudic_call, la herramienta del MCP de Fudic: lo que responde una función de un .fudapi. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/call">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_call</h1>
+
+<p><code>fudic_call</code> hace a una función de un <code>.fudapi</code> la misma petición que haría la página, al servidor de desarrollo, pasando por sus middlewares, sus reglas y sus <code>fails</code>. Responde el status y el valor, o su <code>Problem</code>, que es una respuesta y no un error.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>fn</code></td><td>texto</td><td>La función, como la nombra <code>fudic_symbols</code>: <code>routes/products.search</code>.</td></tr>
+    <tr><td><code>args</code> <small>opcional</small></td><td>JSON</td><td>Sus argumentos en JSON, con la forma de la firma que da <code>fudic_contract</code>.</td></tr>
+    <tr><td><code>params</code> <small>opcional</small></td><td>objeto</td><td>Los valores de los parámetros de la ruta: <code>&#123; "id": "42" &#125;</code> para <code>routes/products/[id]</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_call &#123; "fn": "routes/products.search", "args": &#123; "q": "mesa" &#125; &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "fn": "routes/products.search",
+  "status": 200,
+  "value": [
+    &#123;
+      "id": 1,
+      "name": "Mesa de roble",
+      "price": 240
+    &#125;,
+    &#123;
+      "id": 2,
+      "name": "Mesa auxiliar",
+      "price": 85
+    &#125;
+  ],
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>Con un argumento que no cumple su regla, <code>min-length 2</code>:</p>
+
+<ui-code>
+<pre><code>fudic_call &#123; "fn": "routes/products.search", "args": &#123; "q": "m" &#125; &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "fn": "routes/products.search",
+  "status": 400,
+  "problem": &#123;
+    "status": 400,
+    "title": "Bad Request",
+    "detail": "argument q: min-length 2"
+  &#125;,
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>La llamada va sin sesión: una función que necesita una responde su <code>401</code>.</li>
+</ul>

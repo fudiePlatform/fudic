@@ -1,0 +1,69 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_symbols · Fudic</title>
+  <meta name="description" content="fudic_symbols, la herramienta del MCP de Fudic: rutas, componentes, tipos, funciones, middlewares, pipes y tokens. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/symbols">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_symbols · Fudic">
+  <meta property="og:description" content="fudic_symbols, la herramienta del MCP de Fudic: rutas, componentes, tipos, funciones, middlewares, pipes y tokens. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/symbols">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_symbols</h1>
+
+<p><code>fudic_symbols</code> lista lo que tiene el proyecto y sus librerías: rutas, componentes, tipos, funciones, middlewares, pipes y tokens, cada uno con dónde está y su documentación. Una función sale <code>connected</code> si su handler está escrito y <code>missing</code> si no.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>kind</code> <small>opcional</small></td><td><code>routes</code>, <code>components</code>, <code>types</code>, <code>functions</code>, <code>middlewares</code>, <code>pipes</code>, <code>tokens</code></td><td>Un solo tipo. Sin él, todos.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_symbols &#123; "kind": "components" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "symbols": [
+    &#123;
+      "kind": "components",
+      "name": "tienda-button",
+      "from": null,
+      "at": "src/components/tienda-button/tienda-button.fud"
+    &#125;
+  ],
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
+
+<p>Antes de escribir estilos, el modelo pide <code>{ "kind": "tokens" }</code> y usa solo esos nombres.</p>

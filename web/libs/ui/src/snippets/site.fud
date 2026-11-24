@@ -235,6 +235,7 @@
         </ol>
       </li>
       <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
+      <li><a href="/mcp/tools" aria-current=@(current === "tools" ? "page" : false)>Las herramientas</a></li>
     </ol>
   </details>
 }

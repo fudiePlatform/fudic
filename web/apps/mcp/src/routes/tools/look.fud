@@ -1,0 +1,97 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_look · Fudic</title>
+  <meta name="description" content="fudic_look, la herramienta del MCP de Fudic: cada caso de un componente fotografiado, junto al último aspecto aprobado. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/look">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_look · Fudic">
+  <meta property="og:description" content="fudic_look, la herramienta del MCP de Fudic: cada caso de un componente fotografiado, junto al último aspecto aprobado. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/look">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+        <li><a href="#details">Detalles</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_look</h1>
+
+<p><code>fudic_look</code> pinta cada caso del fixture de un componente en un navegador de verdad y lo fotografía junto al mismo caso del último aspecto aprobado: <code>new</code>, <code>same</code>, <code>changed</code> o <code>gone</code>. Cuándo caduca el aspecto lo cuenta <a href="/mcp/approval">Aprobar, caducar y reabrir</a>.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>piece</code></td><td>texto</td><td>El <code>.fud</code> del componente, o su carpeta.</td></tr>
+    <tr><td><code>cases</code> <small>opcional</small></td><td>lista</td><td>Solo estos casos de su fixture.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Un botón que nunca se aprobó, desde un agente:</p>
+
+<ui-code>
+<pre><code>fudic_look &#123; "piece": "src/components/tienda-button" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "piece": "src/components/tienda-button/tienda-button.fud",
+  "look": "none",
+  "hash": "adb1110ddcd3",
+  "cases": [
+    &#123;
+      "case": "base",
+      "criteria": [
+        "renders"
+      ],
+      "verdict": "new",
+      "after": ".fudic/looks/tienda-button/adb1110ddcd3/base.png",
+      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/base.png"
+    &#125;,
+    &#123;
+      "case": "secondary",
+      "criteria": [],
+      "verdict": "new",
+      "after": ".fudic/looks/tienda-button/adb1110ddcd3/secondary.png",
+      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/secondary.png"
+    &#125;,
+    &#123;
+      "case": "disabled",
+      "criteria": [],
+      "verdict": "new",
+      "after": ".fudic/looks/tienda-button/adb1110ddcd3/disabled.png",
+      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/disabled.png"
+    &#125;
+  ],
+  "diagnostics": [],
+  "next": "Show the user the before and after of tienda-button and ask whether they approve its look. Only if they do, call …"
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li>Las capturas quedan en <code>.fudic/looks/&lt;tag&gt;/&lt;hash&gt;/</code>, que git ignora. El hash es de los ficheros que pueden cambiar cómo se dibuja, nunca de los píxeles.</li>
+</ul>

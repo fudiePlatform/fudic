@@ -1,0 +1,89 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_fix · Fudic</title>
+  <meta name="description" content="fudic_fix, la herramienta del MCP de Fudic: aplica las reparaciones que tienen una sola opción. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/fix">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_fix · Fudic">
+  <meta property="og:description" content="fudic_fix, la herramienta del MCP de Fudic: aplica las reparaciones que tienen una sola opción. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/fix">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_fix</h1>
+
+<p><code>fudic_fix</code> aplica las reparaciones que tienen una sola opción, las que haría el editor sin preguntar. Después comprueba otra vez y repite, hasta cinco vueltas. Responde lo aplicado, el diff y lo que queda.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>paths</code> <small>opcional</small></td><td>lista</td><td>Ficheros o carpetas. Sin ellos, el proyecto entero.</td></tr>
+    <tr><td><code>codes</code> <small>opcional</small></td><td>lista</td><td>Solo estos códigos.</td></tr>
+    <tr><td><code>dryRun</code> <small>opcional</small></td><td>booleano</td><td>Solo dice qué cambiaría. Por defecto, <code>false</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<p>Un error sin reparación automática queda en la respuesta, con su porqué y su arreglo:</p>
+
+<ui-code>
+<pre><code>fudic_fix &#123; "dryRun": true &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "applied": [],
+  "diff": "",
+  "summary": &#123;
+    "errors": 1,
+    "warnings": 0,
+    "fixable": 0,
+    "files": 1
+  &#125;,
+  "diagnostics": [
+    &#123;
+      "code": "FUD1101",
+      "severity": "error",
+      "message": "`product` travels in the URL, so it is one value: text, a number, a boolean, a date, a uuid or an enum",
+      "at": "src/routes/products.fudapi:13:12",
+      "quote": "product  Product",
+      "fixable": false
+    &#125;
+  ],
+  "codes": &#123;
+    "FUD1101": &#123;
+      "title": "Argument that does not fit in a URL",
+      "why": "Route and `query` arguments, and every argument of a `get`, travel in the URL, one value each: `str`, `bool`, a number, …",
+      "fix": "give it a scalar type, or move it to the body of a verb that has one (`post`, `put`)."
+    &#125;
+  &#125;,
+  "next": "Fix FUD1101 at src/routes/products.fudapi:13:12, then run fudic_check again."
+&#125;</code></pre>
+</ui-code>
+
+<p>Un diagnóstico con varias reparaciones vuelve en <code>options</code>, con el título de cada una, para que el modelo elija y la escriba.</p>

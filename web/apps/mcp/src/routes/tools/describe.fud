@@ -1,0 +1,97 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>fudic_describe · Fudic</title>
+  <meta name="description" content="fudic_describe, la herramienta del MCP de Fudic: una cosa del proyecto entera, con un ejemplo de uso que compila. Sus argumentos y una llamada real con su respuesta.">
+  <link rel="canonical" href="https://fudic.dev/mcp/tools/describe">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="fudic_describe · Fudic">
+  <meta property="og:description" content="fudic_describe, la herramienta del MCP de Fudic: una cosa del proyecto entera, con un ejemplo de uso que compila. Sus argumentos y una llamada real con su respuesta.">
+  <meta property="og:url" content="https://fudic.dev/mcp/tools/describe">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("tools")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#arguments">Argumentos</a></li>
+        <li><a href="#example">Ejemplo</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>fudic_describe</h1>
+
+<p><code>fudic_describe</code> responde una cosa del proyecto entera. De un componente da su enlace, sus props con tipo y valor por defecto, sus slots, eventos, partes y tokens, dónde se usa y un ejemplo de uso que compila. También describe una ruta, un tipo, una función o un token. El modelo lo llama antes de usar un componente, en vez de abrir su fichero.</p>
+
+<h2 id="arguments">Argumentos</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Argumento</th><th scope="col">Tipo</th><th scope="col">Qué es</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>texto</td><td>Un tag, una ruta, un tipo, una función o un token, como los nombra <code>fudic_symbols</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="example">Ejemplo</h2>
+
+<ui-code>
+<pre><code>fudic_describe &#123; "name": "tienda-button" &#125;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>&#123;
+  "kind": "component",
+  "name": "tienda-button",
+  "from": null,
+  "link": "&lt;link rel=\"component\" href=\"../components/tienda-button/tienda-button.fud\"&gt;",
+  "contract": &#123;
+    "props": [
+      &#123;
+        "name": "variant",
+        "required": false,
+        "type": "\"primary\" | \"secondary\"",
+        "default": "'primary'",
+        "doc": "`primary` for the main action of a view, `secondary` for the rest."
+      &#125;,
+      &#123;
+        "name": "disabled",
+        "required": false,
+        "type": "boolean",
+        "default": "false",
+        "doc": "Shown but not pressable."
+      &#125;
+    ],
+    "slots": [],
+    "defaultSlot": true,
+    "events": [],
+    "parts": [],
+    "partsDynamic": false,
+    "tokens": [
+      "--tienda-accent",
+      "--tienda-on-accent"
+    ],
+    "doc": "A button for the actions of the shop: buy, add to cart, cancel. Its text is the default slot."
+  &#125;,
+  "usedIn": [],
+  "example": &#123;
+    "text": "&lt;tienda-button&gt;\n  Text\n&lt;/tienda-button&gt;",
+    "fill": []
+  &#125;,
+  "at": "src/components/tienda-button/tienda-button.fud",
+  "diagnostics": [],
+  "next": null
+&#125;</code></pre>
+</ui-code>
