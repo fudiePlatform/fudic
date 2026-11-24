@@ -25,6 +25,7 @@
         <li><a href="#file">El fichero</a></li>
         <li><a href="#meta"><code>meta</code></a></li>
         <li><a href="#run"><code>run</code></a></li>
+        <li><a href="#self-test"><code>selfTest</code></a></li>
         <li><a href="#ctx">El <code>ctx</code></a></li>
         <li><a href="#blocks">Cómo se ejecuta cada bloque</a></li>
         <li><a href="#workbench">Lo que enseña el workbench</a></li>
@@ -85,7 +86,7 @@ export const selfTest = [];</code></pre>
 
 <p>El módulo lo carga Vite, así que puede importar otros módulos de tu proyecto.</p>
 
-<h3 id="self-test"><code>selfTest</code></h3>
+<h2 id="self-test"><code>selfTest</code></h2>
 
 <p>Un término del proyecto tiene que exportar <code>selfTest</code> (<a href="/docs/reference/diagnostics/FUD0946"><code>FUD0946</code></a>). La forma acordada es una lista de casos, <code>[&#123; args: &#123; count: 1 &#125;, expect: "pass" &#125;]</code>. Hoy Fudic solo comprueba que exista: no lo ejecuta. Los de serie no lo llevan, porque se prueban en el propio paquete.</p>
 
