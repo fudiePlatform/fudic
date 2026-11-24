@@ -90,13 +90,35 @@
     padding-block: var(--guide-space-7);
   }
 
+  /* The header has a fixed height, so the side columns can be cut to what is left of the window
+     below it: the whole menu is in view from the first screen, and it scrolls on its own. */
+  .site-header {
+    box-sizing: border-box;
+    block-size: var(--docs-header);
+  }
+
   .docs-nav,
   .docs-toc {
     position: sticky;
     top: var(--guide-space-5);
     align-self: start;
-    max-height: calc(100vh - 2 * var(--guide-space-5));
+    max-height: calc(100vh - var(--docs-header) - var(--guide-space-7) - var(--guide-space-5));
     overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+:root {
+  --docs-header: calc(2 * var(--guide-space-5) + var(--guide-text-2xl) * var(--guide-leading-normal) + 1px);
+}
+
+/* Thin scrollbars, in the colour of the rules. */
+@supports (scrollbar-width: thin) {
+  html,
+  .docs-nav,
+  .docs-toc {
+    scrollbar-width: thin;
+    scrollbar-color: var(--guide-rule) transparent;
   }
 }
 
@@ -214,10 +236,24 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
-/* Going to a part of the page: the page glides there, only for those who accept motion. */
+/* Going to a part of the page, the page glides there. Opening a chapter or a list, its links
+   fade in from just above: only when it is opened from its summary, not when a page loads with
+   its chapter open. Only opacity and translate move, and only for those who accept motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
+  }
+
+  .docs-nav .chapter[open]:has(> summary:focus) > ol,
+  .docs .toggle[open]:has(> summary:focus) + :is(ol, ul) {
+    animation: docs-open 200ms ease-out;
+  }
+}
+
+@keyframes docs-open {
+  from {
+    opacity: 0;
+    translate: 0 -0.25rem;
   }
 }
 
