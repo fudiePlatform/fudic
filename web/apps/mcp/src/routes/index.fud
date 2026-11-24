@@ -6,11 +6,11 @@
 <head>
   <title>Qué es el MCP · Fudic</title>
   <meta name="description" content="Un modelo de lenguaje no conoce Fudic. El MCP de Fudic se lo enseña desde tu proyecto y le da las herramientas para construir contigo, paso a paso, demostrando que lo que hace funciona.">
-  <link rel="canonical" href="https://fudic.dev/mcp">
+  <link rel="canonical" href="https://fudic.dev/mcp/">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Qué es el MCP · Fudic">
   <meta property="og:description" content="El MCP de Fudic enseña Fudic a un modelo que no lo conoce y lo hace construir contigo, paso a paso.">
-  <meta property="og:url" content="https://fudic.dev/mcp">
+  <meta property="og:url" content="https://fudic.dev/mcp/">
   <meta property="og:site_name" content="Fudic">
 </head>
 

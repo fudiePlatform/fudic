@@ -38,7 +38,12 @@ const dynamic = Object.keys(ids)
   .map(url => ({ url, re: new RegExp("^" + url.replace(/\[[^\]]+\]/g, "[^/]+") + "$") }));
 // A diagnostic page exists only for a code of the catalog: one file per code in @fudic/diagnostics.
 const codes = path.join(web, "../packages/diagnostics/src/codes");
+// An app served under a base (/mcp/) answers its home only with the slash: /mcp is the dev
+// server's "did you mean /mcp/?" page.
+const bases = new Set(apps.map(a => a.base).filter(Boolean));
 function idsOf(url) {
+  if (bases.has(url)) return undefined;
+  if (bases.has(url.replace(/\/$/, ""))) url = url.replace(/\/$/, "");
   if (ids[url]) return ids[url];
   const diagnostic = url.match(/^\/docs\/reference\/diagnostics\/(FUD\d{4})$/);
   if (diagnostic && !fs.existsSync(path.join(codes, diagnostic[1] + ".ts"))) return undefined;
