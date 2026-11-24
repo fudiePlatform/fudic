@@ -45,7 +45,7 @@
   <li><strong>Vista.</strong> El modelo escribe el <code>.fud</code> hasta que pasan los tests y los criterios.</li>
   <li><strong>Conexión.</strong> Si la pieza tiene <code>.fudapi</code>, el modelo escribe el código de servidor de cada función.</li>
   <li><strong>Documentación.</strong> El modelo documenta el componente y cada prop con un comentario JSDoc.</li>
-  <li><strong>Showcase.</strong> En una librería con showcase, el modelo pone al día la página que enseña sus componentes.</li>
+  <li><strong>Catálogo.</strong> Una librería de componentes puede tener un catálogo: unas páginas que enseñan cada componente con todos sus casos, creadas con <a href="/docs/cli/generate/showcase"><code>fudic generate showcase</code></a>. Si la librería lo tiene, el modelo añade el componente nuevo. Si no, la fase no existe.</li>
   <li><strong>Aspecto.</strong> Si la pieza es un componente, el modelo te enseña una captura de cada caso. La fase termina cuando tú apruebas cómo se ve.</li>
 </ol>
 
