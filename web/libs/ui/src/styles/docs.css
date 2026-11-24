@@ -45,6 +45,11 @@
   color: var(--guide-brand);
 }
 
+/* The theme button goes after the links, at the end of the header. */
+.site-header nav {
+  margin-inline-start: auto;
+}
+
 .site-header ul {
   display: flex;
   gap: var(--guide-space-5);

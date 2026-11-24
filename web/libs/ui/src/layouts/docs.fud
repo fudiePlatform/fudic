@@ -6,6 +6,7 @@
   <head>
     <link rel="snippet" href="../snippets/site.fud">
     <link rel="component" href="../components/ui-nav/ui-nav.fud">
+    <link rel="component" href="../components/ui-theme/ui-theme.fud">
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

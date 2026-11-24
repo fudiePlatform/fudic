@@ -11,6 +11,7 @@
         <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
       </ul>
     </nav>
+    <ui-theme></ui-theme>
   </header>
 }
 
