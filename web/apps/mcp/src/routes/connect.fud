@@ -1,0 +1,211 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Desde un agente · Fudic</title>
+  <meta name="description" content="Cómo conectar el MCP de Fudic a tu agente: Claude Code, VS Code con Copilot, Cursor, Antigravity, Windsurf, Codex, Gemini CLI o cualquier cliente que arranque un servidor MCP por stdio. El fichero de cada uno y cómo comprobar que está conectado.">
+  <link rel="canonical" href="https://fudic.dev/mcp/connect">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Desde un agente · Fudic">
+  <meta property="og:description" content="El fichero de cada agente para arrancar el MCP de Fudic, y cómo comprobar que está conectado.">
+  <meta property="og:url" content="https://fudic.dev/mcp/connect">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("connect")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#project">Lo que deja fudic new</a></li>
+        <li><a href="#check">Comprobar que está conectado</a></li>
+        <li><a href="#claude-code">Claude Code</a></li>
+        <li><a href="#vscode">VS Code</a></li>
+        <li><a href="#cursor">Cursor</a></li>
+        <li><a href="#antigravity">Antigravity</a></li>
+        <li><a href="#windsurf">Windsurf</a></li>
+        <li><a href="#codex">Codex</a></li>
+        <li><a href="#gemini-cli">Gemini CLI</a></li>
+        <li><a href="#other">Otros clientes</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#standard">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Desde un agente</h1>
+
+<p>El MCP de Fudic es un programa de tu proyecto, <code>fudic-mcp</code>. Tu agente lo arranca y habla con él por la entrada y la salida estándar, lo que MCP llama <em>stdio</em>. El MCP trabaja con el proyecto de la carpeta en la que arranca.</p>
+
+<h2 id="project">Lo que deja fudic new</h2>
+
+<p><a href="/docs/cli/new"><code>fudic new</code></a> añade <code>@@fudic/mcp</code> a las <code>devDependencies</code> del proyecto y escribe un <code>.mcp.json</code> en su raíz con el comando que lo arranca:</p>
+
+<ui-code .path=".mcp.json">
+<pre><code>&#123; "mcpServers": &#123; "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125; &#125; &#125;</code></pre>
+</ui-code>
+
+<p><code>pnpm exec fudic-mcp</code> arranca el MCP que tiene instalado el proyecto, así que comprueba y compila con el mismo Fudic que el build. Claude Code lee este fichero tal cual. Los demás agentes guardan sus servidores en otro fichero, con otra forma, y cada sección de esta página da el suyo.</p>
+
+<p>En un proyecto creado antes de que existiera el MCP, se instala a mano:</p>
+
+<ui-code>
+<pre><code>pnpm add -D @@fudic/mcp</code></pre>
+</ui-code>
+
+<h2 id="check">Comprobar que está conectado</h2>
+
+<p>Cada agente tiene un panel o un comando que lista sus servidores, y cada sección lo dice. La prueba que vale en todos es pedirle al agente que llame a <code>fudic_status</code>. Esta es la respuesta real en un proyecto recién creado con <code>fudic new tienda</code>:</p>
+
+<ui-code>
+<pre><code>&#123;
+  "fudicVersion": "0.0.1",
+  "commit": "c6e20ef",
+  "phase": "criteria",
+  "project": &#123;
+    "name": "tienda",
+    "kind": "app",
+    "prefix": "tienda",
+    …
+  &#125;,
+  …
+  "next": "Ask the user for what the page shows and does of /. …"
+&#125;</code></pre>
+</ui-code>
+
+<p>Si <code>project.name</code> es el de tu proyecto, el MCP arrancó en su carpeta. Si el agente no encuentra la herramienta, el servidor no arrancó: su panel suele decir por qué.</p>
+
+<h2 id="claude-code">Claude Code</h2>
+
+<p>Claude Code lee el <code>.mcp.json</code> que deja <code>fudic new</code>, sin tocar nada. La primera vez que abres <code>claude</code> en el proyecto, te pide que apruebes los servidores de ese fichero. Hasta entonces, <code>claude mcp list</code> lo muestra en espera:</p>
+
+<ui-code>
+<pre><code>fudic: pnpm exec fudic-mcp - ⏸ Pending approval (run `claude` to approve)</code></pre>
+</ui-code>
+
+<p>Una vez aprobado, <code>/mcp</code> dentro de la sesión lista <code>fudic</code> como conectado. Claude Code arranca el servidor en la carpeta en la que abres <code>claude</code>: ábrelo en la raíz del proyecto. El <code>CLAUDE.md</code> que deja <code>fudic new</code> solo dice <code>@@AGENTS.md</code>, para que Claude Code lea el mismo <code>AGENTS.md</code> que los demás agentes.</p>
+
+<h2 id="vscode">VS Code</h2>
+
+<p>Copilot en VS Code lee el <code>.mcp.json</code> de la raíz del proyecto con el ajuste experimental <code>chat.mcp.workspaceRootConfig.enabled</code> activado. Sin ese ajuste, el servidor va en <code>.vscode/mcp.json</code>, con la clave <code>servers</code> y el tipo obligatorio:</p>
+
+<ui-code .path=".vscode/mcp.json">
+<pre><code>&#123;
+  "servers": &#123;
+    "fudic": &#123; "type": "stdio", "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>VS Code arranca el servidor en la carpeta del espacio de trabajo, así que basta con abrir el proyecto. La orden <em>MCP: List Servers</em> de la paleta de comandos enseña su estado.</p>
+
+<h2 id="cursor">Cursor</h2>
+
+<p>Cursor lee sus servidores de <code>.cursor/mcp.json</code>, en la raíz del proyecto. La forma es la del <code>.mcp.json</code>, con el tipo:</p>
+
+<ui-code .path=".cursor/mcp.json">
+<pre><code>&#123;
+  "mcpServers": &#123;
+    "fudic": &#123; "type": "stdio", "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>El servidor se activa o se apaga en <em>Customize</em>, en la barra lateral. Si no conecta, el panel <em>Output</em> tiene un canal <em>MCP Logs</em> con el error. Abre en Cursor la carpeta del proyecto, y comprueba con <code>fudic_status</code> que el MCP la encuentra.</p>
+
+<h2 id="antigravity">Antigravity</h2>
+
+<p>Antigravity lee los servidores de un espacio de trabajo en <code>.agents/mcp_config.json</code>. La clave es <code>mcpServers</code>, sin tipo, y <code>cwd</code> dice en qué carpeta arranca el servidor:</p>
+
+<ui-code .path=".agents/mcp_config.json">
+<pre><code>&#123;
+  "mcpServers": &#123;
+    "fudic": &#123;
+      "command": "pnpm",
+      "args": ["exec", "fudic-mcp"],
+      "cwd": "/home/ana/tienda"
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>En <code>cwd</code> va la ruta completa de tu proyecto. En el editor, el fichero se abre desde el menú «…» del panel del agente, en <em>MCP Servers</em> y luego <em>Manage MCP Servers</em>. En la terminal, <code>/mcp</code> enseña cada servidor con su estado.</p>
+
+<h2 id="windsurf">Windsurf</h2>
+
+<p>La documentación de Windsurf está hoy en la de Devin Desktop. Los servidores de un proyecto van en <code>.devin/mcp_config.json</code>, con la clave <code>mcpServers</code> y sin tipo:</p>
+
+<ui-code .path=".devin/mcp_config.json">
+<pre><code>&#123;
+  "mcpServers": &#123;
+    "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>La lista de servidores está en <em>Customize</em>, dentro de <em>MCPs</em>, con un botón para refrescarla después de añadir uno. Abre la carpeta del proyecto y comprueba con <code>fudic_status</code> que el MCP la encuentra.</p>
+
+<h2 id="codex">Codex</h2>
+
+<p>Codex guarda sus servidores en TOML, en <code>~/.codex/config.toml</code> o en el <code>.codex/config.toml</code> de un proyecto de confianza. La CLI, la extensión del editor y la app de escritorio comparten ese fichero. Cada servidor es una tabla <code>[mcp_servers.nombre]</code>, y <code>cwd</code> dice en qué carpeta arranca:</p>
+
+<ui-code .path=".codex/config.toml">
+<pre><code>[mcp_servers.fudic]
+command = "pnpm"
+args = ["exec", "fudic-mcp"]
+cwd = "/home/ana/tienda"</code></pre>
+</ui-code>
+
+<p><code>codex mcp list</code> en la terminal, o <code>/mcp</code> dentro de una sesión, enseña los servidores.</p>
+
+<h2 id="gemini-cli">Gemini CLI</h2>
+
+<p>Gemini CLI lee los servidores de un proyecto en <code>.gemini/settings.json</code>, con la clave <code>mcpServers</code> y un <code>cwd</code> opcional:</p>
+
+<ui-code .path=".gemini/settings.json">
+<pre><code>&#123;
+  "mcpServers": &#123;
+    "fudic": &#123;
+      "command": "pnpm",
+      "args": ["exec", "fudic-mcp"],
+      "cwd": "/home/ana/tienda"
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p><code>/mcp</code> dentro de una sesión, o <code>gemini mcp list</code> en la terminal, enseña cada servidor y sus herramientas. En una carpeta que Gemini CLI no considera de confianza, el servidor sale desconectado: <code>gemini trust</code> la marca como de confianza. Desde junio de 2026, Antigravity CLI sustituye a Gemini CLI en las cuentas gratuitas, y su configuración es la de <a href="#antigravity">Antigravity</a>.</p>
+
+<h2 id="other">Otros clientes</h2>
+
+<p>Cualquier cliente que arranque un servidor MCP por stdio puede usar el de Fudic. Necesita tres datos: el comando <code>pnpm</code>, los argumentos <code>exec fudic-mcp</code> y la carpeta del proyecto como carpeta de trabajo.</p>
+
+<p>Si el cliente no deja elegir la carpeta, arranca el servidor en la que abres el proyecto. Comprueba con <code>fudic_status</code> que el nombre del proyecto es el tuyo.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>Una instalación global.</strong> Con <code>npm install -g @@fudic/mcp</code>, el comando es <code>fudic-mcp</code>, sin <code>pnpm exec</code>. Aun así, el MCP comprueba y compila con el Fudic que tiene instalado el proyecto.</li>
+  <li><strong>Sin herramientas de ficheros.</strong> Por stdio, el MCP no ofrece <code>fudic_files</code>, <code>fudic_read</code> ni <code>fudic_write</code>: el agente ya tiene las suyas. Son para <a href="/mcp/connect/chat">un chat</a>.</li>
+  <li><strong>En un workspace</strong>, el MCP arranca en su raíz y comprueba cada app y cada librería por separado, como su build. Para trabajar con las funciones del <code>.fudapi</code> de una app, arranca en la carpeta de esa app.</li>
+</ul>
+
+<ui-note>
+  <p>Cada configuración de esta página está comprobada contra la documentación oficial de su entorno en noviembre de 2026. Los formatos cambian: si uno no funciona, su documentación manda.</p>
+</ui-note>
+
+<h2 id="standard">El estándar</h2>
+
+<ul>
+  <li><a href="https://modelcontextprotocol.io/specification/latest/basic/transports" target="_blank" rel="noopener">Transports</a>: cómo habla un cliente con un servidor MCP local por stdio.</li>
+  <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a>: el fichero que <code>fudic new</code> deja para que cualquier agente sepa que tiene que usar el MCP.</li>
+  <li>La documentación de cada entorno: <a href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noopener">Claude Code</a>, <a href="https://code.visualstudio.com/docs/agents/reference/mcp-configuration" target="_blank" rel="noopener">VS Code</a>, <a href="https://cursor.com/docs/context/mcp" target="_blank" rel="noopener">Cursor</a>, <a href="https://antigravity.google/docs/mcp" target="_blank" rel="noopener">Antigravity</a>, <a href="https://docs.devin.ai/desktop/cascade/mcp" target="_blank" rel="noopener">Windsurf</a>, <a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noopener">Codex</a> y <a href="https://geminicli.com/docs/tools/mcp-server/" target="_blank" rel="noopener">Gemini CLI</a>.</li>
+</ul>

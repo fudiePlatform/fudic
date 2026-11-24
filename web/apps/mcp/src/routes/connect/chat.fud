@@ -1,0 +1,113 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Desde un chat · Fudic</title>
+  <meta name="description" content="Con un chat, como Claude en la web, el MCP de Fudic trabaja igual que con un agente. Cambian tres cosas: trae sus herramientas de ficheros, dibuja cada pieza en la conversación y abre la app en una URL.">
+  <link rel="canonical" href="https://fudic.dev/mcp/connect/chat">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Desde un chat · Fudic">
+  <meta property="og:description" content="El MCP de Fudic desde un chat: sus herramientas de ficheros, la pieza en la conversación y la app en una URL.">
+  <meta property="og:url" content="https://fudic.dev/mcp/connect/chat">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("chat")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#files">Los ficheros</a></li>
+        <li><a href="#piece">La pieza, en la conversación</a></li>
+        <li><a href="#app">La app, en una URL</a></li>
+        <li><a href="#start">Empezar</a></li>
+        <li><a href="#connection">La conexión</a></li>
+        <li><a href="#standard">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Desde un chat</h1>
+
+<p>Con un chat, como Claude en la web, el MCP trabaja igual que con un agente: las mismas herramientas, las mismas fases y las mismas aprobaciones. Cambian tres cosas. El MCP trae sus propias herramientas de ficheros, cada pieza se dibuja en la conversación y la app se abre en una URL.</p>
+
+<h2 id="files">Los ficheros</h2>
+
+<p>Un chat no tiene herramientas para leer ni escribir en tu ordenador. Por eso el MCP añade tres, que solo existen cuando lo usa un chat:</p>
+
+<ul>
+  <li><code>fudic_files</code> lista los ficheros del proyecto, sin <code>node_modules</code>, <code>dist</code>, <code>.git</code>, <code>.fudic</code> ni lo que git ignora.</li>
+  <li><code>fudic_read</code> lee un fichero con sus números de línea.</li>
+  <li><code>fudic_write</code> escribe un fichero entero, o cambia trozos de texto que aparecen una sola vez en él.</li>
+</ul>
+
+<p>Las tres trabajan dentro de la carpeta del proyecto y no ejecutan nada. <code>fudic_write</code> responde enseguida con los diagnósticos de lo que ha escrito, como <code>fudic_check</code>. Esta es una llamada real que usa en la página de inicio un nombre que no existe:</p>
+
+<ui-code>
+<pre><code>fudic_write &#123;
+  "path": "src/routes/index.fud",
+  "edits": [&#123; "old": "&lt;h1&gt;Tienda&lt;/h1&gt;", "new": "&lt;h1&gt;@@title&lt;/h1&gt;" &#125;]
+&#125;</code></pre>
+</ui-code>
+
+<p>La respuesta trae el error, dónde está, por qué pasa y el siguiente paso:</p>
+
+<ui-code>
+<pre><code>&#123;
+  "written": "src/routes/index.fud",
+  "summary": &#123; "errors": 1, "warnings": 0, "fixable": 0, "files": 1 &#125;,
+  "diagnostics": [
+    &#123;
+      "code": "FUD0907",
+      "severity": "error",
+      "message": "this name is not available to the view: …",
+      "at": "src/routes/index.fud:7:6",
+      "quote": "&lt;h1&gt;@@title&lt;/h1&gt;",
+      "fixable": false
+    &#125;
+  ],
+  "codes": &#123; "FUD0907": &#123; "title": "Name not available to the view", "why": "…", "fix": "…" &#125; &#125;,
+  "next": "Fix FUD0907 at src/routes/index.fud:7:6, then run fudic_check again."
+&#125;</code></pre>
+</ui-code>
+
+<p>Con un agente, el MCP no ofrece estas tres herramientas, porque el agente ya tiene las suyas.</p>
+
+<h2 id="piece">La pieza, en la conversación</h2>
+
+<p>Cuando pides ver un componente o una página, el modelo llama a <code>fudic_render</code>. Un chat que admite MCP Apps, como Claude en la web, dibuja la pieza dentro de la conversación. Según lo que pida el modelo, enseña su estructura accesible, su HTML o una captura de un navegador de verdad, para cuando importan el CSS y la maquetación. Un agente recibe lo mismo como texto, y las capturas como ficheros.</p>
+
+<p>Ver una pieza no la aprueba. Solo cuenta lo que dices tú en la conversación, como explica <a href="/mcp/approval">Aprobar, caducar y reabrir</a>.</p>
+
+<h2 id="app">La app, en una URL</h2>
+
+<p>Para ver la app entera, el modelo llama a <code>fudic_preview</code>. El MCP arranca el servidor de desarrollo del proyecto y responde con una URL, que se abre en tu navegador o en el móvil. Lo que el modelo escribe se ve en esa página sin recargarla.</p>
+
+<h2 id="start">Empezar</h2>
+
+<p>El MCP trae un prompt, <code>new-app</code>, que en un chat aparece en su menú como <em>New fudic app</em>. Elegirlo es pedirle al modelo esto:</p>
+
+<ui-code>
+<pre><code>I want to create a fudic app or library from this conversation. Start with fudic_status and do what it says. Ask me only what you need: what it is for, its pages or components, and the data each one shows.</code></pre>
+</ui-code>
+
+<p>También vale pedirlo con tus palabras, en tu idioma. A partir de ahí, la conversación sigue las fases de siempre. <a href="/mcp/conversation">Una conversación de principio a fin</a> cuenta una entera.</p>
+
+<h2 id="connection">La conexión</h2>
+
+<p>Un chat se conecta desde los servidores de quien lo ofrece, no desde tu navegador, así que necesita llegar hasta el proyecto en tu ordenador. Cómo se hace se explicará aquí cuando esté listo para usarse.</p>
+
+<h2 id="standard">El estándar</h2>
+
+<ul>
+  <li><a href="https://modelcontextprotocol.io/extensions/apps/overview" target="_blank" rel="noopener">MCP Apps</a>: la extensión con la que un chat dibuja la pieza dentro de la conversación.</li>
+  <li><a href="https://modelcontextprotocol.io/specification/latest/basic/transports" target="_blank" rel="noopener">Transports</a>: cómo habla un chat con un servidor MCP remoto por HTTP.</li>
+  <li><a href="https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noopener">Custom connectors</a>: cómo se añade un servidor MCP remoto a Claude.</li>
+</ul>

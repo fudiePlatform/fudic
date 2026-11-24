@@ -125,6 +125,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   la app no tiene layout propio, su layout por defecto es el de `@web/ui`, y `fudic g page roles`
   revienta igual **sin** `--layout`. Con la ruta relativa genera la página, con el `href` frágil
   y títulos como «Roles», corregidos a mano.
+- **Y otra vez** con las dos páginas de Conectarlo de la sección MCP (`connect`, `connect/chat`), el
+  2026-11-24: revienta con `--layout @web/ui/layouts/docs.fud`; con la ruta relativa, el `href`
+  frágil y los títulos «Connect» y «Chat», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -255,3 +258,20 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** Se cambió a mano por `workspace:*`, en su sitio por orden alfabético.
 - **Qué debería hacer.** Escribir la dependencia como las demás `@fudic/*` del proyecto
   (`workspace:*` dentro de un workspace) y en orden.
+
+## 20. `fudic new` solo configura el MCP para Claude Code, y `AGENTS.md` habla del túnel
+
+- **Qué pasó.** Al escribir «Desde un agente» de la sección MCP (2026-11-24), con un proyecto
+  recién creado con `fudic new tienda`. La CLI deja `.mcp.json` (`mcpServers`), que lee Claude
+  Code y, con un ajuste experimental, Copilot en VS Code. Cursor (`.cursor/mcp.json`), Antigravity
+  (`.agents/mcp_config.json`), Windsurf (`.devin/mcp_config.json`), Codex (`.codex/config.toml`) y
+  Gemini CLI (`.gemini/settings.json`) leen otro fichero, y el agente no encuentra el servidor.
+  Además, `AGENTS.md` (`packages/cli/templates/agent/AGENTS.md.tmpl`) dice «To use it from a chat,
+  run `pnpm exec fudic-mcp --http --tunnel`»: es lo que leen todos los agentes, y les cuenta cómo
+  abrir el proyecto a internet.
+- **Cómo se resolvió en la web.** La página da el fichero de cada entorno, comprobado contra su
+  documentación oficial, y no menciona la línea del túnel.
+- **Qué debería hacer.** Una opción de `fudic new` (o un `fudic add agent <entorno>`) que escriba
+  el fichero del agente que se usa. Y quitar de `AGENTS.md` la línea del chat: lo hace quien
+  conecta el chat, no el agente.
+

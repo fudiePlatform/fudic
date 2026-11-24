@@ -696,3 +696,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Meter en el hash las piezas de la guía que el componente adopta
   (`shadowrootadoptedstylesheets`) y la hoja de tokens, y no resolver como ruta un import de
   paquete.
+
+## 49. `fudic-mcp` solo encuentra el proyecto por la carpeta en la que arranca
+
+- **Qué pasó.** Al escribir «Desde un agente» de la sección MCP (2026-11-24). `fudic-mcp` toma
+  como proyecto su carpeta de trabajo (`main.ts`, `deps.cwd`) y no tiene una opción para darle
+  otra. Codex, Gemini CLI y Antigravity documentan una clave `cwd`, pero en un fichero que se
+  commitea obliga a escribir una ruta absoluta de una máquina. Cursor y Windsurf no documentan en
+  qué carpeta arrancan un servidor. Claude Code tampoco: lo que garantiza es la variable
+  `CLAUDE_PROJECT_DIR`, con la raíz del proyecto, en el entorno del servidor.
+- **Cómo se resolvió en la web.** La página pone `cwd` donde existe, con la ruta del proyecto, y
+  pide comprobar con `fudic_status` que `project.name` es el del proyecto.
+- **Qué debería hacer.** Aceptar la carpeta del proyecto como argumento y, sin él, leer
+  `CLAUDE_PROJECT_DIR` antes que la carpeta de trabajo. Y si en la carpeta no hay un proyecto, que
+  `fudic_status` lo diga con la ruta que ha mirado.
+
