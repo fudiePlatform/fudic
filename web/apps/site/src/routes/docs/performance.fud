@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#this-page">Lo que descarga esta página</a></li>
         <li><a href="#ttfb">El primer byte, cuanto antes</a></li>
@@ -32,7 +31,6 @@
         <li><a href="#runtime">El runtime, en piezas</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

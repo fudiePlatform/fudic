@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#what">Qué es</a></li>
         <li><a href="#why">Por qué existe</a></li>
@@ -33,7 +32,6 @@
         <li><a href="#syntax">La forma del fichero</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

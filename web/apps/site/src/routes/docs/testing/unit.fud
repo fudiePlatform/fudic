@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#mount">Montar un componente</a></li>
         <li><a href="#server">Las funciones de servidor</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#which">Test unitario o criterio</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

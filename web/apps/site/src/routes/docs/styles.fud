@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#style">El &lt;style&gt; del componente</a></li>
         <li><a href="#boundary">Lo que cruza la frontera</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#style-attribute">El atributo style</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

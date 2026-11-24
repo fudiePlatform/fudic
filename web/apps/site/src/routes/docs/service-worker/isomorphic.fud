@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#three">Tres sitios, el mismo HTML</a></li>
         <li><a href="#cut">Lo que se ejecuta al pintar</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#rules">Para que pinte igual en todas partes</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

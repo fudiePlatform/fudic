@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#three-attributes">Tres atributos</a></li>
         <li><a href="#control">control</a></li>
@@ -32,7 +31,6 @@
         <li><a href="#submit">El envío</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

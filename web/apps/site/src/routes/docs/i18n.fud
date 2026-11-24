@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#compiled">Se traduce al compilar</a></li>
         <li><a href="#locales">Declarar los idiomas</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#sentence">La unidad es la frase</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

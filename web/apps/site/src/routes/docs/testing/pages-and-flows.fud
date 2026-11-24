@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#page">Una página</a></li>
         <li><a href="#fixture">Lo que el fixture nombra es falso</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#people">Dos personas a la vez</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

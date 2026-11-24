@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#rule">No se tocan</a></li>
         <li><a href="#fudic">.fudic</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#fudlog">.fudlog</a></li>
         <li><a href="#locales">Los catálogos</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

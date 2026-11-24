@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#service">Un servicio</a></li>
         <li><a href="#inject">Pedirlo con inject()</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#options">Opcional y uno nuevo cada vez</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

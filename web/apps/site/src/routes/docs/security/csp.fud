@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#what">Qué es una CSP</a></li>
         <li><a href="#template">La de la plantilla</a></li>
@@ -33,7 +32,6 @@
         <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#prefix">Un prefijo por idioma</a></li>
         <li><a href="#redirect">La página sin prefijo</a></li>
@@ -32,7 +31,6 @@
         <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

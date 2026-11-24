@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#file-shape">La forma del fichero</a></li>
         <li><a href="#props">Props</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#use-another-component">Usar otro componente</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

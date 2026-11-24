@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#pieces">Una hoja por elemento</a></li>
         <li><a href="#where">Siempre pierde</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#sheet">Lo que traerá @@sheet</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

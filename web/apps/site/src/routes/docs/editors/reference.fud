@@ -19,8 +19,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#snippets-fud">Snippets de <code>.fud</code></a></li>
         <li><a href="#snippets-fudapi">Snippets de <code>.fudapi</code></a></li>
@@ -28,7 +27,6 @@
         <li><a href="#commands">Órdenes</a></li>
         <li><a href="#settings">Ajustes</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

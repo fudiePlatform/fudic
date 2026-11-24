@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#pruning">Solo el CSS que se usa</a></li>
         <li><a href="#exact">Cómo lo sabe</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

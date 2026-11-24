@@ -20,15 +20,13 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#why">Por qué una cookie</a></li>
         <li><a href="#sign-in">Entrar, salir y leer la sesión</a></li>
         <li><a href="#private">Lo que lee la sesión es privado</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

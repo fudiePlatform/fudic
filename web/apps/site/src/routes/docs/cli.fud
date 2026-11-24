@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#start">Arrancar</a></li>
         <li><a href="#words">Cuatro palabras</a></li>
@@ -32,7 +31,6 @@
         <li><a href="#build">El build y los tipos</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

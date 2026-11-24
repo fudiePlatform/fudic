@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#file">El fichero</a></li>
         <li><a href="#meta"><code>meta</code></a></li>
@@ -31,7 +30,6 @@
         <li><a href="#workbench">Lo que enseña el workbench</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

@@ -12,6 +12,12 @@
 
   const copied = signal(false);
 
+  // A block wider than the page scrolls sideways; without focus, a keyboard could not scroll it.
+  onConnect((host) => {
+    const pre = host.querySelector("pre");
+    if (pre !== null && pre.scrollWidth > pre.clientWidth) pre.tabIndex = 0;
+  });
+
   async function copy(event: MouseEvent) {
     const root = (event.currentTarget as HTMLElement).getRootNode() as ShadowRoot;
     const text = root.host.querySelector("pre")?.textContent ?? "";

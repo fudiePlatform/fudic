@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#attributes">Atributos</a></li>
         <li><a href="#classes">Clases</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#spread-and-rest">Spread y resto</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

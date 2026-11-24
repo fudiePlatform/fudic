@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#check">Comprobar que está conectado</a></li>
         <li><a href="#claude-code">Claude Code</a></li>
@@ -34,7 +33,6 @@
         <li><a href="#other">Otros clientes</a></li>
         <li><a href="#standard">El estándar</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

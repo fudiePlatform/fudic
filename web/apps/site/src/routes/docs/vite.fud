@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#what">Vite sirve, Fudic compila</a></li>
         <li><a href="#vite-config">Lo que lee de Vite</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

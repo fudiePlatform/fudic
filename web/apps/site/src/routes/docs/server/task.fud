@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#why">Para qué</a></li>
         <li><a href="#source">Una búsqueda que sigue a un signal</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#lifetime">Cuánto vive</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

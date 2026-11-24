@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#fields">Un campo de fichero</a></li>
         <li><a href="#bind">En la vista</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#progress">Progreso y cancelación</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

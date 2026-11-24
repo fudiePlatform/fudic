@@ -100,35 +100,33 @@
   }
 }
 
-/* On a wide screen the lists are always open: the summary goes, the content stays. Without
-   ::details-content they stay as they are on a phone, closed and openable. */
-@supports selector(::details-content) {
-  @media (min-width: 64rem) {
-    .docs details::details-content {
-      content-visibility: visible;
-      display: contents;
-    }
+/* The two lists and their toggles. On a phone each list hides behind the toggle written just
+   before it, closed until it is opened; on a wide screen the toggle goes and the list stays. The
+   list is beside the toggle, not inside it, so its links are never inside a closed <details>. */
 
-    .docs details > summary {
-      display: none;
-    }
-
-    .docs details {
-      padding: 0;
-      border: 0;
-    }
-  }
-}
-
-/* The chapters and the headings of the page */
-
-.docs summary {
+.docs .toggle > summary {
   padding: var(--guide-space-2) var(--guide-space-3);
   font-weight: var(--guide-weight-medium);
   background: var(--guide-raised);
   border-radius: var(--guide-radius-sm);
   cursor: pointer;
 }
+
+.docs .toggle:not([open]) + :is(ol, ul) {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .docs .toggle {
+    display: none;
+  }
+
+  .docs .toggle:not([open]) + :is(ol, ul) {
+    display: block;
+  }
+}
+
+/* The chapters and the headings of the page */
 
 .docs-nav ol,
 .docs-toc ul {
@@ -142,12 +140,20 @@
   margin: 0;
 }
 
+.docs .toggle,
 .docs-nav .chapter {
-  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.docs-nav .chapter > summary {
+  margin: 0;
   padding: var(--guide-space-3) var(--guide-space-3) var(--guide-space-1);
   font-size: var(--guide-text-sm);
   font-weight: var(--guide-weight-medium);
   color: var(--guide-ink);
+  cursor: pointer;
 }
 
 .docs-nav li li,
@@ -168,6 +174,7 @@
 /* The two side columns scroll on their own, so a ring drawn outside a link is cut at their
    edges: inside the link, it is whole. */
 .docs-nav a:focus-visible,
+.docs-nav summary:focus-visible,
 .docs-toc a:focus-visible {
   outline-offset: calc(-1 * var(--guide-focus-width));
 }

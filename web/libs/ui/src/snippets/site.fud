@@ -21,221 +21,257 @@
 }
 
 @snippet docsNav(current: string) {
-  <details class="chapters">
-    <summary>Capítulos</summary>
-    <ol>
+  <details class="toggle"><summary>Capítulos</summary></details>
+  <ol class="chapters">
       <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar con Fudic</a></li>
       <li>
-        <span class="chapter">El lenguaje <code>.fud</code></span>
-        <ol>
-          <li><a href="/docs/template-syntax" aria-current=@(current === "template-syntax" ? "page" : false)>Sintaxis de plantillas</a></li>
-          <li><a href="/docs/template-syntax/components" aria-current=@(current === "components" ? "page" : false)>Componentes</a></li>
-          <li><a href="/docs/template-syntax/routes-and-layouts" aria-current=@(current === "routes-and-layouts" ? "page" : false)>Rutas y layouts</a></li>
-          <li><a href="/docs/template-syntax/snippets" aria-current=@(current === "snippets" ? "page" : false)>Snippets</a></li>
-          <li><a href="/docs/template-syntax/expressions" aria-current=@(current === "expressions" ? "page" : false)>Expresiones y control de flujo</a></li>
-          <li><a href="/docs/template-syntax/await" aria-current=@(current === "await" ? "page" : false)><code>@@await</code></a></li>
-          <li><a href="/docs/template-syntax/attributes-and-properties" aria-current=@(current === "attributes-and-properties" ? "page" : false)>Atributos y propiedades</a></li>
-          <li><a href="/docs/template-syntax/events" aria-current=@(current === "events" ? "page" : false)>Eventos</a></li>
-          <li><a href="/docs/template-syntax/ref-and-raw" aria-current=@(current === "ref-and-raw" ? "page" : false)><code>ref</code> y <code>@@raw</code></a></li>
+        <details class="chapter" open=@(current === "template-syntax" || current === "components" || current === "routes-and-layouts" || current === "snippets" || current === "expressions" || current === "await" || current === "attributes-and-properties" || current === "events" || current === "ref-and-raw")>
+          <summary>El lenguaje <code>.fud</code></summary>
+          <ol>
+            <li><a href="/docs/template-syntax" aria-current=@(current === "template-syntax" ? "page" : false)>Sintaxis de plantillas</a></li>
+            <li><a href="/docs/template-syntax/components" aria-current=@(current === "components" ? "page" : false)>Componentes</a></li>
+            <li><a href="/docs/template-syntax/routes-and-layouts" aria-current=@(current === "routes-and-layouts" ? "page" : false)>Rutas y layouts</a></li>
+            <li><a href="/docs/template-syntax/snippets" aria-current=@(current === "snippets" ? "page" : false)>Snippets</a></li>
+            <li><a href="/docs/template-syntax/expressions" aria-current=@(current === "expressions" ? "page" : false)>Expresiones y control de flujo</a></li>
+            <li><a href="/docs/template-syntax/await" aria-current=@(current === "await" ? "page" : false)><code>@@await</code></a></li>
+            <li><a href="/docs/template-syntax/attributes-and-properties" aria-current=@(current === "attributes-and-properties" ? "page" : false)>Atributos y propiedades</a></li>
+            <li><a href="/docs/template-syntax/events" aria-current=@(current === "events" ? "page" : false)>Eventos</a></li>
+            <li><a href="/docs/template-syntax/ref-and-raw" aria-current=@(current === "ref-and-raw" ? "page" : false)><code>ref</code> y <code>@@raw</code></a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Reactividad y ciclo de vida</span>
-        <ol>
-          <li><a href="/docs/reactivity" aria-current=@(current === "reactivity" ? "page" : false)>Signals</a></li>
-          <li><a href="/docs/reactivity/lifecycle" aria-current=@(current === "lifecycle" ? "page" : false)>Ciclo de vida</a></li>
-          <li><a href="/docs/reactivity/hydration" aria-current=@(current === "hydration" ? "page" : false)>Hidratación</a></li>
+        <details class="chapter" open=@(current === "reactivity" || current === "lifecycle" || current === "hydration")>
+          <summary>Reactividad y ciclo de vida</summary>
+          <ol>
+            <li><a href="/docs/reactivity" aria-current=@(current === "reactivity" ? "page" : false)>Signals</a></li>
+            <li><a href="/docs/reactivity/lifecycle" aria-current=@(current === "lifecycle" ? "page" : false)>Ciclo de vida</a></li>
+            <li><a href="/docs/reactivity/hydration" aria-current=@(current === "hydration" ? "page" : false)>Hidratación</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Estilos</span>
-        <ol>
-          <li><a href="/docs/styles" aria-current=@(current === "styles" ? "page" : false)>El CSS de un componente</a></li>
-          <li><a href="/docs/styles/shared" aria-current=@(current === "styles-shared" ? "page" : false)>Hojas compartidas</a></li>
-          <li><a href="/docs/styles/guide" aria-current=@(current === "styles-guide" ? "page" : false)>La guía de estilos</a></li>
-          <li><a href="/docs/styles/delivery" aria-current=@(current === "styles-delivery" ? "page" : false)>Cómo llega el CSS</a></li>
+        <details class="chapter" open=@(current === "styles" || current === "styles-shared" || current === "styles-guide" || current === "styles-delivery")>
+          <summary>Estilos</summary>
+          <ol>
+            <li><a href="/docs/styles" aria-current=@(current === "styles" ? "page" : false)>El CSS de un componente</a></li>
+            <li><a href="/docs/styles/shared" aria-current=@(current === "styles-shared" ? "page" : false)>Hojas compartidas</a></li>
+            <li><a href="/docs/styles/guide" aria-current=@(current === "styles-guide" ? "page" : false)>La guía de estilos</a></li>
+            <li><a href="/docs/styles/delivery" aria-current=@(current === "styles-delivery" ? "page" : false)>Cómo llega el CSS</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Servidor y datos</span>
-        <ol>
-          <li><a href="/docs/server" aria-current=@(current === "server" ? "page" : false)>El contrato <code>.fudapi</code></a></li>
-          <li><a href="/docs/server/types" aria-current=@(current === "server-types" ? "page" : false)>Tipos</a></li>
-          <li><a href="/docs/server/functions" aria-current=@(current === "server-functions" ? "page" : false)>Funciones de servidor</a></li>
-          <li><a href="/docs/server/task" aria-current=@(current === "server-task" ? "page" : false)><code>task</code></a></li>
-          <li><a href="/docs/server/middlewares" aria-current=@(current === "server-middlewares" ? "page" : false)>Middlewares y cadena</a></li>
-          <li><a href="/docs/server/rules" aria-current=@(current === "server-rules" ? "page" : false)>Reglas y patrones</a></li>
-          <li><a href="/docs/server/pipes" aria-current=@(current === "server-pipes" ? "page" : false)>Pipes</a></li>
-          <li><a href="/docs/server/session" aria-current=@(current === "server-session" ? "page" : false)>Sesión y cookies</a></li>
-          <li><a href="/docs/server/running" aria-current=@(current === "server-running" ? "page" : false)>El servidor</a></li>
+        <details class="chapter" open=@(current === "server" || current === "server-types" || current === "server-functions" || current === "server-task" || current === "server-middlewares" || current === "server-rules" || current === "server-pipes" || current === "server-session" || current === "server-running")>
+          <summary>Servidor y datos</summary>
+          <ol>
+            <li><a href="/docs/server" aria-current=@(current === "server" ? "page" : false)>El contrato <code>.fudapi</code></a></li>
+            <li><a href="/docs/server/types" aria-current=@(current === "server-types" ? "page" : false)>Tipos</a></li>
+            <li><a href="/docs/server/functions" aria-current=@(current === "server-functions" ? "page" : false)>Funciones de servidor</a></li>
+            <li><a href="/docs/server/task" aria-current=@(current === "server-task" ? "page" : false)><code>task</code></a></li>
+            <li><a href="/docs/server/middlewares" aria-current=@(current === "server-middlewares" ? "page" : false)>Middlewares y cadena</a></li>
+            <li><a href="/docs/server/rules" aria-current=@(current === "server-rules" ? "page" : false)>Reglas y patrones</a></li>
+            <li><a href="/docs/server/pipes" aria-current=@(current === "server-pipes" ? "page" : false)>Pipes</a></li>
+            <li><a href="/docs/server/session" aria-current=@(current === "server-session" ? "page" : false)>Sesión y cookies</a></li>
+            <li><a href="/docs/server/running" aria-current=@(current === "server-running" ? "page" : false)>El servidor</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Páginas y rutas</span>
-        <ol>
-          <li><a href="/docs/routing" aria-current=@(current === "routing" ? "page" : false)>Rutas por carpetas</a></li>
-          <li><a href="/docs/routing/data" aria-current=@(current === "routing-data" ? "page" : false)>Los datos de la página</a></li>
-          <li><a href="/docs/routing/rendering" aria-current=@(current === "routing-rendering" ? "page" : false)>Cuándo se pinta: los modos</a></li>
-          <li><a href="/docs/routing/error-page" aria-current=@(current === "routing-error-page" ? "page" : false)>La página de error</a></li>
-          <li><a href="/docs/routing/early-hints" aria-current=@(current === "routing-early-hints" ? "page" : false)>Early hints</a></li>
+        <details class="chapter" open=@(current === "routing" || current === "routing-data" || current === "routing-rendering" || current === "routing-error-page" || current === "routing-early-hints")>
+          <summary>Páginas y rutas</summary>
+          <ol>
+            <li><a href="/docs/routing" aria-current=@(current === "routing" ? "page" : false)>Rutas por carpetas</a></li>
+            <li><a href="/docs/routing/data" aria-current=@(current === "routing-data" ? "page" : false)>Los datos de la página</a></li>
+            <li><a href="/docs/routing/rendering" aria-current=@(current === "routing-rendering" ? "page" : false)>Cuándo se pinta: los modos</a></li>
+            <li><a href="/docs/routing/error-page" aria-current=@(current === "routing-error-page" ? "page" : false)>La página de error</a></li>
+            <li><a href="/docs/routing/early-hints" aria-current=@(current === "routing-early-hints" ? "page" : false)>Early hints</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Formularios</span>
-        <ol>
-          <li><a href="/docs/forms" aria-current=@(current === "forms" ? "page" : false)>El formulario</a></li>
-          <li><a href="/docs/forms/binding" aria-current=@(current === "forms-binding" ? "page" : false)>Enlazar la vista</a></li>
-          <li><a href="/docs/forms/validation" aria-current=@(current === "forms-validation" ? "page" : false)>Validación y validez</a></li>
-          <li><a href="/docs/forms/submitting" aria-current=@(current === "forms-submitting" ? "page" : false)>Enviar al servidor</a></li>
-          <li><a href="/docs/forms/events" aria-current=@(current === "forms-events" ? "page" : false)>Resultado y error</a></li>
-          <li><a href="/docs/forms/files" aria-current=@(current === "forms-files" ? "page" : false)>Ficheros</a></li>
-          <li><a href="/docs/forms/form-associated" aria-current=@(current === "forms-form-associated" ? "page" : false)>Controles form-associated</a></li>
+        <details class="chapter" open=@(current === "forms" || current === "forms-binding" || current === "forms-validation" || current === "forms-submitting" || current === "forms-events" || current === "forms-files" || current === "forms-form-associated")>
+          <summary>Formularios</summary>
+          <ol>
+            <li><a href="/docs/forms" aria-current=@(current === "forms" ? "page" : false)>El formulario</a></li>
+            <li><a href="/docs/forms/binding" aria-current=@(current === "forms-binding" ? "page" : false)>Enlazar la vista</a></li>
+            <li><a href="/docs/forms/validation" aria-current=@(current === "forms-validation" ? "page" : false)>Validación y validez</a></li>
+            <li><a href="/docs/forms/submitting" aria-current=@(current === "forms-submitting" ? "page" : false)>Enviar al servidor</a></li>
+            <li><a href="/docs/forms/events" aria-current=@(current === "forms-events" ? "page" : false)>Resultado y error</a></li>
+            <li><a href="/docs/forms/files" aria-current=@(current === "forms-files" ? "page" : false)>Ficheros</a></li>
+            <li><a href="/docs/forms/form-associated" aria-current=@(current === "forms-form-associated" ? "page" : false)>Controles form-associated</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Service Worker</span>
-        <ol>
-          <li><a href="/docs/service-worker" aria-current=@(current === "service-worker" ? "page" : false)>Qué hace</a></li>
-          <li><a href="/docs/service-worker/caching" aria-current=@(current === "service-worker-caching" ? "page" : false)>Datos y páginas en caché</a></li>
-          <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
-          <li><a href="/docs/service-worker/headers" aria-current=@(current === "service-worker-headers" ? "page" : false)>Las cabeceras del Service Worker</a></li>
+        <details class="chapter" open=@(current === "service-worker" || current === "service-worker-caching" || current === "service-worker-isomorphic" || current === "service-worker-headers")>
+          <summary>Service Worker</summary>
+          <ol>
+            <li><a href="/docs/service-worker" aria-current=@(current === "service-worker" ? "page" : false)>Qué hace</a></li>
+            <li><a href="/docs/service-worker/caching" aria-current=@(current === "service-worker-caching" ? "page" : false)>Datos y páginas en caché</a></li>
+            <li><a href="/docs/service-worker/isomorphic" aria-current=@(current === "service-worker-isomorphic" ? "page" : false)>Render isomórfico</a></li>
+            <li><a href="/docs/service-worker/headers" aria-current=@(current === "service-worker-headers" ? "page" : false)>Las cabeceras del Service Worker</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Internacionalización</span>
-        <ol>
-          <li><a href="/docs/i18n" aria-current=@(current === "i18n" ? "page" : false)>Traducir una app</a></li>
-          <li><a href="/docs/i18n/code" aria-current=@(current === "i18n-code" ? "page" : false)>Textos en el código</a></li>
-          <li><a href="/docs/i18n/catalogs" aria-current=@(current === "i18n-catalogs" ? "page" : false)>Los catálogos</a></li>
-          <li><a href="/docs/i18n/urls" aria-current=@(current === "i18n-urls" ? "page" : false)>Idiomas y URLs</a></li>
+        <details class="chapter" open=@(current === "i18n" || current === "i18n-code" || current === "i18n-catalogs" || current === "i18n-urls")>
+          <summary>Internacionalización</summary>
+          <ol>
+            <li><a href="/docs/i18n" aria-current=@(current === "i18n" ? "page" : false)>Traducir una app</a></li>
+            <li><a href="/docs/i18n/code" aria-current=@(current === "i18n-code" ? "page" : false)>Textos en el código</a></li>
+            <li><a href="/docs/i18n/catalogs" aria-current=@(current === "i18n-catalogs" ? "page" : false)>Los catálogos</a></li>
+            <li><a href="/docs/i18n/urls" aria-current=@(current === "i18n-urls" ? "page" : false)>Idiomas y URLs</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Inyección de dependencias</span>
-        <ol>
-          <li><a href="/docs/di" aria-current=@(current === "di" ? "page" : false)>Servicios</a></li>
-          <li><a href="/docs/di/providers" aria-current=@(current === "di-providers" ? "page" : false)>Dueños y subárboles</a></li>
-          <li><a href="/docs/di/server" aria-current=@(current === "di-server" ? "page" : false)>Servidor y navegador</a></li>
+        <details class="chapter" open=@(current === "di" || current === "di-providers" || current === "di-server")>
+          <summary>Inyección de dependencias</summary>
+          <ol>
+            <li><a href="/docs/di" aria-current=@(current === "di" ? "page" : false)>Servicios</a></li>
+            <li><a href="/docs/di/providers" aria-current=@(current === "di-providers" ? "page" : false)>Dueños y subárboles</a></li>
+            <li><a href="/docs/di/server" aria-current=@(current === "di-server" ? "page" : false)>Servidor y navegador</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Rendimiento</span>
-        <ol>
-          <li><a href="/docs/performance" aria-current=@(current === "performance" ? "page" : false)>Qué la hace rápida</a></li>
-          <li><a href="/docs/performance/caching" aria-current=@(current === "performance-caching" ? "page" : false)>Las cachés del navegador</a></li>
-          <li><a href="/docs/performance/lighthouse" aria-current=@(current === "performance-lighthouse" ? "page" : false)>Medir con Lighthouse</a></li>
+        <details class="chapter" open=@(current === "performance" || current === "performance-caching" || current === "performance-lighthouse")>
+          <summary>Rendimiento</summary>
+          <ol>
+            <li><a href="/docs/performance" aria-current=@(current === "performance" ? "page" : false)>Qué la hace rápida</a></li>
+            <li><a href="/docs/performance/caching" aria-current=@(current === "performance-caching" ? "page" : false)>Las cachés del navegador</a></li>
+            <li><a href="/docs/performance/lighthouse" aria-current=@(current === "performance-lighthouse" ? "page" : false)>Medir con Lighthouse</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Seguridad</span>
-        <ol>
-          <li><a href="/docs/security" aria-current=@(current === "security" ? "page" : false)>Lo que trae de serie</a></li>
-          <li><a href="/docs/security/headers" aria-current=@(current === "security-headers" ? "page" : false)>Las cabeceras</a></li>
-          <li><a href="/docs/security/csp" aria-current=@(current === "security-csp" ? "page" : false)>La CSP</a></li>
-          <li><a href="/docs/security/trusted-types" aria-current=@(current === "security-trusted-types" ? "page" : false)>HTML seguro</a></li>
+        <details class="chapter" open=@(current === "security" || current === "security-headers" || current === "security-csp" || current === "security-trusted-types")>
+          <summary>Seguridad</summary>
+          <ol>
+            <li><a href="/docs/security" aria-current=@(current === "security" ? "page" : false)>Lo que trae de serie</a></li>
+            <li><a href="/docs/security/headers" aria-current=@(current === "security-headers" ? "page" : false)>Las cabeceras</a></li>
+            <li><a href="/docs/security/csp" aria-current=@(current === "security-csp" ? "page" : false)>La CSP</a></li>
+            <li><a href="/docs/security/trusted-types" aria-current=@(current === "security-trusted-types" ? "page" : false)>HTML seguro</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Pruebas</span>
-        <ol>
-          <li><a href="/docs/testing" aria-current=@(current === "testing" ? "page" : false)>Criterios</a></li>
-          <li><a href="/docs/testing/workbench" aria-current=@(current === "testing-workbench" ? "page" : false)>El workbench</a></li>
-          <li><a href="/docs/testing/pages-and-flows" aria-current=@(current === "testing-pages-and-flows" ? "page" : false)>Páginas y flujos</a></li>
-          <li><a href="/docs/testing/unit" aria-current=@(current === "testing-unit" ? "page" : false)>Tests unitarios</a></li>
-          <li><a href="/docs/testing/history" aria-current=@(current === "testing-history" ? "page" : false)>Historial y aprobación</a></li>
+        <details class="chapter" open=@(current === "testing" || current === "testing-workbench" || current === "testing-pages-and-flows" || current === "testing-unit" || current === "testing-history")>
+          <summary>Pruebas</summary>
+          <ol>
+            <li><a href="/docs/testing" aria-current=@(current === "testing" ? "page" : false)>Criterios</a></li>
+            <li><a href="/docs/testing/workbench" aria-current=@(current === "testing-workbench" ? "page" : false)>El workbench</a></li>
+            <li><a href="/docs/testing/pages-and-flows" aria-current=@(current === "testing-pages-and-flows" ? "page" : false)>Páginas y flujos</a></li>
+            <li><a href="/docs/testing/unit" aria-current=@(current === "testing-unit" ? "page" : false)>Tests unitarios</a></li>
+            <li><a href="/docs/testing/history" aria-current=@(current === "testing-history" ? "page" : false)>Historial y aprobación</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Términos propios</span>
-        <ol>
-          <li><a href="/docs/terms" aria-current=@(current === "terms" ? "page" : false)>Por qué ampliar el lenguaje</a></li>
-          <li><a href="/docs/terms/anatomy" aria-current=@(current === "terms-anatomy" ? "page" : false)>Cómo funciona un término</a></li>
-          <li><a href="/docs/terms/step-by-step" aria-current=@(current === "terms-step-by-step" ? "page" : false)>Uno de cada bloque</a></li>
-          <li><a href="/docs/terms/bench" aria-current=@(current === "terms-bench" ? "page" : false)>Ampliar el <code>ctx</code></a></li>
-          <li><a href="/docs/terms/sharing" aria-current=@(current === "terms-sharing" ? "page" : false)>Sustituir y compartir</a></li>
+        <details class="chapter" open=@(current === "terms" || current === "terms-anatomy" || current === "terms-step-by-step" || current === "terms-bench" || current === "terms-sharing")>
+          <summary>Términos propios</summary>
+          <ol>
+            <li><a href="/docs/terms" aria-current=@(current === "terms" ? "page" : false)>Por qué ampliar el lenguaje</a></li>
+            <li><a href="/docs/terms/anatomy" aria-current=@(current === "terms-anatomy" ? "page" : false)>Cómo funciona un término</a></li>
+            <li><a href="/docs/terms/step-by-step" aria-current=@(current === "terms-step-by-step" ? "page" : false)>Uno de cada bloque</a></li>
+            <li><a href="/docs/terms/bench" aria-current=@(current === "terms-bench" ? "page" : false)>Ampliar el <code>ctx</code></a></li>
+            <li><a href="/docs/terms/sharing" aria-current=@(current === "terms-sharing" ? "page" : false)>Sustituir y compartir</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Configuración</span>
-        <ol>
-          <li><a href="/docs/configuration" aria-current=@(current === "configuration" ? "page" : false)><code>fudic.json</code></a></li>
-          <li><a href="/docs/configuration/fields" aria-current=@(current === "configuration-fields" ? "page" : false)>Estilos, idiomas y servidor</a></li>
-          <li><a href="/docs/configuration/diagnostics" aria-current=@(current === "configuration-diagnostics" ? "page" : false)>Diagnósticos</a></li>
-          <li><a href="/docs/configuration/baseline" aria-current=@(current === "configuration-baseline" ? "page" : false)>Baseline</a></li>
-          <li><a href="/docs/configuration/sw-json" aria-current=@(current === "configuration-sw-json" ? "page" : false)><code>sw.json</code></a></li>
-          <li><a href="/docs/configuration/generated" aria-current=@(current === "configuration-generated" ? "page" : false)>Lo que genera Fudic</a></li>
+        <details class="chapter" open=@(current === "configuration" || current === "configuration-fields" || current === "configuration-diagnostics" || current === "configuration-baseline" || current === "configuration-sw-json" || current === "configuration-generated")>
+          <summary>Configuración</summary>
+          <ol>
+            <li><a href="/docs/configuration" aria-current=@(current === "configuration" ? "page" : false)><code>fudic.json</code></a></li>
+            <li><a href="/docs/configuration/fields" aria-current=@(current === "configuration-fields" ? "page" : false)>Estilos, idiomas y servidor</a></li>
+            <li><a href="/docs/configuration/diagnostics" aria-current=@(current === "configuration-diagnostics" ? "page" : false)>Diagnósticos</a></li>
+            <li><a href="/docs/configuration/baseline" aria-current=@(current === "configuration-baseline" ? "page" : false)>Baseline</a></li>
+            <li><a href="/docs/configuration/sw-json" aria-current=@(current === "configuration-sw-json" ? "page" : false)><code>sw.json</code></a></li>
+            <li><a href="/docs/configuration/generated" aria-current=@(current === "configuration-generated" ? "page" : false)>Lo que genera Fudic</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Plugin de Vite</span>
-        <ol>
-          <li><a href="/docs/vite" aria-current=@(current === "vite" ? "page" : false)>El plugin</a></li>
-          <li><a href="/docs/vite/dev" aria-current=@(current === "vite-dev" ? "page" : false)>En desarrollo</a></li>
-          <li><a href="/docs/vite/build" aria-current=@(current === "vite-build" ? "page" : false)>El build y la preview</a></li>
+        <details class="chapter" open=@(current === "vite" || current === "vite-dev" || current === "vite-build")>
+          <summary>Plugin de Vite</summary>
+          <ol>
+            <li><a href="/docs/vite" aria-current=@(current === "vite" ? "page" : false)>El plugin</a></li>
+            <li><a href="/docs/vite/dev" aria-current=@(current === "vite-dev" ? "page" : false)>En desarrollo</a></li>
+            <li><a href="/docs/vite/build" aria-current=@(current === "vite-build" ? "page" : false)>El build y la preview</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Editores</span>
-        <ol>
-          <li><a href="/docs/editors" aria-current=@(current === "editors" ? "page" : false)>VS Code y compatibles</a></li>
-          <li><a href="/docs/editors/writing" aria-current=@(current === "editors-writing" ? "page" : false)>Escribir con el editor</a></li>
-          <li><a href="/docs/editors/reference" aria-current=@(current === "editors-reference" ? "page" : false)>Snippets, órdenes y ajustes</a></li>
-          <li><a href="/docs/editors/other" aria-current=@(current === "editors-other" ? "page" : false)>Otros editores</a></li>
+        <details class="chapter" open=@(current === "editors" || current === "editors-writing" || current === "editors-reference" || current === "editors-other")>
+          <summary>Editores</summary>
+          <ol>
+            <li><a href="/docs/editors" aria-current=@(current === "editors" ? "page" : false)>VS Code y compatibles</a></li>
+            <li><a href="/docs/editors/writing" aria-current=@(current === "editors-writing" ? "page" : false)>Escribir con el editor</a></li>
+            <li><a href="/docs/editors/reference" aria-current=@(current === "editors-reference" ? "page" : false)>Snippets, órdenes y ajustes</a></li>
+            <li><a href="/docs/editors/other" aria-current=@(current === "editors-other" ? "page" : false)>Otros editores</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Herramientas</span>
-        <ol>
-          <li><a href="/docs/cli" aria-current=@(current === "cli" ? "page" : false)>La CLI</a></li>
-          <li><a href="/docs/tools/format" aria-current=@(current === "tools-format" ? "page" : false)>El formateador</a></li>
+        <details class="chapter" open=@(current === "cli" || current === "tools-format")>
+          <summary>Herramientas</summary>
+          <ol>
+            <li><a href="/docs/cli" aria-current=@(current === "cli" ? "page" : false)>La CLI</a></li>
+            <li><a href="/docs/tools/format" aria-current=@(current === "tools-format" ? "page" : false)>El formateador</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Referencia</span>
-        <ol>
-          <li><a href="/docs/reference" aria-current=@(current === "reference" ? "page" : false)>La referencia</a></li>
-          <li><a href="/docs/reference/core" aria-current=@(current === "reference-core" ? "page" : false)><code>@@fudic/core</code></a></li>
-          <li><a href="/docs/reference/dom" aria-current=@(current === "reference-dom" ? "page" : false)><code>@@fudic/dom</code></a></li>
-          <li><a href="/docs/reference/forms" aria-current=@(current === "reference-forms" ? "page" : false)><code>@@fudic/forms</code></a></li>
-          <li><a href="/docs/reference/di" aria-current=@(current === "reference-di" ? "page" : false)><code>@@fudic/di</code></a></li>
-          <li><a href="/docs/reference/i18n" aria-current=@(current === "reference-i18n" ? "page" : false)><code>@@fudic/i18n</code></a></li>
-          <li><a href="/docs/reference/http" aria-current=@(current === "reference-http" ? "page" : false)><code>@@fudic/http</code></a></li>
-          <li><a href="/docs/reference/server" aria-current=@(current === "reference-server" ? "page" : false)><code>@@fudic/server</code></a></li>
-          <li><a href="/docs/reference/testing" aria-current=@(current === "reference-testing" ? "page" : false)><code>@@fudic/testing</code></a></li>
-          <li><a href="/docs/reference/fudapi" aria-current=@(current === "reference-fudapi" ? "page" : false)>El lenguaje <code>.fudapi</code></a></li>
-          <li><a href="/docs/reference/fudspec" aria-current=@(current === "reference-fudspec" ? "page" : false)>El lenguaje <code>.fudspec</code></a></li>
-          <li><a href="/docs/reference/diagnostics" aria-current=@(current === "reference-diagnostics" ? "page" : false)>Diagnósticos</a></li>
+        <details class="chapter" open=@(current === "reference" || current === "reference-core" || current === "reference-dom" || current === "reference-forms" || current === "reference-di" || current === "reference-i18n" || current === "reference-http" || current === "reference-server" || current === "reference-testing" || current === "reference-fudapi" || current === "reference-fudspec" || current === "reference-diagnostics")>
+          <summary>Referencia</summary>
+          <ol>
+            <li><a href="/docs/reference" aria-current=@(current === "reference" ? "page" : false)>La referencia</a></li>
+            <li><a href="/docs/reference/core" aria-current=@(current === "reference-core" ? "page" : false)><code>@@fudic/core</code></a></li>
+            <li><a href="/docs/reference/dom" aria-current=@(current === "reference-dom" ? "page" : false)><code>@@fudic/dom</code></a></li>
+            <li><a href="/docs/reference/forms" aria-current=@(current === "reference-forms" ? "page" : false)><code>@@fudic/forms</code></a></li>
+            <li><a href="/docs/reference/di" aria-current=@(current === "reference-di" ? "page" : false)><code>@@fudic/di</code></a></li>
+            <li><a href="/docs/reference/i18n" aria-current=@(current === "reference-i18n" ? "page" : false)><code>@@fudic/i18n</code></a></li>
+            <li><a href="/docs/reference/http" aria-current=@(current === "reference-http" ? "page" : false)><code>@@fudic/http</code></a></li>
+            <li><a href="/docs/reference/server" aria-current=@(current === "reference-server" ? "page" : false)><code>@@fudic/server</code></a></li>
+            <li><a href="/docs/reference/testing" aria-current=@(current === "reference-testing" ? "page" : false)><code>@@fudic/testing</code></a></li>
+            <li><a href="/docs/reference/fudapi" aria-current=@(current === "reference-fudapi" ? "page" : false)>El lenguaje <code>.fudapi</code></a></li>
+            <li><a href="/docs/reference/fudspec" aria-current=@(current === "reference-fudspec" ? "page" : false)>El lenguaje <code>.fudspec</code></a></li>
+            <li><a href="/docs/reference/diagnostics" aria-current=@(current === "reference-diagnostics" ? "page" : false)>Diagnósticos</a></li>
         </ol>
+        </details>
       </li>
-    </ol>
-  </details>
+  </ol>
 }
 
 @* The pages of the MCP section, in the order they are read. Same shape as docsNav: a page passes
    its own id to mark itself. *@
 @snippet mcpNav(current: string) {
-  <details class="chapters">
-    <summary>Páginas</summary>
-    <ol>
+  <details class="toggle"><summary>Páginas</summary></details>
+  <ol class="chapters">
       <li><a href="/mcp/" aria-current=@(current === "mcp" ? "page" : false)>Trabajar con el MCP</a></li>
       <li><a href="/mcp/fudic" aria-current=@(current === "fudic" ? "page" : false)>Qué es Fudic</a></li>
       <li><a href="/mcp/conversation" aria-current=@(current === "conversation" ? "page" : false)>Una conversación de principio a fin</a></li>
       <li>
-        <span class="chapter">Conectarlo</span>
-        <ol>
-          <li><a href="/mcp/connect" aria-current=@(current === "connect" ? "page" : false)>Desde un agente</a></li>
-          <li><a href="/mcp/connect/chat" aria-current=@(current === "chat" ? "page" : false)>Desde un chat</a></li>
+        <details class="chapter" open=@(current === "connect" || current === "chat")>
+          <summary>Conectarlo</summary>
+          <ol>
+            <li><a href="/mcp/connect" aria-current=@(current === "connect" ? "page" : false)>Desde un agente</a></li>
+            <li><a href="/mcp/connect/chat" aria-current=@(current === "chat" ? "page" : false)>Desde un chat</a></li>
         </ol>
+        </details>
       </li>
       <li>
-        <span class="chapter">Por dentro</span>
-        <ol>
-          <li><a href="/mcp/phases" aria-current=@(current === "phases" ? "page" : false)>Las fases de una pieza</a></li>
-          <li><a href="/mcp/approval" aria-current=@(current === "approval" ? "page" : false)>Aprobar, caducar y reabrir</a></li>
-          <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
+        <details class="chapter" open=@(current === "phases" || current === "approval" || current === "project")>
+          <summary>Por dentro</summary>
+          <ol>
+            <li><a href="/mcp/phases" aria-current=@(current === "phases" ? "page" : false)>Las fases de una pieza</a></li>
+            <li><a href="/mcp/approval" aria-current=@(current === "approval" ? "page" : false)>Aprobar, caducar y reabrir</a></li>
+            <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
         </ol>
+        </details>
       </li>
       <li><a href="/mcp/tools" aria-current=@(current === "tools" ? "page" : false)>Las herramientas</a></li>
-    </ol>
-  </details>
+  </ol>
 }

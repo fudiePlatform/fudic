@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#types">Primero, los tipos</a></li>
         <li><a href="#steps">Qué hace el build</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#languages">Hoy Node, mañana otros lenguajes</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

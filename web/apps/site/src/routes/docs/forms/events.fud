@@ -20,15 +20,13 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#result">fudic:result</a></li>
         <li><a href="#error">fudic:error</a></li>
         <li><a href="#composed">Cruzan el shadow DOM</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

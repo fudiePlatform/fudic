@@ -19,14 +19,12 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#packages">Los paquetes</a></li>
         <li><a href="#languages">Los lenguajes</a></li>
         <li><a href="#diagnostics">Los diagnósticos</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

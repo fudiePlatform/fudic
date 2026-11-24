@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#primitives">Los primitivos</a></li>
         <li><a href="#modifiers">Listas, opcionales y mapas</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#files">Ficheros</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

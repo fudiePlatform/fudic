@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#write-a-value">Escribir un valor</a></li>
         <li><a href="#the-closed-list">Lo que admite una expresión</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#pipes">Pipes: dar formato</a></li>
         <li><a href="#comments">Comentarios y variables</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

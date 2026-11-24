@@ -19,8 +19,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#xss">Código inyectado: XSS</a></li>
         <li><a href="#csrf">Llamadas desde otra web: CSRF</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#uploads">Subidas</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

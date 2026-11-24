@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#fudlog">El .fudlog</a></li>
         <li><a href="#approve">Aprobar los criterios</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#state">¿Sigue valiendo?</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

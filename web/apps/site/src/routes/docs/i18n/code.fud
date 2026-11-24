@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#t">t()</a></li>
         <li><a href="#props">En una prop</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#content">El contenido de los datos</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

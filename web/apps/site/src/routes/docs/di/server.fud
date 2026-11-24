@@ -20,15 +20,13 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#both-sides">El mismo código a los dos lados</a></li>
         <li><a href="#request">Un contenedor por petición</a></li>
         <li><a href="#publish">Viajan valores, no instancias</a></li>
         <li><a href="#testing">Otro servicio en las pruebas</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

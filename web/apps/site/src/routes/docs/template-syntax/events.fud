@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#listen">Escuchar un evento</a></li>
         <li><a href="#value">$value: el valor del control</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#event-bus">El bus de eventos</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

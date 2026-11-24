@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#project">Un fichero, un proyecto</a></li>
         <li><a href="#example">Dos ejemplos</a></li>
@@ -34,7 +33,6 @@
         <li><a href="#details">Detalles</a></li>
         <li><a href="#mdn">El estándar</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

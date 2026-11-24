@@ -20,14 +20,12 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#types">Lo que crea</a></li>
         <li><a href="#options">Opciones</a></li>
         <li><a href="#examples">Ejemplos</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

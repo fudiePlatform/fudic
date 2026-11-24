@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#lines">Líneas</a></li>
         <li><a href="#header">La cabecera</a></li>
@@ -33,7 +32,6 @@
         <li><a href="#builtin-terms">Los términos de Fudic</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

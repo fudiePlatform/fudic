@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#before">Antes de empezar</a></li>
         <li><a href="#steps">La conversación</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#mcp">Lo que hace el MCP</a></li>
         <li><a href="#standard">El estándar</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

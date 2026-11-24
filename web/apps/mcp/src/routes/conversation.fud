@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#request">La petición</a></li>
         <li><a href="#proposal">La propuesta</a></li>
@@ -30,7 +29,6 @@
         <li><a href="#look">El aspecto</a></li>
         <li><a href="#done">Terminado</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

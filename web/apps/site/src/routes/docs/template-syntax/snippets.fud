@@ -20,14 +20,12 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#declare-and-use">Declarar y usar</a></li>
         <li><a href="#where-to-declare">Compartirlos</a></li>
         <li><a href="#snippet-or-component">¿Snippet o componente?</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

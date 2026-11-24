@@ -21,8 +21,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#why-razor">Por qué Razor</a></li>
         <li><a href="#at-a-glance">La @@, de un vistazo</a></li>
@@ -31,7 +30,6 @@
         <li><a href="#polyglot-views">Vistas políglotas</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

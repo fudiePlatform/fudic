@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#files">Los ficheros</a></li>
         <li><a href="#agents">AGENTS.md</a></li>
@@ -29,7 +28,6 @@
         <li><a href="#before">Un proyecto creado antes</a></li>
         <li><a href="#standard">El estándar</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 

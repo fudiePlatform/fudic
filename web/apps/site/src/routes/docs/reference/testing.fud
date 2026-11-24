@@ -20,8 +20,7 @@
 
 @section toc {
   <ui-toc>
-    <details>
-      <summary>En esta página</summary>
+    <details class="toggle"><summary>En esta página</summary></details>
       <ul>
         <li><a href="#config"><code>fudicTest</code></a></li>
         <li><a href="#mount"><code>mount</code></a></li>
@@ -33,7 +32,6 @@
         <li><a href="#fixtures">Las fixtures</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
-    </details>
   </ui-toc>
 }
 
