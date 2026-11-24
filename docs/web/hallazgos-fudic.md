@@ -711,3 +711,19 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `CLAUDE_PROJECT_DIR` antes que la carpeta de trabajo. Y si en la carpeta no hay un proyecto, que
   `fudic_status` lo diga con la ruta que ha mirado.
 
+## 50. Un tema elegido por la persona parpadea al cargar cada página
+
+- **Qué pasó.** Al poner el botón de tema de la web (`ui-theme`, 2026-11-24). El botón guarda la
+  elección en `localStorage` y pone `color-scheme` en `<html>` desde su `onConnect`. Con el sistema
+  en claro y el oscuro elegido, cada página puede pintarse un instante en claro antes de cambiar:
+  el componente se hidrata después del primer pintado. Pedro lo ve prácticamente imperceptible.
+- **Por qué no se puede evitar hoy.** Lo habitual es un script en línea en el `<head>` que lea la
+  elección antes de pintar. La CSP de `page.headers` solo admite scripts con el nonce que escribe
+  Fudic (`script-src 'nonce-{nonce}' 'strict-dynamic'`), y un `.fud` no tiene forma de declarar un
+  script en línea que Fudic firme con ese nonce.
+- **Cómo se resolvió en la web.** Se deja así.
+- **Qué podría hacer.** Una forma de declarar en un layout un script en línea pequeño, que Fudic
+  emita con el nonce (o con su hash en la CSP de una página estática), para lo que tiene que pasar
+  antes del primer pintado. O un soporte de tema de serie: que Fudic lea una cookie en el servidor
+  y escriba `color-scheme` en el HTML.
+

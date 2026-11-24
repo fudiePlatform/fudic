@@ -133,6 +133,12 @@
     scrollbar-width: thin;
     scrollbar-color: var(--guide-rule) transparent;
   }
+
+  /* A code block is dark in both themes: its bar takes the colours of the code. */
+  pre {
+    scrollbar-width: thin;
+    scrollbar-color: var(--guide-code-rule) transparent;
+  }
 }
 
 /* The two lists and their toggles. On a phone each list hides behind the toggle written just
