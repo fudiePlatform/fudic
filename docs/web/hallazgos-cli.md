@@ -139,6 +139,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** `web/libs/ui/src/styles/docs.css` se escribió a mano, y el enlace también.
 - **Qué debería hacer.** Que `fudic g layout` cree su hoja y la enlace, o que `fudic g style`
   tenga una opción para una hoja de página.
+- **Vuelto a comprobar (portada), el 2026-11-24.** `fudic g layout home --project ui` crea el
+  layout sin hoja; `web/libs/ui/src/styles/home.css` y su enlace se escribieron a mano.
 
 ## 8. `fudic preview` en una app sirve todas las del monorepo
 

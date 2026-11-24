@@ -1,0 +1,7 @@
+component ui-command
+
+criterion renders
+  given
+    props base
+  then
+    present ui-command

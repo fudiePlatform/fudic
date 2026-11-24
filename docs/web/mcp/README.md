@@ -1,7 +1,7 @@
 # El MCP de Fudic en la web
 
 Plan de la sección MCP de la web pública: qué cuenta, a quién, en qué grupos de páginas y dónde
-vive el código. Es la opción «MCP» del menú de [hero.html](../hero.html). Rama de trabajo:
+vive el código. Es la opción «MCP» del menú de la portada. Rama de trabajo:
 `web-publica`. El plan general de la web está en [../README.md](../README.md).
 
 ## 1. Qué es

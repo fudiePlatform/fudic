@@ -1,0 +1,337 @@
+/* The light DOM of the home page: one centred column, the headline, the component and what the
+   browser gets, the three cards and the polyglot band. Every value is a guide token, so the dark
+   mode needs nothing here; the code is on slate in both modes, like every code block. */
+
+.home {
+  display: grid;
+  justify-items: center;
+  gap: var(--guide-space-6);
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(4rem, 10vw, 8rem) var(--guide-space-5) clamp(4.5rem, 10vw, 7.5rem);
+  text-align: center;
+}
+
+/* Headline */
+
+.home .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--guide-space-3);
+  margin: 0;
+  padding: 0.375rem 0.875rem 0.375rem 0.625rem;
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+  background: var(--guide-raised);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-full);
+}
+
+.home .eyebrow::before {
+  content: "";
+  inline-size: 0.4375rem;
+  block-size: 0.4375rem;
+  background: var(--guide-brand);
+  border-radius: 50%;
+}
+
+.home > h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2.6rem, 6.4vw, 5.2rem);
+  line-height: 1.04;
+}
+
+.home > h1 em {
+  color: var(--guide-accent);
+}
+
+.home .lede {
+  max-width: 40rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 1.6vw, 1.22rem);
+  color: var(--guide-muted);
+  text-wrap: pretty;
+}
+
+/* The two ways in: the documentation and the command that creates an app. */
+
+.home .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--guide-space-3);
+}
+
+.home .start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--guide-space-3);
+  block-size: 3rem;
+  padding: 0 1.375rem;
+  font-weight: var(--guide-weight-medium);
+  color: var(--guide-surface);
+  text-decoration: none;
+  background: var(--guide-ink);
+  border-radius: var(--guide-radius-md);
+}
+
+.home .start .arrow {
+  color: var(--guide-brand);
+}
+
+/* Only translate moves, and only for those who accept motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .home .start .arrow {
+    transition: translate var(--guide-duration) var(--guide-easing);
+  }
+
+  .home .start:hover .arrow {
+    translate: 0.1875rem 0;
+  }
+}
+
+/* The component, and what the browser gets */
+
+.home .demo {
+  inline-size: 100%;
+  margin-top: var(--guide-space-7);
+  overflow: hidden;
+  color: var(--guide-code-ink);
+  text-align: start;
+  background: var(--guide-code-surface);
+  border: 1px solid var(--guide-code-rule);
+  border-radius: 1.25rem;
+  color-scheme: dark;
+}
+
+.home .panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home .pane {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-inline-size: 0;
+}
+
+.home .pane + .pane {
+  background: var(--guide-code-raised);
+  border-top: 1px solid var(--guide-code-rule);
+}
+
+.home .pane-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--guide-space-3);
+  padding: 1.125rem var(--guide-space-5) 0;
+  font-size: var(--guide-text-xs);
+}
+
+.home .pane-head .file {
+  font-family: var(--guide-font-mono);
+}
+
+.home .pane-head .who {
+  color: var(--guide-code-muted);
+  letter-spacing: 0.02em;
+}
+
+.home .pane-head .who.painted {
+  color: var(--guide-code-accent);
+}
+
+.home .demo pre {
+  margin: 0;
+  padding: var(--guide-space-4) var(--guide-space-5) var(--guide-space-5);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.home .demo .at { color: var(--guide-code-accent); }
+.home .demo .str { color: var(--guide-code-string); }
+.home .demo .dim { color: var(--guide-code-muted); }
+
+.home .speed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--guide-space-5) var(--guide-space-6);
+  margin: 0;
+  padding: 1.375rem var(--guide-space-5) var(--guide-space-5);
+  list-style: none;
+  border-top: 1px solid var(--guide-code-rule);
+}
+
+.home .speed li {
+  display: grid;
+  gap: var(--guide-space-1);
+  min-inline-size: 0;
+  margin: 0;
+}
+
+.home .speed strong {
+  font-weight: var(--guide-weight-medium);
+}
+
+.home .speed span {
+  font-size: var(--guide-text-sm);
+  line-height: 1.45;
+  color: var(--guide-code-muted);
+}
+
+/* The three cards */
+
+.home .cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--guide-space-4);
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: start;
+  list-style: none;
+}
+
+.home .card {
+  display: grid;
+  align-content: start;
+  gap: 0.625rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--guide-space-5);
+  background: var(--guide-raised);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-lg);
+}
+
+.home .card .tag {
+  font-family: var(--guide-font-mono);
+  font-size: var(--guide-text-xs);
+  color: var(--guide-accent);
+}
+
+.home .card h2,
+.home .poly h2 {
+  margin: 0;
+  font-weight: var(--guide-weight-medium);
+  font-size: var(--guide-text-xl);
+  line-height: 1.2;
+}
+
+.home .card p,
+.home .poly p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--guide-muted);
+}
+
+/* The polyglot band */
+
+.home .poly {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: var(--guide-space-5) 2.5rem;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 1.75rem;
+  text-align: start;
+  border: 1px dashed var(--guide-line);
+  border-radius: var(--guide-radius-lg);
+}
+
+.home .poly-text {
+  display: grid;
+  gap: var(--guide-space-2);
+  min-inline-size: 0;
+}
+
+.home .poly .soon {
+  font-size: var(--guide-text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--guide-accent);
+}
+
+.home .poly p {
+  max-width: 40rem;
+}
+
+.home .langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--guide-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home .langs li {
+  margin: 0;
+  padding: 0.375rem var(--guide-space-3);
+  font-family: var(--guide-font-mono);
+  font-size: 0.8rem;
+  color: var(--guide-muted);
+  background: var(--guide-surface);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-full);
+}
+
+.home .langs .now {
+  color: var(--guide-surface);
+  background: var(--guide-ink);
+  border-color: var(--guide-ink);
+}
+
+.home .langs .now span {
+  color: var(--guide-brand);
+}
+
+/* A phone: the buttons fill the width. */
+@media (max-width: 35rem) {
+  .home .actions {
+    inline-size: 100%;
+  }
+
+  .home .actions > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 35rem) {
+  .home .speed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 60rem) {
+  .home .panes {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+
+  .home .pane + .pane {
+    border-top: 0;
+    border-inline-start: 1px solid var(--guide-code-rule);
+  }
+
+  .home .speed {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .home .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home .poly {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .home .langs {
+    justify-content: flex-end;
+    max-width: 22rem;
+  }
+}

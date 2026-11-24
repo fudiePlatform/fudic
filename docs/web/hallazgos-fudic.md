@@ -727,3 +727,23 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   antes del primer pintado. O un soporte de tema de serie: que Fudic lea una cookie en el servidor
   y escriba `color-scheme` en el HTML.
 
+
+## 51. Una `@@` en el valor de una propiedad cuenta como concatenación
+
+- **Qué pasó.** En la página de inicio (`web/apps/site/src/routes/index.fud`, 2026-11-24),
+  `<ui-command .command="npx @@fudic/cli new mi-app">` no compila: `FUD0091` «property binding
+  value must not concatenate parts». El valor es un texto fijo; la `@@` solo escapa la arroba,
+  pero el compilador la cuenta como una parte más.
+- **Cómo se resolvió.** `.command=@("npx @fudic/cli new mi-app")`.
+- **Qué debería hacer.** Tratar `@@` en un valor de propiedad como texto, igual que en el contenido
+  y en un atributo: un valor con solo texto y escapes es un único valor.
+
+## 52. El build revienta con `window is not defined` si se lanza vite por su ruta
+
+- **Qué pasó.** En `web/apps/site` (2026-11-24), `node node_modules/vite/bin/vite.js build` termina
+  siempre en el prerender (`generateBundle` del plugin de Fudic) con `RolldownError: window is not
+  defined`, sin decir qué fichero ni qué ruta. El mismo árbol compila con `npx vite build`.
+- **Cómo se resolvió.** Compilar con `npx vite build` (o `fudic build`); `node …/vite.js` solo para
+  `preview`, que es donde hace falta para no dejar huérfanos.
+- **Qué debería hacer.** Dar igual cómo se lance vite; y si el prerender falla, nombrar la ruta y
+  el módulo que tocó `window`.

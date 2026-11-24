@@ -9,10 +9,10 @@ La web pública de fudic, **hecha con fudic**. Es a la vez la presentación del 
 primer cliente real: si algo no se puede hacer bien con fudic, la web lo descubre antes que un
 usuario.
 
-El aspecto lo marca el boceto [hero.html](hero.html): fondo marfil, texto pizarra y un único
-acento arcilla. Una sola fuente web, Inter Tight, para titulares y texto; el código va en la mono
-del sistema, sobre fondo pizarra. (El boceto aún usa Newsreader y JetBrains Mono: se quitaron por
-rendimiento, ver [notas-lanzamiento.md](notas-lanzamiento.md) §4.)
+El aspecto lo marca la portada (`web/apps/site/src/routes/index.fud`): fondo marfil, texto pizarra
+y un único acento arcilla. Una sola fuente web, Inter Tight, para titulares y texto; el código va
+en la mono del sistema, sobre fondo pizarra. (El boceto original usaba Newsreader y JetBrains Mono:
+se quitaron por rendimiento, ver [notas-lanzamiento.md](notas-lanzamiento.md) §4.)
 
 Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 [notas-lanzamiento.md](notas-lanzamiento.md). Lo que la web descubre del framework y de la CLI:
@@ -22,7 +22,7 @@ Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 
 | Sección | Qué contiene | Cuándo |
 |---|---|---|
-| **Hero** | La portada: [hero.html](hero.html). | Boceto hecho; se porta a `.fud` con el esqueleto. |
+| **Hero** | La portada, `/`: `web/apps/site/src/routes/index.fud`, con el layout `home` de `@web/ui`. | Hecha. |
 | **Documentación** | La guía completa del framework (§5). La escribimos entre los dos. | **Ahora.** |
 | **Tutorial** | `examples/basic` preparado para abrirse en StackBlitz, con todos los ejemplos revisados. | Segundo proceso, no ahora. |
 | **MCP** | Toda la documentación del MCP, en su propia app: [mcp/README.md](mcp/README.md). | **Ahora**: plan en revisión. |
@@ -244,3 +244,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-23 | Capítulo 18, **Referencia**, entero para revisión: once páginas más creadas con `fudic g page` (hallazgo 6 de la CLI). Solo lo que importa una app, sacado del código export a export; lo interno se nombra en una línea. Los fragmentos de `.fudapi` y `.fudspec` pasaron por los validadores reales. Al contrastar, se corrigió la guía donde no decía lo que hace el código: `createApp` sin `prerendered` en Ponerlo en marcha, `get search-json` en Funciones, el modo deducido sin `load` en Los modos, `.fudspec` en `fud-disable`, los ficheros en Tipos, el tercer resultado de `run` en La tarea, el foco tras un rechazo, y `@raw` con HTML del servidor (en `ref` y `@raw`, Trusted Types y Tipos). Hallazgos 38 a 44 del framework, y otra vez el 22. |
 | 2026-11-23 | Diagnósticos, tras la revisión de Pedro: cada código tiene su página, `/docs/reference/diagnostics/FUD0010` (`ssr`, creada con `fudic g page` y `fudic g api`), y `docsUrl()` apunta a ella; el buscador redirige con un `302`, y `/diagnostics/10` con un `301` a la forma canónica. La tarjeta lleva el color de su severidad y el arreglo, aparte, en verde. SDD-50 al día. |
 | 2026-11-23 | Capítulo **Términos propios**, nuevo, a petición de Pedro: cinco páginas creadas con `fudic g page` (hallazgo 6 de la CLI). Sale del código de `@fudic/terms`, `@fudic/spec` y del motor del workbench. La página de `selfTest` que se propuso no se escribió: nadie lo ejecuta (hallazgo 45 del framework); va dentro de Cómo funciona un término. «Tus propios pasos» se quita de Pruebas y sus enlaces van al capítulo nuevo. Criterios decía que un texto que nunca llega da `FUD1202`: falla con su evidencia. Hallazgos 45 y 46. |
+| 2026-11-24 | Portada: el boceto `hero.html` pasa a `index.fud`, con el layout `home` y `<ui-command>` en `@web/ui`. Lighthouse 100/100/100/100 en móvil y escritorio. Boceto borrado. |
