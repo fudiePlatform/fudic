@@ -289,11 +289,11 @@ ui-note > :last-child {
     }
 
     ::view-transition-old(docs-page) {
-      animation: docs-page-out 120ms ease-in both;
+      animation: docs-page-out 250ms ease both;
     }
 
     ::view-transition-new(docs-page) {
-      animation: docs-page-in 240ms ease-out both;
+      animation: docs-page-in 500ms cubic-bezier(0.2, 0, 0, 1) both;
     }
   }
 }
@@ -307,7 +307,7 @@ ui-note > :last-child {
 @keyframes docs-page-in {
   from {
     opacity: 0;
-    translate: 0 0.5rem;
+    translate: 0 0.25rem;
   }
 }
 

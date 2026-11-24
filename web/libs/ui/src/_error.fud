@@ -17,7 +17,7 @@
 
 @if (data.status === 404) {
   <h1>Esta página no existe</h1>
-  <p>La dirección que has abierto no lleva a ninguna página. Puede que esté mal escrita o que la página haya cambiado de sitio.</p>
+  <p>No hay ninguna página en esta dirección. Estas te pueden servir:</p>
 } @else {
   <h1>Algo ha fallado</h1>
   <p>El servidor respondió con un error @data.status. Prueba otra vez dentro de un momento.</p>
