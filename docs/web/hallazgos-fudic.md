@@ -747,3 +747,20 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `preview`, que es donde hace falta para no dejar huérfanos.
 - **Qué debería hacer.** Dar igual cómo se lance vite; y si el prerender falla, nombrar la ruta y
   el módulo que tocó `window`.
+
+## 53. En el build, los componentes de la página de error no se activan nunca
+
+- **Qué pasó.** Pedro elige con `ui-theme` el tema contrario al del sistema y va a `/pepe`
+  (2026-11-24): la página de error de `@web/ui` sale en el tema del sistema. Con `fudic preview`
+  el HTML del `404` lleva `<script type="module" nonce="…" src="">`: sin runtime, ningún
+  componente se hidrata, `ui-theme` no lee `localStorage` y se queda con el `aria-pressed="false"`
+  del servidor. Tampoco el menú (`ui-nav`). Con `fudic dev` sí funciona: el script es
+  `/fudic-main.js` y `/pepe` sale en oscuro.
+- **Por qué.** `_error.fud` solo se compila en la pasada del servidor (edge); no es entrada del
+  bundle del cliente (`packages/vite/src/plugin.ts`, «`_error.fud` is no input of this bundle»),
+  así que no tiene coordinador y `fudic:runtime` se resuelve a una cadena vacía. No depende de que
+  venga de una librería: lo mismo vale para el `_error.fud` de una app.
+- **Cómo se resolvió en la web.** No se puede desde la web.
+- **Qué debería hacer.** Que el build dé a cada `_error.fud` su entrada de cliente, como a una
+  ruta, para que sus componentes se activen igual que en desarrollo; y que una entrada vacía sea
+  un diagnóstico del build y no un `src=""` en producción.
