@@ -1,0 +1,135 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Lo que genera la CLI · Fudic</title>
+  <meta name="description" content="fudic new deja el proyecto listo para un agente: el MCP instalado, .mcp.json, AGENTS.md y CLAUDE.md. Qué dice cada fichero, qué añadir a AGENTS.md y las instrucciones que el MCP le manda al modelo.">
+  <link rel="canonical" href="https://fudic.dev/mcp/project">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Lo que genera la CLI · Fudic">
+  <meta property="og:description" content="Los ficheros que fudic new deja para un agente y lo que el MCP le dice al modelo al empezar.">
+  <meta property="og:url" content="https://fudic.dev/mcp/project">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("project")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#files">Los ficheros</a></li>
+        <li><a href="#agents">AGENTS.md</a></li>
+        <li><a href="#instructions">Lo que el MCP le dice al modelo</a></li>
+        <li><a href="#before">Un proyecto creado antes</a></li>
+        <li><a href="#details">Detalles</a></li>
+        <li><a href="#standard">El estándar</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Lo que genera la CLI</h1>
+
+<p><a href="/docs/cli/new"><code>fudic new</code></a> deja el proyecto listo para trabajar con un agente. Al empezar, el modelo lee dos cosas de Fudic: el <code>AGENTS.md</code> del proyecto y las instrucciones que le manda el MCP.</p>
+
+<h2 id="files">Los ficheros</h2>
+
+<p>Estos son los ficheros de la raíz de un proyecto recién creado que tienen que ver con el agente:</p>
+
+<ui-code>
+<pre><code>tienda/
+├── .mcp.json      cómo arranca el MCP un agente
+├── AGENTS.md      lo que lee cualquier agente al abrir el proyecto
+├── CLAUDE.md      @@AGENTS.md
+├── package.json   @@fudic/mcp en devDependencies
+└── …</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>@@fudic/mcp</code></strong> se instala con la misma versión que el resto de <code>@@fudic/*</code>. El MCP comprueba y compila con el Fudic del proyecto, así que lo que dice es lo que dirá el build.</li>
+  <li><strong><code>.mcp.json</code></strong> dice cómo arrancar el MCP. Lo lee Claude Code tal cual, y los demás agentes usan un fichero propio, que da <a href="/mcp/connect">Desde un agente</a>.</li>
+  <li><strong><code>AGENTS.md</code></strong> es el fichero estándar que leen Codex, Copilot, Cursor, Antigravity y otros agentes antes de trabajar en un proyecto.</li>
+  <li><strong><code>CLAUDE.md</code></strong> solo dice <code>@@AGENTS.md</code>. Claude Code lee su propio <code>CLAUDE.md</code>, y esa línea le hace leer también <code>AGENTS.md</code>. Así hay un solo fichero que mantener.</li>
+</ul>
+
+<h2 id="agents">AGENTS.md</h2>
+
+<p>El <code>AGENTS.md</code> que deja <code>fudic new</code> tiene dos líneas:</p>
+
+<ui-code .path="AGENTS.md">
+<pre><code>This is a fudic project. fudic is a framework you have no prior knowledge of.
+Use the fudic MCP server (it is configured in .mcp.json): call fudic_status first.</code></pre>
+</ui-code>
+
+<p>La primera línea le dice al modelo que no conoce Fudic, para que no lo escriba de memoria. La segunda le dice que use el MCP y que empiece por <code>fudic_status</code>, que responde con el siguiente paso. Todo lo demás lo aprende del MCP.</p>
+
+<p>El fichero es tuyo, y le puedes añadir lo que es de tu equipo:</p>
+
+<ul>
+  <li>El idioma en el que te habla el modelo y cómo prefieres que te pregunte.</li>
+  <li>Los comandos y las normas de tu repositorio: cómo se nombran las ramas, cuándo se hace commit, qué no se toca.</li>
+  <li>Lo que el modelo no puede saber por su cuenta: para quién es la app, qué marca sigue, qué API hay detrás.</li>
+</ul>
+
+<p>No le añadas reglas de Fudic, como la forma de un componente o la sintaxis de la vista. La guía del MCP viaja con la versión de Fudic que tiene instalada el proyecto. Una regla copiada en <code>AGENTS.md</code> se queda atrás cuando Fudic cambia, y entonces contradice a la guía.</p>
+
+<h2 id="instructions">Lo que el MCP le dice al modelo</h2>
+
+<p>Al conectarse, el MCP manda unas instrucciones, y el agente las añade a lo que el modelo lee antes de la conversación. Son estas siete líneas, en inglés, como todo lo que el MCP le dice al modelo:</p>
+
+<ui-code>
+<pre><code>fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.
+For any fudic task, the first call is fudic_status. Its "next" is the next step of building the project: follow it when the user asked you to build, not when they asked for something else.
+Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide &#123; topic: "overview" &#125;.
+Create files with fudic_generate, never from scratch.
+After every write, run fudic_check and fix every diagnostic before moving on.
+Never approve on the user's behalf: fudic_record "approved" or "look" only after the user said so in this conversation.
+When the user wants to see something, use fudic_render for one piece and fudic_preview for the whole app. Seeing is not approving.</code></pre>
+</ui-code>
+
+<ol class="flow">
+  <li><strong>No conoce Fudic.</strong> Fudic se parece lo justo a React, Angular o Vue para que un modelo escriba de memoria algo que casi funciona. Esta línea se lo prohíbe.</li>
+  <li><strong>Primero, <code>fudic_status</code>.</strong> Su <code>next</code> marca el camino. Si le preguntas otra cosa, el modelo te responde a ti y no sigue construyendo.</li>
+  <li><strong>La guía, antes de escribir.</strong> Antes del primer componente, el modelo lee el tema <code>components</code>; antes del primer <code>.fudspec</code>, el tema <code>fudspec</code>.</li>
+  <li><strong>Crear como la CLI.</strong> <code>fudic_generate</code> hace lo mismo que <a href="/docs/cli/generate"><code>fudic generate</code></a>, y el modelo edita lo que se ha creado.</li>
+  <li><strong>Cero diagnósticos.</strong> Después de cada cambio, el modelo comprueba el proyecto entero y corrige antes de seguir.</li>
+  <li><strong>Tú apruebas.</strong> Los criterios y el aspecto solo los apruebas tú, en la conversación. Lo explica <a href="/mcp/approval">Aprobar, caducar y reabrir</a>.</li>
+  <li><strong>Ver no es aprobar.</strong> El modelo te enseña la pieza o la app cuando lo pides, y enseñártela no la aprueba.</li>
+</ol>
+
+<p>Desde un chat no hay <code>AGENTS.md</code>. Estas siete líneas son lo único de Fudic que el modelo lee antes de la conversación, y bastan, porque la primera llamada a <code>fudic_status</code> le dice el resto.</p>
+
+<h2 id="before">Un proyecto creado antes</h2>
+
+<p>En un proyecto creado antes de que existiera el MCP, se instala el paquete y se escriben los tres ficheros a mano, con el contenido de arriba:</p>
+
+<ui-code>
+<pre><code>pnpm add -D @@fudic/mcp</code></pre>
+</ui-code>
+
+<ui-code .path=".mcp.json">
+<pre><code>&#123; "mcpServers": &#123; "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125; &#125; &#125;</code></pre>
+</ui-code>
+
+<p>Si el proyecto ya tiene un <code>AGENTS.md</code> o un <code>CLAUDE.md</code>, se añaden las líneas al principio del fichero y se deja lo demás.</p>
+
+<h2 id="details">Detalles</h2>
+
+<ul>
+  <li><strong>En un workspace</strong>, <code>fudic new --workspace</code> deja los cuatro en la raíz: <code>@@fudic/mcp</code> en el <code>package.json</code> de la raíz, y los tres ficheros a su lado. Las apps y las librerías que se crean dentro no llevan los suyos.</li>
+  <li><strong>Las instrucciones dependen de las herramientas.</strong> Una línea que nombra una herramienta solo se manda si el MCP la ofrece. Hoy el MCP ofrece todas las que nombran, por stdio y por HTTP, y las siete líneas llegan siempre.</li>
+</ul>
+
+<h2 id="standard">El estándar</h2>
+
+<ul>
+  <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a>: el formato abierto del fichero que leen los agentes, y la lista de los que lo usan.</li>
+  <li><a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle" target="_blank" rel="noopener">Lifecycle</a>: cómo se conectan un cliente y un servidor MCP, y dónde manda el servidor sus instrucciones.</li>
+  <li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">La memoria de Claude Code</a>: cómo lee Claude Code su <code>CLAUDE.md</code> y cómo importa otro fichero con <code>@@</code>.</li>
+</ul>

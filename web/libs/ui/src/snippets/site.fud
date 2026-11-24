@@ -234,6 +234,7 @@
           <li><a href="/mcp/connect/chat" aria-current=@(current === "chat" ? "page" : false)>Desde un chat</a></li>
         </ol>
       </li>
+      <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
     </ol>
   </details>
 }

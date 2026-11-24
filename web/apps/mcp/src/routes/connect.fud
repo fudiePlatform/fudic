@@ -55,11 +55,7 @@
 
 <p><code>pnpm exec fudic-mcp</code> arranca el MCP que tiene instalado el proyecto, así que comprueba y compila con el mismo Fudic que el build. Claude Code lee este fichero tal cual. Los demás agentes guardan sus servidores en otro fichero, con otra forma, y cada sección de esta página da el suyo.</p>
 
-<p>En un proyecto creado antes de que existiera el MCP, se instala a mano:</p>
-
-<ui-code>
-<pre><code>pnpm add -D @@fudic/mcp</code></pre>
-</ui-code>
+<p>Los demás ficheros que deja <code>fudic new</code> para el agente, y cómo se añaden a un proyecto creado antes, los cuenta <a href="/mcp/project">Lo que genera la CLI</a>.</p>
 
 <h2 id="check">Comprobar que está conectado</h2>
 

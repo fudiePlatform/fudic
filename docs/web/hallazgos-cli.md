@@ -274,4 +274,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Una opción de `fudic new` (o un `fudic add agent <entorno>`) que escriba
   el fichero del agente que se usa. Y quitar de `AGENTS.md` la línea del chat: lo hace quien
   conecta el chat, no el agente.
-
+- **Resuelto en parte (Lo que genera la CLI), el 2026-11-24.** Pedro decidió quitar la línea del
+  chat: `AGENTS.md.tmpl` tiene dos líneas, y con él el snapshot de `new-compat` y el `AGENTS.md`
+  de `web/`. `docs/sdd/SDD-77-mcp-desde-el-chat.md` §3.7 conserva las tres líneas, como registro
+  de lo que se especificó. Sigue pendiente el fichero de cada agente.
