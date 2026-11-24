@@ -200,6 +200,34 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
+/* Going to a part of the page: the page glides there, the heading arrives in the accent colour
+   and settles, and the mark of the index slides to its link. Only for those who accept motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .docs-page h2:target,
+  .docs-page h3:target {
+    animation: docs-arrive 900ms ease-out;
+  }
+
+  .docs-nav a,
+  .docs-toc a {
+    transition: color 200ms ease, border-color 200ms ease;
+  }
+}
+
+@keyframes docs-arrive {
+  from {
+    color: var(--guide-accent);
+    translate: -0.75rem 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
 /* A screenshot, dark like the code blocks: rounded like them. */
 .docs-page figure img {
   border-radius: var(--guide-radius-md);
