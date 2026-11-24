@@ -14,7 +14,7 @@ pnpm --filter site spec       # .fudspec criteria, in a browser
 ## What is here
 
 - `src/routes/index.fud`: the page at `/`, and `index.test.ts` its unit test.
-- `src/layouts/_layout.fud`: the frame every page is written into, and `_layout.test.ts` its unit test.
+- The layouts are in `libs/ui`: `home` for `/`, `docs` for the documentation, and its `_error.fud` for every error.
 - The style guide is the workspace's `libs/guide`: every page links it; a component adopts its pieces by name, `shadowrootadoptedstylesheets="button"`.
 - `fudic.json`: its id, and the tag prefix of its components (`site-`).
 - `page.headers` and `assets.headers`: the headers of its pages (the CSP among them) and of its static files. What is in them is what is sent.
