@@ -47,19 +47,19 @@
 <pre><code>fudic new tienda</code></pre>
 </ui-code>
 
-<p>Abre tu agente en la carpeta <code>tienda</code>. Con Claude Code no hay nada más que hacer. Con Copilot, Cursor, Codex u otro agente, copia el fichero de configuración que da <a href="/mcp/connect">Desde un agente</a>. También se puede trabajar <a href="/mcp/connect/chat">desde un chat</a>.</p>
+<p>Abre tu agente en la carpeta <code>tienda</code>. Un agente es el asistente de IA de tu editor o tu terminal, como Claude Code o Copilot. Con Claude Code no hay nada más que hacer. Con Copilot, Cursor, Codex u otro agente, copia el fichero de configuración que da <a href="/mcp/connect">Desde un agente</a>. También se puede trabajar <a href="/mcp/connect/chat">desde un chat</a>.</p>
 
 <h2 id="steps">La conversación</h2>
 
-<p>Cada pieza de la app, sea un componente o una página, pasa por estos pasos. Tú hablas en tres de ellos.</p>
+<p>Cada pieza de la app, sea un componente o una página, pasa por estos pasos. Hablas tú en todos menos en el quinto.</p>
 
 <ol class="flow">
   <li><strong>Pide lo que quieres</strong>, con tus palabras: «Quiero una tienda con un botón, una tarjeta de producto y un buscador». No hace falta saber Fudic ni nombrar ficheros.</li>
   <li><strong>Responde a sus preguntas.</strong> El modelo empieza por una pieza y te pregunta qué tiene que hacer. Si no lo tienes claro, dile «propón tú».</li>
   <li><strong>Acuerda los colores y las tipografías</strong> antes del primer componente, porque todos los componentes los usan. Si el modelo no te lo pregunta, pídeselo tú.</li>
   <li><strong>Aprueba los criterios.</strong> El modelo te enseña lo que tiene que cumplir la pieza, una frase por cada cosa que comprobarías mirándola o tocándola. Di «apruebo» o qué quieres cambiar.</li>
-  <li><strong>Deja que trabaje.</strong> El modelo escribe los tests, la vista y la documentación, y comprueba que todo pasa. Solo te habla si cree que un test está mal.</li>
-  <li><strong>Aprueba cómo se ve.</strong> El modelo te enseña una captura de cada caso del componente. Di «apruebo» o qué cambiar, por ejemplo «el botón, más grande».</li>
+  <li><strong>Deja que trabaje.</strong> El modelo escribe las pruebas, el código del componente y su documentación, y comprueba que todo pasa. Solo te habla si cree que un test está mal.</li>
+  <li><strong>Aprueba cómo se ve.</strong> El modelo te enseña una captura de cada variante del componente, como activado y deshabilitado. Di «apruebo» o qué cambiar, por ejemplo «el botón, más grande».</li>
   <li><strong>Sigue con la siguiente pieza.</strong> Cuando una pieza está terminada, el modelo pasa a la siguiente y vuelve a preguntarte.</li>
 </ol>
 
@@ -73,7 +73,7 @@
   <li><strong>«Llama a <code>fudic_status</code>».</strong> El MCP le dice dónde está cada pieza y qué toca ahora.</li>
   <li><strong>«Lee la guía antes de escribirlo».</strong> El MCP trae una guía de Fudic, con un tema para cada tipo de fichero.</li>
   <li><strong>«No apruebes por mí».</strong> Los criterios y el aspecto solo los apruebas tú.</li>
-  <li><strong>«No cambies el test, explícame qué falla».</strong> Mientras escribe la vista, el modelo no toca los tests ni los criterios.</li>
+  <li><strong>«No cambies el test, explícame qué falla».</strong> Mientras escribe el componente, el modelo no toca las pruebas ni los criterios.</li>
 </ul>
 
 <p>Si te propone algo que no quieres, dile que no. Ninguna pieza avanza sin tu aprobación.</p>

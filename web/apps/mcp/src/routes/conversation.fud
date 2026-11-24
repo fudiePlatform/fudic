@@ -25,7 +25,7 @@
       <ul>
         <li><a href="#request">La petición</a></li>
         <li><a href="#proposal">La propuesta</a></li>
-        <li><a href="#red">El rojo</a></li>
+        <li><a href="#red">Las pruebas, en rojo</a></li>
         <li><a href="#view">La vista</a></li>
         <li><a href="#look">El aspecto</a></li>
         <li><a href="#done">Terminado</a></li>
@@ -69,15 +69,15 @@ criterion se-pulsa-con-el-dedo
     min-height tienda-button 40</code></pre>
 </ui-code>
 
-<p>Cada criterio monta el botón con un caso de su fixture, como <code>base</code> o <code>deshabilitada</code>. Al enseñar la propuesta, el modelo preguntó si hacía falta un botón de ancho completo y si sobraba el tamaño pequeño.</p>
+<p>Cada criterio monta el botón con un caso de su fixture, el fichero que guarda un juego de props con nombre para cada variante, como <code>base</code> o <code>deshabilitada</code>. Al enseñar la propuesta, el modelo preguntó si hacía falta un botón de ancho completo y si sobraba el tamaño pequeño.</p>
 
 <blockquote>
   <p>Quita el tamaño sm, de momento sobra, y no hace falta ancho completo. Lo demás está bien: apruebo las props y los criterios.</p>
 </blockquote>
 
-<h2 id="red">El rojo</h2>
+<h2 id="red">Las pruebas, en rojo</h2>
 
-<p>El modelo escribió ocho tests unitarios. Las dos primeras veces salieron rotos, y los corrigió hasta que los ocho fallaron por la razón correcta: el botón aún no existía.</p>
+<p>Antes de escribir el botón, el modelo escribió ocho tests unitarios, que tenían que fallar. Las dos primeras veces salieron rotos, y los corrigió hasta que los ocho fallaron por la razón correcta: el botón aún no existía.</p>
 
 <p>Un criterio daba error porque enfocaba el botón antes de que existiera. El modelo lo reescribió y, como el criterio ya estaba aprobado, la aprobación caducó. El modelo enseñó el cambio línea a línea y volvió a preguntar.</p>
 
@@ -87,7 +87,7 @@ criterion se-pulsa-con-el-dedo
 
 <h2 id="view">La vista</h2>
 
-<p>El modelo escribió el botón sobre la hoja de <code>&lt;button&gt;</code> de la guía de estilos del proyecto, que ya daba el color, el foco y el estado deshabilitado. Los nueve criterios pasaron, pero dos tests fallaban. El modelo vio que el error estaba en esos dos tests y no los cambió por su cuenta: explicó qué fallaba y propuso la corrección.</p>
+<p><code>fudic new</code> trae una guía de estilos, el CSS de cada elemento HTML con los colores del proyecto. El modelo escribió el botón sobre el CSS de <code>&lt;button&gt;</code> de esa guía, que ya daba el color, el foco y el estado deshabilitado. Los nueve criterios pasaron, pero dos tests fallaban. El modelo vio que el error estaba en esos dos tests y no los cambió por su cuenta: explicó qué fallaba y propuso la corrección.</p>
 
 <blockquote>
   <p>Sí, corrige el test. Y enséñame cómo queda.</p>

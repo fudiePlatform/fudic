@@ -39,7 +39,7 @@
 
 <h2 id="criteria">Aprobar los criterios</h2>
 
-<p>Los criterios del <code>.fudspec</code> y los casos de su fixture se aprueban juntos. Cuando dices que sí, el modelo llama a <code>fudic_record</code>, que hace lo mismo que <a href="/docs/cli/approve"><code>fudic approve</code></a> en la terminal. En el <code>.fudlog</code> de la pieza queda tu nombre de git, cuántos criterios aprobaste y un hash de lo aprobado:</p>
+<p>Los criterios del <code>.fudspec</code> y los casos de su fixture se aprueban juntos. Cuando dices que sí, el modelo llama a <code>fudic_record</code>, que hace lo mismo que <a href="/docs/cli/approve"><code>fudic approve</code></a> en la terminal. En el <code>.fudlog</code> de la pieza queda tu nombre de git, cuántos criterios aprobaste y una huella de lo aprobado, un hash que cambia si cambia cualquier letra:</p>
 
 <ui-code .path="src/components/tienda-button/tienda-button.fudlog">
 <pre><code>2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d</code></pre>
@@ -55,7 +55,7 @@
 
 <p>Un componente se aprueba también por cómo se ve. <code>fudic_look</code> pinta cada caso de su fixture en un navegador, guarda una captura de cada uno y la compara con la del último aspecto aprobado. El modelo te enseña las capturas, y si dices que sí, lo apunta.</p>
 
-<p>El aspecto aprobado caduca cuando cambia un fichero que puede cambiar cómo se dibuja el componente: su vista, lo que enlaza o importa, o las hojas de estilo globales del proyecto. Si el componente ya estaba terminado, se reabre, y el modelo vuelve a pasar sus tests, sus criterios y las capturas.</p>
+<p>El aspecto aprobado caduca cuando cambia un fichero que puede cambiar cómo se dibuja el componente: su <code>.fud</code>, lo que enlaza o importa, o el CSS común a todo el proyecto. Si el componente ya estaba terminado, se reabre, y el modelo vuelve a pasar sus pruebas y a enseñarte las capturas.</p>
 
 <p>Ver no es aprobar. El modelo te puede enseñar una pieza o la app entera tantas veces como quieras, y nada queda aprobado hasta que lo dices tú.</p>
 

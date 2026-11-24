@@ -49,13 +49,13 @@
 </ui-code>
 
 <ul>
-  <li><strong><code>@@fudic/mcp</code></strong> se instala con la misma versión que el resto de Fudic, así que el MCP comprueba con el mismo compilador que el build.</li>
+  <li><strong><code>@@fudic/mcp</code></strong> se instala con la misma versión que el resto de Fudic, así que el MCP comprueba con el mismo compilador que usa tu proyecto al compilar.</li>
   <li><strong><code>.mcp.json</code></strong> dice cómo arrancar el MCP. Lo lee Claude Code, y el fichero de los demás agentes está en <a href="/mcp/connect">Desde un agente</a>.</li>
   <li><strong><code>AGENTS.md</code></strong> es el fichero estándar que leen Codex, Copilot, Cursor y otros agentes al abrir un proyecto.</li>
   <li><strong><code>CLAUDE.md</code></strong> solo dice <code>@@AGENTS.md</code>, para que Claude Code lea el mismo fichero que los demás.</li>
 </ul>
 
-<p>En un workspace, los cuatro van en la raíz, y las apps y librerías de dentro no llevan los suyos.</p>
+<p>En un workspace, un repositorio con varias apps y librerías, los cuatro van en la raíz, y las apps y librerías de dentro no llevan los suyos.</p>
 
 <h2 id="agents">AGENTS.md</h2>
 

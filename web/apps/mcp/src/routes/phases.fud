@@ -40,11 +40,11 @@
 
 <ol class="flow">
   <li><strong>Criterios.</strong> El modelo propone las props de la pieza y sus <a href="/docs/testing">criterios de aceptación</a>, y los escribe en el <code>.fudspec</code> y su fixture. El fixture es un fichero TypeScript con un juego de props para cada caso. La fase termina cuando tú los apruebas.</li>
-  <li><strong>Contrato.</strong> Si la pieza pide datos al servidor, el modelo escribe su <a href="/docs/server"><code>.fudapi</code></a>.</li>
-  <li><strong>Rojo.</strong> El modelo escribe los tests unitarios y ejecuta los tests y los criterios. Todos tienen que fallar, porque la pieza aún no hace nada.</li>
-  <li><strong>Vista.</strong> El modelo escribe el <code>.fud</code> hasta que pasan los tests y los criterios.</li>
-  <li><strong>Conexión.</strong> Si la pieza tiene <code>.fudapi</code>, el modelo escribe el código de servidor de cada función.</li>
-  <li><strong>Documentación.</strong> El modelo documenta el componente y cada prop con un comentario JSDoc.</li>
+  <li><strong>Contrato.</strong> Si la pieza pide datos al servidor, el modelo escribe su <a href="/docs/server"><code>.fudapi</code></a>, el fichero que declara qué datos pide y qué puede fallar.</li>
+  <li><strong>Rojo</strong>, el color de una prueba que falla. El modelo escribe los tests unitarios y ejecuta los tests y los criterios. Todos tienen que fallar, porque la pieza aún no hace nada.</li>
+  <li><strong>Vista.</strong> El modelo escribe el <code>.fud</code>, el fichero del componente o de la página, hasta que pasan los tests y los criterios.</li>
+  <li><strong>Conexión.</strong> Si la pieza tiene <code>.fudapi</code>, el modelo escribe el código de servidor que responde a cada petición.</li>
+  <li><strong>Documentación.</strong> El modelo documenta el componente y cada prop con un comentario en el código. Es lo que lee quien use el componente después, sea una persona o un modelo.</li>
   <li><strong>Catálogo.</strong> Una librería de componentes puede tener un catálogo: unas páginas que enseñan cada componente con todos sus casos, creadas con <a href="/docs/cli/generate/showcase"><code>fudic generate showcase</code></a>. Si la librería lo tiene, el modelo añade el componente nuevo. Si no, la fase no existe.</li>
   <li><strong>Aspecto.</strong> Si la pieza es un componente, el modelo te enseña una captura de cada caso. La fase termina cuando tú apruebas cómo se ve.</li>
 </ol>

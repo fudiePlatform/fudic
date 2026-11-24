@@ -67,8 +67,8 @@
 
 <ul>
   <li><strong>HTML estándar.</strong> <code>&lt;tienda-button&gt;</code> es un custom element, y <code>&lt;template shadowrootmode&gt;</code> es Declarative Shadow DOM: el navegador monta el componente al leer el HTML, antes de ejecutar ningún script. <code>&lt;slot&gt;</code> es donde va el texto del botón.</li>
-  <li><strong>CSS estándar.</strong> El <code>&lt;style&gt;</code> solo afecta al componente, porque vive dentro de su shadow DOM. <code>var(--tienda-accent)</code> lee un token de diseño, una custom property del proyecto.</li>
-  <li><strong>TypeScript estándar.</strong> El bloque <code>@@code</code> es TypeScript. <code>props</code> es una función de Fudic que declara las props del componente con su tipo.</li>
+  <li><strong>CSS estándar.</strong> El <code>&lt;style&gt;</code> solo afecta al componente, porque el shadow DOM lo aísla del resto de la página. <code>var(--tienda-accent)</code> lee un color del proyecto, guardado en una custom property de CSS.</li>
+  <li><strong>TypeScript estándar.</strong> El bloque <code>@@code</code> es TypeScript. <code>props</code> es una función de Fudic que declara las props, los datos que recibe el componente desde fuera, con su tipo.</li>
   <li><strong>La sintaxis de Fudic.</strong> <code>@@disabled</code> escribe un valor, <code>@@(…)</code> una expresión, y <code>class:secondary</code> pone la clase si la expresión es verdadera. Es lo único que no viene de un estándar.</li>
 </ul>
 
@@ -78,7 +78,7 @@
 
 <p>Un modelo de lenguaje conoce React, Angular y Vue porque los vio millones de veces al entrenarse. Fudic no lo ha visto nunca. Y como Fudic se parece a lo que conoce, el modelo tiende a escribir de memoria algo que casi funciona. Para escuchar un clic escribiría <code>onClick=&#123;inc&#125;</code>, y en Fudic es <code>@@click=@@inc</code>.</p>
 
-<p>El compilador de Fudic no deja pasar nada inventado: cada error sale con su línea y su explicación. Por eso el MCP le dice al modelo, antes de la primera frase, que no conoce Fudic, y le da la guía para aprenderlo y el compilador para comprobar cada cosa que escribe. El modelo escribe HTML, CSS y TypeScript, que ya conoce bien, y aprende del MCP la parte que es de Fudic.</p>
+<p>El compilador de Fudic rechaza lo que no es Fudic, y cada error sale con su línea y su explicación. Por eso el MCP le dice al modelo, antes de la primera frase, que no conoce Fudic, y le da la guía para aprenderlo y el compilador para comprobar cada cosa que escribe. El modelo escribe HTML, CSS y TypeScript, que ya conoce bien, y aprende del MCP la parte que es de Fudic.</p>
 
 <p>La Documentación cuenta Fudic entero, empezando por <a href="/docs/getting-started">Primeros pasos</a>.</p>
 
