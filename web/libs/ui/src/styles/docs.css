@@ -269,6 +269,48 @@ ui-note > :last-child {
   }
 }
 
+/* Going from page to page: the header and the two columns stay still, and only the page in the
+   middle changes, the old one fading out and the new one rising a little into place. It is the
+   standard cross-document view transition, with no script; a browser without it just loads the
+   page. Only opacity and translate move, and only for those who accept motion. */
+@supports (view-transition-name: none) {
+  @media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+      navigation: auto;
+    }
+
+    .docs-page {
+      view-transition-name: docs-page;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+    }
+
+    ::view-transition-old(docs-page) {
+      animation: docs-page-out 120ms ease-in both;
+    }
+
+    ::view-transition-new(docs-page) {
+      animation: docs-page-in 240ms ease-out both;
+    }
+  }
+}
+
+@keyframes docs-page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes docs-page-in {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+}
+
 @keyframes docs-open {
   from {
     opacity: 0;
