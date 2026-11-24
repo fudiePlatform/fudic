@@ -217,16 +217,9 @@
   <details class="chapters">
     <summary>Páginas</summary>
     <ol>
-      <li><a href="/mcp/" aria-current=@(current === "mcp" ? "page" : false)>Qué es el MCP</a></li>
-      <li>
-        <span class="chapter">Dirigir un modelo</span>
-        <ol>
-          <li><a href="/mcp/roles" aria-current=@(current === "roles" ? "page" : false)>El reparto de papeles</a></li>
-          <li><a href="/mcp/phases" aria-current=@(current === "phases" ? "page" : false)>Las fases de una pieza</a></li>
-          <li><a href="/mcp/approval" aria-current=@(current === "approval" ? "page" : false)>Aprobar, caducar y reabrir</a></li>
-          <li><a href="/mcp/conversation" aria-current=@(current === "conversation" ? "page" : false)>Una conversación de principio a fin</a></li>
-        </ol>
-      </li>
+      <li><a href="/mcp/" aria-current=@(current === "mcp" ? "page" : false)>Empezar</a></li>
+      <li><a href="/mcp/fudic" aria-current=@(current === "fudic" ? "page" : false)>Qué es Fudic</a></li>
+      <li><a href="/mcp/conversation" aria-current=@(current === "conversation" ? "page" : false)>Una conversación de principio a fin</a></li>
       <li>
         <span class="chapter">Conectarlo</span>
         <ol>
@@ -234,7 +227,14 @@
           <li><a href="/mcp/connect/chat" aria-current=@(current === "chat" ? "page" : false)>Desde un chat</a></li>
         </ol>
       </li>
-      <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
+      <li>
+        <span class="chapter">Por dentro</span>
+        <ol>
+          <li><a href="/mcp/phases" aria-current=@(current === "phases" ? "page" : false)>Las fases de una pieza</a></li>
+          <li><a href="/mcp/approval" aria-current=@(current === "approval" ? "page" : false)>Aprobar, caducar y reabrir</a></li>
+          <li><a href="/mcp/project" aria-current=@(current === "project" ? "page" : false)>Lo que genera la CLI</a></li>
+        </ol>
+      </li>
       <li><a href="/mcp/tools" aria-current=@(current === "tools" ? "page" : false)>Las herramientas</a></li>
     </ol>
   </details>

@@ -1,0 +1,91 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Qué es Fudic · Fudic</title>
+  <meta name="description" content="Fudic es un framework de UI hecho de estándares: HTML, CSS y TypeScript. Lo único propio es la sintaxis de las plantillas, y por eso un modelo no puede inventarlo: lo aprende del MCP.">
+  <link rel="canonical" href="https://fudic.dev/mcp/fudic">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Qué es Fudic · Fudic">
+  <meta property="og:description" content="Un framework de UI hecho de HTML, CSS y TypeScript estándar, con una sintaxis de plantillas propia.">
+  <meta property="og:url" content="https://fudic.dev/mcp/fudic">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render mcpNav("fudic")
+}
+
+@section toc {
+  <ui-toc>
+    <details>
+      <summary>En esta página</summary>
+      <ul>
+        <li><a href="#component">Un componente</a></li>
+        <li><a href="#model">Por qué el modelo no puede inventarlo</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+    </details>
+  </ui-toc>
+}
+
+<h1>Qué es Fudic</h1>
+
+<p>Fudic es un framework para construir la interfaz de una web. Casi todo lo que escribes es estándar: HTML, CSS y TypeScript. Lo único propio de Fudic es la sintaxis de las plantillas, la parte que lleva una <code>@@</code>.</p>
+
+<h2 id="component">Un componente</h2>
+
+<p>Este es un botón de una tienda, entero:</p>
+
+<ui-code .path="src/components/tienda-button/tienda-button.fud">
+<pre><code>@@code &#123;
+  /** A button for the actions of the shop. Its text is the default slot. */
+  const &#123; variant = 'primary', disabled = false &#125; = props&lt;&#123;
+    variant?: 'primary' | 'secondary';
+    disabled?: boolean;
+  &#125;&gt;();
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    button &#123;
+      background: var(--tienda-accent);
+      color: var(--tienda-on-accent);
+      &amp;.secondary &#123; background: transparent; color: var(--tienda-accent); &#125;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;tienda-button&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" class:secondary=@@(variant === 'secondary') disabled=@@disabled&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/tienda-button&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>HTML estándar.</strong> <code>&lt;tienda-button&gt;</code> es un custom element, y <code>&lt;template shadowrootmode&gt;</code> es Declarative Shadow DOM: el navegador monta el componente al leer el HTML, antes de ejecutar ningún script. <code>&lt;slot&gt;</code> es donde va el texto del botón.</li>
+  <li><strong>CSS estándar.</strong> El <code>&lt;style&gt;</code> solo afecta al componente, porque vive dentro de su shadow DOM. <code>var(--tienda-accent)</code> lee un token de diseño, una custom property del proyecto.</li>
+  <li><strong>TypeScript estándar.</strong> El bloque <code>@@code</code> es TypeScript. <code>props</code> es una función de Fudic que declara las props del componente con su tipo.</li>
+  <li><strong>La sintaxis de Fudic.</strong> <code>@@disabled</code> escribe un valor, <code>@@(…)</code> una expresión, y <code>class:secondary</code> pone la clase si la expresión es verdadera. Es lo único que no viene de un estándar.</li>
+</ul>
+
+<p>Fudic tiene además dos ficheros pequeños con un formato propio: el <code>.fudapi</code>, que declara lo que una página pide al servidor, y el <code>.fudspec</code>, que escribe los criterios que tiene que cumplir un componente. Los explican <a href="/docs/server">Servidor</a> y <a href="/docs/testing">Pruebas</a>.</p>
+
+<h2 id="model">Por qué el modelo no puede inventarlo</h2>
+
+<p>Un modelo de lenguaje conoce React, Angular y Vue porque los vio millones de veces al entrenarse. Fudic no lo ha visto nunca. Y como Fudic se parece a lo que conoce, el modelo tiende a escribir de memoria algo que casi funciona. Para escuchar un clic escribiría <code>onClick=&#123;inc&#125;</code>, y en Fudic es <code>@@click=@@inc</code>.</p>
+
+<p>El compilador de Fudic no deja pasar nada inventado: cada error sale con su línea y su explicación. Por eso el MCP le dice al modelo, antes de la primera frase, que no conoce Fudic, y le da la guía para aprenderlo y el compilador para comprobar cada cosa que escribe. El modelo escribe HTML, CSS y TypeScript, que ya conoce bien, y aprende del MCP la parte que es de Fudic.</p>
+
+<p>La Documentación cuenta Fudic entero, empezando por <a href="/docs/getting-started">Primeros pasos</a>.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Custom elements</a>: los tags propios, como <code>&lt;tienda-button&gt;</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a>: el árbol aislado de un componente, y cómo se declara en HTML con <code>shadowrootmode</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting" target="_blank" rel="noopener">CSS nesting</a>: las reglas dentro de otras, como <code>&amp;.secondary</code>.</li>
+</ul>
