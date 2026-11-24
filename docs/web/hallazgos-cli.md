@@ -288,3 +288,18 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** Se creó sin propósito: `fudic g c nav --slot`.
 - **Qué debería hacer.** Aceptar `--purpose` en `g component` y `g page`, igual que el MCP.
 
+## 22. `g error-page --layout` resuelve la ruta de tres formas distintas
+
+- **Qué pasó.** En `web/libs/ui` (2026-11-24), para crear la página de error compartida.
+  Sin `--layout` responde `FUD1582` (busca `src/layouts/_layout.fud`). Con
+  `--layout ./layouts/docs.fud` responde `FUD0449` «is not a layout (no doctype + @RenderBody())»,
+  cuando lo que pasa es que el fichero no existe en esa ruta. Con `--layout layouts/docs.fud` lo
+  toma por un paquete y revienta con el `ENOENT` del hallazgo 6. Solo
+  `--layout src/layouts/docs.fud`, relativo a la carpeta de la librería, funciona, y el fichero
+  generado escribe `./layouts/docs.fud`, relativo a `src/_error.fud`.
+- **De paso.** Al terminar dice «Created src/_error.fud in » con el nombre del proyecto vacío, como
+  el `(in )` del hallazgo 18.
+- **Cómo se resolvió.** `fudic g error-page --layout src/layouts/docs.fud`.
+- **Qué debería hacer.** Resolver `--layout` siempre igual y decirlo en la ayuda; ante un fichero
+  que no existe, decir que no existe y no que no es un layout.
+

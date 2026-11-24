@@ -1,0 +1,36 @@
+<link rel="layout" href="./layouts/docs.fud">
+<link rel="snippet" href="./snippets/site.fud">
+
+<head>
+  <title>@(data.status === 404 ? "Página no encontrada" : "Algo ha fallado") · Fudic</title>
+  <meta name="robots" content="noindex">
+</head>
+
+@* The error page of every app of the site: the Documentation, the MCP and any app that depends on
+   this library and has no _error.fud of its own. Its `data` is the error that brought the reader
+   here: `status`, `title`, `detail`, `path`, `back` and `home`, the last two with the app's base.
+   Its menu is the documentation's, so whoever is lost can go on reading from any chapter. *@
+
+@section nav {
+  @render docsNav("")
+}
+
+@if (data.status === 404) {
+  <h1>Esta página no existe</h1>
+  <p>La dirección que has abierto no lleva a ninguna página. Puede que esté mal escrita o que la página haya cambiado de sitio.</p>
+} @else {
+  <h1>Algo ha fallado</h1>
+  <p>El servidor respondió con un error @data.status. Prueba otra vez dentro de un momento.</p>
+  @if (data.detail !== undefined) {
+    <p>@data.detail</p>
+  }
+}
+
+<ul>
+  @if (data.back !== undefined) {
+    <li><a href=@data.back>Volver a la página anterior</a></li>
+  }
+  <li><a href=@data.home>Ir al inicio de esta sección</a></li>
+  <li><a href="/docs/getting-started">Empezar con Fudic</a></li>
+  <li><a href="/mcp/">Trabajar con el MCP</a></li>
+</ul>
