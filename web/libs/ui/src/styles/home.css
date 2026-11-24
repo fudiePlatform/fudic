@@ -77,7 +77,7 @@
 }
 
 .home .start .arrow {
-  color: var(--guide-brand);
+  color: var(--guide-brand-on-ink);
 }
 
 /* Only translate moves, and only for those who accept motion. */
@@ -287,7 +287,7 @@
 }
 
 .home .langs .now span {
-  color: var(--guide-brand);
+  color: var(--guide-brand-on-ink);
 }
 
 /* A phone: the buttons fill the width. */

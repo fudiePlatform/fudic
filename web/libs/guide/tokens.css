@@ -41,6 +41,8 @@
   --guide-accent: light-dark(#a9472a, #e99a7e);
   --guide-on-accent: light-dark(#faf9f5, #181715);
   --guide-brand: light-dark(#c6613f, #e08a6a);
+  /* Clay on an ink background (a chip or a button inverted against the page): 4.5:1 in both modes. */
+  --guide-brand-on-ink: light-dark(#e08a6a, #a9472a);
   --guide-danger: light-dark(#b3261e, #ff8a80);
   --guide-on-danger: light-dark(#faf9f5, #181715);
   --guide-success: light-dark(#2e6b3a, #7acb8c);
