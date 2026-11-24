@@ -33,9 +33,8 @@
         <li><a href="#check-it-works">Pruébalo</a></li>
         <li><a href="#inside-the-app">Qué hay dentro</a></li>
         <li><a href="#declarative-shadow-dom">Qué es Declarative Shadow DOM</a></li>
-        <li><a href="#why-fudic">Por qué existe Fudic</a>
-          <ul><li><a href="#polyglot">Políglota</a></li></ul>
-        </li>
+        <li><a href="#why-fudic">Por qué existe Fudic</a></li>
+        <li><a href="#polyglot">Políglota</a></li>
         <li><a href="#mdn">El estándar, en MDN</a></li>
       </ul>
   </ui-toc>
@@ -280,7 +279,7 @@ criterion suma-uno-al-pulsar
   <li><strong>Sin atarte a Node.</strong> Muchas empresas no quieren poner Node en producción, y no deberían tener que hacerlo para pintar HTML.</li>
 </ul>
 
-<h3 id="polyglot">Políglota</h3>
+<h2 id="polyglot">Políglota</h2>
 
 <p>Hoy, una app de Fudic se despliega en Node. Pero todo lo que ejecuta el servidor está diseñado para no depender de él:</p>
 
