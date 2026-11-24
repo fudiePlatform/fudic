@@ -278,3 +278,13 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   chat: `AGENTS.md.tmpl` tiene dos líneas, y con él el snapshot de `new-compat` y el `AGENTS.md`
   de `web/`. `docs/sdd/SDD-77-mcp-desde-el-chat.md` §3.7 conserva las tres líneas, como registro
   de lo que se especificó. Sigue pendiente el fichero de cada agente.
+
+## 21. `fudic g component` no acepta el propósito que el MCP exige
+
+- **Qué pasó.** Al crear `ui-nav` en `web/libs/ui` (2026-11-24), `fudic g c nav --purpose "…"`
+  responde `unknown flag --purpose`. Desde el MCP, `fudic_generate` exige `purpose` en un
+  componente y en una página, y lo apunta en la línea `started` del `.fudlog`. La CLI no tiene
+  forma de darlo, así que una pieza creada a mano empieza su historial sin él.
+- **Cómo se resolvió.** Se creó sin propósito: `fudic g c nav --slot`.
+- **Qué debería hacer.** Aceptar `--purpose` en `g component` y `g page`, igual que el MCP.
+

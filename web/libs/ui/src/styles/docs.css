@@ -112,6 +112,14 @@
   --docs-header: calc(2 * var(--guide-space-5) + var(--guide-text-2xl) * var(--guide-leading-normal) + 1px);
 }
 
+/* The column opens scrolled to the link of the page being read; ui-nav does it with a script
+   where this is not known. Only the column scrolls, never the focus. */
+@supports (scroll-initial-target: nearest) {
+  .docs-nav a[aria-current="page"] {
+    scroll-initial-target: nearest;
+  }
+}
+
 /* Thin scrollbars, in the colour of the rules. */
 @supports (scrollbar-width: thin) {
   html,

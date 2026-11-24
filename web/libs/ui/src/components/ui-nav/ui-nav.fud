@@ -1,0 +1,34 @@
+@code {
+  /**
+   * The chapter list of the side column, scrolled so the link of the page being read is in view
+   * when the page loads. Every page renders the list again from the top, and in a long chapter
+   * that link would start below the fold.
+   *
+   * It scrolls the column only: never the page, and never the focus, so a keyboard or a screen
+   * reader still starts at the top of the page. A browser that knows `scroll-initial-target` does
+   * it from the CSS, and this does nothing there.
+   */
+  onConnect((host) => {
+    if (CSS.supports("scroll-initial-target", "nearest")) return;
+    const link = host.querySelector<HTMLElement>('[aria-current="page"]');
+    const column = host.parentElement;
+    if (link === null || column === null || column.scrollHeight <= column.clientHeight) return;
+    const top = link.getBoundingClientRect().top - column.getBoundingClientRect().top;
+    if (top >= 0 && top + link.offsetHeight <= column.clientHeight) return;
+    column.scrollTop += top - (column.clientHeight - link.offsetHeight) / 2;
+  });
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+</head>
+
+<ui-nav>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</ui-nav>

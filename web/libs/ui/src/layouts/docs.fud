@@ -5,6 +5,7 @@
 <html lang="es">
   <head>
     <link rel="snippet" href="../snippets/site.fud">
+    <link rel="component" href="../components/ui-nav/ui-nav.fud">
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,7 +23,7 @@
 
     <div class="docs">
       <nav class="docs-nav" aria-label="Capítulos">
-        @RenderSection(nav)
+        <ui-nav>@RenderSection(nav)</ui-nav>
       </nav>
 
       <aside class="docs-toc" aria-label="En esta página">
