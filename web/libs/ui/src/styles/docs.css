@@ -165,6 +165,13 @@
   border-inline-start: 2px solid transparent;
 }
 
+/* The two side columns scroll on their own, so a ring drawn outside a link is cut at their
+   edges: inside the link, it is whole. */
+.docs-nav a:focus-visible,
+.docs-toc a:focus-visible {
+  outline-offset: calc(-1 * var(--guide-focus-width));
+}
+
 .docs-nav a:hover,
 .docs-toc a:hover {
   color: var(--guide-ink);
@@ -200,24 +207,10 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
-/* Going to a part of the page: the page glides there, and the heading fades and slides into
-   place. Only opacity and translate move, which the compositor animates without a reflow or a
-   repaint. Only for those who accept motion. */
+/* Going to a part of the page: the page glides there, only for those who accept motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
-  }
-
-  .docs-page h2:target,
-  .docs-page h3:target {
-    animation: docs-arrive 600ms ease-out;
-  }
-}
-
-@keyframes docs-arrive {
-  from {
-    opacity: 0.3;
-    translate: -0.75rem 0;
   }
 }
 
