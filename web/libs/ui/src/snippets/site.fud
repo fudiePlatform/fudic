@@ -217,7 +217,7 @@
   <details class="chapters">
     <summary>Páginas</summary>
     <ol>
-      <li><a href="/mcp/" aria-current=@(current === "mcp" ? "page" : false)>Empezar</a></li>
+      <li><a href="/mcp/" aria-current=@(current === "mcp" ? "page" : false)>Trabajar con el MCP</a></li>
       <li><a href="/mcp/fudic" aria-current=@(current === "fudic" ? "page" : false)>Qué es Fudic</a></li>
       <li><a href="/mcp/conversation" aria-current=@(current === "conversation" ? "page" : false)>Una conversación de principio a fin</a></li>
       <li>

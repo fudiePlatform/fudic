@@ -25,7 +25,7 @@
       <ul>
         <li><a href="#files">Los ficheros</a></li>
         <li><a href="#see">Ver lo que construye</a></li>
-        <li><a href="#start">Empezar</a></li>
+        <li><a href="#start">La primera petición</a></li>
         <li><a href="#standard">El estándar</a></li>
       </ul>
     </details>
@@ -65,7 +65,7 @@
 
 <p>Cuando pides ver un componente, el chat lo dibuja dentro de la conversación. Cuando pides ver la app entera, el modelo te da una URL que se abre en el navegador o en el móvil, y lo que escribe después se ve sin recargar.</p>
 
-<h2 id="start">Empezar</h2>
+<h2 id="start">La primera petición</h2>
 
 <p>El MCP trae una petición ya escrita, <em>New fudic app</em>, que aparece en el menú del chat. Elegirla es pedirle al modelo que mire el proyecto y te pregunte solo lo que necesita. También puedes pedirlo con tus palabras, y a partir de ahí la conversación sigue <a href="/mcp/#steps">los pasos de siempre</a>.</p>
 

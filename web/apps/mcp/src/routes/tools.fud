@@ -23,7 +23,7 @@
     <details>
       <summary>En esta página</summary>
       <ul>
-        <li><a href="#list">Las 21</a></li>
+        <li><a href="#list">Por lo que hacen</a></li>
         <li><a href="#answer">La respuesta</a></li>
         <li><a href="#errors">Cuando no puede</a></li>
       </ul>
@@ -35,7 +35,7 @@
 
 <p>El MCP ofrece 21 herramientas. Todas responden JSON con la misma forma, y las tres de ficheros solo existen cuando lo usa un chat.</p>
 
-<h2 id="list">Las 21</h2>
+<h2 id="list">Por lo que hacen</h2>
 
 <table>
   <thead>

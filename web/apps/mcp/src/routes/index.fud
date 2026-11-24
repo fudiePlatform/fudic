@@ -4,11 +4,11 @@
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
-  <title>Empezar con el MCP · Fudic</title>
+  <title>Trabajar con el MCP · Fudic</title>
   <meta name="description" content="Construye una app con Fudic hablando con un modelo: qué le dices, qué te pregunta, qué apruebas tú y qué frases lo devuelven al camino. El MCP de Fudic le enseña Fudic y comprueba cada paso.">
   <link rel="canonical" href="https://fudic.dev/mcp/">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Empezar con el MCP · Fudic">
+  <meta property="og:title" content="Trabajar con el MCP · Fudic">
   <meta property="og:description" content="Qué le dices al modelo, qué te pregunta y qué apruebas tú, con el MCP de Fudic.">
   <meta property="og:url" content="https://fudic.dev/mcp/">
   <meta property="og:site_name" content="Fudic">
@@ -33,7 +33,7 @@
   </ui-toc>
 }
 
-<h1>Empezar</h1>
+<h1>Trabajar con el MCP</h1>
 
 <p>Con el MCP de Fudic, un modelo construye tu app con Fudic aunque nunca lo haya visto. Tú dices qué quieres y apruebas el resultado. El MCP le enseña Fudic al modelo y comprueba cada paso que da.</p>
 
