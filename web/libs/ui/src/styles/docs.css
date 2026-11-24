@@ -200,8 +200,9 @@ ui-note > :last-child {
   scroll-margin-top: var(--guide-space-5);
 }
 
-/* Going to a part of the page: the page glides there, the heading arrives in the accent colour
-   and settles, and the mark of the index slides to its link. Only for those who accept motion. */
+/* Going to a part of the page: the page glides there, and the heading fades and slides into
+   place. Only opacity and translate move, which the compositor animates without a reflow or a
+   repaint. Only for those who accept motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
@@ -209,22 +210,14 @@ ui-note > :last-child {
 
   .docs-page h2:target,
   .docs-page h3:target {
-    animation: docs-arrive 900ms ease-out;
-  }
-
-  .docs-nav a,
-  .docs-toc a {
-    transition: color 200ms ease, border-color 200ms ease;
+    animation: docs-arrive 600ms ease-out;
   }
 }
 
 @keyframes docs-arrive {
   from {
-    color: var(--guide-accent);
+    opacity: 0.3;
     translate: -0.75rem 0;
-  }
-  to {
-    translate: 0 0;
   }
 }
 
