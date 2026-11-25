@@ -936,7 +936,7 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 
 - **Qué pasó.** Escribiendo el tutorial `ref`, un componente con `let dialog: HTMLDialogElement |
   null = null;` y `<dialog ref="@dialog">` que además escribe `<p>@dialog</p>` da dos errores:
-  `FUD1153: this type does not port: declare it in the \`.fudapi\`` sobre la declaración de
+  `FUD1153: this type does not port: declare it in the .fudapi` sobre la declaración de
   `dialog`, y un `TS2345` con el tipo interno `$Scalar`. Ninguno dice lo que pasa: un elemento
   solo existe en el navegador, y el servidor que pinta la plantilla no lo tiene. Declarar
   `HTMLDialogElement` en un `.fudapi` no tiene sentido.
