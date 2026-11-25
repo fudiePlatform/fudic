@@ -136,7 +136,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   librería; con la ruta relativa, el `href` frágil y el título «First-app», corregidos a mano.
 - **Y otra vez** con los tutoriales de Sintaxis de plantilla (`fudic g page expressions`, `if-and-foreach`, `props`, `slots`, `snippets`, `attributes-and-classes`, `spread-and-rest`, `ref`, `raw`, `await`, `safe-urls` en
   `web/apps/tutorials`), el 2026-11-25: con la ruta relativa, el `href` frágil y el título
-  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets», «Attributes-and-classes», «Spread-and-rest», «Ref», «Raw», «Await» o «Safe-urls», corregidos: los once de la categoría a mano.
+  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets», «Attributes-and-classes», «Spread-and-rest», «Ref», «Raw», «Await» o «Safe-urls», corregidos a mano: los once de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
