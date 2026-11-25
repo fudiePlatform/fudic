@@ -1,0 +1,16 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-input/myapp-input.fud">
+<link rel="server" href="../forms/profile.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Profile</h1>
+
+<form control=@profileForm>
+  <label for="alias">Alias</label>
+  <myapp-input id="alias" control=@profileForm.alias></myapp-input>
+  <small error=@profileForm.alias></small>
+  <button type="submit">Save</button>
+</form>

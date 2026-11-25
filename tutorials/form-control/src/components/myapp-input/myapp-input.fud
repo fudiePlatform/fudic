@@ -1,0 +1,24 @@
+@code {
+  import type { Control } from "@fudic/forms";
+
+  const { ctrl } = props<{ ctrl: Control<unknown> }>();
+}
+
+<head>
+  <style>
+    .field {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<myapp-input>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="field" shadowrootadoptedstylesheets="input">
+    <div class="field">
+      <span aria-hidden="true">@@</span>
+      <input id="field" type="text" control=@ctrl>
+    </div>
+  </template>
+</myapp-input>

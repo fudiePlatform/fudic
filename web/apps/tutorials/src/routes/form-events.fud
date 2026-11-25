@@ -184,4 +184,4 @@ subscribe.handle((ctx) =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/form-events" target="_blank" rel="noopener">la solución de Eventos del formulario, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/file-upload", prevTitle: "Subir ficheros", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/file-upload", prevTitle: "Subir ficheros", next: "/tutorials/form-control", nextTitle: "Un control form-associated")

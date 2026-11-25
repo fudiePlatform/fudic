@@ -1,0 +1,167 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un control form-associated · Tutoriales de Fudic</title>
+  <meta name="description" content="Convierte un componente de Fudic en un campo de verdad con formassociated: su label, su error, su validez y su foco, como un input nativo.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/form-control">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un control form-associated · Tutoriales de Fudic">
+  <meta property="og:description" content="Un componente que el navegador y los lectores de pantalla tratan como un campo.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/form-control">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("form-control")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el formulario</a></li>
+        <li><a href="#component">2. El componente</a></li>
+        <li><a href="#use">3. Úsalo como un input</a></li>
+        <li><a href="#try">4. Comprueba que es un campo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Formularios</span></p>
+
+<h1>Un control form-associated</h1>
+
+<p class="lede">Haces un componente con un <code>&lt;input&gt;</code> dentro y lo conviertes en un campo de verdad: su label, su error, su validez y su foco funcionan como en un input nativo.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Marcar un componente como <code>formassociated</code> y pasarle un campo con <code>control</code>.</li>
+    <li>Llevar el label de la página al <code>&lt;input&gt;</code> de dentro con <code>shadowrootreferencetarget</code>.</li>
+    <li>Comprobar que el navegador lo trata como un campo, y saber lo que cuesta.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Conviene haber hecho <a href="/tutorials/first-form">Un formulario con binding</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el formulario</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g form profile --skip-test
+pnpm add @@fudic/http@@0.0.1</code></pre>
+</ui-code>
+
+<p>Los formularios necesitan <code>@@fudic/http</code>, y la CLI no lo añade. Declara un solo campo, el alias:</p>
+
+<ui-code .path="src/forms/profile.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form profileForm
+  alias  str = ""
+    required      "Choose an alias."
+    min-length 3  "At least &#123;n&#125; characters."</code></pre>
+</ui-code>
+
+<h2 id="component">2. El componente</h2>
+
+<p>Un campo para el alias con una <code>@@</code> delante, que no se escribe. Créalo sin test ni criterios, enlazado ya desde la página:</p>
+
+<ui-code>
+<pre><code>npx fudic g component input --in src/routes/index.fud --skip-test --skip-spec</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-input&gt; in src/components/myapp-input/
+
+  myapp-input.fud         the component
+  linked from src/routes/index.fud</code></pre>
+
+<p>Para el navegador, un componente con un <code>&lt;input&gt;</code> dentro no es un campo: un <code>&lt;label for&gt;</code> de la página no llega al <code>&lt;input&gt;</code> de dentro, y el componente no tiene validez. Escribe el componente con dos atributos más en su <code>&lt;template&gt;</code>:</p>
+
+<ui-code .path="src/components/myapp-input/myapp-input.fud">
+<pre><code>@@code &#123;
+  import type &#123; Control &#125; from "@@fudic/forms";
+
+  const &#123; ctrl &#125; = props&lt;&#123; ctrl: Control&lt;unknown&gt; &#125;&gt;();
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    .field &#123;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-input&gt;
+  &lt;template shadowrootmode="open" formassociated shadowrootreferencetarget="field" shadowrootadoptedstylesheets="input"&gt;
+    &lt;div class="field"&gt;
+      &lt;span aria-hidden="true"&gt;@@@@&lt;/span&gt;
+      &lt;input id="field" type="text" control=@@ctrl&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-input&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>ctrl</code></strong> es el campo que le pasa la página. Su tipo, <code>Control</code>, viene de <code>@@fudic/forms</code>, y el componente lo enlaza a su <code>&lt;input&gt;</code> con <code>control</code>, como haría una página.</li>
+  <li><strong><code>formassociated</code></strong> es un marcador de Fudic: el componente entrega su valor y su validez al formulario y pasa el foco al <code>&lt;input&gt;</code> de dentro, con las APIs estándar de los <em>form-associated custom elements</em>.</li>
+  <li><strong><code>shadowrootreferencetarget="field"</code></strong> es HTML estándar: lo que apunta al tag del componente, como un <code>&lt;label for&gt;</code>, sigue hasta el elemento de dentro con <code>id="field"</code>.</li>
+  <li><strong><code>shadowrootadoptedstylesheets="input"</code></strong> adopta la hoja del <code>input</code> de la guía de estilos, para que el campo se vea como los de la página.</li>
+</ul>
+
+<h2 id="use">3. Úsalo como un input</h2>
+
+<p>La página escribe fuera el label y el error, igual que con un <code>&lt;input&gt;</code>, y le pasa el campo con <code>control</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-input/myapp-input.fud"&gt;
+&lt;link rel="server" href="../forms/profile.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Profile&lt;/h1&gt;
+
+&lt;form control=@@profileForm&gt;
+  &lt;label for="alias"&gt;Alias&lt;/label&gt;
+  &lt;myapp-input id="alias" control=@@profileForm.alias&gt;&lt;/myapp-input&gt;
+  &lt;small error=@@profileForm.alias&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Save&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<p>El <code>id</code> lo pone la página en el tag, y el label apunta a él. El <code>id="field"</code> de dentro no choca con nada: los <code>id</code> de un shadow root son locales a él. Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y mira el código fuente con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;myapp-input data-fud-id="0" data-fud-adopt="base input myapp-input" id="alias" aria-describedby="fud-e-profileForm-alias"&gt;&lt;template shadowrootmode="open" shadowrootdelegatesfocus shadowrootreferencetarget="field" shadowrootadoptedstylesheets="base input myapp-input"&gt; …</code></pre>
+
+<p>El <code>aria-describedby</code> del error está en el tag, como en un input, y <code>formassociated</code> se ha convertido en <code>shadowrootdelegatesfocus</code>, el atributo estándar que pasa el foco al primer elemento enfocable de dentro.</p>
+
+<h2 id="try">4. Comprueba que es un campo</h2>
+
+<ul>
+  <li><strong>Pulsa en el texto «Alias».</strong> El cursor aparece en el <code>&lt;input&gt;</code> de dentro del componente, como con un label nativo.</li>
+  <li><strong>Pulsa Save con el campo vacío.</strong> Sale «Choose an alias.» y el foco entra en el campo.</li>
+  <li><strong>Escribe <code>ad</code> y sal.</strong> «At least 3 characters.». Añade una <code>a</code> y el error se va.</li>
+</ul>
+
+<p>En la pestaña Accesibilidad de las herramientas del navegador, el <code>&lt;input&gt;</code> de dentro tiene de nombre «Alias», y mientras hay error, el texto del error como descripción y <code>invalid</code> a <code>true</code>: un lector de pantalla lo lee como cualquier campo. Y el componente cumple <code>:invalid</code>, así que se puede pintar desde fuera con CSS.</p>
+
+<p>Lo que cuesta: un componente normal se hidrata en su primera interacción, y uno con <code>formassociated</code>, al cargar la página, porque sin su código no es un campo. En la pestaña Red, <code>myapp-input.js</code> se descarga antes de que toques nada. Úsalo cuando un campo lo necesite de verdad, y para lo demás, un <code>&lt;input&gt;</code> nativo.</p>
+
+<p><code>shadowrootreferencetarget</code> hoy solo lo tiene Chrome. En los demás navegadores, Fudic hace de respaldo con otras APIs estándar, y tu HTML no cambia. Cómo funciona el respaldo y cómo se decora el label con un componente está en <a href="/docs/forms/form-associated">Controles form-associated</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/form-control" target="_blank" rel="noopener">la solución de Un control form-associated, en GitHub</a>. Compara tu <code>myapp-input.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/form-events", prevTitle: "Eventos del formulario", next: "/tutorials/", nextTitle: "Todas las categorías")
