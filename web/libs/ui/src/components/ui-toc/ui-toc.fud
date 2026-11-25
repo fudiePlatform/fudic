@@ -6,6 +6,11 @@
    * The heading being read is the last one whose top has passed a line at a third of the window.
    * At the bottom of the page it is the last heading, which a short last section never takes up
    * to that line. A link that was clicked stays marked while the page scrolls to its heading.
+   *
+   * Nothing here asks the page for its layout. Two IntersectionObservers report each crossing,
+   * already measured by the browser: asking getBoundingClientRect on connect, right after
+   * another component changed the page (ui-theme sets color-scheme on <html>), forced a layout
+   * of the whole page.
    */
   onConnect((host) => {
     const pairs = [...host.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')]
@@ -21,37 +26,56 @@
       current = link;
     };
 
-    const reading = (): HTMLAnchorElement | null => {
-      const page = document.documentElement;
-      if (window.scrollY > 0 && window.scrollY + window.innerHeight >= page.scrollHeight - 2) {
-        return pairs[pairs.length - 1]!.link;
-      }
-      const line = window.innerHeight / 3;
+    const passed = new Set<Element>();
+    let atEnd = false;
+    let held = false;
+    const update = () => {
+      if (held) return;
+      if (atEnd) return mark(pairs[pairs.length - 1]!.link);
       let found: HTMLAnchorElement | null = null;
       for (const { link, target } of pairs) {
-        if (target.getBoundingClientRect().top <= line) found = link;
+        if (passed.has(target)) found = link;
       }
-      return found;
+      mark(found);
     };
 
+    // Everything above the line at a third of the window, however far up: a heading is in it once
+    // its top has passed the line, so even a jump straight past it is a crossing.
+    const headings = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) passed.add(entry.target);
+          else passed.delete(entry.target);
+        }
+        update();
+      },
+      { rootMargin: "100000px 0px -66.67% 0px" },
+    );
+    for (const { target } of pairs) headings.observe(target);
+
+    // The page's own footer, whole in the window, is its bottom. A page that cannot scroll is not
+    // at its bottom: its first heading is what is being read.
+    const footer = document.querySelector("body > footer");
+    const end = new IntersectionObserver(
+      ([entry]) => {
+        atEnd = entry!.intersectionRatio >= 0.99 && window.scrollY > 0;
+        update();
+      },
+      { threshold: [0.99] },
+    );
+    if (footer !== null) end.observe(footer);
+
     // After a click the page scrolls on its own: the clicked link keeps the mark until it stops.
-    let held = false;
     let release = 0;
     const holdUntilStill = (ms: number) => {
       clearTimeout(release);
       release = window.setTimeout(() => {
         held = false;
+        update();
       }, ms);
     };
-
-    let frame = 0;
     const onScroll = () => {
-      if (held) return holdUntilStill(150);
-      if (frame !== 0) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        mark(reading());
-      });
+      if (held) holdUntilStill(150);
     };
     const onClick = (event: Event) => {
       const pair = pairs.find(({ link }) => link === (event.target as Element).closest("a"));
@@ -61,14 +85,14 @@
       holdUntilStill(1000);
     };
 
-    mark(reading());
     window.addEventListener("scroll", onScroll, { passive: true });
     host.addEventListener("click", onClick);
     return () => {
+      headings.disconnect();
+      end.disconnect();
       window.removeEventListener("scroll", onScroll);
       host.removeEventListener("click", onClick);
       clearTimeout(release);
-      cancelAnimationFrame(frame);
     };
   });
 }

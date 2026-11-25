@@ -468,10 +468,47 @@ a[target="_blank"]::after {
 /* Footer */
 
 .site-footer {
+  display: grid;
+  gap: var(--guide-space-3);
   max-width: 90rem;
   margin: 0 auto;
-  padding: var(--guide-space-6) var(--guide-space-5);
+  padding: var(--guide-space-7) var(--guide-space-5) var(--guide-space-6);
   font-size: var(--guide-text-sm);
   color: var(--guide-muted);
   border-top: 1px solid var(--guide-rule);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer .motto {
+  font-family: var(--guide-font-display);
+  font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+  font-weight: var(--guide-weight-medium);
+  line-height: 1.2;
+  color: var(--guide-ink);
+  text-wrap: balance;
+}
+
+.site-footer .motto .at {
+  margin-inline-end: 0.15em;
+  color: var(--guide-brand);
+}
+
+.site-footer ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--guide-space-2) var(--guide-space-5);
+  margin: var(--guide-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer li {
+  margin: 0;
+}
+
+.site-footer a {
+  color: var(--guide-ink);
 }

@@ -13,9 +13,19 @@
   const copied = signal(false);
 
   // A block wider than the page scrolls sideways; without focus, a keyboard could not scroll it.
+  // Its width is read from a ResizeObserver, which the browser calls once layout is done: read on
+  // connect, right after another component changed the page (ui-theme sets color-scheme on
+  // <html>), it forced a layout of the whole page. It also follows a block that starts or stops
+  // overflowing when the window changes size.
   onConnect((host) => {
     const pre = host.querySelector("pre");
-    if (pre !== null && pre.scrollWidth > pre.clientWidth) pre.tabIndex = 0;
+    if (pre === null) return;
+    const observer = new ResizeObserver(() => {
+      if (pre.scrollWidth > pre.clientWidth) pre.tabIndex = 0;
+      else pre.removeAttribute("tabindex");
+    });
+    observer.observe(pre);
+    return () => observer.disconnect();
   });
 
   async function copy(event: MouseEvent) {

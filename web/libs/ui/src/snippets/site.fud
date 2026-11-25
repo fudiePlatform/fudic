@@ -15,9 +15,19 @@
   </header>
 }
 
+@* The close of every page: the line that sums Fudic up, what proves it, and the ways on. *@
 @snippet footer() {
   <footer class="site-footer">
-    <p>Fudic, componentes web estándar pintados en el servidor. Licencia MIT.</p>
+    <p class="motto"><span class="at" aria-hidden="true">@@</span>Lo que aprendes con Fudic es la web, no Fudic.</p>
+    <p class="facts">100 en Lighthouse, en móvil y escritorio · La seguridad del navegador, de serie · Solo estándares</p>
+    <nav aria-label="Pie de página">
+      <ul>
+        <li><a href="/docs/getting-started">Documentación</a></li>
+        <li><a href="/mcp/">MCP</a></li>
+        <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/fudiePlatform/fudic/blob/main/LICENSE" target="_blank" rel="noopener">Licencia MIT</a></li>
+      </ul>
+    </nav>
   </footer>
 }
 

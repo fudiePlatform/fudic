@@ -8,9 +8,13 @@ test('header renders the wordmark and the main navigation', async () => {
   expect(t.getByRole('link', { name: 'Documentación' })).toHaveAttribute('href', '/docs/getting-started');
 });
 
-test('footer renders', async () => {
+test('footer closes with the motto and links the MIT license on GitHub', async () => {
   const t = await renderSnippet('./site.fud', 'footer()');
-  expect(t.query('.site-footer')).toBeInTheDocument();
+  expect(t.query('.site-footer .motto')?.textContent).toContain('Lo que aprendes con Fudic es la web, no Fudic.');
+  expect(t.getByRole('link', { name: 'Licencia MIT' })).toHaveAttribute(
+    'href',
+    'https://github.com/fudiePlatform/fudic/blob/main/LICENSE',
+  );
 });
 
 test('docsNav marks the current chapter', async () => {
