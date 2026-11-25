@@ -886,3 +886,43 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** O bien un aviso cuando una propiedad de un nativo nunca se va a asignar
   (página o componente de nivel 1, valor constante), o bien que esa sola propiedad haga
   hidratable la página, con un script mínimo que la asigne.
+
+## 61. El spread de un objeto en una página llega vacío al componente, sin diagnóstico
+
+- **Qué pasó.** Escribiendo el tutorial `spread-and-rest`, en `src/routes/index.fud` con
+  `const keyboard: Product = { name: "Keyboard", price: 49, sku: "K-01" };` (tipo en
+  `index.fudapi`), `<myapp-product ...keyboard></myapp-product>` compila limpio y el servidor pinta
+  `<strong></strong> · $0`: ni `name` ni `price` llegan. Sin el tipo del `.fudapi` pasa lo mismo, y
+  tampoco sale `FUD1143`. En la misma página, `@keyboard.name` pinta `Keyboard` y
+  `<myapp-product .name=@keyboard.name .price=@keyboard.price>` pinta bien. Dentro de un componente
+  (`<myapp-shop>` con su `.fudapi`), el mismo spread sí funciona.
+- **Cómo se resolvió en el tutorial.** Por decisión de Pedro, el spread se enseña dentro de un
+  componente, donde funciona.
+- **Qué debería hacer.** Que el spread en una ruta pase las props igual que en un componente, y
+  que un objeto literal sin tipo del contrato en el `@code` de una ruta dé `FUD1143`, como dice
+  el plan de los tutoriales.
+
+## 62. Un `.fudapi` nuevo no se ve hasta reiniciar `fudic dev`
+
+- **Qué pasó.** En el mismo tutorial, con `fudic dev` en marcha, crear `index.fudapi` (o
+  `myapp-shop.fudapi`) y escribir después el `import type { … } from "fudic:routes/index"` da
+  `TS2307: Cannot find module 'fudic:routes/index'`. Guardar otra vez no lo arregla; parar y
+  arrancar `fudic dev` sí.
+- **Cómo se resolvió en el tutorial.** Se pide arrancar `fudic dev` después de crear el `.fudapi`,
+  sin explicar por qué.
+- **Qué debería hacer.** Que el watcher detecte un `.fudapi` nuevo y regenere sus tipos, como hace
+  al cambiar uno que ya existe.
+
+## 63. `$@price` en un componente lo hace desaparecer, con tres errores que no apuntan a él
+
+- **Qué pasó.** En el mismo tutorial, un componente con `<strong>@name</strong> · $@price` deja
+  `price` sin leer (la `@` detrás de un carácter se toma como texto, como en un email; el editor
+  solo da `TS6133 'price' is declared but its value is never read`). Pero `fudic dev` no avisa de
+  eso, sino de tres errores en otros ficheros: `FUD0949 no component <myapp-product> in the
+  workspace` y `FUD0953 no myapp-product.fixture.ts beside the spec` en su `.fudspec` (el fixture
+  existe), y `FUD0191` en la página que lo usa, que sí tiene su `<link rel="component">`. Con
+  `@("$" + price)` los tres desaparecen.
+- **Cómo se resolvió en el tutorial.** Con `@("$" + price)`.
+- **Qué debería hacer.** Que una `@` pegada a texto que sigue a un nombre declarado avise
+  (`$@price` casi nunca es un email), y que un fallo al leer un componente se diga en ese
+  componente, no como tres errores falsos en sus vecinos.
