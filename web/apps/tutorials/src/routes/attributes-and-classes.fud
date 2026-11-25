@@ -1,0 +1,197 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Atributos, propiedades y clases · Tutoriales de Fudic</title>
+  <meta name="description" content="Da valor a los atributos con expresiones en una plantilla de Fudic, enciende clases con class: y descubre por qué un style no admite expresiones.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/attributes-and-classes">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Atributos, propiedades y clases · Tutoriales de Fudic">
+  <meta property="og:description" content="Atributos con expresiones, atributos booleanos, clases con class: y el style que no admite expresiones.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/attributes-and-classes">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("attributes-and-classes")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#attributes">2. Atributos con expresiones</a></li>
+        <li><a href="#classes">3. Enciende clases</a></li>
+        <li><a href="#style">4. Un estilo que cambia</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Atributos, propiedades y clases</h1>
+
+<p class="lede">Das valor a un enlace y a dos botones con expresiones, tachas una tarea con una clase que se enciende sola y ves por qué un color que cambia no va en el <code>style</code>.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Dar valor a un atributo con <code>@@</code>, solo o mezclado con texto, y saber qué hace un atributo booleano con <code>true</code> y <code>false</code>.</li>
+    <li>Distinguir un atributo de una propiedad del DOM.</li>
+    <li>Encender y apagar una clase con <code>class:</code>, y usarla en lugar de un <code>style</code> con expresiones.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="attributes">2. Atributos con expresiones</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const slug = "first-post";
+  const title = "My first post";
+  const saving = false;
+  const published = true;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href="/blog/@@slug" title=@@title&gt;Read it&lt;/a&gt;&lt;/p&gt;
+&lt;button disabled=@@saving&gt;Save&lt;/button&gt;
+&lt;button disabled=@@published&gt;Publish&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>Guarda y abre el código fuente con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;&lt;a href="/blog/first-post" title="My first post"&gt;Read it&lt;/a&gt;&lt;/p&gt;
+&lt;button&gt;Save&lt;/button&gt;
+&lt;button disabled=""&gt;Publish&lt;/button&gt;</code></pre>
+
+<ul>
+  <li><strong><code>title=@@title</code> toma todo su valor de la expresión.</strong> Si el valor mezcla texto y expresión, como el <code>href</code>, va entre comillas.</li>
+  <li><strong>Un atributo booleano sigue al valor.</strong> Con <code>true</code> se escribe vacío, y el botón Publish queda desactivado. Con <code>false</code> desaparece, y Save no lleva <code>disabled</code>.</li>
+</ul>
+
+<ui-note>
+  <p>El punto que usaste para pasar props a un componente, en un elemento nativo, asigna una propiedad del DOM: <code>&lt;input type="checkbox" .indeterminate=@@partial&gt;</code>. Una propiedad no está en el HTML, así que solo existe en el navegador, cuando el componente se hidrata. En una página como esta, sin nada que hidratar, no se asigna nunca. Para que algo se vea desde el principio, usa el atributo.</p>
+</ui-note>
+
+<h2 id="classes">3. Enciende clases</h2>
+
+<p>Añade dos tareas al <code>@@code</code>, debajo de <code>published</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const breadDone = true;
+  const reportDone = false;</code></pre>
+</ui-code>
+
+<p>Un estilo para las tareas hechas, en el <code>&lt;head&gt;</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+  &lt;style&gt;
+    .done &#123;
+      text-decoration: line-through;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<p>Y la lista, al final de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;ul&gt;
+  &lt;li class="task" class:done=@@breadDone&gt;Buy bread&lt;/li&gt;
+  &lt;li class="task" class:done=@@reportDone&gt;Write the report&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Buy bread sale tachada. En el código fuente:</p>
+
+<pre class="output"><code>&lt;ul&gt;
+  &lt;li class="task done"&gt;Buy bread&lt;/li&gt;
+  &lt;li class="task"&gt;Write the report&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+
+<ul>
+  <li><strong><code>class:done=@@condición</code> enciende la clase <code>done</code></strong> cuando la condición es <code>true</code>, y la quita cuando es <code>false</code>.</li>
+  <li><strong>No pisa la clase fija.</strong> <code>task</code> sigue en las dos tareas, y <code>done</code> se suma a la que toca.</li>
+</ul>
+
+<p>Fudic solo toca las clases que escribe él. Cuando la condición cambie en el navegador, quitará o pondrá <code>done</code> sin tocar <code>task</code> ni las que añada otro código. Las clases están en <a href="/docs/template-syntax/attributes-and-properties#classes">Atributos y propiedades</a>.</p>
+
+<h2 id="style">4. Un estilo que cambia</h2>
+
+<p>Pinta de rojo la tarea pendiente con un <code>style</code> que lee un color del <code>@@code</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const color = "crimson";</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  &lt;li class="task" class:done=@@reportDone style="color: @@color"&gt;Write the report&lt;/li&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:30:43 - error FUD0915: this attribute runs, loads or redirects to whatever its value says, and the URL guard cannot vouch for it
+  my-app     30    &lt;li class="task" class:done=@@reportDone style="color: @@color"&gt;Write the report&lt;/li&gt;
+  my-app                                                   ─────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0915
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Un <code>style</code> fijo funciona como en cualquier HTML, pero con una expresión dentro, un valor que llega de fuera podría cargar una URL o romper la página. Lo que cambia se escribe con una clase. Cambia <code>color</code> por una condición:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const overdue = true;</code></pre>
+</ui-code>
+
+<p>Añade su estilo debajo de <code>.done</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>    .overdue &#123;
+      color: crimson;
+    &#125;</code></pre>
+</ui-code>
+
+<p>Y enciende la clase en la tarea, en lugar del <code>style</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  &lt;li class="task" class:done=@@reportDone class:overdue=@@overdue&gt;Write the report&lt;/li&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;li class="task overdue"&gt;Write the report&lt;/li&gt;</code></pre>
+
+<p>Write the report sale en rojo. Un elemento lleva tantos <code>class:</code> como necesite, y cada uno enciende la suya. Los atributos, con las URLs que vienen de una expresión, están en <a href="/docs/template-syntax/attributes-and-properties#attributes">Atributos y propiedades</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/attributes-and-classes" target="_blank" rel="noopener">la solución de Atributos, propiedades y clases, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/snippets", prevTitle: "Crear un snippet", next: "/tutorials/", nextTitle: "Todas las categorías")

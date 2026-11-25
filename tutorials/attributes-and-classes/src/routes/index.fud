@@ -1,0 +1,34 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  const slug = "first-post";
+  const title = "My first post";
+  const saving = false;
+  const published = true;
+  const breadDone = true;
+  const reportDone = false;
+  const overdue = true;
+}
+
+<head>
+  <title>Home</title>
+  <style>
+    .done {
+      text-decoration: line-through;
+    }
+    .overdue {
+      color: crimson;
+    }
+  </style>
+</head>
+
+<h1>Home</h1>
+
+<p><a href="/blog/@slug" title=@title>Read it</a></p>
+<button disabled=@saving>Save</button>
+<button disabled=@published>Publish</button>
+
+<ul>
+  <li class="task" class:done=@breadDone>Buy bread</li>
+  <li class="task" class:done=@reportDone class:overdue=@overdue>Write the report</li>
+</ul>

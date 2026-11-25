@@ -151,6 +151,10 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   `FUD0915`: dos errores que mandan al autor a una sintaxis que se pierde en silencio. El
   `style="…"` **estático** sí funciona, en el light DOM y dentro de un componente, y es lo que
   documenta el capítulo 4, con su nota sobre `style-src-attr`.
+- **Vuelto a comprobar (tutorial `attributes-and-classes`, 2026-11-25).** Sigue igual, ya con los
+  paquetes instalados desde tarballs en un proyecto nuevo: `style="color: @color"` da `FUD0915`,
+  cuya explicación propone `style:prop`, y `<p style:color=@color>` compila limpio y sale
+  `<p>Overdue</p>`. El tutorial usa `class:`.
 
 ## 7. Un handler delegado que llama directamente a una prop función no compila
 
@@ -869,3 +873,16 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Un aviso propio para `h1`–`h6` dentro del shadow DOM de un componente,
   con la acción de pasarlo a un slot, y que `FUD1440` no proponga adoptar la hoja de un
   encabezado.
+
+## 60. Una propiedad del DOM en una página estática no se asigna nunca, y no avisa
+
+- **Qué pasó.** Escribiendo el tutorial `attributes-and-classes`, una página sin estado con
+  `<input type="checkbox" .indeterminate=@partial>` (`const partial = true;`) compila limpio, el
+  HTML sale `<input type="checkbox">` y no llega ningún script: la casilla no se ve nunca a
+  medias. La documentación dice que una propiedad se asigna al hidratar, pero aquí no hay nada
+  que hidratar.
+- **Cómo se resolvió en el tutorial.** Una nota explica que la propiedad solo existe en el
+  navegador y que en una página así no se asigna; no se ofrece como paso.
+- **Qué debería hacer.** O bien un aviso cuando una propiedad de un nativo nunca se va a asignar
+  (página o componente de nivel 1, valor constante), o bien que esa sola propiedad haga
+  hidratable la página, con un script mínimo que la asigne.

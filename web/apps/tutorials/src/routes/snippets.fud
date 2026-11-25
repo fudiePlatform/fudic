@@ -203,4 +203,4 @@ test('row renders the label and the value', async () =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/snippets" target="_blank" rel="noopener">la solución de Crear un snippet, en GitHub</a>. Compara tu <code>ui.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/slots", prevTitle: "Contenido por slot", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/slots", prevTitle: "Contenido por slot", next: "/tutorials/attributes-and-classes", nextTitle: "Atributos, propiedades y clases")
