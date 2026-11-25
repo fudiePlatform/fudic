@@ -1,0 +1,20 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="../forms/contact.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Contact</h1>
+
+<form control=@contactForm>
+  <label for="name">Name</label>
+  <input id="name" type="text" control=@contactForm.name>
+  <small error=@contactForm.name></small>
+
+  <label for="email">Email</label>
+  <input id="email" type="email" control=@contactForm.email>
+  <small error=@contactForm.email></small>
+
+  <button type="submit">Send</button>
+</form>

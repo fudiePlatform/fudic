@@ -146,6 +146,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Estilos (`scoped-styles`, `global-styles`, `style-guide`), el
   2026-11-25: el `href` frágil y los títulos «Scoped-styles», «Global-styles» y «Style-guide»,
   corregidos a mano: los tres de la categoría.
+- **Y otra vez** con los tutoriales de Formularios (`first-form`), el 2026-11-25: el `href` frágil
+  y el título «First-form», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -363,3 +365,17 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** El tutorial deja `theme.css` donde la pone la CLI.
 - **Qué debería hacer.** Crearla en `src/styles/` (o junto a la guía), y nombrar el proyecto en el
   mensaje.
+
+## 26. `fudic g form` no añade `@fudic/http`, y el formulario revienta en `fudic dev`
+
+- **Qué pasó.** Escribiendo el tutorial `first-form` (2026-11-25), en una app recién creada,
+  `fudic g form contact` añade `@fudic/forms` («Added @fudic/forms 0.0.1 to my-app»). En cuanto
+  una página enlaza el `.fudapi` del formulario, el módulo que genera Fudic para el navegador
+  importa `@fudic/http/contract`, y `fudic dev` responde `500`: «Failed to resolve import
+  "@fudic/http/contract" from "fudic-root.browser.js"». La página se ve, pero no se hidrata y el
+  formulario no valida. `fudic add forms` añade lo mismo y falla igual.
+- **Cómo se resolvió.** El tutorial pide `pnpm add @fudic/http@0.0.1` justo después de
+  `fudic g form`. `fudic add http` también lo instala, pero crea además `src/http.fudapi`, una
+  cadena que el tutorial no necesita.
+- **Qué debería hacer.** Que `g form` y `add forms` añadan también `@fudic/http`, o que
+  `@fudic/forms` la declare como dependencia.

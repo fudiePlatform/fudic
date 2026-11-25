@@ -177,4 +177,4 @@ cd my-app</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/style-guide" target="_blank" rel="noopener">la solución de Tu guía de estilos, en GitHub</a>. Compara tu <code>src/guide/tokens.css</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/global-styles", prevTitle: "Tema global y hojas compartidas", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/global-styles", prevTitle: "Tema global y hojas compartidas", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

@@ -1,0 +1,180 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un formulario con binding · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea con fudic g form un formulario de contacto, declara sus campos y sus reglas en un .fudapi, enlázalo a un form estándar y pruébalo en el navegador y en un test.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/first-form">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un formulario con binding · Tutoriales de Fudic">
+  <meta property="og:description" content="Tu primer formulario de Fudic: declarado una vez, enlazado a HTML estándar y probado.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/first-form">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("first-form")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el formulario</a></li>
+        <li><a href="#declare">2. Declara los campos</a></li>
+        <li><a href="#bind">3. Enlázalo a la página</a></li>
+        <li><a href="#browser">4. Pruébalo en el navegador</a></li>
+        <li><a href="#test">5. Y en un test</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Formularios</span></p>
+
+<h1>Un formulario con binding</h1>
+
+<p class="lede">Creas un formulario de contacto con nombre y email: declaras sus campos y sus reglas una vez, lo enlazas a un <code>&lt;form&gt;</code> estándar y ves sus errores en el navegador y en un test.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un formulario con <code>fudic g form</code> y declarar sus campos con sus reglas.</li>
+    <li>Enlazarlo a la página con <code>control</code> y <code>error</code>.</li>
+    <li>Ver cuándo aparece cada error, y probar el formulario sin navegador.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el formulario</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g form contact</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created form contactForm in src/forms/
+  contact.fudapi     its fields, their rules and their texts: import it from fudic:forms/contact
+  contact.test.ts    unit test
+
+  Added @@fudic/forms 0.0.1 to my-app (it was not there)</code></pre>
+
+<p>La CLI crea el formulario en <code>src/forms/</code>, con su test, y añade a la app el paquete de formularios. Los formularios necesitan además <code>@@fudic/http</code>, que la CLI no añade. Instálalo tú:</p>
+
+<ui-code>
+<pre><code>pnpm add @@fudic/http@@0.0.1</code></pre>
+</ui-code>
+
+<h2 id="declare">2. Declara los campos</h2>
+
+<p>Un formulario de Fudic no se escribe en la página: se declara en un <code>.fudapi</code>, y el navegador y el servidor lo construyen desde esa declaración. Cada campo lleva su tipo y su valor inicial, y debajo, sus reglas con el texto de su error. Sustituye el que ha creado la CLI por este:</p>
+
+<ui-code .path="src/forms/contact.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form contactForm
+  name  str = ""
+    required  "Enter your name."
+  email  str = ""
+    required       "Enter your email."
+    pattern email  "That email does not look valid."</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>str = ""</code></strong> es un texto que empieza vacío.</li>
+  <li><strong><code>required</code></strong> pide un valor, y <strong><code>pattern email</code></strong>, que el texto sea un email, con la misma regla que usa el navegador en un <code>&lt;input type="email"&gt;</code>.</li>
+  <li><strong>Las reglas se comprueban en orden,</strong> y la comprobación se para en la primera que falla. Un email vacío dice «Enter your email.», no las dos cosas.</li>
+</ul>
+
+<h2 id="bind">3. Enlázalo a la página</h2>
+
+<p>La página enlaza el <code>.fudapi</code> con <code>&lt;link rel="server"&gt;</code>, y escribe un <code>&lt;form&gt;</code> normal, con un atributo más en cada elemento:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="../forms/contact.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Contact&lt;/h1&gt;
+
+&lt;form control=@@contactForm&gt;
+  &lt;label for="name"&gt;Name&lt;/label&gt;
+  &lt;input id="name" type="text" control=@@contactForm.name&gt;
+  &lt;small error=@@contactForm.name&gt;&lt;/small&gt;
+
+  &lt;label for="email"&gt;Email&lt;/label&gt;
+  &lt;input id="email" type="email" control=@@contactForm.email&gt;
+  &lt;small error=@@contactForm.email&gt;&lt;/small&gt;
+
+  &lt;button type="submit"&gt;Send&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>control</code></strong> enlaza el formulario al <code>&lt;form&gt;</code>, y cada campo a su <code>&lt;input&gt;</code>, en los dos sentidos.</li>
+  <li><strong><code>error</code></strong> marca dónde se pinta el error de un campo. Lo pones tú: el compilador no inventa elementos.</li>
+</ul>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y mira el código fuente con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;form novalidate=""&gt; &lt;label for="name"&gt;Name&lt;/label&gt; &lt;input id="name" type="text" aria-describedby="fud-e-contactForm-name"&gt; &lt;small id="fud-e-contactForm-name"&gt;&lt;/small&gt; …</code></pre>
+
+<p>El compilador ha dado un <code>id</code> a cada <code>&lt;small&gt;</code> y ha escrito en su campo el <code>aria-describedby</code> que apunta a él, para que un lector de pantalla lea el error al llegar al campo. Y ha puesto <code>novalidate</code>, para que la validación del navegador no se adelante a la tuya. Todo eso sale ya del servidor, antes de cargar JavaScript.</p>
+
+<h2 id="browser">4. Pruébalo en el navegador</h2>
+
+<ul>
+  <li><strong>Entra en Name y sal sin escribir.</strong> Aparece «Enter your name.», y el campo lleva <code>aria-invalid="true"</code>.</li>
+  <li><strong>Escribe una letra.</strong> El error se va en esa misma tecla. Bórrala y vuelve.</li>
+  <li><strong>Escribe <code>ada</code> en Email y sal.</strong> Aparece «That email does not look valid.».</li>
+  <li><strong>Recarga y pulsa Send con todo vacío.</strong> No se envía nada: salen los dos errores y el foco va a Name, el primer campo que falla.</li>
+</ul>
+
+<p>Un campo se valida al salir de él, y después en cada cambio. Así el error no aparece mientras escribes por primera vez, y se va en cuanto lo corriges. Con los dos campos bien, Send envía el formulario como cualquier <code>&lt;form&gt;</code>, y la página se recarga. Cómo se manda a una función del servidor está en <a href="/docs/forms/submitting">Enviar al servidor</a>.</p>
+
+<h2 id="test">5. Y en un test</h2>
+
+<p>El formulario no tiene DOM, así que se prueba sin navegador. Ejecuta los tests de la app:</p>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> FAIL  src/forms/contact.test.ts &gt; asks for the name
+AssertionError: expected false to be true // Object.is equality
+…
+fudic test · 1 project · FAILED · 6.3 s</code></pre>
+
+<p>El test que creó la CLI solo escribe el nombre, y ahora el email también es obligatorio. Cámbialo para que pruebe los dos campos:</p>
+
+<ui-code .path="src/forms/contact.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; contactForm &#125; from 'fudic:forms/contact';
+
+test('asks for the name and a valid email', async () =&gt; &#123;
+  expect(await contactForm.$validate()).toBe(false);
+  contactForm.name.set('Ada');
+  contactForm.email.set('ada');
+  expect(await contactForm.$validate()).toBe(false);
+  expect(contactForm.email.message()).toBe('That email does not look valid.');
+  contactForm.email.set('ada@@example.com');
+  expect(await contactForm.$validate()).toBe(true);
+&#125;);</code></pre>
+</ui-code>
+
+<pre class="output"><code>fudic test · 1 project · passed · 6.4 s</code></pre>
+
+<p>Un campo se escribe con <code>set</code> y se lee llamándolo, como un signal. <code>message()</code> da el texto de su error, y <code>$validate()</code> valida el formulario entero. Todo lo que tiene un formulario está en <a href="/docs/forms">El formulario</a>, y los tres atributos de la vista, en <a href="/docs/forms/binding">Enlazar la vista</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/first-form" target="_blank" rel="noopener">la solución de Un formulario con binding, en GitHub</a>. Compara tu <code>contact.fudapi</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/style-guide", prevTitle: "Tu guía de estilos", next: "/tutorials/", nextTitle: "Todas las categorías")
