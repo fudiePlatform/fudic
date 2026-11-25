@@ -2,26 +2,38 @@
 <link rel="component" href="@web/ui/ui-command.fud">
 
 <head>
-  <title>Fudic: el framework que tu IA entiende a la primera</title>
-  <meta name="description" content="Fudic es un framework de componentes web estándar pintados en el servidor, con su propio MCP: el navegador recibe HTML ya pintado, el JavaScript llega solo donde hace falta, y tu chat construye contigo y te demuestra que funciona.">
+  <title>Fudic: lo que aprendes es la web, no Fudic</title>
+  <meta name="description" content="Fudic es un framework de componentes web estándar pintados en el servidor: 100 en Lighthouse en móvil y escritorio, la seguridad del navegador puesta de serie y un MCP para que tu LLM lo escriba contigo.">
   <link rel="canonical" href="https://fudic.dev/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Fudic: el framework que tu IA entiende a la primera">
-  <meta property="og:description" content="Componentes web estándar pintados en el servidor, con su propio MCP.">
+  <meta property="og:title" content="Fudic: lo que aprendes es la web, no Fudic">
+  <meta property="og:description" content="Componentes web estándar pintados en el servidor: 100 en Lighthouse, seguridad de serie y un MCP para tu LLM.">
   <meta property="og:url" content="https://fudic.dev/">
   <meta property="og:site_name" content="Fudic">
 </head>
 
-<p class="eyebrow">Componentes web estándar, con su propio MCP</p>
+<p class="eyebrow">Un framework de componentes web</p>
 
-<h1>El framework que tu IA entiende <em>a la primera.</em></h1>
+<h1>Lo que aprendes con Fudic es la web, <em>no Fudic.</em></h1>
 
-<p class="lede">El navegador recibe HTML ya pintado y el JavaScript llega solo donde hace falta. Y un MCP que construye contigo y te demuestra que funciona.</p>
+<p class="lede">HTML, CSS y TypeScript estándar, pintados en el servidor. Rápido, seguro desde el primer commit y con un MCP para que tu LLM lo escriba contigo.</p>
 
 <div class="actions">
   <a class="start" href="/docs/getting-started">Empezar con Fudic <span class="arrow" aria-hidden="true">→</span></a>
   <ui-command .command=@("npx @fudic/cli new my-app")></ui-command>
 </div>
+
+<ul class="proofs" aria-label="Lo que trae Fudic">
+  <li><a href="#standard"><strong>Solo estándares</strong><span>Lo que aprendes te sirve fuera de Fudic</span></a></li>
+  <li><a href="#performance"><strong>100 · 100 · 100 · 100</strong><span>Lighthouse, en móvil y escritorio</span></a></li>
+  <li><a href="#security"><strong>Seguridad de serie</strong><span>CSP con nonce, Trusted Types, HSTS</span></a></li>
+</ul>
+
+<section class="block" aria-labelledby="standard">
+  <div class="block-head">
+    <h2 id="standard">Lo que escribes es HTML. Lo que llega, también.</h2>
+    <p>Declarative Shadow DOM, adopted stylesheets, módulos ES, CSP, Trusted Types: todo lo que no es la sintaxis de las vistas es la plataforma. Por eso cada página de la documentación termina en MDN.</p>
+  </div>
 
 <section class="demo" aria-label="Un componente de Fudic y lo que recibe el navegador">
   <div class="panes">
@@ -67,23 +79,60 @@
   </ul>
 </section>
 
-<ul class="cards">
-  <li class="card">
-    <span class="tag">fudic_guide</span>
-    <h2>Pídeselo a tu chat</h2>
-    <p>Aunque no sepa nada de Fudic. Lo aprende del propio MCP y construye contigo, paso a paso.</p>
-  </li>
-  <li class="card">
-    <span class="tag">fudic_render</span>
-    <h2>Lo ves en la conversación</h2>
-    <p>Cada pieza se pinta dentro del chat. Apruebas su aspecto con capturas de antes y después.</p>
-  </li>
-  <li class="card">
-    <span class="tag">.fudspec</span>
-    <h2>No te dice «listo». Te lo demuestra</h2>
-    <p>Criterios de aceptación que se ejecutan. Si algo falla, sabes el paso y la línea.</p>
-  </li>
-</ul>
+</section>
+
+<section class="block" aria-labelledby="performance">
+  <div class="block-head">
+    <h2 id="performance">100 en los cuatro. También en móvil.</h2>
+  </div>
+  <ul class="scores">
+    <li><span class="value">100</span><span class="name">Rendimiento</span></li>
+    <li><span class="value">100</span><span class="name">Accesibilidad</span></li>
+    <li><span class="value">100</span><span class="name">Buenas prácticas</span></li>
+    <li><span class="value">100</span><span class="name">SEO</span></li>
+  </ul>
+  <p class="note">Medido con Lighthouse en todas las páginas de esta web, en móvil y en escritorio. En móvil, con el HTML comprimido, como lo sirve cualquier hosting. <a href="/docs/performance/lighthouse">Cómo se mide y qué movió la nota</a>.</p>
+</section>
+
+<section class="block" aria-labelledby="llm">
+  <div class="block-head">
+    <h2 id="llm">Hecho para escribirse con un LLM.</h2>
+    <p>Ningún modelo conoce Fudic, y no le hace falta: casi todo es la web que ya conoce, y el resto se lo enseña el MCP.</p>
+  </div>
+  <ul class="cards">
+    <li class="card">
+      <span class="tag">fudic_guide</span>
+      <h3>No escribe de memoria</h3>
+      <p>Lee la guía de tu versión de Fudic antes de escribir, en vez de imitar lo que vio en otros frameworks.</p>
+    </li>
+    <li class="card">
+      <span class="tag">fudic_check</span>
+      <h3>Lo comprueba con tu compilador</h3>
+      <p>Cada cambio pasa por el mismo compilador que tu build, y el modelo corrige cada error antes de seguir.</p>
+    </li>
+    <li class="card">
+      <span class="tag">.fudspec</span>
+      <h3>Lo demuestra, y tú decides</h3>
+      <p>Criterios de aceptación que se ejecutan en un navegador de verdad. Nada queda aprobado hasta que lo dices tú.</p>
+    </li>
+  </ul>
+  <p class="note">Claude Code, Copilot, Cursor, Codex, Gemini CLI, Windsurf, Antigravity: cualquier agente con MCP. <a href="/mcp/">Trabajar con el MCP</a>.</p>
+</section>
+
+<section class="block" aria-labelledby="security">
+  <div class="block-head">
+    <h2 id="security">Segura antes de tu primera línea.</h2>
+    <p><code>fudic new</code> deja puestas las protecciones estándar del navegador, y el editor te avisa si debilitas una.</p>
+  </div>
+  <ul class="guards">
+    <li><strong>Content Security Policy con nonce</strong><span>Un script que alguien consiga colar no se ejecuta.</span></li>
+    <li><strong>Trusted Types</strong><span>El navegador rechaza el HTML que no pasa por una política.</span></li>
+    <li><strong>Cookie de sesión <code>HttpOnly</code></strong><span>Con <code>Secure</code> y <code>SameSite</code>: un script inyectado no tiene qué robar.</span></li>
+    <li><strong><code>frame-ancestors</code> y COOP</strong><span>Nadie mete tu página dentro de otra.</span></li>
+    <li><strong>HSTS</strong><span>El navegador entra siempre por HTTPS.</span></li>
+  </ul>
+  <p class="note"><a href="/docs/security">Lo que trae de serie, ataque por ataque</a>.</p>
+</section>
 
 <section class="poly" aria-labelledby="polyglot">
   <div class="poly-text">

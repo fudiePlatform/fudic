@@ -1,5 +1,6 @@
-/* The light DOM of the home page: one centred column, the headline, the component and what the
-   browser gets, the three cards and the polyglot band. Every value is a guide token, so the dark
+/* The light DOM of the home page: one centred column, the headline and its three proofs, then a
+   block for each of them (the standard, the Lighthouse scores, the LLM, security) and the polyglot
+   band. Every value is a guide token, so the dark
    mode needs nothing here; the code is on slate in both modes, like every code block. */
 
 .home {
@@ -36,7 +37,7 @@
 }
 
 .home > h1 {
-  max-width: 15ch;
+  max-width: 17ch;
   margin: 0;
   font-size: clamp(2.6rem, 6.4vw, 5.2rem);
   line-height: 1.04;
@@ -91,11 +92,92 @@
   }
 }
 
+/* The three proofs under the buttons: what the reader keeps without scrolling, each one a link to
+   the block that proves it. */
+
+.home .proofs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--guide-space-3);
+  inline-size: 100%;
+  max-width: 56rem;
+  margin: var(--guide-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home .proofs li {
+  margin: 0;
+}
+
+.home .proofs a {
+  display: grid;
+  gap: var(--guide-space-1);
+  block-size: 100%;
+  box-sizing: border-box;
+  padding: var(--guide-space-4);
+  color: var(--guide-ink);
+  text-decoration: none;
+  background: var(--guide-raised);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-lg);
+}
+
+.home .proofs strong {
+  font-size: var(--guide-text-lg);
+  font-weight: var(--guide-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.home .proofs span {
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+}
+
+.home .proofs a:hover strong {
+  text-decoration: underline;
+}
+
+/* A block: its heading and one line, then what proves it. */
+
+.home .block {
+  display: grid;
+  justify-items: center;
+  gap: var(--guide-space-5);
+  inline-size: 100%;
+  margin-top: var(--guide-space-7);
+}
+
+.home .block-head {
+  display: grid;
+  gap: var(--guide-space-3);
+  max-width: 44rem;
+}
+
+.home .block-head h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: var(--guide-weight-medium);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.home .block-head p,
+.home .block .note {
+  margin: 0;
+  color: var(--guide-muted);
+  text-wrap: pretty;
+}
+
+.home .block .note {
+  max-width: 44rem;
+  font-size: var(--guide-text-sm);
+}
+
 /* The component, and what the browser gets */
 
 .home .demo {
   inline-size: 100%;
-  margin-top: var(--guide-space-7);
   overflow: hidden;
   color: var(--guide-code-ink);
   text-align: start;
@@ -182,6 +264,42 @@
   color: var(--guide-code-muted);
 }
 
+/* The four Lighthouse scores, as rings. */
+
+.home .scores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--guide-space-5) var(--guide-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home .scores li {
+  display: grid;
+  justify-items: center;
+  gap: var(--guide-space-2);
+  margin: 0;
+}
+
+.home .scores .value {
+  display: grid;
+  place-items: center;
+  inline-size: 5.5rem;
+  block-size: 5.5rem;
+  font-size: var(--guide-text-2xl);
+  font-weight: var(--guide-weight-medium);
+  font-variant-numeric: tabular-nums;
+  border: 0.375rem solid var(--guide-success);
+  border-radius: 50%;
+}
+
+.home .scores .name {
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+}
+
 /* The three cards */
 
 .home .cards {
@@ -213,7 +331,7 @@
   color: var(--guide-accent);
 }
 
-.home .card h2,
+.home .card h3,
 .home .poly h2 {
   margin: 0;
   font-weight: var(--guide-weight-medium);
@@ -224,6 +342,38 @@
 .home .card p,
 .home .poly p {
   margin: 0;
+  font-size: 0.95rem;
+  color: var(--guide-muted);
+}
+
+/* What security comes with: one line per protection and what it stops. */
+
+.home .guards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--guide-space-3);
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: start;
+  list-style: none;
+}
+
+.home .guards li {
+  display: grid;
+  gap: var(--guide-space-1);
+  margin: 0;
+  padding: var(--guide-space-4);
+  border-inline-start: 3px solid var(--guide-accent);
+  background: var(--guide-raised);
+  border-radius: var(--guide-radius-sm);
+}
+
+.home .guards strong {
+  font-weight: var(--guide-weight-medium);
+}
+
+.home .guards span {
   font-size: 0.95rem;
   color: var(--guide-muted);
 }
@@ -303,6 +453,10 @@
 }
 
 @media (min-width: 35rem) {
+  .home .guards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .home .speed {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -322,7 +476,12 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .home .cards {
+  .home .cards,
+  .home .proofs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home .guards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

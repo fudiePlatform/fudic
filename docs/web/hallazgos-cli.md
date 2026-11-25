@@ -305,3 +305,18 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Resolver `--layout` siempre igual y decirlo en la ayuda; ante un fichero
   que no existe, decir que no existe y no que no es un layout.
 
+
+## 23. La guía de `fudic new` trae una fuente de 344 KB, y su cursiva de 379 KB
+
+- **Qué pasó.** Lo vio Pedro al medir con Lighthouse (2026-11-25): la guía que crea la CLI
+  (`packages/cli/templates/guide/`) carga `InterVariable.woff2`, de 352.240 bytes, y
+  `InterVariable-Italic.woff2`, de 387.976, desde `tokens.css`. Con una fuente así, ninguna app
+  recién creada saca 100 en rendimiento móvil: en esta web, cuatro fuentes que sumaban 192 KB ya
+  dejaban la página en 92 (hallazgo 4 del framework, `notas-lanzamiento.md` §4).
+- **Por qué.** Son las fuentes variables completas de Inter, con todos los pesos y todos los
+  alfabetos, sin recortar.
+- **Cómo se resolvió en la web.** La guía de la web usa una sola fuente, Inter Tight, recortada a
+  pesos 400–600 y a Latin-1 (23 KB), y precargada; el manual se cambió para usar esa fuente web.
+- **Qué debería hacer.** Que la plantilla traiga la fuente ya recortada (pesos y `unicode-range`)
+  y sin la cursiva, o directamente la fuente del sistema, y que el recorte con fontTools que
+  documenta `web/libs/guide/README.md` sea parte de la CLI.
