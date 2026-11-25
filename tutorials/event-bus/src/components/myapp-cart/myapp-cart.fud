@@ -1,0 +1,16 @@
+@code {
+  let count = 0;
+  let total: HTMLOutputElement | null = null;
+
+  function added(name: string) {
+    count += 1;
+    if (total) total.value = String(count);
+    console.log(`Added: ${name}`);
+  }
+}
+
+<myapp-cart>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="output p">
+    <p bus:cart-add=@added>Cart: <output ref="@total">0</output></p>
+  </template>
+</myapp-cart>

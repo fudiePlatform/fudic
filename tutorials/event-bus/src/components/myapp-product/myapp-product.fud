@@ -1,0 +1,14 @@
+@code {
+  import { emit } from "@fudic/dom";
+
+  function add() {
+    emit("cart-add", "Coffee beans");
+  }
+}
+
+<myapp-product>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>Coffee beans, 250 g</p>
+    <button type="button" @click=@add>Add to cart</button>
+  </template>
+</myapp-product>

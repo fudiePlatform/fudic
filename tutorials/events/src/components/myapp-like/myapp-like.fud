@@ -1,0 +1,24 @@
+@code {
+  let likes = 0;
+  let left: HTMLOutputElement | null = null;
+
+  function like(event: MouseEvent) {
+    likes += 1;
+    const button = event.currentTarget as HTMLButtonElement;
+    button.textContent = `Like (${likes})`;
+  }
+
+  function count(text: string) {
+    if (left) left.value = String(40 - text.length);
+  }
+}
+
+<myapp-like>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button input output p">
+    <button type="button" @click=@like>Like</button>
+    <p>
+      <input maxlength="40" placeholder="Leave a comment" @input=@count($value)>
+      <output ref="@left">40</output> left
+    </p>
+  </template>
+</myapp-like>

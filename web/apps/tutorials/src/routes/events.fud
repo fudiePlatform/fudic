@@ -1,0 +1,181 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Responder a un clic · Tutoriales de Fudic</title>
+  <meta name="description" content="Escucha eventos en un componente de Fudic con &#64;click y &#64;input, y lee el valor de un campo con $value, ya con su tipo.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/events">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Responder a un clic · Tutoriales de Fudic">
+  <meta property="og:description" content="Un botón que cuenta sus clics y un campo que cuenta los caracteres que quedan.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/events">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render eventsNav("events")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#click">3. Escucha un clic</a></li>
+        <li><a href="#value">4. Lee el valor de un campo</a></li>
+        <li><a href="#types">5. El valor llega con su tipo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Eventos</span></p>
+
+<h1>Responder a un clic</h1>
+
+<p class="lede">Haces un botón que cuenta sus clics y un campo que dice cuántos caracteres quedan. Los dos escuchan un evento con <code>@@</code> delante de su nombre.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Conectar un evento con una función del componente, con <code>@@click=@@like</code>.</li>
+    <li>Pasarle a la función tus propios valores, entre ellos <code>$value</code>, el valor del campo.</li>
+    <li>Ver que el typecheck comprueba el tipo de ese valor.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component like --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-like&gt;</code> en <code>src/components/myapp-like/</code> y lo enlaza desde la página de inicio. Qué es cada fichero lo cuenta <a href="/tutorials/first-component">Tu primer componente</a>.</p>
+
+<h2 id="click">3. Escucha un clic</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-like/myapp-like.fud">
+<pre><code>@@code &#123;
+  let likes = 0;
+
+  function like(event: MouseEvent) &#123;
+    likes += 1;
+    const button = event.currentTarget as HTMLButtonElement;
+    button.textContent = `Like ($&#123;likes&#125;)`;
+  &#125;
+&#125;
+
+&lt;myapp-like&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@like&gt;Like&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-like&gt;</code></pre>
+</ui-code>
+
+<p>Y escribe el tag debajo del título de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-like/myapp-like.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-like&gt;&lt;/myapp-like&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa el botón tres veces: dice Like (3).</p>
+
+<ul>
+  <li><strong><code>@@click=@@like</code> conecta el evento <code>click</code> con la función <code>like</code>.</strong> Vale cualquier evento del DOM con el mismo patrón: <code>@@input</code>, <code>@@keydown</code>, <code>@@submit</code>…</li>
+  <li><strong>Con el nombre solo, la función recibe el evento.</strong> Aquí es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent" target="_blank" rel="noopener"><code>MouseEvent</code></a> estándar, y <code>currentTarget</code> es el botón.</li>
+  <li><strong>La función es TypeScript completo.</strong> Solo se ejecuta en el navegador, así que puede tocar el DOM. El servidor pinta el botón sin el <code>@@click</code>, y el script del componente lo conecta al llegar.</li>
+  <li><strong>El primer clic no se pierde.</strong> Ese clic despierta el componente, que baja su script, y se cuenta en cuanto llega.</li>
+</ul>
+
+<h2 id="value">4. Lee el valor de un campo</h2>
+
+<p>Añade un campo para un comentario de 40 caracteres como mucho, y un contador de los que quedan. El <code>@@code</code> gana una variable y una función:</p>
+
+<ui-code .path="src/components/myapp-like/myapp-like.fud">
+<pre><code>@@code &#123;
+  let likes = 0;
+  let left: HTMLOutputElement | null = null;
+
+  function like(event: MouseEvent) &#123;
+    likes += 1;
+    const button = event.currentTarget as HTMLButtonElement;
+    button.textContent = `Like ($&#123;likes&#125;)`;
+  &#125;
+
+  function count(text: string) &#123;
+    if (left) left.value = String(40 - text.length);
+  &#125;
+&#125;
+
+&lt;myapp-like&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button input output p"&gt;
+    &lt;button type="button" @@click=@@like&gt;Like&lt;/button&gt;
+    &lt;p&gt;
+      &lt;input maxlength="40" placeholder="Leave a comment" @@input=@@count($value)&gt;
+      &lt;output ref="@@left"&gt;40&lt;/output&gt; left
+    &lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-like&gt;</code></pre>
+</ui-code>
+
+<p>Escribe «Nice work» en el campo: el contador baja con cada tecla y se queda en 31.</p>
+
+<ul>
+  <li><strong><code>@@count($value)</code> es una llamada con tus valores.</strong> La función recibe lo que le pasas, no el evento. Si también lo quieres, <code>$event</code> es el evento: <code>@@count($value, $event)</code>.</li>
+  <li><strong><code>$value</code> es el valor del campo.</strong> Te ahorra escribir <code>(event.target as HTMLInputElement).value</code>.</li>
+  <li><strong><code>ref="@@left"</code> guarda el <code>&lt;output&gt;</code> en la variable <code>left</code></strong>, y así la función puede escribir en él. Lo cuenta <a href="/tutorials/ref">Referencias con ref</a>.</li>
+</ul>
+
+<h2 id="types">5. El valor llega con su tipo</h2>
+
+<p><code>$value</code> no es siempre un texto: depende del campo. Cambia el campo a uno de números:</p>
+
+<ui-code .path="src/components/myapp-like/myapp-like.fud">
+<pre><code>      &lt;input type="number" maxlength="40" placeholder="Leave a comment" @@input=@@count($value)&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-like/myapp-like.fud:20:87 - error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'string'.
+  my-app     Type 'null' is not assignable to type 'string'.
+  my-app     20        &lt;input type="number" maxlength="40" placeholder="Leave a comment" @@input=@@count($value)&gt;
+  my-app                                                                                               ──────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>En un campo de números, <code>$value</code> es un <code>number</code>, o <code>null</code> si está vacío, y <code>count</code> espera un <code>string</code>. En una casilla de verificación es un <code>boolean</code>. El editor subraya el mismo error. Quita el <code>type="number"</code> y el componente vuelve a funcionar.</p>
+
+<p>Todo lo que admite un manejador está en <a href="/docs/template-syntax/events">Eventos</a>, y <code>$value</code>, en su apartado <a href="/docs/template-syntax/events#value">$value: el valor del control</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/events" target="_blank" rel="noopener">la solución de Responder a un clic, en GitHub</a>. Compara tu <code>myapp-like.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/safe-urls", prevTitle: "URLs en atributos", next: "/tutorials/delegation", nextTitle: "Delegación de eventos")

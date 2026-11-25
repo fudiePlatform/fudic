@@ -1,0 +1,23 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-search/myapp-search.fud">
+
+@code {
+  let clicks = 0;
+  let total: HTMLOutputElement | null = null;
+
+  function up() {
+    clicks += 1;
+    if (total) total.value = String(clicks);
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<p>
+  <button type="button" @click=@up>Click me</button>
+  <output ref="@total">0</output>
+</p>
+<myapp-search></myapp-search>

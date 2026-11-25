@@ -1,0 +1,164 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Manejadores en la ruta · Tutoriales de Fudic</title>
+  <meta name="description" content="Un manejador de eventos escrito en la página de Fudic, sin componente, y la diferencia entre escuchar en el host de un componente y en su shadow root.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/route-events">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Manejadores en la ruta · Tutoriales de Fudic">
+  <meta property="og:description" content="Un clic atendido por la página, y un componente que escucha en dos sitios: su host y su shadow root.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/route-events">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render eventsNav("route-events")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#route">2. Un manejador en la página</a></li>
+        <li><a href="#two-places">3. Un componente que escucha en dos sitios</a></li>
+        <li><a href="#try">4. Quién oye qué</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Eventos</span></p>
+
+<h1>Manejadores en la ruta</h1>
+
+<p class="lede">Escribes un manejador en la propia página, sin ningún componente. Luego haces un componente que escucha los mismos eventos en su host y en su shadow root, y miras en la consola cuál oye cada uno.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Atender un evento desde el <code>@@code</code> de una página.</li>
+    <li>Escuchar en el host de un componente y en su shadow root.</li>
+    <li>Saber qué eventos salen del shadow root y cuáles se quedan dentro.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="route">2. Un manejador en la página</h2>
+
+<p>Una página también tiene su <code>@@code</code>, y sus funciones atienden eventos igual que las de un componente. Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  let clicks = 0;
+  let total: HTMLOutputElement | null = null;
+
+  function up() &#123;
+    clicks += 1;
+    if (total) total.value = String(clicks);
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;
+  &lt;button type="button" @@click=@@up&gt;Click me&lt;/button&gt;
+  &lt;output ref="@@total"&gt;0&lt;/output&gt;
+&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa Click me tres veces: el número llega a 3.</p>
+
+<ul>
+  <li><strong>No hace falta un componente para un clic.</strong> La página recibe su propio script, con sus manejadores.</li>
+  <li><strong>El botón está en el light DOM</strong>, el del documento, porque una página no tiene shadow root. El <code>ref</code> funciona igual que en un componente.</li>
+</ul>
+
+<h2 id="two-places">3. Un componente que escucha en dos sitios</h2>
+
+<p>Genera un buscador, en otra terminal dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component search --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>Escribe el tag al final de la página, debajo del <code>&lt;p&gt;</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-search&gt;&lt;/myapp-search&gt;</code></pre>
+</ui-code>
+
+<p>Y sustituye el contenido del componente por este, que escucha <code>click</code> y <code>change</code> en dos sitios:</p>
+
+<ui-code .path="src/components/myapp-search/myapp-search.fud">
+<pre><code>@@code &#123;
+  function onHost(event: Event) &#123;
+    console.log(`host heard $&#123;event.type&#125;`);
+  &#125;
+
+  function onShadow(event: Event) &#123;
+    console.log(`shadow root heard $&#123;event.type&#125;`);
+  &#125;
+&#125;
+
+&lt;myapp-search @@click=@@onHost @@change=@@onHost&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button input p" @@click=@@onShadow @@change=@@onShadow&gt;
+    &lt;p&gt;
+      &lt;input type="search" placeholder="Search"&gt;
+      &lt;button type="button"&gt;Search&lt;/button&gt;
+    &lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-search&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Un evento en el tag del componente escucha en el host</strong>, el elemento que ve la página.</li>
+  <li><strong>Uno en el <code>&lt;template&gt;</code> escucha en el shadow root</strong>, donde vive lo de dentro.</li>
+</ul>
+
+<h2 id="try">4. Quién oye qué</h2>
+
+<p>Abre la consola del navegador con F12. Pulsa Search:</p>
+
+<pre class="output"><code>shadow root heard click
+host heard click</code></pre>
+
+<p>Escribe «shoes» en el campo y pulsa Search otra vez. Al salir del campo, el navegador lanza <code>change</code>:</p>
+
+<pre class="output"><code>shadow root heard change
+shadow root heard click
+host heard click</code></pre>
+
+<ul>
+  <li><strong>El clic lo oyen los dos.</strong> Primero el shadow root, que está dentro, y luego el host, de camino a la página.</li>
+  <li><strong>El <code>change</code> solo lo oye el shadow root.</strong> Es un evento que no cruza el borde del componente: no es <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>composed</code></a>. Los eventos de los gestos (<code>click</code>, <code>input</code>, <code>keydown</code>) salen; <code>change</code> y <code>submit</code>, no.</li>
+  <li><strong>El host es el sitio para lo que quieres oír o parar</strong> antes de que llegue a la página, con <code>stopPropagation()</code>. El shadow root, para todo lo que pasa dentro, salga o no.</li>
+</ul>
+
+<p>El host y lo que se escribe en él están en <a href="/docs/template-syntax/components#host">El host</a>, en la página <a href="/docs/template-syntax/components">Componentes</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-events" target="_blank" rel="noopener">la solución de Manejadores en la ruta, en GitHub</a>. Compara tu página y tu <code>myapp-search.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/event-bus", prevTitle: "Un bus entre componentes", next: "/tutorials/", nextTitle: "Todas las categorías")

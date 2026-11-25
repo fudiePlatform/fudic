@@ -1,0 +1,11 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-product/myapp-product.fud">
+<link rel="component" href="../components/myapp-cart/myapp-cart.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-cart></myapp-cart>
+<myapp-product></myapp-product>

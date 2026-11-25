@@ -1,0 +1,18 @@
+@code {
+  function onHost(event: Event) {
+    console.log(`host heard ${event.type}`);
+  }
+
+  function onShadow(event: Event) {
+    console.log(`shadow root heard ${event.type}`);
+  }
+}
+
+<myapp-search @click=@onHost @change=@onHost>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button input p" @click=@onShadow @change=@onShadow>
+    <p>
+      <input type="search" placeholder="Search">
+      <button type="button">Search</button>
+    </p>
+  </template>
+</myapp-search>

@@ -946,3 +946,36 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Un diagnóstico propio cuando la plantilla lee una variable que es
   destino de un `ref`: «`dialog` is an element, set by `ref` in the browser: read it in a handler
   or an effect».
+
+## 65. `FUD1440` pide para un `<li>` la hoja de la otra lista
+
+- **Qué pasó.** Escribiendo el tutorial `delegation`, un componente con
+  `shadowrootadoptedstylesheets="button ul"` y una `<ul>` con sus `<li>` da en `fudic dev`
+  `FUD1440: <li> is styled by the guide's "ol", which this component does not adopt`. Con
+  `"button ol"` y una `<ol>`, el editor dice lo mismo al revés: `<li> is styled by the guide's
+  "ul"`, con la acción «Adopt the guide's sheet for <li>» que añade ` ul`. Las dos hojas de la guía
+  escriben `:where(ul) > :where(li)` y `:where(ol) > :where(li)`: un `<li>` solo usa la de su lista.
+  En `pnpm test` de `web/apps/tutorials` el mismo aviso sale como `<li> is styled by the guide's
+  "ul", "ol"`.
+- **Cómo se resolvió en el tutorial.** El selector de tallas pone sus botones en un `<p>`, sin lista.
+- **Qué debería hacer.** Que `FUD1440` mire el padre: una hoja cuyo selector exige un padre que el
+  elemento no tiene no lo estiliza.
+
+## 66. Un `bus:` que nadie anuncia no avisa
+
+- **Qué pasó.** En el tutorial `event-bus`, con `emit("cart-add", …)` en `<myapp-product>`, escribir
+  `bus:cart-ad=@added` en `<myapp-cart>` compila limpio en `fudic dev` y en el editor: el carrito no
+  cuenta nada y nadie lo dice. El build ya sabe quién anuncia y quién recibe, porque escribe el mapa
+  `fud-bus` (`{"myapp-product":["myapp-cart"]}`), y un tipo de dato distinto sí da `TS2345`.
+- **Cómo se resolvió en el tutorial.** No se enseña.
+- **Qué debería hacer.** Un aviso cuando un `bus:` escucha un nombre que ningún componente de la app
+  anuncia con `emit`, con la acción de cambiarlo por el nombre parecido que sí existe.
+
+## 67. `fudic dev` se queda con un `.fud` a medio escribir
+
+- **Qué pasó.** Escribiendo el tutorial `delegation` con `cat > fichero` (que primero lo vacía), la
+  terminal dio `FUD0156: A component must have exactly one custom-element host wrapper` y la página,
+  un 500. Cuando el fichero quedó completo no volvió a compilar: siguió el 500 hasta un `touch`. Es
+  lo mismo que el nº 31 en el workbench. Un editor guarda de una vez, pero un agente o un script
+  pueden escribir por partes.
+- **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher.

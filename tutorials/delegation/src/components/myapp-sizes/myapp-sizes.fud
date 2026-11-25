@@ -1,0 +1,28 @@
+@code {
+  const sizes = ["XS", "S", "M", "L", "XL"];
+  let chosen: HTMLOutputElement | null = null;
+
+  function pick(size: string) {
+    if (chosen) chosen.value = size;
+  }
+}
+
+<head>
+  <style>
+    .sizes {
+      display: flex;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+
+<myapp-sizes>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button output p">
+    <p class="sizes" @click=@pick(size)>
+      @foreach (const size of sizes) key (size) {
+        <button type="button" delegate:size="click">@size</button>
+      }
+    </p>
+    <p>Size: <output ref="@chosen">none</output></p>
+  </template>
+</myapp-sizes>

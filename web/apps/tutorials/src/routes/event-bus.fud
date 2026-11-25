@@ -1,0 +1,169 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un bus entre componentes · Tutoriales de Fudic</title>
+  <meta name="description" content="Dos componentes de Fudic que no se conocen hablan por el bus de eventos: emit en uno, bus: en el otro, y el dato con su tipo.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/event-bus">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un bus entre componentes · Tutoriales de Fudic">
+  <meta property="og:description" content="Un producto avisa de que lo añaden y un carrito lo cuenta, sin estar uno dentro del otro.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/event-bus">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render eventsNav("event-bus")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera los dos componentes</a></li>
+        <li><a href="#emit">3. Anuncia el evento</a></li>
+        <li><a href="#receive">4. Recíbelo en el carrito</a></li>
+        <li><a href="#types">5. El dato tiene tipo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Eventos</span></p>
+
+<h1>Un bus entre componentes</h1>
+
+<p class="lede">Haces un producto con un botón Add to cart y un carrito que cuenta lo que le añaden. Ninguno está dentro del otro: el producto anuncia el evento en el bus y el carrito lo recibe.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Anunciar un evento con un dato con <code>emit</code>.</li>
+    <li>Recibirlo en cualquier componente de la página con <code>bus:</code>.</li>
+    <li>Ver que el typecheck comprueba el dato entre el que lo manda y el que lo recibe.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera los dos componentes</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component product --in src/routes/index.fud
+npx fudic g component cart --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-product&gt;</code> y <code>&lt;myapp-cart&gt;</code> en <code>src/components/</code> y enlaza los dos desde la página de inicio. Escribe los tags debajo del título, uno al lado del otro:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-product/myapp-product.fud"&gt;
+&lt;link rel="component" href="../components/myapp-cart/myapp-cart.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-cart&gt;&lt;/myapp-cart&gt;
+&lt;myapp-product&gt;&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<h2 id="emit">3. Anuncia el evento</h2>
+
+<p>El producto anuncia <code>cart-add</code> con su nombre cada vez que alguien pulsa el botón:</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  import &#123; emit &#125; from "@@fudic/dom";
+
+  function add() &#123;
+    emit("cart-add", "Coffee beans");
+  &#125;
+&#125;
+
+&lt;myapp-product&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;Coffee beans, 250 g&lt;/p&gt;
+    &lt;button type="button" @@click=@@add&gt;Add to cart&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p><code>emit</code> recibe el nombre del evento y el dato. El producto no sabe quién lo escucha, ni si lo escucha alguien.</p>
+
+<h2 id="receive">4. Recíbelo en el carrito</h2>
+
+<ui-code .path="src/components/myapp-cart/myapp-cart.fud">
+<pre><code>@@code &#123;
+  let count = 0;
+  let total: HTMLOutputElement | null = null;
+
+  function added(name: string) &#123;
+    count += 1;
+    if (total) total.value = String(count);
+    console.log(`Added: $&#123;name&#125;`);
+  &#125;
+&#125;
+
+&lt;myapp-cart&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="output p"&gt;
+    &lt;p bus:cart-add=@@added&gt;Cart: &lt;output ref="@@total"&gt;0&lt;/output&gt;&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-cart&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa Add to cart tres veces: el carrito pasa de 0 a 3, y la consola del navegador (F12) escribe tres veces <code>Added: Coffee beans</code>.</p>
+
+<ul>
+  <li><strong><code>bus:cart-add=@@added</code> recibe el evento</strong>, y <code>added</code> recibe el dato: el nombre del producto, no el evento.</li>
+  <li><strong>El primer aviso no se pierde.</strong> Al cargar la página ninguno de los dos componentes está hidratado; el primer clic despierta los dos, y el carrito cuenta ese clic.</li>
+  <li><strong>Por debajo es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar</strong>, que cruza los shadow roots hasta el documento.</li>
+</ul>
+
+<p>Abre el código fuente con Ctrl+U. Al final de la página está el mapa del bus, que dice quién anuncia y quién recibe:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-bus"&gt;&#123;"myapp-product":["myapp-cart"]&#125;&lt;/script&gt;</code></pre>
+
+<p>Fudic lo saca de la plantilla al compilar, porque el nombre del evento es un texto literal en los dos lados.</p>
+
+<h2 id="types">5. El dato tiene tipo</h2>
+
+<p>Cambia el tipo que espera el carrito, como si el dato fuera un número:</p>
+
+<ui-code .path="src/components/myapp-cart/myapp-cart.fud">
+<pre><code>  function added(name: number) &#123;</code></pre>
+</ui-code>
+
+<p>La terminal de <code>fudic dev</code> señala al producto, no al carrito:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-product/myapp-product.fud:5:22 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+  my-app     5      emit("cart-add", "Coffee beans");
+  my-app                             ──────────────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Quien recibe decide el tipo del dato, y el que lo anuncia tiene que cumplirlo. El editor subraya el mismo error en <code>myapp-product.fud</code>. Vuelve a poner <code>name: string</code> y el error desaparece.</p>
+
+<p>Para avisar solo al padre no hace falta el bus: basta con pasarle una función al hijo. Las dos formas están en <a href="/docs/template-syntax/events#event-bus">El bus de eventos</a>, en la página <a href="/docs/template-syntax/events">Eventos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/event-bus" target="_blank" rel="noopener">la solución de Un bus entre componentes, en GitHub</a>. Compara tus dos componentes con los suyos.</p>
+
+@render pager(prev: "/tutorials/delegation", prevTitle: "Delegación de eventos", next: "/tutorials/route-events", nextTitle: "Manejadores en la ruta")

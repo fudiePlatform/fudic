@@ -75,3 +75,15 @@
     @render tutorial("safe-urls", "URLs en atributos", "intermediate", @current)
   </ol>
 }
+
+@snippet eventsNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Eventos</p>
+  <details class="toggle"><summary>Tutoriales de Eventos</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("events", "Responder a un clic", "beginner", @current)
+    @render tutorial("delegation", "Delegación de eventos", "intermediate", @current)
+    @render tutorial("event-bus", "Un bus entre componentes", "intermediate", @current)
+    @render tutorial("route-events", "Manejadores en la ruta", "intermediate", @current)
+  </ol>
+}

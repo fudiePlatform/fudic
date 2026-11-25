@@ -76,10 +76,10 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
-| 15 | `events` | Responder a un clic | P | — | template-syntax/events | `app-eventos` | Propuesto |
-| 16 | `delegation` | Delegación de eventos, medida | I | — | template-syntax/events | `/delegacion` | Propuesto |
-| 17 | `event-bus` | Un bus entre componentes | I | — | template-syntax/events, reference/dom | `bus-picker`, `bus-option`, `bus-log` | Propuesto |
-| 18 | `route-events` | Manejadores en la ruta: host y shadow root | I | — | template-syntax/events | `/ruta-evento` | Propuesto |
+| 15 | `events` | Responder a un clic | P | `g component` | template-syntax/events | `app-eventos` | En revisión |
+| 16 | `delegation` | Delegación de eventos, medida | I | `g component` | template-syntax/events | `/delegacion` | En revisión |
+| 17 | `event-bus` | Un bus entre componentes | I | `g component` | template-syntax/events, reference/dom | `bus-picker`, `bus-option`, `bus-log` | En revisión |
+| 18 | `route-events` | Manejadores en la ruta: host y shadow root | I | `g component` | template-syntax/events | `/ruta-evento` | En revisión |
 
 ### 3.4 Reactividad
 
@@ -323,3 +323,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-25 | `raw`, con su solución en `tutorials/raw/`: el mismo HTML escapado por una expresión y escrito con `@raw(trustedHtml(…))`, el `TS2345` de un string sin marcar, el `FUD0990` de un `@raw` con texto al lado y cuándo no usarlo. La página de la Documentación `ref y @raw` decía que un string sin marcar «se escribe como texto»; el typecheck lo rechaza, y se ha corregido. Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | `await`, con su solución en `tutorials/await/`: `fudic g api` sobre la página de inicio, dos campos `later` (uno tarda 2 s, otro falla a los 3 con `notFound`), `@await` con `@catch`, el 200 aunque un bloque falle y el orden del documento, todo medido leyendo la respuesta como flujo. Los datos de la página se presentan en lo justo, porque su tutorial llega después. Hallazgo 24 de la CLI (`g api` no dice que hay que instalar). Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | `safe-urls`, con su solución en `tutorials/safe-urls/`: un `href` desde una expresión con una URL buena y un `javascript:` (que sale `about:blank`), el prefijo `/users/` que hace innecesaria la guarda, el `FUD0915` de un `javascript:` escrito a mano y un esquema `myapp:` que pasa con `trustedUrl`. Con él, la categoría Sintaxis de plantilla queda escrita entera, en revisión. Lighthouse en el tutorial y en la portada: 99–100 / 100 / 100 / 100. |
+| 2026-11-25 | A petición de Pedro, la categoría Eventos entera, con sus soluciones en `tutorials/`. `events`: `@click` con el evento, `@input=@count($value)` y el `TS2345` de un `$value` numérico. `delegation`: el aviso `FUD1380`, los listeners contados con `getEventListeners` (5, y 1 tras `delegate:size`) y un clic fuera de los botones que no llama al manejador. `event-bus`: `emit` y `bus:` entre dos componentes hermanos, el mapa `fud-bus` del código fuente y el `TS2345` que señala al emisor. `route-events`: un manejador en el `@code` de la página, y el mismo componente escuchando en el host y en el shadow root (el `change` solo lo oye el shadow root). Todo con clics reales en Chrome sin cabeza. Hallazgos 65 a 67 del framework (`FUD1440` con `<li>`, un `bus:` que nadie anuncia, `fudic dev` con un fichero a medio escribir). Lighthouse en las cuatro y en la portada: 99–100 / 100 / 100 / 100. |

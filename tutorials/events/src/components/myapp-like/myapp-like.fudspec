@@ -1,0 +1,7 @@
+component myapp-like
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-like

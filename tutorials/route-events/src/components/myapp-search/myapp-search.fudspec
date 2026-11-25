@@ -1,0 +1,7 @@
+component myapp-search
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-search

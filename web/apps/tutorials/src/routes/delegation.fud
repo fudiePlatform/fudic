@@ -1,0 +1,165 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Delegación de eventos · Tutoriales de Fudic</title>
+  <meta name="description" content="Un solo listener para toda una lista en Fudic: el aviso FUD1380, delegate: en cada fila y los listeners contados en la consola de Chrome.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/delegation">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Delegación de eventos · Tutoriales de Fudic">
+  <meta property="og:description" content="Cinco botones con un listener cada uno, y luego uno solo para todos, medido.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/delegation">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render eventsNav("delegation")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#per-row">3. Un clic por botón</a></li>
+        <li><a href="#measure">4. Cuenta los listeners</a></li>
+        <li><a href="#delegate">5. Delega</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Eventos</span></p>
+
+<h1>Delegación de eventos</h1>
+
+<p class="lede">Haces un selector de tallas con un botón por talla. Primero cada botón lleva su listener; luego un solo listener atiende a todos, y lo mides en la consola del navegador.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Entender el aviso <code>FUD1380</code> de un <code>@@click</code> dentro de un bucle.</li>
+    <li>Delegar: un <code>@@click</code> fuera del bucle y <code>delegate:</code> en cada fila.</li>
+    <li>Contar los listeners de un componente con las herramientas de Chrome.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component sizes --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-sizes&gt;</code> en <code>src/components/myapp-sizes/</code> y lo enlaza desde la página de inicio. Escribe el tag debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-sizes/myapp-sizes.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-sizes&gt;&lt;/myapp-sizes&gt;</code></pre>
+</ui-code>
+
+<h2 id="per-row">3. Un clic por botón</h2>
+
+<p>Escribe el componente como saldría a la primera, con un <code>@@click</code> en cada botón del bucle:</p>
+
+<ui-code .path="src/components/myapp-sizes/myapp-sizes.fud">
+<pre><code>@@code &#123;
+  const sizes = ["XS", "S", "M", "L", "XL"];
+  let chosen: HTMLOutputElement | null = null;
+
+  function pick(size: string) &#123;
+    if (chosen) chosen.value = size;
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    .sizes &#123;
+      display: flex;
+      gap: 0.5rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-sizes&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output p"&gt;
+    &lt;p class="sizes"&gt;
+      @@foreach (const size of sizes) key (size) &#123;
+        &lt;button type="button" @@click=@@pick(size)&gt;@@size&lt;/button&gt;
+      &#125;
+    &lt;/p&gt;
+    &lt;p&gt;Size: &lt;output ref="@@chosen"&gt;none&lt;/output&gt;&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-sizes&gt;</code></pre>
+</ui-code>
+
+<p>Funciona: pulsa M y debajo pone Size: M. Pero la terminal de <code>fudic dev</code> avisa:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-sizes/myapp-sizes.fud:23:31 - warning FUD1380: an `@@click` inside a loop adds one listener per item. Delegate it: put the handler on an element outside the loop, pass it `size`, and mark this element with `delegate:size`
+  my-app     23          &lt;button type="button" @@click=@@pick(size)&gt;@@size&lt;/button&gt;
+  my-app                                       ──────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD1380</code></pre>
+
+<p>Es un aviso, no un error: la página sigue funcionando. El editor lo subraya igual, y su bombilla ofrece explicarlo o silenciarlo.</p>
+
+<h2 id="measure">4. Cuenta los listeners</h2>
+
+<p>Pulsa cualquier talla para que el componente se hidrate. Abre las herramientas de Chrome con F12, ve a la pestaña Console y pega esta línea:</p>
+
+<ui-code>
+<pre><code>[...document.querySelector("myapp-sizes").shadowRoot.querySelectorAll("*")].filter(el =&gt; getEventListeners(el).click).length</code></pre>
+</ui-code>
+
+<p>Responde <code>5</code>: cinco elementos del componente tienen un listener de <code>click</code>, uno por botón. <a href="https://developer.chrome.com/docs/devtools/console/utilities#getEventListeners-function" target="_blank" rel="noopener"><code>getEventListeners</code></a> es una utilidad de la consola de Chrome, no de la página. Con cinco tallas no pesa; con una tabla de mil filas son mil listeners, y cada fila que entra o sale pone o quita el suyo.</p>
+
+<h2 id="delegate">5. Delega</h2>
+
+<p>Lleva el <code>@@click</code> al <code>&lt;p&gt;</code> que envuelve el bucle, y marca cada botón con <code>delegate:size</code>:</p>
+
+<ui-code .path="src/components/myapp-sizes/myapp-sizes.fud">
+<pre><code>    &lt;p class="sizes" @@click=@@pick(size)&gt;
+      @@foreach (const size of sizes) key (size) &#123;
+        &lt;button type="button" delegate:size="click"&gt;@@size&lt;/button&gt;
+      &#125;
+    &lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>El aviso desaparece. Recarga la página, pulsa una talla y pega otra vez la línea en la consola: ahora responde <code>1</code>.</p>
+
+<ul>
+  <li><strong><code>delegate:size="click"</code> marca el botón</strong> como fila del bucle para el evento <code>click</code>. <code>size</code> es el nombre de la variable del bucle.</li>
+  <li><strong><code>@@pick(size)</code> está fuera del bucle, pero recibe la talla del botón pulsado</strong>, con su tipo. No hace falta un <code>data-*</code> ni buscar el índice.</li>
+  <li><strong>Un clic fuera de un botón marcado no llama a <code>pick</code>.</strong> Pulsa el hueco a la derecha de XL: la talla no cambia.</li>
+</ul>
+
+<p>Si cada fila tuviera dos botones con el mismo evento, cada manejador llevaría un nombre. Lo cuenta <a href="/docs/template-syntax/events#delegation">Eventos en una lista</a>, en la página <a href="/docs/template-syntax/events">Eventos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/delegation" target="_blank" rel="noopener">la solución de Delegación de eventos, en GitHub</a>. Compara tu <code>myapp-sizes.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/events", prevTitle: "Responder a un clic", next: "/tutorials/event-bus", nextTitle: "Un bus entre componentes")
