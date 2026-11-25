@@ -1,4 +1,4 @@
-# The headers of every page: what the server sends and what the Service Worker paints.
+# The headers of every page: what the server sends.
 # The 103 Early Hints carry only the Content-Security-Policy and the Referrer-Policy.
 # {nonce} is the nonce of each response: fudic writes it on its own scripts and styles.
 
