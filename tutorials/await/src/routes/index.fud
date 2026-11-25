@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>@data.title</h1>
+
+@await data.stats {
+  <p>@data.stats.active of @data.stats.total users are active.</p>
+}
+
+@await data.news {
+  <p>@data.news</p>
+} @catch (e) {
+  <p role="alert">The news could not be loaded (@e.status @e.title).</p>
+}

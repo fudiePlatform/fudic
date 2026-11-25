@@ -158,4 +158,4 @@ npx fudic dev</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/raw" target="_blank" rel="noopener">la solución de HTML sin escapar con @@raw, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/ref", prevTitle: "Referencias con ref", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/ref", prevTitle: "Referencias con ref", next: "/tutorials/await", nextTitle: "Esperar datos con @await")

@@ -1,0 +1,16 @@
+:where(a) {
+  color: var(--my-app-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+:where(a):hover {
+  text-decoration-thickness: 2px;
+}
+
+:where(a):focus-visible {
+  outline: var(--my-app-focus-width) solid var(--my-app-focus);
+  outline-offset: 2px;
+  border-radius: var(--my-app-radius-sm);
+}

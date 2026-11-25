@@ -1,0 +1,199 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Esperar datos con &#64;await · Tutoriales de Fudic</title>
+  <meta name="description" content="Envía la página de Fudic antes de tener todos sus datos: cada bloque &#64;await se pinta cuando llega el suyo, en orden, con &#64;catch para los errores y sin JavaScript.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/await">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Esperar datos con &#64;await · Tutoriales de Fudic">
+  <meta property="og:description" content="La página sale en cuanto tiene lo rápido, y cada &#64;await se pinta cuando llega su dato.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/await">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("await")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#server">2. Dale datos lentos a la página</a></li>
+        <li><a href="#await">3. Espera un dato</a></li>
+        <li><a href="#catch">4. Cuando un dato falla</a></li>
+        <li><a href="#order">5. En orden</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Esperar datos con <code>@@await</code></h1>
+
+<p class="lede">Haces un panel cuyo título sale al instante, mientras sus cifras tardan dos segundos y sus noticias fallan a los tres. Cada parte se pinta cuando llega, sin JavaScript.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Marcar con <code>later</code> los datos que pueden llegar después, y esperarlos en la vista con <code>@@await</code>.</li>
+    <li>Pintar un error con <code>@@catch</code>, y saber por qué la página sigue respondiendo 200.</li>
+    <li>Saber en qué orden se pintan los bloques.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="server">2. Dale datos lentos a la página</h2>
+
+<p>Los datos de una página los da su servidor. En otra terminal, dentro de <code>my-app</code>, genéraselo a la página de inicio:</p>
+
+<ui-code>
+<pre><code>npx fudic g api src/routes/index.fud
+pnpm install</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<p>La CLI crea el contrato de los datos (<code>index.fudapi</code>), el código que los calcula (<code>src/server/routes/index.ts</code>), enlaza el contrato desde la página y añade <code>@@fudic/http</code> al <code>package.json</code>, que <code>pnpm install</code> instala. Sustituye el contrato por este:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/index.ts.
+load ssr
+  title  str
+  stats  Stats  later
+  news   str    later
+
+type Stats
+  active  i32
+  total   i32</code></pre>
+</ui-code>
+
+<p><code>later</code> marca un dato que puede llegar después que la página. Y el código, con dos datos lentos a propósito:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; notFound &#125; from '@@fudic/http';
+import &#123; load &#125; from 'fudic:routes/index';
+
+/** A value that arrives after `ms` milliseconds. */
+function after&lt;T&gt;(ms: number, value: T): Promise&lt;T&gt; &#123;
+  return new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+&#125;
+
+load.handle(() =&gt; (&#123;
+  title: 'Dashboard',
+  stats: after(2000, &#123; active: 87, total: 120 &#125;),
+  news: after(3000, '').then(() =&gt; &#123;
+    throw notFound('the news service is down');
+  &#125;),
+&#125;));</code></pre>
+</ui-code>
+
+<p><code>title</code> llega al momento. <code>stats</code> es una promesa que tarda dos segundos, y <code>news</code>, una que falla a los tres. El servidor no las espera: las devuelve tal cual. Cómo se escriben los datos de una página está en <a href="/docs/routing/data">Los datos de la página</a>.</p>
+
+<h2 id="await">3. Espera un dato</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+
+@@await data.stats &#123;
+  &lt;p&gt;@@data.stats.active of @@data.stats.total users are active.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Recarga el navegador. <code>Dashboard</code> sale enseguida, y dos segundos después aparece debajo <code>87 of 120 users are active.</code> Leída como flujo, la respuesta llega así:</p>
+
+<pre class="output"><code>0.1s  &lt;h1&gt;Dashboard&lt;/h1&gt;
+2.1s  &lt;p&gt;87 of 120 users are active.&lt;/p&gt;</code></pre>
+
+<ul>
+  <li><strong>La página no espera a su dato más lento.</strong> El servidor envía lo que ya tiene, y el bloque de <code>@@await</code> llega en la misma respuesta cuando su promesa se resuelve.</li>
+  <li><strong>Dentro del bloque, <code>data.stats</code> ya es su valor.</strong> Fuera no se puede leer, porque aún no ha llegado.</li>
+  <li><strong>No hay rama de «Cargando…».</strong> Quitarla al llegar el dato necesitaría JavaScript. Para que la página no salte, resérvale el hueco con CSS, con una altura mínima.</li>
+</ul>
+
+<h2 id="catch">4. Cuando un dato falla</h2>
+
+<p>Añade al final un bloque para las noticias, con su <code>@@catch</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@await data.news &#123;
+  &lt;p&gt;@@data.news&lt;/p&gt;
+&#125; @@catch (e) &#123;
+  &lt;p role="alert"&gt;The news could not be loaded (@@e.status @@e.title).&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<pre class="output"><code>0.2s  &lt;h1&gt;Dashboard&lt;/h1&gt;
+2.2s  &lt;p&gt;87 of 120 users are active.&lt;/p&gt;
+3.2s  &lt;p role="alert"&gt;The news could not be loaded (404 Not Found).&lt;/p&gt;
+status 200</code></pre>
+
+<ul>
+  <li><strong>El error se pinta en su sitio.</strong> <code>e</code> trae el <code>status</code> y el <code>title</code> del error que lanzó el servidor, aquí un <code>notFound</code>. Sin <code>@@catch</code>, el bloque no pintaría nada y la página seguiría.</li>
+  <li><strong>La página responde 200 aunque un bloque falle.</strong> Cuando sale el primer byte, el status ya está enviado y no se puede cambiar. Lo que decide si la página existe (que no se encuentre, que falte permiso, una redirección) se resuelve antes, en el servidor, sin <code>later</code>.</li>
+</ul>
+
+<h2 id="order">5. En orden</h2>
+
+<p>Pon el bloque de las noticias, el lento, encima del de las cifras:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
+
+@@await data.news &#123;
+  &lt;p&gt;@@data.news&lt;/p&gt;
+&#125; @@catch (e) &#123;
+  &lt;p role="alert"&gt;The news could not be loaded (@@e.status @@e.title).&lt;/p&gt;
+&#125;
+
+@@await data.stats &#123;
+  &lt;p&gt;@@data.stats.active of @@data.stats.total users are active.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<pre class="output"><code>0.2s  &lt;h1&gt;Dashboard&lt;/h1&gt;
+3.2s  &lt;p role="alert"&gt;The news could not be loaded (404 Not Found).&lt;/p&gt; &lt;p&gt;87 of 120 users are active.&lt;/p&gt;</code></pre>
+
+<p>Las cifras estaban listas a los dos segundos, pero ahora salen a los tres, junto a las noticias. Las promesas arrancan a la vez, y los bloques se pintan en el orden del documento: cada uno espera al anterior. Pon lo más lento al final, y deja los bloques como estaban.</p>
+
+<ui-note>
+  <p><code>@@await</code> solo va en el cuerpo de una ruta. Un componente recibe el valor ya resuelto, como una prop.</p>
+</ui-note>
+
+<p><code>@@await</code>, con la pieza del estándar que lo hará más rápido, está en <a href="/docs/template-syntax/await">@@await</a>. El comando, en <a href="/docs/cli/generate/api"><code>fudic generate api</code></a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/await" target="_blank" rel="noopener">la solución de Esperar datos con @@await, en GitHub</a>. Compara tu <code>index.fud</code> y tu <code>src/server/routes/index.ts</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/raw", prevTitle: "HTML sin escapar con @raw", next: "/tutorials/", nextTitle: "Todas las categorías")

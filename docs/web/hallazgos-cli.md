@@ -134,9 +134,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   la del MCP (nº 5): se creó sobre una copia de `web/`, se trajo, `@fudic/*` a `workspace:*` y fuera
   `"locales"`. Su primera página, `fudic g page first-app`, revienta igual con el `href` de la
   librería; con la ruta relativa, el `href` frágil y el título «First-app», corregidos a mano.
-- **Y otra vez** con los tutoriales de Sintaxis de plantilla (`fudic g page expressions`, `if-and-foreach`, `props`, `slots`, `snippets`, `attributes-and-classes`, `spread-and-rest`, `ref`, `raw`… en
+- **Y otra vez** con los tutoriales de Sintaxis de plantilla (`fudic g page expressions`, `if-and-foreach`, `props`, `slots`, `snippets`, `attributes-and-classes`, `spread-and-rest`, `ref`, `raw`, `await`… en
   `web/apps/tutorials`), el 2026-11-25: con la ruta relativa, el `href` frágil y el título
-  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets», «Attributes-and-classes», «Spread-and-rest», «Ref» o «Raw», corregidos a mano.
+  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets», «Attributes-and-classes», «Spread-and-rest», «Ref», «Raw» o «Await», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -333,3 +333,13 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Que la plantilla traiga la fuente ya recortada (pesos y `unicode-range`)
   y sin la cursiva, o directamente la fuente del sistema, y que el recorte con fontTools que
   documenta `web/libs/guide/README.md` sea parte de la CLI.
+
+## 24. `fudic g api` añade una dependencia y no dice que hay que instalarla
+
+- **Qué pasó.** Escribiendo el tutorial `await` (2026-11-25), en una app recién creada,
+  `fudic g api src/routes/index.fud` escribe `modify  package.json` (añade `"@fudic/http":
+  "0.0.1"`) y termina. No dice que falta `pnpm install`, y el `notFound` de `@fudic/http` que usa
+  el tutorial no resuelve hasta instalarla.
+- **Cómo se resolvió.** El tutorial pone `pnpm install` justo después de `fudic g api`.
+- **Qué debería hacer.** Instalarla, como hace `fudic new` salvo con `--no-install`, o al menos
+  terminar con un `Next  pnpm install`.
