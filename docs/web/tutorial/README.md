@@ -52,7 +52,7 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
-| 1 | `first-app` | Tu primera app | P | `new`, `dev`, `preview` | getting-started, cli/new, cli/dev, cli/preview | `index.fud` | Propuesto |
+| 1 | `first-app` | Tu primera app | P | `new`, `dev`, `preview` | cli/new, cli/dev, vite/build, routes-and-layouts, expressions | `index.fud` | En revisión |
 | 2 | `first-component` | Tu primer componente | P | `g component` | template-syntax/components, cli/generate/component | `app-card` | Propuesto |
 | 3 | `editor` | El editor a tu favor: diagnósticos, quick fix y formato | P | `fmt` | editors, editors/writing, tools/format | — | Propuesto |
 
@@ -230,12 +230,23 @@ fudic g app tutorials --uses ui
     difícil, cada uno con su nivel, y arriba «Las 16 categorías» para volver a la portada.
   - **A la derecha, los pasos** del tutorial (como «En esta página»): Objetivos, paso 1, paso 2… y
     Solución.
-  - Layout propio en `libs/ui` si el de la Documentación no basta (el nivel, anterior y siguiente).
+  - Sin layout propio: la página usa `@web/ui/layouts/docs.fud` tal cual (el menú en `nav`, los
+    pasos en `toc`, `pager` al final) y la portada, `@web/ui/layouts/home.fud`.
 - **Anterior y siguiente** siguen el orden de dificultad; al acabar una categoría, el siguiente es el
   primero de la siguiente categoría.
-- **Componentes**: los de `libs/ui` (cabecera, pie, código, notas, tokens). Lo nuevo (el bloque de
-  código con ruta y copiar, la etiqueta de nivel, la tarjeta de categoría) va a `libs/ui` si lo puede
-  usar otra app.
+- **Componentes**: los de `libs/ui`. El bloque de código con ruta y copiar ya existía (`ui-code`
+  con `.path`). La salida de la terminal o del navegador es un `<pre class="output">`, sin ruta ni
+  copiar, porque se lee y no se escribe. Los estilos nuevos (el nivel, el menú, los objetivos, las
+  tarjetas) están en `docs.css` y `home.css` de `libs/ui`.
+- **El menú y las tarjetas se escriben a mano**, como `docsNav`: un snippet por categoría
+  (`firstStepsNav`…) y una tarjeta por categoría en la portada, en
+  `web/apps/tutorials/src/snippets/tutorials.fud`. No pueden salir de un módulo de datos porque la
+  vista es políglota: sin literales de objeto ni array en el `@code` de una página (`FUD1143`) y
+  sin tipos que no estén en un `.fudapi` (`FUD1153`). **Al añadir, mover o quitar un tutorial se
+  cambia su fila en §3, su línea en el snippet de su categoría y, si cambia el número o los
+  niveles, su tarjeta.**
+- Un tutorial aún sin escribir sale en el menú sin enlace, con «pronto»; una categoría sin ninguno
+  escrito, en la portada sin enlace y con «En preparación».
 - En móvil, los menús se pliegan como en la Documentación.
 
 URLs en inglés, texto en español (como el resto de la web).
@@ -270,9 +281,8 @@ WASM: en Windows no se puede probar porque no resuelve rutas `C:\`.
 ## 6. Orden de trabajo
 
 1. Este documento, validado por Pedro: el índice (§3) y la app (§4).
-2. Crear la app `tutorials` con la CLI y llevar el enlace «Tutoriales» del menú hasta ella.
-3. La portada con las 16 categorías y la plantilla de página con `first-app`: nivel, los dos menús,
-   bloques de código con ruta y copiar, la solución en GitHub, anterior y siguiente.
+2. ~~Crear la app `tutorials` con la CLI y llevar el enlace «Tutoriales» del menú hasta ella.~~
+3. ~~La portada con las 16 categorías y la plantilla de página con `first-app`.~~ En revisión.
 4. Categoría a categoría, en el orden de §3, cada tutorial con su solución en `tutorials/<slug>/`.
 5. El día que se publique en npm: el botón de StackBlitz en todos.
 
@@ -284,3 +294,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | Fecha | Qué |
 |---|---|
 | 2026-11-25 | Este documento, para revisión. Decisiones de Pedro: una app propia (no dentro de `/docs`); portada con 16 categorías; el tiempo no se muestra; soluciones en una carpeta de este repo, no en otro; nada fuera del índice; el layout lo decide Claude (tutoriales a la izquierda, pasos a la derecha). Prueba de oxc-parser en WASM para StackBlitz (§5.1). |
+| 2026-11-25 | App `web/apps/tutorials` creada con `fudic g app tutorials --uses ui --layout @web/ui/layouts/docs.fud --no-sw --locale es` sobre una copia de `web/` (hallazgos 5 y 6 de la CLI), servida en `/tutorials/`. «Tutoriales» en la cabecera y el pie de todas las páginas. La portada con las 16 categorías y el primer tutorial, `first-app`, creado con `fudic g page`: cada comando y cada salida, de una ejecución real de `fudic new`, `fudic dev`, `pnpm build` y `fudic preview` fuera del repo. Su solución, en `tutorials/first-app/`. Lighthouse en las dos páginas, móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100 (el 99 en móvil es el mismo que da una página de la Documentación en `vite preview`, sin compresión). El script de anclas de la skill lee ya las tres apps. Hallazgo 56 del framework: el typecheck asigna mal los argumentos con nombre de un snippet. |

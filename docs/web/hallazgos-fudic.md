@@ -806,3 +806,21 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que Fudic coloree los bloques de código al compilar con sus propias
   gramáticas (por ejemplo, un `<pre><code data-lang="fud">` que el plugin de Vite resuelva), para
   que una web hecha con Fudic no tenga que montar el coloreado por su cuenta.
+
+## 56. El typecheck asigna mal los argumentos con nombre de un snippet si se salta uno
+
+- **Qué pasó.** En la portada de Tutoriales (2026-11-25), un snippet
+  `category(title: string, summary: string, count: number, href: string = "", beginner: boolean = false, …)`
+  llamado como `@render category("Eventos", "…", 4, beginner: true)` hace fallar el build con
+  `TS2345: Argument of type 'boolean' is not assignable to parameter of type 'string'`. Con todos
+  los argumentos por nombre (`title: …, summary: …, count: 11, beginner: true`) pasa lo mismo:
+  `beginner` acaba en el parámetro `href`, el primero que se ha saltado.
+- **Por qué no se veía.** `pager(next: …, nextTitle: …)`, que se salta `prev` y `prevTitle` en
+  cada primera página de la Documentación, tiene todos sus parámetros `string`: el typecheck los
+  asigna mal sin quejarse, y el HTML sí sale bien (el enlace «Siguiente» está a la derecha). El
+  fallo está solo en el código que se genera para el typecheck.
+- **Cómo se resolvió en la web.** La tarjeta recibe los niveles como booleanos posicionales y el
+  `href` al final: `category("Eventos", "…", 4, true, true, false)`. Antes se probó con un texto
+  (`"beginner intermediate"`) y `levels.includes(…)`, que la vista no admite (`FUD1140`).
+- **Qué debería hacer.** Que el typecheck asigne cada argumento con nombre a su parámetro, como
+  hace el render, y que los saltados tomen su valor por defecto.

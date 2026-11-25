@@ -24,7 +24,7 @@ Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 |---|---|---|
 | **Hero** | La portada, `/`: `web/apps/site/src/routes/index.fud`, con el layout `home` de `@web/ui`. | Hecha. |
 | **Documentación** | La guía completa del framework (§5). La escribimos entre los dos. | **Ahora.** |
-| **Tutorial** | `examples/basic` preparado para abrirse en StackBlitz, con todos los ejemplos revisados. | Segundo proceso, no ahora. |
+| **Tutoriales** | 74 tutoriales en 16 categorías, en su propia app (`/tutorials`), cada uno con su solución en `tutorials/<slug>/`: [tutorial/README.md](tutorial/README.md). | **Ahora**: portada y primer tutorial en revisión. |
 | **MCP** | Toda la documentación del MCP, en su propia app: [mcp/README.md](mcp/README.md). | **Ahora**: plan en revisión. |
 
 ### Diseño de la Documentación
@@ -162,7 +162,9 @@ fudic new web --workspace --app site --uses ui --no-git --no-install
 ```
 web/
 ├── package.json   dev y preview de todo el workspace
-├── apps/site/     la app: Hero, Documentación, Tutorial y MCP (prefijo site)
+├── apps/site/     la app: Hero y Documentación (prefijo site)
+├── apps/mcp/      la sección MCP, en /mcp
+├── apps/tutorials/ los tutoriales, en /tutorials
 └── libs/
     ├── ui/        lo compartido: layouts, página de error, componentes, tokens (prefijo ui)
     └── guide/     la guía de estilos, que la CLI crea siempre
@@ -245,3 +247,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-23 | Diagnósticos, tras la revisión de Pedro: cada código tiene su página, `/docs/reference/diagnostics/FUD0010` (`ssr`, creada con `fudic g page` y `fudic g api`), y `docsUrl()` apunta a ella; el buscador redirige con un `302`, y `/diagnostics/10` con un `301` a la forma canónica. La tarjeta lleva el color de su severidad y el arreglo, aparte, en verde. SDD-50 al día. |
 | 2026-11-23 | Capítulo **Términos propios**, nuevo, a petición de Pedro: cinco páginas creadas con `fudic g page` (hallazgo 6 de la CLI). Sale del código de `@fudic/terms`, `@fudic/spec` y del motor del workbench. La página de `selfTest` que se propuso no se escribió: nadie lo ejecuta (hallazgo 45 del framework); va dentro de Cómo funciona un término. «Tus propios pasos» se quita de Pruebas y sus enlaces van al capítulo nuevo. Criterios decía que un texto que nunca llega da `FUD1202`: falla con su evidencia. Hallazgos 45 y 46. |
 | 2026-11-24 | Portada: el boceto `hero.html` pasa a `index.fud`, con el layout `home` y `<ui-command>` en `@web/ui`. Lighthouse 100/100/100/100 en móvil y escritorio. Boceto borrado. |
+| 2026-11-25 | **Tutoriales**: plan en [tutorial/README.md](tutorial/README.md), app `web/apps/tutorials` en `/tutorials/`, «Tutoriales» en la cabecera y el pie, la portada con las 16 categorías y el primer tutorial (`first-app`), con su solución en `tutorials/first-app/`. |

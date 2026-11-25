@@ -1,14 +1,17 @@
 // Checks every internal link of the public site: the page exists and, with a #, so does its id.
-// Covers both apps: site (/docs) and mcp (/mcp), and links from one to the other.
+// Covers every app: site (/docs), mcp (/mcp) and tutorials (/tutorials), and links between them.
 const fs = require("fs"), path = require("path");
 const web = process.argv[2];
 
-// Each app, the folder of its routes and the URL its routes are served under. The mcp app is a
-// subapp of the same domain: if its routes already sit in an `mcp` folder, they need no base.
+// Each app, the folder of its routes and the URL its routes are served under. mcp and tutorials are
+// subapps of the same domain: if their routes already sit in a folder of their name, they need no
+// base.
 const apps = [{ dir: "apps/site/src/routes", base: "" }];
-const mcpRoutes = path.join(web, "apps/mcp/src/routes");
-if (fs.existsSync(mcpRoutes)) {
-  apps.push({ dir: "apps/mcp/src/routes", base: fs.existsSync(path.join(mcpRoutes, "mcp")) ? "" : "/mcp" });
+for (const sub of ["mcp", "tutorials"]) {
+  const routes = path.join(web, `apps/${sub}/src/routes`);
+  if (fs.existsSync(routes)) {
+    apps.push({ dir: `apps/${sub}/src/routes`, base: fs.existsSync(path.join(routes, sub)) ? "" : `/${sub}` });
+  }
 }
 
 function walk(d, out) {
@@ -38,7 +41,7 @@ const dynamic = Object.keys(ids)
   .map(url => ({ url, re: new RegExp("^" + url.replace(/\[[^\]]+\]/g, "[^/]+") + "$") }));
 // A diagnostic page exists only for a code of the catalog: one file per code in @fudic/diagnostics.
 const codes = path.join(web, "../packages/diagnostics/src/codes");
-// An app served under a base (/mcp/) answers its home only with the slash: /mcp is the dev
+// An app served under a base (/mcp/, /tutorials/) answers its home only with the slash: /mcp is the dev
 // server's "did you mean /mcp/?" page.
 const bases = new Set(apps.map(a => a.base).filter(Boolean));
 function idsOf(url) {
@@ -52,13 +55,19 @@ function idsOf(url) {
 }
 
 let bad = 0;
-for (const f of [...files, path.join(web, "libs/ui/src/snippets/site.fud")]) {
+// The pages, and the snippets that write links into them: the shared ones and each app's own.
+const snippets = [path.join(web, "libs/ui/src/snippets/site.fud")];
+for (const app of apps) {
+  const dir = path.join(web, app.dir, "../snippets");
+  if (fs.existsSync(dir)) snippets.push(...walk(dir, []));
+}
+for (const f of [...files, ...snippets]) {
   const t = fs.readFileSync(f, "utf8");
-  for (const m of t.matchAll(/href="(\/(?:docs|mcp)[^"#]*)#([^"]+)"/g)) {
+  for (const m of t.matchAll(/href="(\/(?:docs|mcp|tutorials)[^"#]*)#([^"]+)"/g)) {
     const s = idsOf(m[1]);
     if (!s || !s.has(m[2])) { bad++; console.log(path.relative(web, f), m[1] + "#" + m[2]); }
   }
-  for (const m of t.matchAll(/href="(\/(?:docs|mcp)[^"#?]*)(?:\?[^"]*)?"/g)) {
+  for (const m of t.matchAll(/href="(\/(?:docs|mcp|tutorials)[^"#?]*)(?:\?[^"]*)?"/g)) {
     if (!idsOf(m[1])) { bad++; console.log(path.relative(web, f), "missing page", m[1]); }
   }
 }

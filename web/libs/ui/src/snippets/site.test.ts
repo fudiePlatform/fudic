@@ -6,6 +6,7 @@ test('header renders the wordmark and the main navigation', async () => {
   expect(t.query('.site-header')).toBeInTheDocument();
   expect(t.getByRole('navigation', { name: 'Principal' })).toBeInTheDocument();
   expect(t.getByRole('link', { name: 'Documentación' })).toHaveAttribute('href', '/docs/getting-started');
+  expect(t.getByRole('link', { name: 'Tutoriales' })).toHaveAttribute('href', '/tutorials/');
 });
 
 test('footer closes with the motto and links the MIT license on GitHub', async () => {

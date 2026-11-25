@@ -7,6 +7,7 @@
     <nav aria-label="Principal">
       <ul>
         <li><a href="/docs/getting-started">Documentación</a></li>
+        <li><a href="/tutorials/">Tutoriales</a></li>
         <li><a href="/mcp/">MCP</a></li>
         <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
       </ul>
@@ -23,6 +24,7 @@
     <nav aria-label="Pie de página">
       <ul>
         <li><a href="/docs/getting-started">Documentación</a></li>
+        <li><a href="/tutorials/">Tutoriales</a></li>
         <li><a href="/mcp/">MCP</a></li>
         <li><a href="https://github.com/fudiePlatform/fudic" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://github.com/fudiePlatform/fudic/blob/main/LICENSE" target="_blank" rel="noopener">Licencia MIT</a></li>

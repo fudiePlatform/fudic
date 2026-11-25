@@ -1,0 +1,8 @@
+{
+  "id": "tutorials",
+  "kind": "app",
+  "prefix": "tutorials",
+  "server": "src/server",
+  "browser": "src/browser",
+  "baseline": "widely"
+}

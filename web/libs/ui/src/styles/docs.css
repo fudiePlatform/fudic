@@ -465,6 +465,142 @@ a[target="_blank"]::after {
   text-decoration: underline;
 }
 
+/* Tutorials. The level of a tutorial is a word with a dot in its colour: the word says it, the
+   colour only helps to find it in a list. */
+
+.level {
+  --level: var(--guide-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: var(--guide-text-xs);
+  font-weight: var(--guide-weight-medium);
+  color: var(--guide-muted);
+  white-space: nowrap;
+}
+
+.level::before {
+  content: "";
+  inline-size: 0.55em;
+  block-size: 0.55em;
+  background: var(--level);
+  border-radius: 50%;
+}
+
+.level[data-level="beginner"] { --level: var(--guide-success); }
+.level[data-level="intermediate"] { --level: var(--guide-warning); }
+.level[data-level="advanced"] { --level: var(--guide-danger); }
+
+/* The left column of a tutorial: the way back to the categories, the name of the category and its
+   tutorials, each one its name over its level. */
+
+.docs-nav .nav-back {
+  margin: 0 0 var(--guide-space-4);
+  font-size: var(--guide-text-sm);
+}
+
+.docs-nav .nav-back a {
+  padding-inline: 0;
+  border: 0;
+}
+
+.docs-nav .nav-back a::before {
+  content: "\2190\2002";
+}
+
+.docs-nav .nav-category {
+  display: none;
+  margin: 0;
+  padding: 0 var(--guide-space-3);
+  font-size: var(--guide-text-xs);
+  font-weight: var(--guide-weight-bold);
+  color: var(--guide-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (min-width: 64rem) {
+  .docs-nav .nav-category {
+    display: block;
+  }
+}
+
+.tutorial-list a,
+.tutorial-list .soon {
+  display: grid;
+  gap: 0.125rem;
+  padding: var(--guide-space-2) var(--guide-space-3);
+}
+
+.tutorial-list .soon {
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+  border-inline-start: 2px dashed var(--guide-rule);
+}
+
+.tutorial-list .soon .name {
+  color: var(--guide-muted);
+}
+
+.tutorial-list .when {
+  font-size: var(--guide-text-xs);
+  font-style: italic;
+}
+
+/* The head of a tutorial: its level and category, the title and the line that says what you do. */
+
+.tutorial-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--guide-space-3);
+  margin: 0 0 var(--guide-space-2);
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+}
+
+.tutorial-meta .level {
+  padding: var(--guide-space-1) var(--guide-space-3);
+  font-size: var(--guide-text-sm);
+  color: var(--guide-ink);
+  background: var(--guide-raised);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-full);
+}
+
+.docs-page .lede {
+  font-size: var(--guide-text-lg);
+  color: var(--guide-muted);
+  text-wrap: pretty;
+}
+
+/* What you will be able to do: a box set apart from the steps. */
+
+.objectives {
+  margin-block: var(--guide-space-5) var(--guide-space-6);
+  padding: var(--guide-space-4) var(--guide-space-5);
+  background: var(--guide-raised);
+  border-inline-start: 4px solid var(--guide-accent);
+  border-radius: var(--guide-radius-md);
+}
+
+.objectives h2 {
+  margin-top: 0;
+  font-size: var(--guide-text-xl);
+}
+
+.objectives > :last-child {
+  margin-bottom: 0;
+}
+
+/* What the terminal or the browser shows: a plain block, without a file or a copy button, because
+   it is read, not written. */
+
+pre.output {
+  font-size: var(--guide-text-sm);
+  border-inline-start: 4px solid var(--guide-code-muted);
+}
+
 /* Footer */
 
 .site-footer {

@@ -1,0 +1,14 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  const name = "Fudic";
+}
+
+<head>
+  <title>My first app</title>
+  <meta name="description" content="My first app made with Fudic.">
+</head>
+
+<h1>Hello, @name</h1>
+
+<p>This page is painted on the server.</p>

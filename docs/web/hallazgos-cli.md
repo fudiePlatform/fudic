@@ -128,6 +128,12 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con las dos páginas de Conectarlo de la sección MCP (`connect`, `connect/chat`), el
   2026-11-24: revienta con `--layout @web/ui/layouts/docs.fud`; con la ruta relativa, el `href`
   frágil y los títulos «Connect» y «Chat», corregidos a mano.
+- **Y otra vez** con la app de Tutoriales, el 2026-11-25: dentro del monorepo,
+  `fudic g app tutorials --uses ui --layout @web/ui/layouts/docs.fud --no-sw` termina con el mismo
+  `ENOENT` sobre `examples\vista-errores\package.json`, incluso con `--dry-run`. Mismo rodeo que
+  la del MCP (nº 5): se creó sobre una copia de `web/`, se trajo, `@fudic/*` a `workspace:*` y fuera
+  `"locales"`. Su primera página, `fudic g page first-app`, revienta igual con el `href` de la
+  librería; con la ruta relativa, el `href` frágil y el título «First-app», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -154,6 +160,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Vuelto a comprobar (capítulo 13, Pruebas), el 2026-11-23.** `fudic dev` hace lo mismo: desde
   `web/apps/site` arrancó las 18 apps del repo («fudic dev — 18 apps on one port»), y la web no
   respondía en `/docs/…`. Con `--project site`, una sola.
+- **Vuelto a comprobar (Tutoriales), el 2026-11-25.** Un proyecto de `fudic new` metido un momento
+  en `examples/` para instalarlo con el workspace: `fudic dev` arrancó las 21 apps del repo. Para
+  copiar en el tutorial la salida que ve un usuario («fudic dev — 1 app on one port»), se ejecutó
+  fuera del repo, con su `node_modules` enlazado.
 
 ## 9. `fudic new` escribe un `assets.headers` que deja sin caché lo que emite Fudic
 

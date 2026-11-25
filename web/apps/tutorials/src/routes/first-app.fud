@@ -1,0 +1,144 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu primera app · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea una app de Fudic con su CLI, arráncala, cambia su página de inicio y sirve la versión que desplegarías.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/first-app">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu primera app · Tutoriales de Fudic">
+  <meta property="og:description" content="Crea una app con la CLI, arráncala, cambia su página de inicio y sirve su build.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/first-app">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render firstStepsNav("first-app")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#dev">2. Arráncala</a></li>
+        <li><a href="#home-page">3. Cambia la página de inicio</a></li>
+        <li><a href="#source">4. Mira lo que llega</a></li>
+        <li><a href="#preview">5. Sirve el build</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Primeros pasos</span></p>
+
+<h1>Tu primera app</h1>
+
+<p class="lede">Creas una app de Fudic con su CLI, la arrancas, cambias su página de inicio y sirves la versión que desplegarías.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear una app con <code>fudic new</code>.</li>
+    <li>Arrancarla con <code>fudic dev</code> y ver cada cambio al guardar.</li>
+    <li>Construirla y servir el build con <code>fudic preview</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app</code></pre>
+</ui-code>
+
+<p>La CLI crea la carpeta <code>my-app</code> con una página de inicio, un layout y una guía de estilos. Después instala las dependencias y hace el primer commit. Sus opciones están en la página de <a href="/docs/cli/new"><code>fudic new</code></a>.</p>
+
+<h2 id="dev">2. Arráncala</h2>
+
+<ui-code>
+<pre><code>npx fudic dev</code></pre>
+</ui-code>
+
+<p>La terminal dice dónde está la app:</p>
+
+<pre class="output"><code>fudic dev — 1 app on one port
+
+  my-app   starting
+  my-app   started in 1.6 s
+
+  my-app   http://localhost:5173/
+
+  ready in 1.6 s · Ctrl+C stops it · fudic dev --port &lt;n&gt; serves on another port</code></pre>
+
+<p>Abre <code>http://localhost:5173/</code>. Verás la página de inicio, con un único título: Home. Deja la terminal abierta, porque <code>fudic dev</code> vuelve a pintar la página cada vez que guardas un fichero. Lo cuenta la página de <a href="/docs/cli/dev"><code>fudic dev</code></a>.</p>
+
+<h2 id="home-page">3. Cambia la página de inicio</h2>
+
+<p>Cada <code>.fud</code> de <code>src/routes/</code> es una página, y su URL sale de dónde está el fichero. La página de inicio es <code>index.fud</code>. Sustituye su contenido por este:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const name = "Fudic";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;My first app&lt;/title&gt;
+  &lt;meta name="description" content="My first app made with Fudic."&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Hello, @@name&lt;/h1&gt;
+
+&lt;p&gt;This page is painted on the server.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><code>&lt;link rel="layout"&gt;</code> enlaza el layout: el documento completo, con su <code>&lt;html&gt;</code> y su <code>&lt;head&gt;</code>, en el que se pinta la página.</li>
+  <li><code>@@code</code> es TypeScript. El servidor lo ejecuta al pintar la página, y <code>@@name</code> escribe el valor de <code>name</code> en el HTML.</li>
+  <li>El <code>&lt;head&gt;</code> de la página añade su título y su descripción al <code>&lt;head&gt;</code> del layout.</li>
+</ul>
+
+<p>Guarda. El navegador se recarga solo y muestra «Hello, Fudic». La terminal lo confirma:</p>
+
+<pre class="output"><code>my-app   11:45:08 [vite] (ssr) page reload src/routes/index.fud</code></pre>
+
+<p>Las páginas y los layouts se explican en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>, y lo que se escribe con <code>@@</code> en <a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a>.</p>
+
+<h2 id="source">4. Mira lo que llega</h2>
+
+<p>Abre el código fuente de la página con Ctrl+U. Dentro del <code>&lt;body&gt;</code> está esto:</p>
+
+<pre class="output"><code>&lt;main&gt;&lt;h1&gt;Hello, Fudic&lt;/h1&gt;&lt;p&gt;This page is painted on the server.&lt;/p&gt;&lt;/main&gt;</code></pre>
+
+<p>No queda ni <code>@@code</code> ni <code>@@name</code>. El servidor los ha resuelto, y el navegador recibe HTML estándar.</p>
+
+<h2 id="preview">5. Sirve el build</h2>
+
+<p>Detén <code>fudic dev</code> con Ctrl+C. Construye la app y sirve el resultado:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<pre class="output"><code>fudic preview — 1 app on one port
+
+  my-app   starting
+  my-app   started in 1.1 s
+
+  my-app   http://localhost:4173/</code></pre>
+
+<p>Abre <code>http://localhost:4173/</code>. Es la misma página, pero servida desde <code>dist/</code>, que es lo que desplegarías. Ahora llega además con las cabeceras de <code>page.headers</code>, entre ellas su Content Security Policy. Lo cuenta <a href="/docs/vite/build">El build y la preview</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/first-app" target="_blank" rel="noopener">la solución de Tu primera app, en GitHub</a>. Compara tu <code>src/routes/index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/", prevTitle: "Todas las categorías")

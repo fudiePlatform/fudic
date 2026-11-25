@@ -679,3 +679,118 @@
     max-width: 22rem;
   }
 }
+
+/* The tutorials home: the three levels under the headline, then a card per category. A card is a
+   list item with its title as a heading; the title's link stretches over the whole card, so the
+   card is one target but its name is only the title. */
+
+.home .level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--guide-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home .level-legend li {
+  margin: 0;
+}
+
+.home .level-legend .level {
+  font-size: var(--guide-text-sm);
+}
+
+.home .categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--guide-space-4);
+  inline-size: 100%;
+  margin: var(--guide-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: category;
+  text-align: start;
+}
+
+.home .category {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--guide-space-2);
+  margin: 0;
+  padding: var(--guide-space-5);
+  background: var(--guide-raised);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-lg);
+  counter-increment: category;
+}
+
+.home .category::before {
+  content: counter(category, decimal-leading-zero);
+  font-family: var(--guide-font-mono);
+  font-size: var(--guide-text-xs);
+  color: var(--guide-muted);
+}
+
+.home .category h2 {
+  margin: 0;
+  font-size: var(--guide-text-xl);
+  font-weight: var(--guide-weight-medium);
+  line-height: 1.2;
+}
+
+.home .category h2 a {
+  color: var(--guide-ink);
+  text-decoration: none;
+}
+
+.home .category h2 a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.home .category h2 a:hover {
+  text-decoration: underline;
+}
+
+.home .category:has(a) {
+  border-color: var(--guide-accent);
+}
+
+.home .category p {
+  margin: 0;
+}
+
+.home .category .summary {
+  font-size: var(--guide-text-sm);
+  color: var(--guide-muted);
+  text-wrap: pretty;
+}
+
+.home .category .count {
+  font-size: var(--guide-text-sm);
+  font-weight: var(--guide-weight-medium);
+}
+
+.home .category .levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--guide-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home .category .levels li {
+  margin: 0;
+}
+
+.home .category .soon {
+  font-size: var(--guide-text-xs);
+  font-style: italic;
+  color: var(--guide-muted);
+}

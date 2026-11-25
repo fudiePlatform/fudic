@@ -1,0 +1,58 @@
+@* The left column of a tutorial: the way back to the categories, then every tutorial of its
+   category from easiest to hardest, each with its level. Same shape as the docs menu: a toggle that
+   hides the list on a phone, and the list right after it. One snippet per category, written by
+   hand like docsNav; the index they follow is docs/web/tutorial/README.md. *@
+
+@* One tutorial of the list. One still to write is listed but not linked, so the reader sees what
+   is coming and never follows a dead link. *@
+@snippet tutorial(slug: string, title: string, level: string, current: string, written: boolean = true) {
+  <li>
+    @if (written) {
+      <a href=@("/tutorials/" + slug) aria-current=@(slug === current ? "page" : false)><span class="name">@title</span> <span class="level" data-level=@level>@(level === "beginner" ? "Principiante" : level === "intermediate" ? "Intermedio" : "Avanzado")</span></a>
+    } else {
+      <span class="soon"><span class="name">@title</span> <span class="level" data-level=@level>@(level === "beginner" ? "Principiante" : level === "intermediate" ? "Intermedio" : "Avanzado")</span> <span class="when">pronto</span></span>
+    }
+  </li>
+}
+
+@* A card of the home page: one category, how many tutorials it has and of which levels. Its title
+   links to the first tutorial while there is one; until then the card says it is on its way. The
+   link covers the whole card, but only the title is its name. *@
+@snippet category(title: string, summary: string, count: number, beginner: boolean, intermediate: boolean, advanced: boolean, href: string = "") {
+  <li class="category">
+    <h2>
+      @if (href !== "") {
+        <a href=@href>@title</a>
+      } else {
+        @title
+      }
+    </h2>
+    <p class="summary">@summary</p>
+    <p class="count">@(count === 1 ? "1 tutorial" : count + " tutoriales")</p>
+    <ul class="levels" aria-label="Niveles">
+      @if (beginner) {
+        <li><span class="level" data-level="beginner">Principiante</span></li>
+      }
+      @if (intermediate) {
+        <li><span class="level" data-level="intermediate">Intermedio</span></li>
+      }
+      @if (advanced) {
+        <li><span class="level" data-level="advanced">Avanzado</span></li>
+      }
+    </ul>
+    @if (href === "") {
+      <p class="soon">En preparación</p>
+    }
+  </li>
+}
+
+@snippet firstStepsNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Primeros pasos</p>
+  <details class="toggle"><summary>Tutoriales de Primeros pasos</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("first-app", "Tu primera app", "beginner", @current)
+    @render tutorial("first-component", "Tu primer componente", "beginner", @current, false)
+    @render tutorial("editor", "El editor a tu favor", "beginner", @current, false)
+  </ol>
+}
