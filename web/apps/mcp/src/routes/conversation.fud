@@ -137,3 +137,5 @@ criterion can-be-tapped-with-a-finger
 </ui-code>
 
 <p>La persona escribió seis mensajes en una hora y tomó tres decisiones: aprobó los criterios, aprobó el criterio reescrito y aprobó el aspecto. El resto lo hizo el modelo.</p>
+
+@render pager(prev: "/mcp/fudic", prevTitle: "Qué es Fudic", next: "/mcp/connect", nextTitle: "Desde un agente")

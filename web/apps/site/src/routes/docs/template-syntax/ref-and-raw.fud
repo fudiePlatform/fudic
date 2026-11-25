@@ -93,3 +93,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal" target="_blank" rel="noopener"><code>HTMLDialogElement.showModal()</code></a>: un caso típico de <code>ref</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types API</a>: cómo el navegador bloquea el HTML que no pasa por una política.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/events", prevTitle: "Eventos", next: "/docs/reactivity", nextTitle: "Signals")

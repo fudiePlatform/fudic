@@ -105,3 +105,5 @@ export default initials.implement((value, locale) =&gt;
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat" target="_blank" rel="noopener"><code>Intl.DateTimeFormat</code></a>: las opciones de <code>date</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat" target="_blank" rel="noopener"><code>Intl.NumberFormat</code></a>: las de <code>number</code>, <code>currency</code> y <code>percent</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/server/rules", prevTitle: "Reglas y patrones", next: "/docs/server/session", nextTitle: "Sesión y cookies")

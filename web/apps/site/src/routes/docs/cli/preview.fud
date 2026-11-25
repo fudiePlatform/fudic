@@ -64,3 +64,5 @@ fudic preview --port 8080</code></pre>
 <ul>
   <li><a href="/docs/vite/build#preview">La preview</a>: lo que sirve y lo que se prueba en ella.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/dev", prevTitle: "fudic dev", next: "/docs/cli/test", nextTitle: "fudic test")

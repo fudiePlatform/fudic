@@ -101,3 +101,5 @@
 <ul>
   <li><a href="/docs/reference/diagnostics/FUD1427"><code>FUD1427</code></a>: el aspecto no se ha enseñado. <a href="/docs/reference/diagnostics/FUD1407"><code>FUD1407</code></a>: <code>done</code> con una fase pendiente, que la respuesta nombra.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/look", prevTitle: "fudic_look", next: "/mcp/tools/files", nextTitle: "fudic_files")

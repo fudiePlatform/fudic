@@ -111,3 +111,5 @@ fudic g l docs --sections nav,aside</code></pre>
 <ul>
   <li><a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>: los huecos de un layout y cómo los rellena una página.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/page", prevTitle: "fudic generate page", next: "/docs/cli/generate/app", nextTitle: "fudic generate app")

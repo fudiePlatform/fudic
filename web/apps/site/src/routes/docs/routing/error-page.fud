@@ -82,3 +82,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status" target="_blank" rel="noopener">Códigos de status HTTP</a>: el <code>404</code> y los demás.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer" target="_blank" rel="noopener"><code>Referer</code></a>: de donde sale <code>back</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/routing/rendering", prevTitle: "Cuándo se pinta: los modos", next: "/docs/routing/early-hints", nextTitle: "Early hints")

@@ -133,3 +133,5 @@
 </table>
 
 <p>Para los ficheros de Fudic, la extensión también deja puestos dos espacios de sangría y el formato al guardar.</p>
+
+@render pager(prev: "/docs/editors/writing", prevTitle: "Escribir con el editor", next: "/docs/editors/other", nextTitle: "Otros editores")

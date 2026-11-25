@@ -83,3 +83,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a>: lo que la extensión sabe leer en cada componente.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">Propiedades personalizadas de CSS</a>: los tokens que completa tras <code>var(--</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/vite/build", prevTitle: "El build y la preview", next: "/docs/editors/writing", nextTitle: "Escribir con el editor")

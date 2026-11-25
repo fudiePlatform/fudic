@@ -110,3 +110,5 @@ export function titleOf(slug: string): string &#123;
   <li><strong>Un mensaje de <code>t()</code> no lleva etiquetas</strong>, porque devuelve un string. Puede llevar plurales (<a href="/docs/i18n/catalogs#plural">Plurales</a>).</li>
   <li><strong><a href="/docs/reference/diagnostics/FUD1020"><code>FUD1020</code></a></strong> es el error de un <code>t()</code> cuyo texto no es un string escrito tal cual, o al que le falta la clave de un hueco.</li>
 </ul>
+
+@render pager(prev: "/docs/i18n", prevTitle: "Traducir una app", next: "/docs/i18n/catalogs", nextTitle: "Los catálogos")

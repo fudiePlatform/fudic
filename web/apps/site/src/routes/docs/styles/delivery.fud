@@ -94,3 +94,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@import" target="_blank" rel="noopener"><code>@@import</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/url_function" target="_blank" rel="noopener"><code>url()</code></a>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility" target="_blank" rel="noopener">Baseline</a>: qué funciona en todos los navegadores principales.</li>
 </ul>
+
+@render pager(prev: "/docs/styles/guide", prevTitle: "La guía de estilos", next: "/docs/server", nextTitle: "El contrato .fudapi")

@@ -123,3 +123,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: el idioma de un documento o de un trozo.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>: lo que el estándar de JavaScript sabe de cada idioma, y en lo que se apoyan los pipes.</li>
 </ul>
+
+@render pager(prev: "/docs/service-worker/headers", prevTitle: "Las cabeceras del Service Worker", next: "/docs/i18n/code", nextTitle: "Textos en el código")

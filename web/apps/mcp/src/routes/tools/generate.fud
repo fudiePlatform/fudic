@@ -93,3 +93,5 @@
 <ul>
   <li><code>error-page</code> no lleva nombre. Una página enlaza el layout más cercano, y sin ninguno responde <a href="/docs/reference/diagnostics/FUD1582"><code>FUD1582</code></a> y no escribe nada.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/new", prevTitle: "fudic_new", next: "/mcp/tools/add", nextTitle: "fudic_add")

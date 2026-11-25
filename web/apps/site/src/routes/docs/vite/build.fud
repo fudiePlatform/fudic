@@ -92,3 +92,5 @@ fudic preview                # port 4173</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: el formato de todo lo que sale del build.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching" target="_blank" rel="noopener">Caché HTTP</a>: por qué cada fichero lleva un hash en el nombre.</li>
 </ul>
+
+@render pager(prev: "/docs/vite/dev", prevTitle: "En desarrollo", next: "/docs/editors", nextTitle: "VS Code y compatibles")

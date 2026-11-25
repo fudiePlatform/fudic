@@ -86,3 +86,5 @@
   </tbody>
 </table>
 <p>La guía está en inglés, como todo lo que el MCP le dice al modelo.</p>
+
+@render pager(prev: "/mcp/tools/status", prevTitle: "fudic_status", next: "/mcp/tools/new", nextTitle: "fudic_new")

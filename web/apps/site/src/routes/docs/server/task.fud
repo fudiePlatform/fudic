@@ -104,3 +104,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener"><code>AbortController</code></a>: lo que usa <code>task</code> para cancelar.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-live" target="_blank" rel="noopener"><code>aria-live</code></a>: anunciar «Buscando…» a un lector de pantalla.</li>
 </ul>
+
+@render pager(prev: "/docs/server/functions", prevTitle: "Funciones de servidor", next: "/docs/server/middlewares", nextTitle: "Middlewares y cadena")

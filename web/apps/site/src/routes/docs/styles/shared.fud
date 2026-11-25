@@ -126,3 +126,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets" target="_blank" rel="noopener"><code>ShadowRoot.adoptedStyleSheets</code></a>: las hojas que adopta un componente.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">Custom properties</a>: por qué un token de la página llega a un componente.</li>
 </ul>
+
+@render pager(prev: "/docs/styles", prevTitle: "El CSS de un componente", next: "/docs/styles/guide", nextTitle: "La guía de estilos")

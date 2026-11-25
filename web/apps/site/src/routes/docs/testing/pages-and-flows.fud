@@ -182,3 +182,5 @@ criterion created-user-is-found
   <li><strong><code>fails(0, "network")</code></strong> en un flujo simula que la llamada no llega: un fallo de red.</li>
   <li><strong>Un fichero</strong> se sube con <code>upload</code>. Un fixture devuelve uno con <code>file("./fixtures/people.csv")</code>, y <code>downloaded "people.csv"</code> comprueba la descarga.</li>
 </ul>
+
+@render pager(prev: "/docs/testing/workbench", prevTitle: "El workbench", next: "/docs/testing/unit", nextTitle: "Tests unitarios")

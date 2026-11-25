@@ -85,3 +85,5 @@
 </ui-code>
 
 <p>Un diagnóstico con varias reparaciones vuelve en <code>options</code>, con el título de cada una, para que el modelo elija y la escriba.</p>
+
+@render pager(prev: "/mcp/tools/check", prevTitle: "fudic_check", next: "/mcp/tools/format", nextTitle: "fudic_format")

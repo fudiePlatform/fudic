@@ -59,3 +59,5 @@
 <h2 id="diagnostics">Los diagnósticos</h2>
 
 <p>Cada código <code>FUDnnnn</code> que ves en el editor o en la terminal tiene su explicación en <a href="/docs/reference/diagnostics">Diagnósticos</a>, con un buscador.</p>
+
+@render pager(prev: "/docs/tools/format", prevTitle: "El formateador", next: "/docs/reference/core", nextTitle: "@fudic/core")

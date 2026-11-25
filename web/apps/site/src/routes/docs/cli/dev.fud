@@ -72,3 +72,5 @@ fudic dev --port 3000</code></pre>
 <ul>
   <li><a href="/docs/vite/dev">En desarrollo</a>: qué pasa en cada petición y al guardar.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/add", prevTitle: "fudic add", next: "/docs/cli/preview", nextTitle: "fudic preview")

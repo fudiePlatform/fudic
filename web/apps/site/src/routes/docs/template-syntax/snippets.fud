@@ -72,3 +72,5 @@
 </ul>
 
 <p>Un snippet no tiene estilos: toma los del sitio donde se usa. Por eso, uno que pinta un encabezado solo se usa en una ruta o un layout, nunca dentro de un componente.</p>
+
+@render pager(prev: "/docs/template-syntax/routes-and-layouts", prevTitle: "Rutas y layouts", next: "/docs/template-syntax/expressions", nextTitle: "Expresiones y control de flujo")

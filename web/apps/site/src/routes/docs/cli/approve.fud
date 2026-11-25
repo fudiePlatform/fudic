@@ -83,3 +83,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/testing/history#approve">Aprobar los criterios</a>: qué guarda la aprobación y cuándo caduca.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/translate", prevTitle: "fudic translate", next: "/docs/cli/accept", nextTitle: "fudic accept")

@@ -73,3 +73,5 @@
   <li><a href="https://modelcontextprotocol.io/extensions/apps/overview" target="_blank" rel="noopener">MCP Apps</a>: la extensión con la que un chat dibuja la pieza dentro de la conversación.</li>
   <li><a href="https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noopener">Custom connectors</a>: cómo se añade un servidor MCP remoto a Claude.</li>
 </ul>
+
+@render pager(prev: "/mcp/connect", prevTitle: "Desde un agente", next: "/mcp/phases", nextTitle: "Las fases de una pieza")

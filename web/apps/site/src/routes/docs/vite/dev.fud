@@ -84,3 +84,5 @@ fudic dev --port 3000</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Streams_API" target="_blank" rel="noopener">Streams API</a>: cómo llega una página en partes, también en desarrollo.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket" target="_blank" rel="noopener"><code>WebSocket</code></a>: el canal por el que Vite avisa al navegador de que recargue o enseñe un error.</li>
 </ul>
+
+@render pager(prev: "/docs/vite", prevTitle: "El plugin", next: "/docs/vite/build", nextTitle: "El build y la preview")

@@ -99,3 +99,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/trusted-types" target="_blank" rel="noopener"><code>trusted-types</code></a>: qué políticas valen.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent" target="_blank" rel="noopener"><code>textContent</code></a>: escribir texto, sin HTML.</li>
 </ul>
+
+@render pager(prev: "/docs/security/csp", prevTitle: "La CSP", next: "/docs/testing", nextTitle: "Criterios")

@@ -204,3 +204,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host</code></a>: el estilo del propio componente.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composedPath" target="_blank" rel="noopener"><code>Event.composedPath()</code></a>: el camino de un evento a través del shadow DOM.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax", prevTitle: "Sintaxis de plantillas", next: "/docs/template-syntax/routes-and-layouts", nextTitle: "Rutas y layouts")

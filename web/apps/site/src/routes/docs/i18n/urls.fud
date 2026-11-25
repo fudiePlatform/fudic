@@ -122,3 +122,5 @@ criterion an-english-browser-lands-in-english
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/dir" target="_blank" rel="noopener"><code>dir</code></a>: la dirección del texto.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#alternate" target="_blank" rel="noopener"><code>rel="alternate"</code></a>: otra versión de la página, con <code>hreflang</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/i18n/catalogs", prevTitle: "Los catálogos", next: "/docs/di", nextTitle: "Servicios")

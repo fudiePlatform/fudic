@@ -78,3 +78,5 @@
 <pre><code>fudic g component button --project ui
 fudic g page about</code></pre>
 </ui-code>
+
+@render pager(prev: "/docs/cli/new", prevTitle: "fudic new", next: "/docs/cli/generate/component", nextTitle: "fudic generate component")

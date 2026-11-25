@@ -103,3 +103,5 @@ criterion renders
   <li><a href="/docs/testing">Criterios</a>: cómo se escribe un <code>.fudspec</code>.</li>
   <li><a href="/docs/testing/pages-and-flows">Páginas y flujos</a>: el fixture de una página.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/snippet", prevTitle: "fudic generate snippet", next: "/docs/cli/generate/flow", nextTitle: "fudic generate flow")

@@ -83,3 +83,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a" target="_blank" rel="noopener"><code>&lt;a&gt;</code></a>: el enlace con el que se navega.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la sintaxis <code>:name</code> de los patrones de ruta, en el estándar.</li>
 </ul>
+
+@render pager(prev: "/docs/server/running", prevTitle: "El servidor", next: "/docs/routing/data", nextTitle: "Los datos de la página")

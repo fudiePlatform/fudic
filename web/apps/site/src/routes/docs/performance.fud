@@ -104,3 +104,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/CLS" target="_blank" rel="noopener">CLS</a>: cuánto se mueve el contenido mientras carga.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a>: lo que conviene ir descargando.</li>
 </ul>
+
+@render pager(prev: "/docs/di/server", prevTitle: "Servidor y navegador", next: "/docs/performance/caching", nextTitle: "Las cachés del navegador")

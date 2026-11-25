@@ -130,3 +130,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/head" target="_blank" rel="noopener"><code>&lt;head&gt;</code></a>: lo que va en la cabecera de un documento.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>: lo que coloca cada hueco en el componente del layout.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/components", prevTitle: "Componentes", next: "/docs/template-syntax/snippets", nextTitle: "Snippets")

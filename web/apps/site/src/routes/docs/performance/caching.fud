@@ -118,3 +118,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>: la página que vuelve con «atrás».</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event" target="_blank" rel="noopener"><code>pageshow</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event" target="_blank" rel="noopener"><code>pagehide</code></a>: los eventos de ir y volver.</li>
 </ul>
+
+@render pager(prev: "/docs/performance", prevTitle: "Qué la hace rápida", next: "/docs/performance/lighthouse", nextTitle: "Medir con Lighthouse")

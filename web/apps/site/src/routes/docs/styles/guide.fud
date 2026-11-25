@@ -122,3 +122,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme" target="_blank" rel="noopener"><code>color-scheme</code></a>: el modo claro y el oscuro.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a>: la fuente autoalojada.</li>
 </ul>
+
+@render pager(prev: "/docs/styles/shared", prevTitle: "Hojas compartidas", next: "/docs/styles/delivery", nextTitle: "Cómo llega el CSS")

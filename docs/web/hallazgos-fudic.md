@@ -764,3 +764,16 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que el build dé a cada `_error.fud` su entrada de cliente, como a una
   ruta, para que sus componentes se activen igual que en desarrollo; y que una entrada vacía sea
   un diagnóstico del build y no un `src=""` en producción.
+
+## 54. `renderSnippet` avisa FUD1440 en cada `<a>` de un snippet
+
+- **Qué pasó.** Al probar el snippet `pager` de `@web/ui` (2026-11-25), `pnpm test` de
+  `libs/ui` avisa `FUD1440: <a> is styled by the guide's "a", which this component does not
+  adopt` en cada enlace de `site.fud`: los de `header`, `docsNav` y `pager`. El build de las
+  apps, que usan esos mismos snippets en sus páginas, no avisa nada.
+- **Por qué.** Un snippet se pinta en el light DOM de quien lo usa y no adopta hojas: no tiene
+  `shadowrootadoptedstylesheets` que completar. `renderSnippet` lo compila como si fuera un
+  componente con su shadow root, y la comprobación de FUD1440 se aplica.
+- **Cómo se resolvió en la web.** No se puede desde la web; el aviso no rompe los tests.
+- **Qué debería hacer.** Que FUD1440 no se aplique al markup de un `@snippet`, ni al probarlo
+  solo ni dentro de una página.

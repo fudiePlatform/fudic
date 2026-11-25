@@ -71,3 +71,5 @@
 <ul>
   <li>Desde un agente, escucha en <code>127.0.0.1:4318</code>, o en el siguiente puerto libre. Desde un chat, la URL se abre también en el móvil.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/render", prevTitle: "fudic_render", next: "/mcp/tools/look", nextTitle: "fudic_look")

@@ -83,3 +83,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/routing/error-page">La página de error</a>: qué recibe y cuándo se pinta.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/showcase", prevTitle: "fudic generate showcase", next: "/docs/cli/add", nextTitle: "fudic add")

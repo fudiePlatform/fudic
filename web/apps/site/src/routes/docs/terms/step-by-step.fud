@@ -167,3 +167,5 @@ export const selfTest = [&#123; args: &#123; count: 1 &#125;, expect: 'pass' &#1
 </ui-code>
 
 <p>Con <code>0</code>, Fudic lo lee una vez, con la página quieta. Con cualquier otro número, sigue reintentando.</p>
+
+@render pager(prev: "/docs/terms/anatomy", prevTitle: "Cómo funciona un término", next: "/docs/terms/bench", nextTitle: "Ampliar el ctx")

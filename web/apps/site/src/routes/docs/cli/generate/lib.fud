@@ -99,3 +99,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/cli/add"><code>fudic add</code></a>: para que una app use la librería.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/app", prevTitle: "fudic generate app", next: "/docs/cli/generate/guide", nextTitle: "fudic generate guide")

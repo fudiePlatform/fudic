@@ -109,3 +109,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/cli/dev"><code>fudic dev</code></a>: todas las apps del workspace en un solo puerto.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/layout", prevTitle: "fudic generate layout", next: "/docs/cli/generate/lib", nextTitle: "fudic generate lib")

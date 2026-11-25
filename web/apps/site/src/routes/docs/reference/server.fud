@@ -101,3 +101,5 @@ const files = staticFiles("dist");</code></pre>
   <li><strong><code>fudic preview</code></strong> hace esto mismo con <code>secret</code> aleatorio si no hay <code>FUDIC_SECRET</code> (<a href="/docs/vite/build#preview">El build y la preview</a>).</li>
   <li><strong>El resto de exports</strong> (<code>matchRoute</code>, <code>renderPage</code>, los ayudantes de errores e idiomas, <code>publicRequest</code>; y en <code>/node</code>, <code>toRequest</code>, <code>sendResponse</code>…) son para escribir otro adaptador.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/http", prevTitle: "@fudic/http", next: "/docs/reference/testing", nextTitle: "@fudic/testing")

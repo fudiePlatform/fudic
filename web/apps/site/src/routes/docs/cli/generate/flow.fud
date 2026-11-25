@@ -91,3 +91,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/testing/pages-and-flows">Páginas y flujos</a>: cómo se escribe un <code>flow</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/spec", prevTitle: "fudic generate spec", next: "/docs/cli/generate/term", nextTitle: "fudic generate term")

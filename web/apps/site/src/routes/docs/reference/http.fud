@@ -223,3 +223,5 @@ deleteCookie(ctx: ServerContext, name: string, options?: &#123; path?; domain?; 
   <li><strong><code>ClientStep</code> y <code>ServerStep</code></strong> son la forma de una mitad de middleware sin sus parámetros. Para tipar una, mejor <code>&lt;Name&gt;Server</code> y <code>&lt;Name&gt;Client</code>.</li>
   <li><strong>Los subpaths</strong> <code>@@fudic/http/contract</code>, <code>/server</code>, <code>/client</code> y <code>/wire</code> los usan el código generado, el plugin y los adaptadores.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/i18n", prevTitle: "@fudic/i18n", next: "/docs/reference/server", nextTitle: "@fudic/server")

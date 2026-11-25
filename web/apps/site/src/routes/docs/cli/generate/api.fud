@@ -102,3 +102,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/server">El contrato <code>.fudapi</code></a>: lo que se declara en él y cómo se implementa.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/term", prevTitle: "fudic generate term", next: "/docs/cli/generate/showcase", nextTitle: "fudic generate showcase")

@@ -94,3 +94,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a>: un evento propio con un dato.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/composed" target="_blank" rel="noopener"><code>Event.composed</code></a>: cómo un evento sale de un shadow root.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/submitting", prevTitle: "Enviar al servidor", next: "/docs/forms/files", nextTitle: "Ficheros")

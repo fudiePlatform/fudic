@@ -103,3 +103,5 @@
   <li><strong>Si un elemento falla</strong>, el informe dice también la línea del <code>.fud</code> que lo escribió.</li>
   <li><strong>El workbench no abre un layout</strong> ni una ruta sin su <code>.fudspec</code>: <a href="/docs/reference/diagnostics/FUD0970"><code>FUD0970</code></a>. Sin navegador, <a href="/docs/reference/diagnostics/FUD0975"><code>FUD0975</code></a>.</li>
 </ul>
+
+@render pager(prev: "/docs/testing", prevTitle: "Criterios", next: "/docs/testing/pages-and-flows", nextTitle: "Páginas y flujos")

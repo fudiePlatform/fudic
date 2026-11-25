@@ -153,3 +153,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@supports" target="_blank" rel="noopener"><code>@@supports</code></a>: lo que escribe la bombilla para el CSS fuera de tu Baseline.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>: los huecos que enseña la tarjeta de un componente.</li>
 </ul>
+
+@render pager(prev: "/docs/editors", prevTitle: "VS Code y compatibles", next: "/docs/editors/reference", nextTitle: "Snippets, órdenes y ajustes")

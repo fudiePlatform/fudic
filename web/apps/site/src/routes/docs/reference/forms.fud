@@ -191,3 +191,5 @@ type ErrorMap = Readonly&lt;Record&lt;string, Errors&gt;&gt;;     // &#123; "acc
   <li><strong><code>$set</code> y <code>$patch</code></strong> lanzan un <code>TypeError</code> o un <code>RangeError</code> con un valor que no encaja: son API del navegador, no del compilador.</li>
   <li><strong>Los subpaths</strong> <code>@@fudic/forms/dom</code>, <code>/contract</code> y <code>/element</code> los usa el código que generan el compilador y el <code>.fudapi</code>. Tu código no los importa.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/dom", prevTitle: "@fudic/dom", next: "/docs/reference/di", nextTitle: "@fudic/di")

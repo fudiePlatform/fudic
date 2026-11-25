@@ -78,3 +78,5 @@ logout.handle((ctx) =&gt; &#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener"><code>Set-Cookie</code></a>: los atributos de una cookie.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: qué significan <code>private</code> y <code>no-store</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/server/pipes", prevTitle: "Pipes", next: "/docs/server/running", nextTitle: "El servidor")

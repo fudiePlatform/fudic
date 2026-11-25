@@ -173,3 +173,5 @@ layout</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/searchParams" target="_blank" rel="noopener"><code>URL.searchParams</code></a>: la query string, desde <code>ctx.url</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: el idioma del documento, que puede venir de los datos.</li>
 </ul>
+
+@render pager(prev: "/docs/routing", prevTitle: "Rutas por carpetas", next: "/docs/routing/rendering", nextTitle: "Cuándo se pinta: los modos")

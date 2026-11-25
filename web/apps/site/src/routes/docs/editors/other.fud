@@ -88,3 +88,5 @@ vim.lsp.enable("fudic")</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>: con <code>shadowrootmode</code>, el elemento con el que empieza cada componente, y el que lee el servidor.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: lo que el servidor le enseña a TypeScript de cada <code>.fud</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/editors/reference", prevTitle: "Snippets, órdenes y ajustes", next: "/docs/cli", nextTitle: "La CLI")

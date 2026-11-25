@@ -120,3 +120,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling#event_delegation" target="_blank" rel="noopener">Delegación de eventos</a>: un listener para toda una lista.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a>: eventos propios con un dato.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/attributes-and-properties", prevTitle: "Atributos y propiedades", next: "/docs/template-syntax/ref-and-raw", nextTitle: "ref y @raw")

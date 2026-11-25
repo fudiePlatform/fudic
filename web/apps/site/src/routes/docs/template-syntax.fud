@@ -139,3 +139,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template" target="_blank" rel="noopener"><code>&lt;template&gt;</code></a>: el elemento que envuelve el shadow DOM de cada componente.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: por qué el tag de un componente lleva guion.</li>
 </ul>
+
+@render pager(prev: "/docs/getting-started", prevTitle: "Empezar con Fudic", next: "/docs/template-syntax/components", nextTitle: "Componentes")

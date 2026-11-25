@@ -177,3 +177,5 @@ error  fudic generate component needs a name
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument" target="_blank" rel="noopener">Etiquetas de idioma BCP 47</a>: lo que esperan <code>--locale</code> y <code>--locales</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#shadowrootmode" target="_blank" rel="noopener"><code>shadowrootmode</code></a>: el <code>&lt;template&gt;</code> que escribe cada componente nuevo.</li>
 </ul>
+
+@render pager(prev: "/docs/editors/other", prevTitle: "Otros editores", next: "/docs/cli/new", nextTitle: "fudic new")

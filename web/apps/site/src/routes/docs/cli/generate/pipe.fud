@@ -93,3 +93,5 @@ export default truncate.implement((value, locale) =&gt; value);</code></pre>
 <ul>
   <li><a href="/docs/server/pipes">Pipes</a>: qué es un pipe y los que trae Fudic de serie.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/form", prevTitle: "fudic generate form", next: "/docs/cli/generate/style", nextTitle: "fudic generate style")

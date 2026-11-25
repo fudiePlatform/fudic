@@ -90,3 +90,5 @@ throw notFound(t("There is no post called &#123;slug&#125;", &#123; slug &#125;)
   <li><strong>Los diagnósticos</strong>: <a href="/docs/reference/diagnostics/FUD1020"><code>FUD1020</code></a>, un <code>t()</code> que no se puede extraer; <a href="/docs/reference/diagnostics/FUD1022"><code>FUD1022</code></a>, falta una traducción; <a href="/docs/reference/diagnostics/FUD1024"><code>FUD1024</code></a>, una traducción no válida; <a href="/docs/reference/diagnostics/FUD1025"><code>FUD1025</code></a>, el mismo texto con huecos distintos.</li>
   <li><strong><code>$message</code> y <code>$href</code></strong> los llama el código que genera el compilador. Las funciones de catálogo (<code>parseCatalog</code>, <code>mergeCatalog</code>…) las usan <code>fudic translate</code> y el editor.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/di", prevTitle: "@fudic/di", next: "/docs/reference/http", nextTitle: "@fudic/http")

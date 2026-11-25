@@ -124,3 +124,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a>: lo que pinta una página <code>sw</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: por qué una respuesta privada no se guarda.</li>
 </ul>
+
+@render pager(prev: "/docs/routing/data", prevTitle: "Los datos de la página", next: "/docs/routing/error-page", nextTitle: "La página de error")

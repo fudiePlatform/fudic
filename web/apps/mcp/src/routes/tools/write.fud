@@ -87,3 +87,5 @@
 <ul>
   <li>Va <code>content</code> o <code>edits</code>, uno de los dos, nunca los dos ni ninguno.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/read", prevTitle: "fudic_read")

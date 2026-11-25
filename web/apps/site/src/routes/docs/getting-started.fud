@@ -297,3 +297,5 @@ criterion adds-one-on-click
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el shadow DOM escrito en HTML.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: etiquetas propias con su comportamiento.</li>
 </ul>
+
+@render pager(next: "/docs/template-syntax", nextTitle: "Sintaxis de plantillas")

@@ -136,3 +136,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache" target="_blank" rel="noopener"><code>Cache</code></a>: donde guarda lo que descarga.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Vary" target="_blank" rel="noopener"><code>Vary</code></a>: la cabecera que la caché no mira.</li>
 </ul>
+
+@render pager(prev: "/docs/configuration/baseline", prevTitle: "Baseline", next: "/docs/configuration/generated", nextTitle: "Lo que genera Fudic")

@@ -115,3 +115,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache" target="_blank" rel="noopener"><code>Cache</code></a>: donde se guardan los datos y el HTML.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener"><code>Cache-Control</code></a>: <code>private</code>, <code>no-store</code> y <code>stale-while-revalidate</code>, de donde vienen los nombres.</li>
 </ul>
+
+@render pager(prev: "/docs/service-worker", prevTitle: "Qué hace", next: "/docs/service-worker/isomorphic", nextTitle: "Render isomórfico")

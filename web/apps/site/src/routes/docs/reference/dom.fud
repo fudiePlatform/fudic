@@ -129,3 +129,5 @@ isTrustedUrl(value: unknown): value is TrustedURL</code></pre>
   <li><strong>Lo que la guarda no cubre</strong> lo avisa el compilador con <a href="/docs/reference/diagnostics/FUD0915"><code>FUD0915</code></a>: un <code>javascript:</code> escrito a mano, <code>srcdoc</code>, un <code>&lt;meta http-equiv="refresh"&gt;</code>, un <code>&lt;base&gt;</code> dinámico o un <code>style</code> dinámico.</li>
   <li><strong>El resto de exports</strong> (<code>browserDom</code>, <code>escapeText</code>, <code>escapeAttr</code>, <code>template</code>, los diffs de atributos y clases) los usa el código que genera el compilador.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/core", prevTitle: "@fudic/core", next: "/docs/reference/forms", nextTitle: "@fudic/forms")

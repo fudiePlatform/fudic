@@ -88,3 +88,5 @@
   <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>: el estándar abierto con el que un modelo usa herramientas de fuera, como las del MCP de Fudic.</li>
   <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a>: el fichero que leen los agentes al abrir un proyecto, y con el que <code>fudic new</code> les dice que usen el MCP.</li>
 </ul>
+
+@render pager(next: "/mcp/fudic", nextTitle: "Qué es Fudic")

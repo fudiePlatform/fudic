@@ -115,3 +115,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility" target="_blank" rel="noopener">Baseline</a>, en el glosario de MDN.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40supports" target="_blank" rel="noopener"><code>@@supports</code></a>, en MDN: proteger el CSS nuevo.</li>
 </ul>
+
+@render pager(prev: "/docs/configuration/diagnostics", prevTitle: "Diagnósticos", next: "/docs/configuration/sw-json", nextTitle: "sw.json")

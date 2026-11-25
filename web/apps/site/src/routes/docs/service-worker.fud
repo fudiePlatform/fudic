@@ -100,3 +100,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache" target="_blank" rel="noopener"><code>Cache</code></a>: donde guarda el código y los datos.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith" target="_blank" rel="noopener"><code>FetchEvent.respondWith()</code></a>: cómo responde a una navegación.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/form-associated", prevTitle: "Controles form-associated", next: "/docs/service-worker/caching", nextTitle: "Datos y páginas en caché")

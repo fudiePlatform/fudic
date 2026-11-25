@@ -119,3 +119,5 @@ criterion signing-in-opens-the-account
 </ui-code>
 
 <p>El servicio de la prueba se registra en la raíz, en el servidor y en el navegador, y sustituye al que registra <code>Service</code>. <code>fudic spec</code> ejecuta el criterio en un navegador de verdad, y en VS Code el workbench (Ctrl+K V) lo repite en cada guardado.</p>
+
+@render pager(prev: "/docs/di/providers", prevTitle: "Dueños y subárboles", next: "/docs/performance", nextTitle: "Qué la hace rápida")

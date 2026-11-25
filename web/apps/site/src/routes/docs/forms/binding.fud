@@ -120,3 +120,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid" target="_blank" rel="noopener"><code>aria-invalid</code></a>: el campo que no cumple sus reglas.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions" target="_blank" rel="noopener">Regiones vivas</a>: cómo se anuncia un error sin mover el foco.</li>
 </ul>
+
+@render pager(prev: "/docs/forms", prevTitle: "El formulario", next: "/docs/forms/validation", nextTitle: "Validación y validez")

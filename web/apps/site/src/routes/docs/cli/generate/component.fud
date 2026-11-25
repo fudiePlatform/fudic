@@ -110,3 +110,5 @@ dry run — nothing written
   <li><a href="/docs/template-syntax/components">Componentes</a>: qué es un componente y cómo se escribe.</li>
   <li><a href="/docs/testing">Criterios</a>: el <code>.fudspec</code> y su fixture.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate", prevTitle: "fudic generate", next: "/docs/cli/generate/page", nextTitle: "fudic generate page")

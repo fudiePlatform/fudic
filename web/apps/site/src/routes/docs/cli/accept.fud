@@ -80,3 +80,5 @@ fudic accept src/routes/blog "Approved in the demo" --dry-run</code></pre>
 <ul>
   <li><a href="/docs/testing/history#accept">La aceptación del cliente</a>: qué queda en el <code>.fudlog</code> y en git.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/approve", prevTitle: "fudic approve", next: "/docs/cli/history", nextTitle: "fudic history")

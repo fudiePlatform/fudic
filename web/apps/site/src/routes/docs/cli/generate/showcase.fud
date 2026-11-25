@@ -83,3 +83,5 @@ fudic g showcase</code></pre>
 <ul>
   <li><a href="/docs/testing#fixture">Las props de cada caso</a>: el fixture del que sale cada bloque.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/api", prevTitle: "fudic generate api", next: "/docs/cli/generate/error-page", nextTitle: "fudic generate error-page")

@@ -132,3 +132,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules" target="_blank" rel="noopener"><code>Intl.PluralRules</code></a>: las categorías de plural de cada idioma.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl" target="_blank" rel="noopener"><code>Intl</code></a>: el formateo según el idioma.</li>
 </ul>
+
+@render pager(prev: "/docs/i18n/code", prevTitle: "Textos en el código", next: "/docs/i18n/urls", nextTitle: "Idiomas y URLs")

@@ -102,3 +102,5 @@ export const selfTest = [];</code></pre>
 <ul>
   <li><a href="/docs/terms/anatomy">Cómo funciona un término</a>: <code>meta</code>, <code>run</code> y <code>ctx</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/flow", prevTitle: "fudic generate flow", next: "/docs/cli/generate/api", nextTitle: "fudic generate api")

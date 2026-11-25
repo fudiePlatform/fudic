@@ -71,3 +71,5 @@ fudic translate --project web</code></pre>
 <ul>
   <li><a href="/docs/i18n/catalogs">Los catálogos</a>: el formato de cada fichero, plurales y lo que falta.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/fmt", prevTitle: "fudic fmt", next: "/docs/cli/approve", nextTitle: "fudic approve")

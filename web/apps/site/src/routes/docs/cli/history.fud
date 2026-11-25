@@ -86,3 +86,5 @@ shop-cart  not approved · tests not run · spec not run</code></pre>
 <ul>
   <li><a href="/docs/testing/history#state">¿Sigue valiendo?</a>: cómo se calcula el estado.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/accept", prevTitle: "fudic accept", next: "/docs/tools/format", nextTitle: "El formateador")

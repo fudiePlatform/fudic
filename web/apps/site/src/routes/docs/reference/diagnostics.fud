@@ -49,3 +49,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/302" target="_blank" rel="noopener"><code>302 Found</code></a>: lo que responde el servidor para llevarte a la página del código.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang" target="_blank" rel="noopener"><code>lang</code></a>: la explicación va marcada en inglés dentro de una página en español.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/fudspec", prevTitle: "El lenguaje .fudspec")

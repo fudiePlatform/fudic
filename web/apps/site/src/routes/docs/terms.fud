@@ -91,3 +91,5 @@
   <li><a href="/docs/terms/bench">Ampliar el <code>ctx</code></a>: lo que comparten todos los términos de un proyecto.</li>
   <li><a href="/docs/terms/sharing">Sustituir y compartir</a>: cambiar uno de serie y reutilizar código entre proyectos.</li>
 </ul>
+
+@render pager(prev: "/docs/testing/history", prevTitle: "Historial y aprobación", next: "/docs/terms/anatomy", nextTitle: "Cómo funciona un término")

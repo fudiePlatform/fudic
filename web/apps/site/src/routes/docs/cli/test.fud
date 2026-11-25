@@ -70,3 +70,5 @@ fudic test --project ui</code></pre>
 <ul>
   <li><a href="/docs/testing/unit">Tests unitarios</a>: <code>mount</code>, <code>visit</code> y cuándo usar cada uno.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/preview", prevTitle: "fudic preview", next: "/docs/cli/spec", nextTitle: "fudic spec")

@@ -97,3 +97,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/styles/guide">La guía de estilos</a>: cómo está hecha y cómo se cambia.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/lib", prevTitle: "fudic generate lib", next: "/docs/cli/generate/service", nextTitle: "fudic generate service")

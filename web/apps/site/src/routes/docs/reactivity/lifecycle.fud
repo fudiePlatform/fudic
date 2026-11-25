@@ -160,3 +160,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/bfcache" target="_blank" rel="noopener">bfcache</a>: la página que vuelve con «atrás» sin recargarse.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver" target="_blank" rel="noopener"><code>ResizeObserver</code></a>: el observer del ejemplo.</li>
 </ul>
+
+@render pager(prev: "/docs/reactivity", prevTitle: "Signals", next: "/docs/reactivity/hydration", nextTitle: "Hidratación")

@@ -65,3 +65,5 @@
 </ui-code>
 
 <p>Antes de escribir estilos, el modelo pide <code>{ "kind": "tokens" }</code> y usa solo esos nombres.</p>
+
+@render pager(prev: "/mcp/tools/format", prevTitle: "fudic_format", next: "/mcp/tools/describe", nextTitle: "fudic_describe")

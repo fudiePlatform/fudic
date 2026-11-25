@@ -75,3 +75,5 @@
   <li><strong>Un aspecto sin enseñar.</strong> Si el modelo apunta un aspecto sin haber hecho las capturas de los ficheros tal como están, el MCP responde <a href="/docs/reference/diagnostics/FUD1427"><code>FUD1427</code></a> y no escribe nada.</li>
   <li><strong>Las capturas</strong> se guardan en <code>.fudic/looks/</code>, que no va a git.</li>
 </ul>
+
+@render pager(prev: "/mcp/phases", prevTitle: "Las fases de una pieza", next: "/mcp/project", nextTitle: "Lo que genera la CLI")

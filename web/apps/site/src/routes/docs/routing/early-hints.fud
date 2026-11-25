@@ -69,3 +69,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a> y la cabecera <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Link" target="_blank" rel="noopener"><code>Link</code></a>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload" target="_blank" rel="noopener"><code>rel=preload</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>rel=modulepreload</code></a>: lo que pide cada pista.</li>
 </ul>
+
+@render pager(prev: "/docs/routing/error-page", prevTitle: "La página de error", next: "/docs/forms", nextTitle: "El formulario")

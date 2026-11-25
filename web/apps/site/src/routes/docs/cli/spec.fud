@@ -71,3 +71,5 @@ fudic spec --project ui</code></pre>
   <li><a href="/docs/testing#run">Ejecutarlo: <code>fudic spec</code></a>: lo que enseña cuando un criterio falla.</li>
   <li><a href="/docs/testing/workbench">El workbench</a>: los criterios en el editor.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/test", prevTitle: "fudic test", next: "/docs/cli/fmt", nextTitle: "fudic fmt")

@@ -114,3 +114,5 @@ rule alias-taken
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Constraint_validation" target="_blank" rel="noopener">Validación de formularios</a>: las reglas que el HTML ya trae.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">Expresiones regulares</a>: la sintaxis de un patrón.</li>
 </ul>
+
+@render pager(prev: "/docs/server/middlewares", prevTitle: "Middlewares y cadena", next: "/docs/server/pipes", nextTitle: "Pipes")

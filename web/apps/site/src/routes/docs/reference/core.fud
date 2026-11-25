@@ -350,3 +350,5 @@ onDispose(fn: (host: HTMLElement) =&gt; void): void</code></pre>
   <li><strong>El resto de exports</strong> de <code>@@fudic/core</code> (<code>FudicElement</code>, <code>installHydration</code>, <code>painted</code>, <code>owned</code>, <code>hooks</code>, <code>subscribe</code>, <code>written</code>, <code>onStaleData</code>, los bloques de hidratación y los canales de precalentado) los usa el código que genera el compilador. Tu código no los necesita.</li>
   <li><strong>El modo de render</strong> de una ruta no se elige en <code>@@fudic/core</code>: es la línea <code>load</code> de su <code>.fudapi</code> (<a href="/docs/routing/rendering">Los modos</a>).</li>
 </ul>
+
+@render pager(prev: "/docs/reference", prevTitle: "La referencia", next: "/docs/reference/dom", nextTitle: "@fudic/dom")

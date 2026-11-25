@@ -78,3 +78,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload" target="_blank" rel="noopener"><code>rel=preload</code></a>: descargar una fuente antes de que el CSS la pida.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@@font-face" target="_blank" rel="noopener"><code>@@font-face</code></a>: cómo se declara una fuente propia.</li>
 </ul>
+
+@render pager(prev: "/docs/performance/caching", prevTitle: "Las cachés del navegador", next: "/docs/security", nextTitle: "Lo que trae de serie")

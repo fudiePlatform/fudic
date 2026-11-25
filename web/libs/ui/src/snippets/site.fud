@@ -21,6 +21,21 @@
   </footer>
 }
 
+@* The foot of a page: the page before it on the left and the page after it on the right, in the
+   order the chapters are read. Each side is a URL and the title it leads to, passed by name; a
+   page leaves out a side it has nothing on, like the first page's previous one. The link says the
+   title because "Next" alone tells nothing. *@
+@snippet pager(prev: string = "", prevTitle: string = "", next: string = "", nextTitle: string = "") {
+  <nav class="pager" aria-label="Anterior y siguiente">
+    @if (prev !== "") {
+      <a class="prev" href=@prev rel="prev"><span class="label">Anterior</span> <span class="title">@prevTitle</span></a>
+    }
+    @if (next !== "") {
+      <a class="next" href=@next rel="next"><span class="label">Siguiente</span> <span class="title">@nextTitle</span></a>
+    }
+  </nav>
+}
+
 @snippet docsNav(current: string) {
   <details class="toggle"><summary>Capítulos</summary></details>
   <ol class="chapters">

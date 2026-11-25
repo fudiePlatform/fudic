@@ -93,3 +93,5 @@
   "next": null
 &#125;</code></pre>
 </ui-code>
+
+@render pager(prev: "/mcp/tools/symbols", prevTitle: "fudic_symbols", next: "/mcp/tools/contract", nextTitle: "fudic_contract")

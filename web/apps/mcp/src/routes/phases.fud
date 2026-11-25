@@ -73,3 +73,5 @@
   <li><strong>Una ejecución caducada.</strong> Si los ficheros de una pieza cambian después de ejecutar sus tests, esa ejecución ya no cuenta y sale como <code>stale</code>.</li>
   <li><strong>Terminar antes de tiempo.</strong> Si el modelo da por terminada una pieza a la que le falta una fase, el MCP responde <a href="/docs/reference/diagnostics/FUD1407"><code>FUD1407</code></a> con la fase que falta.</li>
 </ul>
+
+@render pager(prev: "/mcp/connect/chat", prevTitle: "Desde un chat", next: "/mcp/approval", nextTitle: "Aprobar, caducar y reabrir")

@@ -144,3 +144,5 @@ export default &#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Glossary/Accessible_name" target="_blank" rel="noopener">Nombre accesible</a>: de dónde sale el nombre entre comillas.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/What_is_accessibility" target="_blank" rel="noopener">Qué es la accesibilidad</a>: por qué nombrar por rol es probar como una persona.</li>
 </ul>
+
+@render pager(prev: "/docs/security/trusted-types", prevTitle: "HTML seguro", next: "/docs/testing/workbench", nextTitle: "El workbench")

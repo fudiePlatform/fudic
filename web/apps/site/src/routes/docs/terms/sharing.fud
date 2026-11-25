@@ -87,3 +87,5 @@ export const selfTest = [];</code></pre>
 </ui-code>
 
 <p><code>meta</code> se escribe literal en cada proyecto, porque es lo que lee el editor.</p>
+
+@render pager(prev: "/docs/terms/bench", prevTitle: "Ampliar el ctx", next: "/docs/configuration", nextTitle: "fudic.json")

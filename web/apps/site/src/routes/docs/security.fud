@@ -79,3 +79,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF" target="_blank" rel="noopener">Cross-site request forgery</a>: el ataque del que protege <code>csrf</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/Clickjacking" target="_blank" rel="noopener">Clickjacking</a>: lo que impide <code>frame-ancestors</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/performance/lighthouse", prevTitle: "Medir con Lighthouse", next: "/docs/security/headers", nextTitle: "Las cabeceras")

@@ -138,3 +138,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation" target="_blank" rel="noopener">Validación de formularios en el cliente</a>, y por qué no basta sin la del servidor.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">Expresiones regulares</a>: la sintaxis de los patrones.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/binding", prevTitle: "Enlazar la vista", next: "/docs/forms/submitting", nextTitle: "Enviar al servidor")

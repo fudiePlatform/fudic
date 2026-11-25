@@ -104,3 +104,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/delegatesFocus" target="_blank" rel="noopener"><code>delegatesFocus</code></a>: el foco que pasa al <code>&lt;input&gt;</code> de dentro.</li>
   <li><a href="https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md" target="_blank" rel="noopener">La propuesta de Reference Target</a>, en el WICG.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/files", prevTitle: "Ficheros", next: "/docs/service-worker", nextTitle: "Qué hace")

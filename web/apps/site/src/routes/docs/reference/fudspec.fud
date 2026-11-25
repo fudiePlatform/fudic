@@ -243,3 +243,5 @@ export const selfTest = [];</code></pre>
   <li><strong>Una línea de fixture fuera de <code>given</code></strong> se lee como término si hay uno con ese nombre en el bloque: <code>url</code> en <code>then</code> es el término.</li>
   <li><strong>Un nombre de <code>as</code></strong> no puede ser el de un término (<a href="/docs/reference/diagnostics/FUD1512"><code>FUD1512</code></a>).</li>
 </ul>
+
+@render pager(prev: "/docs/reference/fudapi", prevTitle: "El lenguaje .fudapi", next: "/docs/reference/diagnostics", nextTitle: "Diagnósticos")

@@ -92,3 +92,5 @@ Service(Cart);</code></pre>
   <li><a href="/docs/di">Servicios</a>: <code>Service</code>, <code>inject</code> y lo demás.</li>
   <li><a href="/docs/di/providers">Dueños y subárboles</a>: el servicio que provee un componente, el de <code>--provided</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/guide", prevTitle: "fudic generate guide", next: "/docs/cli/generate/form", nextTitle: "fudic generate form")

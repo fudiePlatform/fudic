@@ -144,3 +144,5 @@ test("asks for the name", async () =&gt; &#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms" target="_blank" rel="noopener">Formularios web</a>: la guía de los formularios del HTML.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>: agrupar campos con un nombre.</li>
 </ul>
+
+@render pager(prev: "/docs/routing/early-hints", prevTitle: "Early hints", next: "/docs/forms/binding", nextTitle: "Enlazar la vista")

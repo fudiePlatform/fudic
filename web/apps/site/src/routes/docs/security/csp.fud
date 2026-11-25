@@ -129,3 +129,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src" target="_blank" rel="noopener"><code>script-src</code></a>: el nonce y <code>'strict-dynamic'</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce" target="_blank" rel="noopener"><code>nonce</code></a>: el atributo que lleva cada script.</li>
 </ul>
+
+@render pager(prev: "/docs/security/headers", prevTitle: "Las cabeceras", next: "/docs/security/trusted-types", nextTitle: "HTML seguro")

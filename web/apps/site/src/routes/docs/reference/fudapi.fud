@@ -377,3 +377,5 @@ enum Tone
   <li><strong>Un tamaño</strong> (<code>kb</code>, <code>mb</code>, <code>gb</code>, en base 1024) es un número: vale en cualquier parámetro numérico.</li>
   <li><strong><code>fud-disable</code></strong> se escribe en un comentario <code>#</code> (<a href="/docs/configuration/diagnostics#line">Diagnósticos de la configuración</a>).</li>
 </ul>
+
+@render pager(prev: "/docs/reference/testing", prevTitle: "@fudic/testing", next: "/docs/reference/fudspec", nextTitle: "El lenguaje .fudspec")

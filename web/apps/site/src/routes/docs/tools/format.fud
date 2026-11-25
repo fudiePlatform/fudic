@@ -127,3 +127,5 @@ fudic fmt --dry-run       # show the diff, write nothing</code></pre>
   <li>Un fichero que no se puede leer no se formatea: se dice qué le pasa y se deja como está. Nunca se reescribe a partir de un árbol a medias.</li>
   <li>Una expresión que no se puede leer, como un <code>@@(…)</code> a medio escribir, se deja tal cual, y se formatea el resto del fichero.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/history", prevTitle: "fudic history", next: "/docs/reference", nextTitle: "La referencia")

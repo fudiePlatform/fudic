@@ -166,3 +166,5 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods" target="_blank" rel="noopener">Métodos HTTP</a>: lo que significa cada verbo de una función.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API" target="_blank" rel="noopener">Fetch API</a>: lo que hace el navegador en cada llamada.</li>
 </ul>
+
+@render pager(prev: "/docs/styles/delivery", prevTitle: "Cómo llega el CSS", next: "/docs/server/types", nextTitle: "Tipos")

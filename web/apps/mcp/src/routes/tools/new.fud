@@ -84,3 +84,5 @@
   "next": "Call fudic_status."
 &#125;</code></pre>
 </ui-code>
+
+@render pager(prev: "/mcp/tools/guide", prevTitle: "fudic_guide", next: "/mcp/tools/generate", nextTitle: "fudic_generate")

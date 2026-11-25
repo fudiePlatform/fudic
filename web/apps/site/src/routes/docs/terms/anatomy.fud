@@ -137,3 +137,5 @@ export const selfTest = [];</code></pre>
   <li><strong>Un nombre de término en camelCase</strong> en el <code>.fudspec</code> se lee en kebab-case: <code>cartHas</code> es <code>cart-has</code>.</li>
   <li><strong>Los tiempos</strong> (5 segundos, cada 50 ms) son fijos.</li>
 </ul>
+
+@render pager(prev: "/docs/terms", prevTitle: "Por qué ampliar el lenguaje", next: "/docs/terms/step-by-step", nextTitle: "Uno de cada bloque")

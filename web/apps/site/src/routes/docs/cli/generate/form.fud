@@ -89,3 +89,5 @@ form personForm
 <ul>
   <li><a href="/docs/forms">El formulario</a>: una declaración para el navegador y el servidor.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/service", prevTitle: "fudic generate service", next: "/docs/cli/generate/pipe", nextTitle: "fudic generate pipe")

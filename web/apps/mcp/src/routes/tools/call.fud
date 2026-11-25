@@ -98,3 +98,5 @@
 <ul>
   <li>La llamada va sin sesión: una función que necesita una responde su <code>401</code>.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/spec-run", prevTitle: "fudic_spec_run", next: "/mcp/tools/render", nextTitle: "fudic_render")

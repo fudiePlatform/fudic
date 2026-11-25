@@ -85,3 +85,5 @@
   "next": "Write the skeleton in src/server/routes/products.ts (add to a file that exists), then replace each throw with the real …"
 &#125;</code></pre>
 </ui-code>
+
+@render pager(prev: "/mcp/tools/describe", prevTitle: "fudic_describe", next: "/mcp/tools/test", nextTitle: "fudic_test")

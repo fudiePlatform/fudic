@@ -130,3 +130,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/exportparts" target="_blank" rel="noopener"><code>exportparts</code></a>: las piezas de un componente dentro de otro.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets" target="_blank" rel="noopener"><code>ShadowRoot.adoptedStyleSheets</code></a>: una hoja para muchos shadow roots.</li>
 </ul>
+
+@render pager(prev: "/docs/reactivity/hydration", prevTitle: "Hidratación", next: "/docs/styles/shared", nextTitle: "Hojas compartidas")

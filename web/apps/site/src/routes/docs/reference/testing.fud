@@ -212,3 +212,5 @@ export default &#123;
   <li><strong>Los errores de una fixture</strong> en el editor: <a href="/docs/reference/diagnostics/FUD1510"><code>FUD1510</code></a>, un valor que no se puede leer sin ejecutarla, como un spread; <a href="/docs/reference/diagnostics/FUD1514"><code>FUD1514</code></a>, una respuesta del tipo equivocado.</li>
   <li><strong><code>@@fudic/testing/run</code> y <code>/render</code></strong> los usan <code>fudic test</code> y el workbench.</li>
 </ul>
+
+@render pager(prev: "/docs/reference/server", prevTitle: "@fudic/server", next: "/docs/reference/fudapi", nextTitle: "El lenguaje .fudapi")

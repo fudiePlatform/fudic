@@ -95,3 +95,5 @@ export async function run(ctx, &#123; user &#125;) &#123;
   <li><strong>Al guardarlo</strong>, el workbench lo lee en la siguiente recarga, no en el momento.</li>
   <li><strong>El <code>ctx</code> de serie</strong> está en <a href="/docs/terms/anatomy#ctx">Cómo funciona un término</a>.</li>
 </ul>
+
+@render pager(prev: "/docs/terms/step-by-step", prevTitle: "Uno de cada bloque", next: "/docs/terms/sharing", nextTitle: "Sustituir y compartir")

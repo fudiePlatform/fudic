@@ -93,3 +93,5 @@
 <ul>
   <li>Las capturas quedan en <code>.fudic/looks/&lt;tag&gt;/&lt;hash&gt;/</code>, que git ignora. El hash es de los ficheros que pueden cambiar cómo se dibuja, nunca de los píxeles.</li>
 </ul>
+
+@render pager(prev: "/mcp/tools/preview", prevTitle: "fudic_preview", next: "/mcp/tools/record", nextTitle: "fudic_record")

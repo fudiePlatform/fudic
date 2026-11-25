@@ -108,3 +108,5 @@ declare module '*.fud' &#123;
 <h2 id="locales">Los catálogos</h2>
 
 <p>Los <code>src/locales/&lt;locale&gt;.json</code> son generados a medias: los crea y los pone al día <code>fudic translate</code>, pero las traducciones las escribes tú, y van en git (<a href="/docs/i18n/catalogs">Los catálogos</a>).</p>
+
+@render pager(prev: "/docs/configuration/sw-json", prevTitle: "sw.json", next: "/docs/vite", nextTitle: "El plugin")

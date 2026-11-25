@@ -200,3 +200,5 @@ find.handle(async (ctx) =&gt; &#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods" target="_blank" rel="noopener">Métodos HTTP</a> y <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status" target="_blank" rel="noopener">códigos de status</a>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal" target="_blank" rel="noopener"><code>AbortSignal</code></a>: cancelar una llamada.</li>
 </ul>
+
+@render pager(prev: "/docs/server/types", prevTitle: "Tipos", next: "/docs/server/task", nextTitle: "task")

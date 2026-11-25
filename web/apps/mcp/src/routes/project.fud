@@ -97,3 +97,5 @@ When the user wants to see something, use fudic_render for one piece and fudic_p
   <li><a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle" target="_blank" rel="noopener">Lifecycle</a>: cómo se conectan un agente y un servidor MCP, y dónde manda el servidor sus instrucciones.</li>
   <li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">La memoria de Claude Code</a>: cómo lee Claude Code su <code>CLAUDE.md</code> y cómo importa otro fichero con <code>@@</code>.</li>
 </ul>
+
+@render pager(prev: "/mcp/approval", prevTitle: "Aprobar, caducar y reabrir", next: "/mcp/tools", nextTitle: "Las herramientas")

@@ -120,3 +120,5 @@ dry run — nothing written
   <li><a href="/docs/getting-started#create-an-app">Crea tu app</a>: el primer proyecto, paso a paso.</li>
   <li><a href="/docs/configuration"><code>fudic.json</code></a>: lo que guarda <code>id</code>, <code>prefix</code> y el resto.</li>
 </ul>
+
+@render pager(prev: "/docs/cli", prevTitle: "La CLI", next: "/docs/cli/generate", nextTitle: "fudic generate")

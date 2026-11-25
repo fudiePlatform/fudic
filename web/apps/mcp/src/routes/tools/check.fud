@@ -82,3 +82,5 @@
 </ui-code>
 
 <p>Un código de Fudic se explica una sola vez, en <code>codes</code>: su título, por qué pasa y cómo se arregla. Un código <code>TS</code> es el mensaje de TypeScript, en su posición dentro del <code>.fud</code>.</p>
+
+@render pager(prev: "/mcp/tools/add", prevTitle: "fudic_add", next: "/mcp/tools/fix", nextTitle: "fudic_fix")

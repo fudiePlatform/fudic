@@ -125,3 +125,5 @@ login.handle((ctx) =&gt; &#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Sending_and_retrieving_form_data" target="_blank" rel="noopener">Enviar los datos de un formulario</a>: <code>action</code>, <code>method</code> y <code>name</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422" target="_blank" rel="noopener"><code>422 Unprocessable Content</code></a>: los datos llegan, pero no cumplen las reglas.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/validation", prevTitle: "Validación y validez", next: "/docs/forms/events", nextTitle: "Resultado y error")

@@ -100,3 +100,5 @@ const response = await server.fetch(request);</code></pre>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Request" target="_blank" rel="noopener"><code>Request</code></a> y <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response" target="_blank" rel="noopener"><code>Response</code></a>: lo que entra y lo que sale del servidor.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded" target="_blank" rel="noopener"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/server/session", prevTitle: "Sesión y cookies", next: "/docs/routing", nextTitle: "Rutas por carpetas")

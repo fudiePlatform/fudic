@@ -87,3 +87,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a>: el árbol aislado de un componente, y cómo se declara en HTML con <code>shadowrootmode</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting" target="_blank" rel="noopener">CSS nesting</a>: las reglas dentro de otras, como <code>&amp;.secondary</code>.</li>
 </ul>
+
+@render pager(prev: "/mcp/", prevTitle: "Trabajar con el MCP", next: "/mcp/conversation", nextTitle: "Una conversación de principio a fin")

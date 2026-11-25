@@ -149,3 +149,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Usar custom elements</a>, en MDN: por qué el nombre de un componente lleva guion.</li>
   <li><a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>: con lo que el editor completa y valida <code>fudic.json</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/terms/sharing", prevTitle: "Sustituir y compartir", next: "/docs/configuration/fields", nextTitle: "Estilos, idiomas y servidor")

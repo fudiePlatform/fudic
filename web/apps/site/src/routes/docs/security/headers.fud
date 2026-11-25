@@ -120,3 +120,5 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" target="_blank" rel="noopener"><code>Strict-Transport-Security</code></a>: solo HTTPS, y la lista de precarga.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy" target="_blank" rel="noopener"><code>Permissions-Policy</code></a>: qué funciones del navegador puede usar la página.</li>
 </ul>
+
+@render pager(prev: "/docs/security", prevTitle: "Lo que trae de serie", next: "/docs/security/csp", nextTitle: "La CSP")

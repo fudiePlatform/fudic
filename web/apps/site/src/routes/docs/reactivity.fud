@@ -184,3 +184,5 @@ export function add(name: string): void {
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: por qué un store se carga una vez por página.</li>
   <li><a href="https://github.com/tc39/proposal-signals" target="_blank" rel="noopener">La propuesta de signals del TC39</a>, que aún no está en MDN porque no es estándar.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/ref-and-raw", prevTitle: "ref y @raw", next: "/docs/reactivity/lifecycle", nextTitle: "Ciclo de vida")

@@ -101,3 +101,5 @@ dry run — nothing written
   <li><a href="/docs/server/middlewares">Middlewares y cadena</a>: la cadena de <code>http</code>.</li>
   <li><a href="/docs/i18n">Traducir una app</a>: lo que trae <code>i18n</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/error-page", prevTitle: "fudic generate error-page", next: "/docs/cli/dev", nextTitle: "fudic dev")

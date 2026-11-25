@@ -115,3 +115,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#using_template_for_for_patching" target="_blank" rel="noopener"><code>&lt;template for&gt;</code></a>: el contenido que el navegador coloca en su hueco.</li>
   <li><a href="https://github.com/WICG/declarative-partial-updates/blob/main/patching-explainer.md" target="_blank" rel="noopener">El explicador de la propuesta</a>, en el WICG.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/expressions", prevTitle: "Expresiones y control de flujo", next: "/docs/template-syntax/attributes-and-properties", nextTitle: "Atributos y propiedades")

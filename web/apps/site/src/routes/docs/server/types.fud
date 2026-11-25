@@ -125,3 +125,5 @@ enum Tone
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>: lo que recibe un handler y lo que devuelve <code>-&gt; file</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept" target="_blank" rel="noopener"><code>accept</code></a>: la sintaxis de la regla del mismo nombre.</li>
 </ul>
+
+@render pager(prev: "/docs/server", prevTitle: "El contrato .fudapi", next: "/docs/server/functions", nextTitle: "Funciones de servidor")

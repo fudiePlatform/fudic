@@ -82,3 +82,5 @@
 </ui-code>
 
 <p>En una carpeta sin proyecto, <code>phase</code> es <code>"none"</code> y <code>next</code> dice qué preguntar para crearlo con <a href="/mcp/tools/new"><code>fudic_new</code></a>. Las fases y lo que hace el modelo en cada una las cuenta <a href="/mcp/phases">Las fases de una pieza</a>.</p>
+
+@render pager(prev: "/mcp/tools", prevTitle: "Las herramientas", next: "/mcp/tools/guide", nextTitle: "fudic_guide")

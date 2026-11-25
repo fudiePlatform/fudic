@@ -22,3 +22,17 @@ test('docsNav marks nothing on another page', async () => {
   const t = await renderSnippet('./site.fud', 'docsNav("elsewhere")');
   expect(t.getByRole('link', { name: 'Empezar con Fudic' })).not.toHaveAttribute('aria-current');
 });
+
+test('pager links the previous page on the left and the next one on the right, by their titles', async () => {
+  const t = await renderSnippet('./site.fud', 'pager(prev: "/docs/a", prevTitle: "A", next: "/docs/b", nextTitle: "B")');
+  const nav = t.getByRole('navigation', { name: 'Anterior y siguiente' });
+  expect(nav).toBeInTheDocument();
+  expect(t.getByRole('link', { name: 'Anterior A' })).toHaveAttribute('href', '/docs/a');
+  expect(t.getByRole('link', { name: 'Siguiente B' })).toHaveAttribute('href', '/docs/b');
+});
+
+test('pager leaves out the side a page passes nothing for', async () => {
+  const t = await renderSnippet('./site.fud', 'pager(next: "/docs/b", nextTitle: "B")');
+  expect(t.query('.prev')).toBeNull();
+  expect(t.getByRole('link', { name: 'Siguiente B' })).toHaveAttribute('rel', 'next');
+});

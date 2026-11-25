@@ -125,3 +125,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes#content_versus_idl_attributes" target="_blank" rel="noopener">Atributos de contenido frente a atributos IDL</a>: la diferencia entre atributo y propiedad.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList" target="_blank" rel="noopener"><code>Element.classList</code></a>: encender y apagar clases sin tocar las demás.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/await", prevTitle: "@await", next: "/docs/template-syntax/events", nextTitle: "Eventos")

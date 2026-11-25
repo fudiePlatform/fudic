@@ -98,3 +98,5 @@ fudic fmt src --check</code></pre>
 <ul>
   <li><a href="/docs/tools/format">El formateador</a>: lo que formatea, en el editor y en la terminal.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/spec", prevTitle: "fudic spec", next: "/docs/cli/translate", nextTitle: "fudic translate")

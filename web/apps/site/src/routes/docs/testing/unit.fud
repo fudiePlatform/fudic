@@ -109,3 +109,5 @@ expect(graph).not.toReach("src/data/aliases.ts");</code></pre>
   <li><strong>El estado de un módulo</strong>, como un formulario o un signal global, se comparte entre los tests de un fichero: reinícialo en un <code>beforeEach</code>, por ejemplo con <code>form.$reset()</code>.</li>
   <li><strong>Un <code>.fud</code> con errores</strong> hace fallar el test al importarlo, con los diagnósticos como los imprime el build.</li>
 </ul>
+
+@render pager(prev: "/docs/testing/pages-and-flows", prevTitle: "Páginas y flujos", next: "/docs/testing/history", nextTitle: "Historial y aprobación")

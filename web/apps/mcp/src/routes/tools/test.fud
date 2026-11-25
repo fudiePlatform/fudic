@@ -67,3 +67,5 @@
 </ui-code>
 
 <p>La diferencia entre fallar y estar roto es la del <a href="/mcp/phases">rojo por la razón correcta</a>.</p>
+
+@render pager(prev: "/mcp/tools/contract", prevTitle: "fudic_contract", next: "/mcp/tools/spec-run", nextTitle: "fudic_spec_run")

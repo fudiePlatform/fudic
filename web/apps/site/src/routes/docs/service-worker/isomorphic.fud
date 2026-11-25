@@ -99,3 +99,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el HTML que escriben los tres sitios.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API" target="_blank" rel="noopener">Service Worker API</a>: donde ocurre el tercero.</li>
 </ul>
+
+@render pager(prev: "/docs/service-worker/caching", prevTitle: "Datos y páginas en caché", next: "/docs/service-worker/headers", nextTitle: "Las cabeceras del Service Worker")

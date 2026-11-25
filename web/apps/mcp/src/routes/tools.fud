@@ -113,3 +113,5 @@
 <h2 id="errors">Cuando no puede</h2>
 
 <p>Una herramienta que no puede hacer lo que se le pide responde igual, con un diagnóstico que dice por qué, y no escribe nada. Dos valen para todas. <a href="/docs/reference/diagnostics/FUD1404"><code>FUD1404</code></a> dice que en la carpeta no hay un proyecto de Fudic, y <a href="/docs/reference/diagnostics/FUD1400"><code>FUD1400</code></a>, que una ruta sale del proyecto.</p>
+
+@render pager(prev: "/mcp/project", prevTitle: "Lo que genera la CLI", next: "/mcp/tools/status", nextTitle: "fudic_status")

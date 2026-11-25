@@ -141,3 +141,5 @@ middleware auth
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site" target="_blank" rel="noopener"><code>Sec-Fetch-Site</code></a>: la cabecera que dice de dónde viene una petición.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API" target="_blank" rel="noopener">Compression Streams API</a>: los formatos de <code>compress</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/server/task", prevTitle: "task", next: "/docs/server/rules", nextTitle: "Reglas y patrones")

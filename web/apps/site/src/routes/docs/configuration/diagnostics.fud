@@ -102,3 +102,5 @@
   <li>Un comentario sin código o sin motivo no silencia nada (<a href="/docs/reference/diagnostics/FUD1522"><code>FUD1522</code></a>). Un comentario que ya no silencia nada porque el aviso desapareció también avisa (<a href="/docs/reference/diagnostics/FUD1523"><code>FUD1523</code></a>).</li>
   <li>Un <code>diagnostics</code> que no es un objeto de código y nivel invalida <code>fudic.json</code> entero (<a href="/docs/reference/diagnostics/FUD0725"><code>FUD0725</code></a>).</li>
 </ul>
+
+@render pager(prev: "/docs/configuration/fields", prevTitle: "Estilos, idiomas y servidor", next: "/docs/configuration/baseline", nextTitle: "Baseline")

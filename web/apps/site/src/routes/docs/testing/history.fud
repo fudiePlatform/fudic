@@ -85,3 +85,5 @@
   <li><strong><code>--dry-run</code></strong> en <code>approve</code> y <code>accept</code> enseña la línea y la etiqueta sin escribirlas, y <code>fudic history --json</code> da el estado entero.</li>
   <li><strong>Una línea que no se entiende</strong> es un aviso, <a href="/docs/reference/diagnostics/FUD1220"><code>FUD1220</code></a>, y se salta.</li>
 </ul>
+
+@render pager(prev: "/docs/testing/unit", prevTitle: "Tests unitarios", next: "/docs/terms", nextTitle: "Por qué ampliar el lenguaje")

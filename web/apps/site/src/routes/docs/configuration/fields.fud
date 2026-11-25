@@ -119,3 +119,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded" target="_blank" rel="noopener"><code>Forwarded</code></a>: la cabecera que lee <code>trustProxy</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/103" target="_blank" rel="noopener"><code>103 Early Hints</code></a>: lo que envía <code>earlyHints</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/configuration", prevTitle: "fudic.json", next: "/docs/configuration/diagnostics", nextTitle: "Diagnósticos")

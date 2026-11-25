@@ -93,3 +93,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/template-syntax/snippets">Snippets</a>: qué es un snippet y cómo se pinta.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/style", prevTitle: "fudic generate style", next: "/docs/cli/generate/spec", nextTitle: "fudic generate spec")

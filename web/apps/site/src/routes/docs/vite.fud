@@ -109,3 +109,5 @@ export default defineConfig(&#123;
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">Módulos de JavaScript</a>: lo que Vite recibe de cada <code>.fud</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/base" target="_blank" rel="noopener"><code>&lt;base&gt;</code></a>: el elemento estándar para la URL base de un documento. El <code>base</code> de Vite no lo usa: reescribe cada URL en el build.</li>
 </ul>
+
+@render pager(prev: "/docs/configuration/generated", prevTitle: "Lo que genera Fudic", next: "/docs/vite/dev", nextTitle: "En desarrollo")

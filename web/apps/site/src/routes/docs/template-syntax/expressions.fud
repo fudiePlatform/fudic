@@ -151,3 +151,5 @@
   <li id="template-variables"><code>@@&#123; … &#125;</code> declara una variable para lo que sigue en la plantilla.</li>
   <li>Dentro de un <code>@@if</code> o un bucle, <code>&#125;</code> cierra el bloque. Para una llave literal, escribe <code>&amp;#125;</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/template-syntax/snippets", prevTitle: "Snippets", next: "/docs/template-syntax/await", nextTitle: "@await")

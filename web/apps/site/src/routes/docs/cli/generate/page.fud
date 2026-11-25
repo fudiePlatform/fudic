@@ -107,3 +107,5 @@ dry run — nothing written
   <li><a href="/docs/routing">Rutas por carpetas</a>: cómo una carpeta se convierte en una URL.</li>
   <li><a href="/docs/routing/data">Los datos de la página</a>: el <code>load</code> que escribe <code>--server</code>.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/component", prevTitle: "fudic generate component", next: "/docs/cli/generate/layout", nextTitle: "fudic generate layout")

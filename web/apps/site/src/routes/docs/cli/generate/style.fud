@@ -93,3 +93,5 @@ dry run — nothing written
 <ul>
   <li><a href="/docs/styles/shared">Hojas compartidas</a>: <code>globalStyles</code>, <code>styles</code> y los tokens.</li>
 </ul>
+
+@render pager(prev: "/docs/cli/generate/pipe", prevTitle: "fudic generate pipe", next: "/docs/cli/generate/snippet", nextTitle: "fudic generate snippet")

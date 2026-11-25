@@ -92,3 +92,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: por qué el componente se ve antes de hidratarse.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomElementRegistry/define" target="_blank" rel="noopener"><code>customElements.define()</code></a>: registrar un tag activa todas sus instancias.</li>
 </ul>
+
+@render pager(prev: "/docs/reactivity/lifecycle", prevTitle: "Ciclo de vida", next: "/docs/styles", nextTitle: "El CSS de un componente")

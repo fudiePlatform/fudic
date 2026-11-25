@@ -110,3 +110,5 @@
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a>: el fichero en el navegador y en el handler.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/progress" target="_blank" rel="noopener"><code>&lt;progress&gt;</code></a>: la barra de progreso.</li>
 </ul>
+
+@render pager(prev: "/docs/forms/events", prevTitle: "Resultado y error", next: "/docs/forms/form-associated", nextTitle: "Controles form-associated")
