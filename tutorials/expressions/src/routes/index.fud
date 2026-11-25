@@ -1,0 +1,30 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import { currency } from "@fudic/core";
+
+  const name = "Ana";
+  const price = 12.5;
+  const quantity = 3;
+  const inStock = true;
+  const euros = currency("EUR");
+  const scores = [7, 9, 4, 10, 6];
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<p>Hello, @name.</p>
+<p>Total: @(price * quantity | euros)</p>
+<p>@(inStock ? "In stock" : "Sold out")</p>
+<p>@(`${quantity} items for ${name}`)</p>
+
+<p>Scores: @scores.length</p>
+<p>Passed: @(scores.filter(s => s >= 5).length)</p>
+<p>Best: @(scores.reduce((best, s) => s > best ? s : best, 0))</p>
+<p>Average: @(scores.reduce((sum, s) => sum + s, 0) / scores.length)</p>
+<p>First: @scores[0]</p>
+<p>Above 8: @(scores.filter(s => s > 8)[0])</p>

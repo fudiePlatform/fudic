@@ -166,4 +166,4 @@ Add &lt;link rel="component"&gt; for &lt;myapp-card&gt;</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/editor" target="_blank" rel="noopener">la solución de El editor a tu favor, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/first-component", prevTitle: "Tu primer componente", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/first-component", prevTitle: "Tu primer componente", next: "/tutorials/expressions", nextTitle: "Pintar valores con @(…)")

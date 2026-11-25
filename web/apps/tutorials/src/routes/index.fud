@@ -26,7 +26,7 @@
 
 <ol class="categories">
   @render category("Primeros pasos", "Crea una app, tu primer componente, y deja que el editor te ayude.", 3, true, false, false, "/tutorials/first-app")
-  @render category("Sintaxis de plantilla", "Valores, condiciones, listas, props, slots y snippets dentro de un .fud.", 11, true, true, false)
+  @render category("Sintaxis de plantilla", "Valores, condiciones, listas, props, slots y snippets dentro de un .fud.", 11, true, true, false, "/tutorials/expressions")
   @render category("Eventos", "Clics, delegación y un bus para que los componentes hablen entre sí.", 4, true, true, false)
   @render category("Reactividad", "Signals, el ciclo de vida de un componente y la hidratación.", 7, true, true, true)
   @render category("Estilos", "El CSS de un componente, el tema global y tu guía de estilos.", 3, true, true, false)

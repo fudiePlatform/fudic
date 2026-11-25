@@ -1,0 +1,192 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Pintar valores con &#64;(…) · Tutoriales de Fudic</title>
+  <meta name="description" content="Escribe valores en una plantilla de Fudic: nombres, operaciones, un pipe que da formato y cálculos sobre una lista, y mira qué hace el compilador con lo que la vista no admite.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/expressions">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Pintar valores con &#64;(…) · Tutoriales de Fudic">
+  <meta property="og:description" content="Nombres, operaciones, un pipe y cálculos sobre una lista, escritos en la plantilla.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/expressions">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("expressions")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#values">2. Escribe valores</a></li>
+        <li><a href="#pipe">3. Dales formato</a></li>
+        <li><a href="#lists">4. Calcula sobre una lista</a></li>
+        <li><a href="#limits">5. Lo que la vista no admite</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Pintar valores con <code>@@(…)</code></h1>
+
+<p class="lede">Escribes en la página de inicio nombres, operaciones, un precio con formato y cálculos sobre una lista, y ves qué hace Fudic cuando escribes algo que la vista no admite.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Escribir un valor con <code>@@nombre</code> y una operación con <code>@@(…)</code>.</li>
+    <li>Darle formato con un pipe.</li>
+    <li>Contar, filtrar y sumar una lista sin salir de la plantilla, y saber qué hacer cuando el compilador rechaza una expresión.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="values">2. Escribe valores</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const name = "Ana";
+  const price = 12.5;
+  const quantity = 3;
+  const inStock = true;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;p&gt;Hello, @@name.&lt;/p&gt;
+&lt;p&gt;Total: @@(price * quantity)&lt;/p&gt;
+&lt;p&gt;@@(inStock ? "In stock" : "Sold out")&lt;/p&gt;
+&lt;p&gt;@@(`$&#123;quantity&#125; items for $&#123;name&#125;`)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Guarda, y el navegador se recarga con esto:</p>
+
+<pre class="output"><code>Home
+Hello, Ana.
+Total: 37.5
+In stock
+3 items for Ana</code></pre>
+
+<ul>
+  <li><strong><code>@@name</code> escribe un nombre</strong> declarado en el <code>@@code</code>. El punto de <code>Ana.</code> no se lo lleva, porque detrás no hay otro nombre.</li>
+  <li><strong><code>@@(…)</code> escribe una operación</strong>: la aritmética, el ternario o una plantilla de texto. Los paréntesis marcan dónde acaba.</li>
+  <li><strong>Lo que se escribe así llega como texto.</strong> Si <code>name</code> llevara un <code>&lt;</code>, el navegador lo enseñaría tal cual, sin convertirlo en una etiqueta.</li>
+</ul>
+
+<p>Cómo se escribe cada valor está en <a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a>.</p>
+
+<h2 id="pipe">3. Dales formato</h2>
+
+<p>Un pipe convierte un valor en texto con formato: una moneda, una fecha, un porcentaje. Se crea en el <code>@@code</code> y se aplica con <code>|</code>. Cambia el <code>@@code</code> y la línea del total:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; currency &#125; from "@@fudic/core";
+
+  const name = "Ana";
+  const price = 12.5;
+  const quantity = 3;
+  const inStock = true;
+  const euros = currency("EUR");
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Total: @@(price * quantity | euros)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>Total: €37.50</code></pre>
+
+<p>El formato sigue el idioma de la página, que en la app recién creada es el inglés. Fudic trae pipes para fechas, números, monedas, porcentajes, tiempos relativos y listas, y puedes escribir los tuyos. Están todos en <a href="/docs/server/pipes">Pipes</a>.</p>
+
+<h2 id="lists">4. Calcula sobre una lista</h2>
+
+<p>Añade una lista de notas al <code>@@code</code>, debajo de <code>euros</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const scores = [7, 9, 4, 10, 6];</code></pre>
+</ui-code>
+
+<p>Y estas líneas al final de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Scores: @@scores.length&lt;/p&gt;
+&lt;p&gt;Passed: @@(scores.filter(s =&gt; s &gt;= 5).length)&lt;/p&gt;
+&lt;p&gt;Best: @@(scores.reduce((best, s) =&gt; s &gt; best ? s : best, 0))&lt;/p&gt;
+&lt;p&gt;Average: @@(scores.reduce((sum, s) =&gt; sum + s, 0) / scores.length)&lt;/p&gt;
+&lt;p&gt;First: @@scores[0]&lt;/p&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>Scores: 5
+Passed: 4
+Best: 10
+Average: 7.2
+First: 7</code></pre>
+
+<p>Una lista se trabaja con cuatro operaciones y una propiedad: <code>filter</code>, <code>map</code>, <code>reduce</code>, <code>toSorted</code> y <code>.length</code>. Con ellas se cuenta, se filtra, se suma, se busca el máximo y se saca la media.</p>
+
+<h2 id="limits">5. Lo que la vista no admite</h2>
+
+<p>Busca la primera nota por encima de 8 con <code>find</code>, como lo harías en JavaScript. Añade esta línea al final:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Above 8: @@(scores.find(s =&gt; s &gt; 8))&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza, y el navegador enseña el mismo error:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:30:15 - error FUD1140: `scores.find(…)` does not port: the view only reads values and uses `filter`, `map`, `reduce` and `toSorted`
+  my-app     30  &lt;p&gt;Above 8: @@(scores.find(s =&gt; s &gt; 8))&lt;/p&gt;
+  my-app                       ───────────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD1140
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>La plantilla de Fudic no es JavaScript. Lo que escribes en ella se traduce al lenguaje de cualquier servidor, y por eso admite una lista cerrada de operaciones. <code>find</code> no está, pero se escribe con <code>filter</code>. Cambia la línea por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Above 8: @@(scores.filter(s =&gt; s &gt; 8)[0])&lt;/p&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>  my-app   fudic: the typecheck is clean again</code></pre>
+
+<p>Y la página enseña <code>Above 8: 9</code>. En el editor, el mismo error sale subrayado, y la bombilla ofrece «Explain FUD1140», que abre su explicación.</p>
+
+<ui-note>
+  <p>Un cálculo largo no se escribe en la plantilla. Se calcula en el <code>@@code</code> y la plantilla solo lo lee.</p>
+</ui-note>
+
+<p>Lo que admite una expresión, con las equivalencias de <code>find</code>, <code>some</code> o <code>slice</code>, está en <a href="/docs/template-syntax/expressions#the-closed-list">Expresiones y control de flujo</a>, y por qué la lista es cerrada, en <a href="/docs/template-syntax#polyglot-views">Sintaxis de plantillas</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/expressions" target="_blank" rel="noopener">la solución de Pintar valores con @@(…), en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/editor", prevTitle: "El editor a tu favor", next: "/tutorials/", nextTitle: "Todas las categorías")
