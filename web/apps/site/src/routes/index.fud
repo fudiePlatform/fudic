@@ -28,7 +28,7 @@
   <li><a href="#llm"><strong>Hecho para LLMs</strong><span>El MCP le enseña Fudic a tu modelo</span></a></li>
   <li><a href="#performance"><strong>100 · 100 · 100 · 100</strong><span>Lighthouse, en móvil y escritorio</span></a></li>
   <li><a href="#security"><strong>Seguridad de serie</strong><span>CSP con nonce, Trusted Types, HSTS</span></a></li>
-  <li><a href="#polyglot"><strong>Una vista, tu backend</strong><span>C#, Java, Go, Rust y Python, en camino</span></a></li>
+  <li><a href="#polyglot"><strong>Vista políglota</strong><span>C#, Java, Go, Rust y Python, en camino</span></a></li>
 </ul>
 
 <section class="block" aria-labelledby="standard">
@@ -132,6 +132,7 @@
     <li><strong>Cookie de sesión <code>HttpOnly</code></strong><span>Con <code>Secure</code> y <code>SameSite</code>: un script inyectado no tiene qué robar.</span></li>
     <li><strong><code>frame-ancestors</code> y COOP</strong><span>Nadie mete tu página dentro de otra.</span></li>
     <li><strong>HSTS</strong><span>El navegador entra siempre por HTTPS.</span></li>
+    <li><strong>CSRF, en las funciones de servidor</strong><span>Una web ajena no puede llamar a tus funciones de servidor con las cookies del usuario. Lo pone <code>fudic add http</code>.</span></li>
   </ul>
   <p class="note"><a href="/docs/security">Lo que trae de serie, ataque por ataque</a>.</p>
 </section>
