@@ -1,0 +1,33 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import { effect, signal } from "@fudic/core";
+
+  const tasks = signal<readonly string[]>(["Buy bread"]);
+  const seconds = signal(0);
+
+  function add() {
+    tasks.set([...tasks(), `Task ${tasks().length + 1}`]);
+  }
+
+  effect(() => {
+    const timer = setInterval(() => seconds.set(seconds() + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<p>You have been here for @seconds() s.</p>
+<p><button type="button" @click=@add>Add a task</button></p>
+@if (tasks().length > 2) {
+  <p>That is a busy day.</p>
+}
+<ul>
+  @foreach (const task of tasks()) key (task) {
+    <li>@task</li>
+  }
+</ul>

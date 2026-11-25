@@ -1,0 +1,211 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Valor o signal en una prop · Tutoriales de Fudic</title>
+  <meta name="description" content="Pasa a un hijo de Fudic el valor de un signal o el signal entero: con el signal, el hijo puede derivar de él y escribirlo.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/signal-props">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Valor o signal en una prop · Tutoriales de Fudic">
+  <meta property="og:description" content="Un contador que pasa a su hijo un número, y luego el signal entero.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/signal-props">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("signal-props")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y los dos componentes</a></li>
+        <li><a href="#value">2. Pasa el valor</a></li>
+        <li><a href="#derive">3. Deriva en el hijo</a></li>
+        <li><a href="#signal">4. Pasa el signal</a></li>
+        <li><a href="#write">5. El hijo escribe</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Reactividad</span></p>
+
+<h1>Valor o signal en una prop</h1>
+
+<p class="lede">Haces un contador que enseña su cuenta en un hijo. Primero le pasa el número; luego le pasa el signal entero, y el hijo puede calcular con él y cambiarlo.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Pasar el valor de un signal con <code>.value=@@count()</code>.</li>
+    <li>Pasar el signal con <code>.value=@@count</code>, a un hijo que declara <code>Signal&lt;number&gt;</code>.</li>
+    <li>Saber cuándo hace falta cada uno.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y los dos componentes</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>En otra terminal, dentro de <code>my-app</code>, genera el padre en la página de inicio y el hijo dentro del padre:</p>
+
+<ui-code>
+<pre><code>npx fudic g component counter --in src/routes/index.fud
+npx fudic g component display --in src/components/myapp-counter/myapp-counter.fud</code></pre>
+</ui-code>
+
+<p>Con <code>--in</code>, la CLI escribe el <code>&lt;link rel="component"&gt;</code> en el fichero que le das: el del hijo queda en el padre. Escribe el padre en la página, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-counter&gt;&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<h2 id="value">2. Pasa el valor</h2>
+
+<p>El hijo recibe un número y lo enseña:</p>
+
+<ui-code .path="src/components/myapp-display/myapp-display.fud">
+<pre><code>@@code &#123;
+  const &#123; value = 0 &#125; = props&lt;&#123; value?: number &#125;&gt;();
+&#125;
+
+&lt;myapp-display&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p&gt;The child sees @@value&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-display&gt;</code></pre>
+</ui-code>
+
+<p>El padre tiene el signal y le pasa su valor:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>&lt;link rel="component" href="../myapp-display/myapp-display.fud"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const count = signal(0);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;
+      &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+      The parent has @@count()
+    &lt;/p&gt;
+    &lt;myapp-display .value=@@count()&gt;&lt;/myapp-display&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa +1 tres veces: el padre y el hijo dicen 3. Con <code>.value=@@count()</code> cruza un número, y el padre se lo vuelve a escribir al hijo cada vez que <code>count</code> cambia. Para enseñar un valor, basta.</p>
+
+<h2 id="derive">3. Deriva en el hijo</h2>
+
+<p>Ahora el hijo quiere enseñar también el doble. Cámbialo así:</p>
+
+<ui-code .path="src/components/myapp-display/myapp-display.fud">
+<pre><code>@@code &#123;
+  import &#123; computed &#125; from "@@fudic/core";
+
+  const &#123; value = 0 &#125; = props&lt;&#123; value?: number &#125;&gt;();
+  const double = computed(() =&gt; value * 2);
+&#125;
+
+&lt;myapp-display&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p&gt;The child sees @@value, and its double is @@double()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-display&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa +1 tres veces: el hijo dice «The child sees 3, and its double is 0». El doble no se mueve. El <code>@@code</code> del hijo se ejecutó una vez, con <code>value</code> en 0, y un <code>computed</code> solo se recalcula cuando cambia un signal que lee. Aquí <code>value</code> es un número, no un signal.</p>
+
+<h2 id="signal">4. Pasa el signal</h2>
+
+<p>Para derivar, el hijo necesita el signal. Declara la prop como <code>Signal&lt;number&gt;</code> y léela llamándola:</p>
+
+<ui-code .path="src/components/myapp-display/myapp-display.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, type Signal &#125; from "@@fudic/core";
+
+  const &#123; value &#125; = props&lt;&#123; value: Signal&lt;number&gt; &#125;&gt;();
+  const double = computed(() =&gt; value() * 2);
+&#125;
+
+&lt;myapp-display&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p&gt;The child sees @@value(), and its double is @@double()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-display&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal señala al padre, que sigue pasando el valor:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-counter/myapp-counter.fud:19:20 - error FUD0200: `.value` takes a Signal by reference: name a signal(…) or computed(…)
+  my-app     19      &lt;myapp-display .value=@@count()&gt;&lt;/myapp-display&gt;
+  my-app                            ───────────────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0200</code></pre>
+
+<p>Quita los paréntesis en el padre:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>    &lt;myapp-display .value=@@count&gt;&lt;/myapp-display&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa +1 tres veces: «The child sees 3, and its double is 6». Padre e hijo comparten el mismo signal, sin copia. Lo que cruza lo decide el tipo que declara el hijo.</p>
+
+<h2 id="write">5. El hijo escribe</h2>
+
+<p>Con el signal, el hijo también puede cambiarlo. Añade un botón que lo vuelva a 0:</p>
+
+<ui-code .path="src/components/myapp-display/myapp-display.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, type Signal &#125; from "@@fudic/core";
+
+  const &#123; value &#125; = props&lt;&#123; value: Signal&lt;number&gt; &#125;&gt;();
+  const double = computed(() =&gt; value() * 2);
+
+  function reset() &#123;
+    value.set(0);
+  &#125;
+&#125;
+
+&lt;myapp-display&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;The child sees @@value(), and its double is @@double()&lt;/p&gt;
+    &lt;button type="button" @@click=@@reset&gt;Reset&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-display&gt;</code></pre>
+</ui-code>
+
+<p>Sube el contador y pulsa Reset: el padre también vuelve a 0.</p>
+
+<ul>
+  <li><strong>Pasa el valor</strong> cuando el hijo solo lo enseña.</li>
+  <li><strong>Pasa el signal</strong> cuando el hijo deriva de él o lo cambia.</li>
+</ul>
+
+<p>Las dos formas están en <a href="/docs/template-syntax/components#signal-prop">Para que el hijo cambie un valor del padre</a>, en la página <a href="/docs/template-syntax/components">Componentes</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/signal-props" target="_blank" rel="noopener">la solución de Valor o signal en una prop, en GitHub</a>. Compara tus dos componentes con los suyos.</p>
+
+@render pager(prev: "/tutorials/signal-store", prevTitle: "Un signal compartido", next: "/tutorials/route-signals", nextTitle: "Un signal en la página")

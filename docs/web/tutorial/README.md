@@ -76,22 +76,22 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
-| 15 | `events` | Responder a un clic | P | `g component` | template-syntax/events | `app-eventos` | En revisión |
-| 16 | `delegation` | Delegación de eventos, medida | I | `g component` | template-syntax/events | `/delegacion` | En revisión |
-| 17 | `event-bus` | Un bus entre componentes | I | `g component` | template-syntax/events, reference/dom | `bus-picker`, `bus-option`, `bus-log` | En revisión |
-| 18 | `route-events` | Manejadores en la ruta: host y shadow root | I | `g component` | template-syntax/events | `/ruta-evento` | En revisión |
+| 15 | `events` | Responder a un clic | P | `g component` | template-syntax/events | `app-eventos` | Hecho |
+| 16 | `delegation` | Delegación de eventos, medida | I | `g component` | template-syntax/events | `/delegacion` | Hecho |
+| 17 | `event-bus` | Un bus entre componentes | I | `g component` | template-syntax/events, reference/dom | `bus-picker`, `bus-option`, `bus-log` | Hecho |
+| 18 | `route-events` | Manejadores en la ruta: host y shadow root | I | `g component` | template-syntax/events | `/ruta-evento` | Hecho |
 
 ### 3.4 Reactividad
 
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
-| 19 | `signals` | Un contador con signals | P | `g component` | reactivity | `app-counter`, `signal-counter` | Propuesto |
-| 20 | `signal-store` | Una signal compartida en un módulo | I | — | reactivity | `/reactividad`, `src/store/` | Propuesto |
-| 21 | `signal-props` | Lo que cruza al hijo: valor o signal | I | — | reactivity | `/signal-prop`, `/value-prop` | Propuesto |
-| 22 | `route-signals` | Una signal en la ruta, sin componente | I | — | reactivity | `/ruta-reactiva`, `/ruta-reloj` | Propuesto |
-| 23 | `lifecycle` | El ciclo de vida, y uno que espera a un gesto | I | — | reactivity/lifecycle | `/ciclo` | Propuesto |
-| 24 | `hydration` | Hidratación guiada por el gesto, por debajo del pliegue | A | — | reactivity/hydration | `/hidratacion`, `app-below`, `app-cold` | Propuesto |
-| 25 | `client-components` | Componentes que nadie pintó: creados en el navegador | A | — | reactivity/hydration (por confirmar) | `/vivo` | Propuesto |
+| 19 | `signals` | Un contador con signals | P | `g component` | reactivity | `app-counter`, `signal-counter` | En revisión |
+| 20 | `signal-store` | Un signal compartido en un módulo | I | `g component` | reactivity | `/reactividad`, `src/store/` | En revisión |
+| 21 | `signal-props` | Valor o signal en una prop | I | `g component` | template-syntax/components, reactivity | `/signal-prop`, `/value-prop` | En revisión |
+| 22 | `route-signals` | Un signal en la página, sin componente | I | — | reactivity | `/ruta-reactiva`, `/ruta-reloj` | En revisión |
+| 23 | `lifecycle` | El ciclo de vida, y uno que espera a un gesto | I | `g component` | reactivity/lifecycle | `/ciclo` | En revisión |
+| 24 | `hydration` | Hidratación guiada por el gesto, por debajo del pliegue | A | `g component`, `preview` | reactivity/hydration | `/hidratacion`, `app-below`, `app-cold` | En revisión |
+| 25 | `client-components` | Componentes creados en el navegador | A | `g component` | reactivity/lifecycle | `/vivo` | En revisión |
 
 ### 3.5 Estilos
 
@@ -209,8 +209,8 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 - La configuración de diagnósticos (`"diagnostics": { "warnings": "error" }`) y la Vite build
   (`vite/build`): si dan para un tutorial propio o van dentro de `editor` (3), `baseline` (72) y
   `lighthouse` (65).
-- La página de la Documentación de `client-components` (25) y de `page-maps` (35): no hay una que
-  lo cuente con ese nombre. Si falta, se apunta como hueco de la Documentación.
+- La página de la Documentación de `page-maps` (35): no hay una que lo cuente con ese nombre
+  (`client-components`, 25, enlaza a Ciclo de vida, que cuenta `afterCreate`). Si falta, se apunta como hueco de la Documentación.
 - Que cada tutorial cabe en cinco minutos: se cronometra al escribirlo; si no cabe, se parte.
 
 ## 4. La app
@@ -324,3 +324,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-25 | `await`, con su solución en `tutorials/await/`: `fudic g api` sobre la página de inicio, dos campos `later` (uno tarda 2 s, otro falla a los 3 con `notFound`), `@await` con `@catch`, el 200 aunque un bloque falle y el orden del documento, todo medido leyendo la respuesta como flujo. Los datos de la página se presentan en lo justo, porque su tutorial llega después. Hallazgo 24 de la CLI (`g api` no dice que hay que instalar). Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | `safe-urls`, con su solución en `tutorials/safe-urls/`: un `href` desde una expresión con una URL buena y un `javascript:` (que sale `about:blank`), el prefijo `/users/` que hace innecesaria la guarda, el `FUD0915` de un `javascript:` escrito a mano y un esquema `myapp:` que pasa con `trustedUrl`. Con él, la categoría Sintaxis de plantilla queda escrita entera, en revisión. Lighthouse en el tutorial y en la portada: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | A petición de Pedro, la categoría Eventos entera, con sus soluciones en `tutorials/`. `events`: `@click` con el evento, `@input=@count($value)` y el `TS2345` de un `$value` numérico. `delegation`: el aviso `FUD1380`, los listeners contados con `getEventListeners` (5, y 1 tras `delegate:size`) y un clic fuera de los botones que no llama al manejador. `event-bus`: `emit` y `bus:` entre dos componentes hermanos, el mapa `fud-bus` del código fuente y el `TS2345` que señala al emisor. `route-events`: un manejador en el `@code` de la página, y el mismo componente escuchando en el host y en el shadow root (el `change` solo lo oye el shadow root). Todo con clics reales en Chrome sin cabeza. Hallazgos 65 a 67 del framework (`FUD1440` con `<li>`, un `bus:` que nadie anuncia, `fudic dev` con un fichero a medio escribir). Lighthouse en las cuatro y en la portada: 99–100 / 100 / 100 / 100. |
+| 2026-11-25 | A petición de Pedro, la categoría Reactividad entera, con sus soluciones en `tutorials/`. `signals`: `signal`, `computed` y el `TS2345` de un signal sin paréntesis. `signal-store`: un signal por instancia frente a un store en `src/stores/cart.ts` que comparten dos productos. `signal-props`: `.value=@count()` a un hijo de `number`, el `computed` que no se mueve con un número, el `FUD0200` al pedir `Signal<number>` y el hijo que escribe el signal. `route-signals`: lista con `@if` y `@foreach` en la página, y un `effect` que cuenta segundos (la página en `fud-eager`). `lifecycle`: `onConnect` con un `ResizeObserver`, el orden de los hooks al hidratar, quitar y crear, y un componente sin hooks que espera al gesto. `hydration`: sobre `pnpm build` y `fudic preview`, el service worker precarga el chunk visible al cargar y el de abajo al hacer scroll, el clic se sirve de su caché y la nota estática no baja nunca. `client-components`: un `@foreach` que crea componentes en el navegador (`afterCreate`) y los mueve con `key` sin perder su estado. Todo con clics y peticiones reales en Chrome sin cabeza. Hallazgos 68 a 70 del framework (un store no despierta a quien lo lee, un componente creado en `fudic dev` sin su `<style>`, `mount` con una prop `Signal`) y el 58 ampliado. Lighthouse en las siete y en la portada: 99–100 / 100 / 100 / 100. |

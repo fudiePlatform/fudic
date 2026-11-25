@@ -1,0 +1,7 @@
+component myapp-display
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-display

@@ -1,0 +1,154 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Componentes creados en el navegador · Tutoriales de Fudic</title>
+  <meta name="description" content="Componentes de Fudic que el servidor no pintó: los crea un @foreach en el navegador, responden igual que los demás y conservan su estado al reordenarse.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/client-components">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Componentes creados en el navegador · Tutoriales de Fudic">
+  <meta property="og:description" content="Una lista que crece en el navegador, con componentes vivos que se mueven sin rehacerse.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/client-components">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("client-components")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el componente</a></li>
+        <li><a href="#list">2. Una lista que crece</a></li>
+        <li><a href="#alive">3. Vivos desde que nacen</a></li>
+        <li><a href="#reorder">4. Se mueven, no se rehacen</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Reactividad</span></p>
+
+<h1>Componentes creados en el navegador</h1>
+
+<p class="lede">Haces una lista de botones con su propio contador. El servidor pinta el primero; los demás los crea el navegador al pulsar Add, y funcionan igual.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Ver la diferencia entre un componente que se hidrata y uno que crea el navegador.</li>
+    <li>Comprobar que los dos responden igual, con <code>afterHydrate</code> y <code>afterCreate</code>.</li>
+    <li>Ver que un <code>@@foreach</code> con <code>key</code> mueve los componentes sin perder su estado.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el componente</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component item --in src/routes/index.fud
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Cada elemento recibe su etiqueta por prop, cuenta sus clics y anota en la consola cómo nació:</p>
+
+<ui-code .path="src/components/myapp-item/myapp-item.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; label = "" &#125; = props&lt;&#123; label?: string &#125;&gt;();
+  const clicks = signal(0);
+
+  afterHydrate(() =&gt; console.log(`$&#123;label&#125;: hydrated`));
+  afterCreate(() =&gt; console.log(`$&#123;label&#125;: created in the browser`));
+
+  function click() &#123;
+    clicks.set(clicks() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-item&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@click&gt;@@label · @@clicks()&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-item&gt;</code></pre>
+</ui-code>
+
+<h2 id="list">2. Una lista que crece</h2>
+
+<p>La página guarda las etiquetas en un signal y pinta un <code>&lt;myapp-item&gt;</code> por cada una:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-item/myapp-item.fud"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const labels = signal&lt;readonly string[]&gt;(["First"]);
+
+  function add() &#123;
+    labels.set([...labels(), `Item $&#123;labels().length + 1&#125;`]);
+  &#125;
+
+  function reverse() &#123;
+    labels.set([...labels()].reverse());
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;
+  &lt;button type="button" @@click=@@add&gt;Add&lt;/button&gt;
+  &lt;button type="button" @@click=@@reverse&gt;Reverse&lt;/button&gt;
+&lt;/p&gt;
+&lt;ul&gt;
+  @@foreach (const label of labels()) key (label) &#123;
+    &lt;li&gt;&lt;myapp-item .label=@@label&gt;&lt;/myapp-item&gt;&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Abre el código fuente con Ctrl+U. El servidor solo pintó el primero:</p>
+
+<pre class="output"><code>&lt;ul&gt; &lt;!----&gt; &lt;li&gt;&lt;myapp-item data-fud-id="0" data-fud-adopt="base button"&gt;&lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button"&gt; &lt;button type="button"&gt;First · 0&lt;/button&gt; &lt;/template&gt;&lt;/myapp-item&gt;&lt;/li&gt; &lt;!----&gt; &lt;/ul&gt;</code></pre>
+
+<p>Los comentarios vacíos marcan dónde empieza y acaba el bucle, para que el navegador sepa dónde poner las filas nuevas.</p>
+
+<h2 id="alive">3. Vivos desde que nacen</h2>
+
+<p>Abre la consola con F12 y recarga. La consola escribe <code>First: hydrated</code>: el componente que vino del servidor se engancha a su HTML. Pulsa Add dos veces:</p>
+
+<pre class="output"><code>Item 2: created in the browser
+Item 3: created in the browser</code></pre>
+
+<p>Nadie escribió Item 2 ni Item 3 en el HTML. El navegador los crea desde la plantilla del componente, con su shadow root. Pulsa cada botón: los tres cuentan sus clics igual, porque hidratarse y crearse acaban en el mismo sitio.</p>
+
+<h2 id="reorder">4. Se mueven, no se rehacen</h2>
+
+<p>Pulsa First una vez, Item 2 dos veces e Item 3 tres veces. Los botones dicen First · 1, Item 2 · 2 e Item 3 · 3. Pulsa Reverse:</p>
+
+<pre class="output"><code>Item 3 · 3
+Item 2 · 2
+First · 1</code></pre>
+
+<p>Cada uno conserva su cuenta, y la consola no escribe nada: ningún componente se ha creado de nuevo. El <code>key (label)</code> le dice al <code>@@foreach</code> qué fila es cuál, así que mueve los elementos en vez de rehacerlos. Sin <code>key</code>, Fudic ni siquiera compila el bucle.</p>
+
+<p>El orden de los hooks en cada caso está en <a href="/docs/reactivity/lifecycle#component-hooks">En un componente</a>, en la página <a href="/docs/reactivity/lifecycle">Ciclo de vida</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/client-components" target="_blank" rel="noopener">la solución de Componentes creados en el navegador, en GitHub</a>. Compara tu página y tu <code>myapp-item.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/hydration", prevTitle: "Hidratación guiada por el gesto", next: "/tutorials/", nextTitle: "Todas las categorías")

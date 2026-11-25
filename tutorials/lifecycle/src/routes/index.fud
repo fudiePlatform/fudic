@@ -1,0 +1,24 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-width/myapp-width.fud">
+<link rel="component" href="../components/myapp-later/myapp-later.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const shown = signal(true);
+
+  function toggle() {
+    shown.set(!shown());
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<p><button type="button" @click=@toggle>Show or hide</button></p>
+<myapp-later></myapp-later>
+@if (shown()) {
+  <myapp-width></myapp-width>
+}

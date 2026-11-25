@@ -1,0 +1,25 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const width = signal(0);
+  let box: HTMLParagraphElement | null = null;
+
+  afterHydrate(() => console.log("afterHydrate"));
+  afterCreate(() => console.log("afterCreate"));
+
+  onConnect(() => {
+    console.log("onConnect");
+    const observer = new ResizeObserver(() => width.set(box?.clientWidth ?? 0));
+    if (box) observer.observe(box);
+    return () => observer.disconnect();
+  });
+
+  onDisconnect(() => console.log("onDisconnect"));
+  onDispose(() => console.log("onDispose"));
+}
+
+<myapp-width>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="output p">
+    <p ref="@box">This box is <output>@width()</output> px wide.</p>
+  </template>
+</myapp-width>

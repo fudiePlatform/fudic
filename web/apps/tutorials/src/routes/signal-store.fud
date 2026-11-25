@@ -1,0 +1,155 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un signal compartido · Tutoriales de Fudic</title>
+  <meta name="description" content="Un store de Fudic: un signal declarado en un módulo, que comparten todos los componentes que lo importan.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/signal-store">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un signal compartido · Tutoriales de Fudic">
+  <meta property="og:description" content="Dos productos que cuentan el mismo carrito, con un signal en un módulo.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/signal-store">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("signal-store")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#local">2. Un signal en cada componente</a></li>
+        <li><a href="#store">3. Lleva el signal a un módulo</a></li>
+        <li><a href="#use">4. Úsalo desde el componente</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Reactividad</span></p>
+
+<h1>Un signal compartido</h1>
+
+<p class="lede">Haces dos productos con un botón Add to cart. Primero cada uno cuenta lo suyo; luego los dos cuentan el mismo carrito, porque el signal vive en un módulo y no en el componente.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Ver que un signal declarado en un componente es de cada instancia.</li>
+    <li>Declarar un store: un módulo que exporta signals y las funciones que los cambian.</li>
+    <li>Importarlo desde un componente.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="local">2. Un signal en cada componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>, genera el producto:</p>
+
+<ui-code>
+<pre><code>npx fudic g component product --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>Sustituye su contenido por este. Cada producto recibe su nombre por prop y cuenta sus clics en un signal:</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; name = "" &#125; = props&lt;&#123; name?: string &#125;&gt;();
+  const count = signal(0);
+
+  function buy() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-product&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;@@name&lt;/p&gt;
+    &lt;button type="button" @@click=@@buy&gt;Add to cart&lt;/button&gt;
+    &lt;p&gt;Items in your cart: @@count()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p>Escribe dos productos en la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-product/myapp-product.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-product .name="Coffee beans"&gt;&lt;/myapp-product&gt;
+&lt;myapp-product .name="Green tea"&gt;&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa Add to cart en Coffee beans. Ese producto dice Items in your cart: 1, y Green tea sigue en 0. Cada instancia ejecuta su <code>@@code</code> y tiene su propio <code>count</code>. Para un carrito, eso está mal: el carrito es uno.</p>
+
+<h2 id="store">3. Lleva el signal a un módulo</h2>
+
+<p>Crea un fichero TypeScript con el carrito:</p>
+
+<ui-code .path="src/stores/cart.ts">
+<pre><code>import &#123; computed, signal &#125; from "@@fudic/core";
+
+export const items = signal&lt;readonly string[]&gt;([]);
+export const count = computed(() =&gt; items().length);
+
+export function add(name: string): void &#123;
+  items.set([...items(), name]);
+&#125;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Un módulo se carga una vez por página</strong>, así que <code>items</code> es el mismo para todos los que lo importen. Es lo que se llama un store.</li>
+  <li><strong><code>add</code> escribe una lista nueva.</strong> Un signal avisa cuando recibe un valor nuevo; un <code>items().push(name)</code> cambiaría la lista por dentro y no avisaría a nadie.</li>
+  <li><strong><code>count</code> es un <code>computed</code></strong>: se recalcula cada vez que cambia <code>items</code>.</li>
+</ul>
+
+<h2 id="use">4. Úsalo desde el componente</h2>
+
+<p>En el producto, cambia el signal propio por el del store:</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  import &#123; add, count &#125; from "../../stores/cart";
+
+  const &#123; name = "" &#125; = props&lt;&#123; name?: string &#125;&gt;();
+
+  function buy() &#123;
+    add(name);
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>La plantilla no cambia: sigue leyendo <code>@@count()</code>. Pulsa Add to cart en Coffee beans y luego en Green tea. Los dos productos dicen Items in your cart: 1 tras el primer clic, y 2 tras el segundo.</p>
+
+<p>El servidor pinta el valor inicial del store, 0, y nada más: solo el navegador lo escribe. En el servidor un módulo se comparte entre todas las peticiones, y un store escrito allí pasaría el carrito de un usuario a otro. Lo cuenta <a href="/docs/reactivity#store">Compartir estado: el store</a>, en la página <a href="/docs/reactivity">Signals</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/signal-store" target="_blank" rel="noopener">la solución de Un signal compartido, en GitHub</a>. Compara tu <code>cart.ts</code> y tu <code>myapp-product.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/signals", prevTitle: "Un contador con signals", next: "/tutorials/signal-props", nextTitle: "Valor o signal en una prop")

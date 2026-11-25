@@ -161,4 +161,4 @@ host heard click</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-events" target="_blank" rel="noopener">la solución de Manejadores en la ruta, en GitHub</a>. Compara tu página y tu <code>myapp-search.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/event-bus", prevTitle: "Un bus entre componentes", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/event-bus", prevTitle: "Un bus entre componentes", next: "/tutorials/signals", nextTitle: "Un contador con signals")

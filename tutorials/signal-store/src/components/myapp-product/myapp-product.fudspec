@@ -1,0 +1,7 @@
+component myapp-product
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-product

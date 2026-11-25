@@ -87,3 +87,18 @@
     @render tutorial("route-events", "Manejadores en la ruta", "intermediate", @current)
   </ol>
 }
+
+@snippet reactivityNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Reactividad</p>
+  <details class="toggle"><summary>Tutoriales de Reactividad</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("signals", "Un contador con signals", "beginner", @current)
+    @render tutorial("signal-store", "Un signal compartido", "intermediate", @current)
+    @render tutorial("signal-props", "Valor o signal en una prop", "intermediate", @current)
+    @render tutorial("route-signals", "Un signal en la página", "intermediate", @current)
+    @render tutorial("lifecycle", "El ciclo de vida", "intermediate", @current)
+    @render tutorial("hydration", "Hidratación guiada por el gesto", "advanced", @current)
+    @render tutorial("client-components", "Componentes creados en el navegador", "advanced", @current)
+  </ol>
+}

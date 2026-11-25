@@ -1,0 +1,31 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-item/myapp-item.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const labels = signal<readonly string[]>(["First"]);
+
+  function add() {
+    labels.set([...labels(), `Item ${labels().length + 1}`]);
+  }
+
+  function reverse() {
+    labels.set([...labels()].reverse());
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<p>
+  <button type="button" @click=@add>Add</button>
+  <button type="button" @click=@reverse>Reverse</button>
+</p>
+<ul>
+  @foreach (const label of labels()) key (label) {
+    <li><myapp-item .label=@label></myapp-item></li>
+  }
+</ul>

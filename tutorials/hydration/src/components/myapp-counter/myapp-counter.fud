@@ -1,0 +1,15 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const count = signal(10);
+
+  function more() {
+    count.set(count() + 1);
+  }
+}
+
+<myapp-counter>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button">
+    <button type="button" @click=@more>Count: @count()</button>
+  </template>
+</myapp-counter>

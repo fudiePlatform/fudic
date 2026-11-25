@@ -1,0 +1,7 @@
+component myapp-likes
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-likes

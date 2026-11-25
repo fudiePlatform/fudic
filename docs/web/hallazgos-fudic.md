@@ -860,6 +860,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Lo mismo con un slot**, en el tutorial `slots`: `<h2 slot="titel">` da «Argument of type
   '"titel"' is not assignable to parameter of type '$Slots'». La bombilla acierta otra vez
   («Change to slot="title"», «Change to slot="footer"»).
+- **Y con un signal sin paréntesis**, en el tutorial `signals`: `<output>@count</output>` da
+  «Argument of type 'Signal<number>' is not assignable to parameter of type '$Scalar'», sin
+  acción en la bombilla.
 
 ## 59. Un encabezado dentro de un componente no avisa, y la bombilla lo afianza
 
@@ -979,3 +982,44 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   lo mismo que el nº 31 en el workbench. Un editor guarda de una vez, pero un agente o un script
   pueden escribir por partes.
 - **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher.
+
+## 68. Un componente que solo lee un store no se actualiza nunca
+
+- **Qué pasó.** Escribiendo el tutorial `signal-store`, con `src/stores/cart.ts`
+  (`items = signal([])`, `count = computed(…)`, `add(name)`), un `<myapp-badge>` que solo pinta
+  `Cart (@count())` y un `<myapp-product>` que llama a `add`. El badge sale del servidor sin
+  `data-fud-id`: no se hidrata, y pulsar Add to cart no lo mueve de 0. Con un `@click` propio sí
+  lleva `data-fud-id`, pero sigue en 0 hasta que se le pulsa a él; desde ese clic, sigue al store.
+  El bus sí despierta a sus receptores (`event-bus`); un store no despierta a quien lo lee. Dos
+  instancias de un mismo tag sí comparten el store, porque hidratar una define el tag de todas.
+  Es justo el ejemplo de la Documentación (`/docs/reactivity#store`, `myapp-cart-badge`).
+- **Cómo se resolvió en el tutorial.** Dos productos (el mismo tag) que escriben y leen el mismo
+  store.
+- **Qué debería hacer.** Que leer un signal importado de un módulo marque al componente como
+  hidratable, y que una escritura en el store despierte a los componentes que lo leen, como hace
+  el bus con sus receptores.
+
+## 69. En `fudic dev`, un componente creado en el navegador no adopta su propio `<style>`
+
+- **Qué pasó.** Escribiendo el tutorial `lifecycle`, un `<myapp-width>` con
+  `<style> :host { display: block; } </style>` dentro de un `@if`. El que pinta el servidor lleva
+  `data-fud-adopt="base output p myapp-width"` y `display: block`. Al cerrar y abrir el `@if`, el
+  que crea el navegador lleva `data-fud-adopt="base output p"`, sin la hoja del componente, y queda
+  `display: inline`, con ancho 0. Con `pnpm build` y `fudic preview`, el creado sí lleva
+  `myapp-width` y sale bien.
+- **Cómo se resolvió en el tutorial.** El componente mide un `<p>` interior con `ref` y no
+  necesita CSS propio. `client-components` tampoco lo usa.
+- **Qué debería hacer.** Que en desarrollo el componente creado adopte su hoja, como en el build.
+
+## 70. `mount` no puede montar un componente con una prop `Signal` obligatoria
+
+- **Qué pasó.** En el tutorial `signal-props`, el hijo declara `props<{ value: Signal<number> }>()`.
+  El test que generó `fudic g component` (`mount(MyappDisplay)`) falla con `TypeError: value is not
+  a function`. Con `mount(MyappDisplay, { props: { value: signal(2) } })`: «prop "value" is not
+  JSON, and via 'ssr' renders it on the server — mount it with via: 'client'». Con
+  `via: 'client'`, otra vez `value is not a function`: el render pasa por el servidor igualmente.
+  El fixture generado (`base: {}`) tampoco lleva la prop, y el typecheck no lo señala.
+- **Cómo se resolvió en el tutorial.** La solución quita el test del hijo; el del padre lo monta
+  con su signal.
+- **Qué debería hacer.** Que `via: 'client'` monte de verdad en el cliente con la prop tal cual, y
+  que el fixture que no da una prop obligatoria sea un error.

@@ -1,0 +1,18 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const clicks = signal(0);
+
+  onDispose(() => console.log("later: onDispose"));
+
+  function wake() {
+    if (clicks() === 0) console.log("later: awake");
+    clicks.set(clicks() + 1);
+  }
+}
+
+<myapp-later>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button">
+    <button type="button" @click=@wake>Wake me up (@clicks())</button>
+  </template>
+</myapp-later>

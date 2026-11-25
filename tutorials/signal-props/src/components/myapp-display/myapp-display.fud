@@ -1,0 +1,17 @@
+@code {
+  import { computed, type Signal } from "@fudic/core";
+
+  const { value } = props<{ value: Signal<number> }>();
+  const double = computed(() => value() * 2);
+
+  function reset() {
+    value.set(0);
+  }
+}
+
+<myapp-display>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>The child sees @value(), and its double is @double()</p>
+    <button type="button" @click=@reset>Reset</button>
+  </template>
+</myapp-display>

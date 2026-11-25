@@ -1,0 +1,15 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const likes = signal(0);
+
+  function like() {
+    likes.set(likes() + 1);
+  }
+}
+
+<myapp-likes>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button">
+    <button type="button" @click=@like>Like (@likes())</button>
+  </template>
+</myapp-likes>

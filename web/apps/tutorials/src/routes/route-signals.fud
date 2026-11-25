@@ -1,0 +1,151 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un signal en la página · Tutoriales de Fudic</title>
+  <meta name="description" content="Signals en el código de una página de Fudic, sin ningún componente: una lista con @if y @foreach que se actualiza, y un effect que cuenta segundos.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/route-signals">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un signal en la página · Tutoriales de Fudic">
+  <meta property="og:description" content="Una lista de tareas reactiva y un contador de segundos, escritos en la página.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/route-signals">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("route-signals")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#list">2. Una lista en la página</a></li>
+        <li><a href="#effect">3. Algo que pasa sin tocar nada</a></li>
+        <li><a href="#source">4. Lo que llega al navegador</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Reactividad</span></p>
+
+<h1>Un signal en la página</h1>
+
+<p class="lede">Haces una lista de tareas que crece con un botón, y un contador de los segundos que llevas en la página. Todo en el <code>@@code</code> de la página, sin ningún componente.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar signals en el <code>@@code</code> de una página.</li>
+    <li>Ver que <code>@@if</code> y <code>@@foreach</code> siguen al signal que leen.</li>
+    <li>Hacer algo sin que nadie toque nada, con <code>effect</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="list">2. Una lista en la página</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const tasks = signal&lt;readonly string[]&gt;(["Buy bread"]);
+
+  function add() &#123;
+    tasks.set([...tasks(), `Task $&#123;tasks().length + 1&#125;`]);
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;&lt;button type="button" @@click=@@add&gt;Add a task&lt;/button&gt;&lt;/p&gt;
+@@if (tasks().length &gt; 2) &#123;
+  &lt;p&gt;That is a busy day.&lt;/p&gt;
+&#125;
+&lt;ul&gt;
+  @@foreach (const task of tasks()) key (task) &#123;
+    &lt;li&gt;@@task&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa Add a task dos veces. La lista gana Task 2 y Task 3, y encima aparece «That is a busy day.».</p>
+
+<ul>
+  <li><strong>Una página escribe signals igual que un componente.</strong> No hace falta un componente para tener estado.</li>
+  <li><strong>El <code>@@if</code> y el <code>@@foreach</code> leen <code>tasks()</code> en su cabecera</strong>, así que se vuelven a evaluar cuando cambia. El <code>@@foreach</code> añade las filas nuevas sin rehacer las que ya estaban: para eso está el <code>key</code>.</li>
+</ul>
+
+<h2 id="effect">3. Algo que pasa sin tocar nada</h2>
+
+<p>Añade un contador de los segundos que llevas en la página. Cambia el <code>@@code</code> y escribe el párrafo debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; effect, signal &#125; from "@@fudic/core";
+
+  const tasks = signal&lt;readonly string[]&gt;(["Buy bread"]);
+  const seconds = signal(0);
+
+  function add() &#123;
+    tasks.set([...tasks(), `Task $&#123;tasks().length + 1&#125;`]);
+  &#125;
+
+  effect(() =&gt; &#123;
+    const timer = setInterval(() =&gt; seconds.set(seconds() + 1), 1000);
+    return () =&gt; clearInterval(timer);
+  &#125;, []);
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;You have been here for @@seconds() s.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Recarga la página y no toques nada: el número sube un segundo cada segundo.</p>
+
+<ul>
+  <li><strong><code>effect</code> ejecuta su función en el navegador.</strong> Con <code>[]</code> como segundo argumento, se ejecuta una vez.</li>
+  <li><strong>La función que devuelve es su limpieza</strong>: <code>clearInterval</code> para el temporizador cuando la página se va.</li>
+  <li><strong>El servidor no ejecuta el <code>effect</code></strong>, así que puede usar <code>setInterval</code>, <code>document</code> o <code>window</code> sin comprobar dónde está.</li>
+</ul>
+
+<h2 id="source">4. Lo que llega al navegador</h2>
+
+<p>Abre el código fuente con Ctrl+U. Al final del <code>&lt;body&gt;</code> está esta línea:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-eager"&gt;["index"]&lt;/script&gt;</code></pre>
+
+<p>Todo lo que hace un handler puede esperar a un gesto: el código baja con el primer clic. Un <code>effect</code> no, porque tiene que estar escuchando desde el principio. Por eso Fudic apunta la página, <code>index</code>, entre lo que se activa al cargar. Usa <code>effect</code> solo para lo que tiene que pasar sin que nadie toque nada.</p>
+
+<p><code>effect</code> y su limpieza están en <a href="/docs/reactivity#effect">effect: hacer algo cuando cambia</a>, en la página <a href="/docs/reactivity">Signals</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-signals" target="_blank" rel="noopener">la solución de Un signal en la página, en GitHub</a>. Compara tu <code>src/routes/index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/signal-props", prevTitle: "Valor o signal en una prop", next: "/tutorials/lifecycle", nextTitle: "El ciclo de vida")

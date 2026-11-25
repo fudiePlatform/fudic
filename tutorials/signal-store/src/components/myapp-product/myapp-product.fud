@@ -1,0 +1,17 @@
+@code {
+  import { add, count } from "../../stores/cart";
+
+  const { name = "" } = props<{ name?: string }>();
+
+  function buy() {
+    add(name);
+  }
+}
+
+<myapp-product>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>@name</p>
+    <button type="button" @click=@buy>Add to cart</button>
+    <p>Items in your cart: @count()</p>
+  </template>
+</myapp-product>

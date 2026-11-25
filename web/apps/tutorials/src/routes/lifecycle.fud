@@ -1,0 +1,198 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El ciclo de vida · Tutoriales de Fudic</title>
+  <meta name="description" content="Los hooks del ciclo de vida de un componente de Fudic, vistos en la consola: afterHydrate, afterCreate, onConnect, onDisconnect y onDispose.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/lifecycle">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El ciclo de vida · Tutoriales de Fudic">
+  <meta property="og:description" content="Un componente que mide su ancho, entra y sale de la página, y otro que espera a un gesto.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/lifecycle">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("lifecycle")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#hooks">2. Un componente con hooks</a></li>
+        <li><a href="#in-and-out">3. Que entre y salga</a></li>
+        <li><a href="#gesture">4. Uno que espera a un gesto</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Reactividad</span></p>
+
+<h1>El ciclo de vida</h1>
+
+<p class="lede">Haces un componente que mide su ancho mientras está en la página y anota en la consola cada momento de su vida. Luego lo haces entrar y salir, y lo comparas con uno que no se activa hasta que lo tocas.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Usar <code>onConnect</code> y su limpieza para lo que depende de estar en la página.</li>
+    <li>Ver el orden de los hooks cuando el componente viene del servidor y cuando lo crea el navegador.</li>
+    <li>Saber qué hooks hacen que un componente se active al cargar.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="hooks">2. Un componente con hooks</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component width --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-width/myapp-width.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const width = signal(0);
+  let box: HTMLParagraphElement | null = null;
+
+  afterHydrate(() =&gt; console.log("afterHydrate"));
+  afterCreate(() =&gt; console.log("afterCreate"));
+
+  onConnect(() =&gt; &#123;
+    console.log("onConnect");
+    const observer = new ResizeObserver(() =&gt; width.set(box?.clientWidth ?? 0));
+    if (box) observer.observe(box);
+    return () =&gt; observer.disconnect();
+  &#125;);
+
+  onDisconnect(() =&gt; console.log("onDisconnect"));
+  onDispose(() =&gt; console.log("onDispose"));
+&#125;
+
+&lt;myapp-width&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="output p"&gt;
+    &lt;p ref="@@box"&gt;This box is &lt;output&gt;@@width()&lt;/output&gt; px wide.&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-width&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Los hooks son funciones de <code>@@code</code> que no se importan.</strong> Van en el nivel superior, nunca dentro de un <code>if</code> o de una función.</li>
+  <li><strong><code>onConnect</code> se ejecuta cada vez que el componente entra en la página.</strong> Aquí pone un <a href="https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver" target="_blank" rel="noopener"><code>ResizeObserver</code></a> sobre el párrafo, que <code>ref</code> guarda en <code>box</code>.</li>
+  <li><strong>La función que devuelve es su limpieza</strong>, y se ejecuta al salir de la página: el observer no se queda mirando un elemento que ya no está.</li>
+</ul>
+
+<h2 id="in-and-out">3. Que entre y salga</h2>
+
+<p>Pon el componente dentro de un <code>@@if</code> que un botón abre y cierra:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-width/myapp-width.fud"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const shown = signal(true);
+
+  function toggle() &#123;
+    shown.set(!shown());
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;&lt;button type="button" @@click=@@toggle&gt;Show or hide&lt;/button&gt;&lt;/p&gt;
+@@if (shown()) &#123;
+  &lt;myapp-width&gt;&lt;/myapp-width&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Abre la consola del navegador con F12 y recarga. Sin tocar nada, la consola escribe:</p>
+
+<pre class="output"><code>afterHydrate
+onConnect</code></pre>
+
+<p>Y el párrafo dice su ancho. Estrecha la ventana: el número baja. Pulsa Show or hide dos veces, para quitar el componente y volver a ponerlo:</p>
+
+<pre class="output"><code>onDisconnect
+onDispose
+afterCreate
+onConnect</code></pre>
+
+<ul>
+  <li><strong>El primero vino pintado del servidor</strong>, así que se hidrata: <code>afterHydrate</code>, y luego <code>onConnect</code>.</li>
+  <li><strong>Al quitarlo</strong>, <code>onDisconnect</code> y, justo después, <code>onDispose</code>: el componente se destruye.</li>
+  <li><strong>El que vuelve lo crea el navegador</strong>, porque el servidor no lo pintó: <code>afterCreate</code> en lugar de <code>afterHydrate</code>, y otra vez <code>onConnect</code>, con su observer nuevo.</li>
+</ul>
+
+<h2 id="gesture">4. Uno que espera a un gesto</h2>
+
+<p><code>afterHydrate</code> y <code>onConnect</code> tienen que ejecutarse aunque nadie toque nada, así que el componente se activa al cargar. Uno sin ellos espera a su primer gesto. Genera otro:</p>
+
+<ui-code>
+<pre><code>npx fudic g component later --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/myapp-later/myapp-later.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const clicks = signal(0);
+
+  onDispose(() =&gt; console.log("later: onDispose"));
+
+  function wake() &#123;
+    if (clicks() === 0) console.log("later: awake");
+    clicks.set(clicks() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-later&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@wake&gt;Wake me up (@@clicks())&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-later&gt;</code></pre>
+</ui-code>
+
+<p>Escríbelo en la página, encima del <code>@@if</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-later&gt;&lt;/myapp-later&gt;</code></pre>
+</ui-code>
+
+<p>Recarga. La consola solo escribe lo de <code>myapp-width</code>. Pulsa Wake me up: aparece <code>later: awake</code> y el botón dice Wake me up (1). En el código fuente, la lista de lo que se activa al cargar solo nombra al primero:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-eager"&gt;["myapp-width"]&lt;/script&gt;</code></pre>
+
+<p>Por eso, usa <code>onConnect</code> y <code>afterHydrate</code> solo para lo que tiene que pasar sin que nadie toque nada. Todos los hooks, también los de una página, están en <a href="/docs/reactivity/lifecycle">Ciclo de vida</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/lifecycle" target="_blank" rel="noopener">la solución de El ciclo de vida, en GitHub</a>. Compara tus dos componentes con los suyos.</p>
+
+@render pager(prev: "/tutorials/route-signals", prevTitle: "Un signal en la página", next: "/tutorials/hydration", nextTitle: "Hidratación guiada por el gesto")

@@ -1,0 +1,178 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Hidratación guiada por el gesto · Tutoriales de Fudic</title>
+  <meta name="description" content="Mira en la pestaña Red cuándo baja el código de cada componente de Fudic: el estático nunca, el visible al cargar, el de abajo al acercarse, y el clic se sirve de la caché.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/hydration">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Hidratación guiada por el gesto · Tutoriales de Fudic">
+  <meta property="og:description" content="Tres componentes y la pestaña Red: qué se descarga, cuándo y quién lo pide.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/hydration">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("hydration")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y tres componentes</a></li>
+        <li><a href="#page">2. Uno arriba y otro abajo</a></li>
+        <li><a href="#build">3. Construye y sirve el build</a></li>
+        <li><a href="#network">4. Mira la pestaña Red</a></li>
+        <li><a href="#source">5. Lo que no se hidrata</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Reactividad</span></p>
+
+<h1>Hidratación guiada por el gesto</h1>
+
+<p class="lede">Pones en una página una nota estática, un contador visible y otro botón muy abajo. Con la pestaña Red de Chrome ves cuándo baja el código de cada uno, y que el clic no espera a la red.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber qué componentes descargan JavaScript y cuáles se quedan en HTML y CSS.</li>
+    <li>Ver que el código de un componente baja cuando entra en pantalla, no antes.</li>
+    <li>Comprobar que el primer clic se sirve de la caché del service worker.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Crea la app y tres componentes</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component note --in src/routes/index.fud
+npx fudic g component counter --in src/routes/index.fud
+npx fudic g component likes --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La nota no tiene nada que hacer en el navegador:</p>
+
+<ui-code .path="src/components/myapp-note/myapp-note.fud">
+<pre><code>&lt;myapp-note&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p&gt;This note is plain HTML and CSS.&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-note&gt;</code></pre>
+</ui-code>
+
+<p>El contador empieza en 10:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const count = signal(10);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@more&gt;Count: @@count()&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Y un botón de me gusta, que irá al final de la página:</p>
+
+<ui-code .path="src/components/myapp-likes/myapp-likes.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const likes = signal(0);
+
+  function like() &#123;
+    likes.set(likes() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-likes&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@like&gt;Like (@@likes())&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-likes&gt;</code></pre>
+</ui-code>
+
+<h2 id="page">2. Uno arriba y otro abajo</h2>
+
+<p>Un párrafo alto deja el me gusta por debajo del pliegue, fuera de la pantalla al cargar:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-note/myapp-note.fud"&gt;
+&lt;link rel="component" href="../components/myapp-counter/myapp-counter.fud"&gt;
+&lt;link rel="component" href="../components/myapp-likes/myapp-likes.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-note&gt;&lt;/myapp-note&gt;
+&lt;myapp-counter&gt;&lt;/myapp-counter&gt;
+&lt;p style="height: 150vh"&gt;Scroll down.&lt;/p&gt;
+&lt;myapp-likes&gt;&lt;/myapp-likes&gt;</code></pre>
+</ui-code>
+
+<h2 id="build">3. Construye y sirve el build</h2>
+
+<p>La carga del código en segundo plano la hace el service worker, y <code>fudic dev</code> no lo arranca. Mídelo sobre el build:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:4173/</code>. Lo que hace <code>fudic preview</code> lo cuenta <a href="/tutorials/first-app#preview">Tu primera app</a>.</p>
+
+<h2 id="network">4. Mira la pestaña Red</h2>
+
+<p>Abre las herramientas de Chrome con F12, ve a la pestaña Red (Network), escribe <code>/h/</code> en el filtro y recarga. Los ficheros de <code>/assets/h/</code> son el código de cada componente, uno por tag.</p>
+
+<ol>
+  <li><strong>Al cargar</strong> aparece <code>myapp-counter-….js</code>, pedido por el service worker: el contador está en pantalla y su código se guarda en caché sin que hagas nada. No aparecen ni <code>myapp-note</code> ni <code>myapp-likes</code>.</li>
+  <li><strong>Pulsa Count: 10.</strong> Pasa a 11 en ese primer clic. La página pide <code>myapp-counter-….js</code>, y llega del service worker, no de la red: ya estaba en caché.</li>
+  <li><strong>Baja hasta Like (0).</strong> Al entrar en pantalla aparece <code>myapp-likes-….js</code>, también pedido por el service worker.</li>
+  <li><strong>Pulsa Like (0).</strong> Pasa a 1, con su código servido otra vez desde la caché.</li>
+</ol>
+
+<p>Si el usuario nunca baja hasta el final, el código del me gusta no se descarga. Si el primer clic llega antes de que termine una descarga, Fudic lo guarda, hidrata el componente y lo repite: el clic no se pierde.</p>
+
+<h2 id="source">5. Lo que no se hidrata</h2>
+
+<p>La nota no aparece nunca en la pestaña Red. Abre el código fuente con Ctrl+U y compárala con el contador:</p>
+
+<pre class="output"><code>&lt;myapp-note data-fud-adopt="base p"&gt;…&lt;/myapp-note&gt;
+&lt;myapp-counter data-fud-id="0" data-fud-adopt="base button"&gt;…&lt;/myapp-counter&gt;
+…
+&lt;script type="application/json" id="fud-state"&gt;[[0,0,0],[]]&lt;/script&gt;</code></pre>
+
+<ul>
+  <li><strong><code>data-fud-id</code> marca lo que se hidrata.</strong> Solo lo lleva un componente con algo que hacer en el navegador: signals, eventos, un <code>effect</code> o un hook. La nota no lo lleva: se queda en HTML y CSS.</li>
+  <li><strong><code>fud-state</code> lleva los valores con los que se pintó cada componente</strong>, para que se enganche al HTML sin volver a calcularlo.</li>
+</ul>
+
+<p>Cuándo se hidrata cada componente, y por qué, está en <a href="/docs/reactivity/hydration">Hidratación</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/hydration" target="_blank" rel="noopener">la solución de Hidratación guiada por el gesto, en GitHub</a>. Compara tus componentes y tu página con los suyos.</p>
+
+@render pager(prev: "/tutorials/lifecycle", prevTitle: "El ciclo de vida", next: "/tutorials/client-components", nextTitle: "Componentes creados en el navegador")

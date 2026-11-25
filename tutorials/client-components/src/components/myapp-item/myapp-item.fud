@@ -1,0 +1,19 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const { label = "" } = props<{ label?: string }>();
+  const clicks = signal(0);
+
+  afterHydrate(() => console.log(`${label}: hydrated`));
+  afterCreate(() => console.log(`${label}: created in the browser`));
+
+  function click() {
+    clicks.set(clicks() + 1);
+  }
+}
+
+<myapp-item>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button">
+    <button type="button" @click=@click>@label · @clicks()</button>
+  </template>
+</myapp-item>

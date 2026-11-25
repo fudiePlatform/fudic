@@ -1,0 +1,178 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un contador con signals · Tutoriales de Fudic</title>
+  <meta name="description" content="Un contador de Fudic con signal y computed: el valor se lee llamándolo, se escribe con set y la plantilla se actualiza sola.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/signals">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un contador con signals · Tutoriales de Fudic">
+  <meta property="og:description" content="Un contador que se actualiza solo, con un valor derivado que lo sigue.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/signals">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render reactivityNav("signals")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#signal">3. Un signal</a></li>
+        <li><a href="#computed">4. Un valor derivado</a></li>
+        <li><a href="#parentheses">5. Sin paréntesis</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Reactividad</span></p>
+
+<h1>Un contador con signals</h1>
+
+<p class="lede">Haces un contador que se actualiza solo al pulsarlo, y un valor derivado que lo sigue. Los dos son signals: valores que avisan a quien los lee cuando cambian.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Guardar un valor en un <code>signal</code>, leerlo llamándolo y escribirlo con <code>set</code>.</li>
+    <li>Derivar otro valor con <code>computed</code>.</li>
+    <li>Reconocer el error de un signal escrito sin paréntesis en la plantilla.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component counter --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-counter&gt;</code> en <code>src/components/myapp-counter/</code> y lo enlaza desde la página de inicio. Escribe el tag debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-counter/myapp-counter.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-counter&gt;&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<h2 id="signal">3. Un signal</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const count = signal(0);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output p"&gt;
+    &lt;p&gt;
+      &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+      &lt;output&gt;@@count()&lt;/output&gt;
+    &lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa +1 tres veces: el número pasa de 0 a 3.</p>
+
+<ul>
+  <li><strong><code>signal(0)</code> crea un signal que empieza en 0.</strong></li>
+  <li><strong>Se lee llamándolo: <code>count()</code>.</strong> La plantilla que lo lee queda suscrita.</li>
+  <li><strong>Se escribe con <code>set</code>.</strong> Al escribirlo, Fudic actualiza solo el texto del <code>&lt;output&gt;</code>: ni repinta el componente entero ni vuelve a ejecutar el <code>@@code</code>, que corre una sola vez.</li>
+</ul>
+
+<p>Abre el código fuente con Ctrl+U. El servidor ya pintó el valor inicial:</p>
+
+<pre class="output"><code>&lt;myapp-counter data-fud-id="0" data-fud-adopt="base button output p"&gt;&lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button output p"&gt; &lt;p&gt;&lt;button type="button"&gt;+1&lt;/button&gt; &lt;output&gt;0&lt;/output&gt;&lt;/p&gt; &lt;/template&gt;&lt;/myapp-counter&gt;</code></pre>
+
+<p>En el servidor nada reacciona: un signal es su valor inicial. El navegador recibe ese HTML, y el componente se engancha a él con el primer clic.</p>
+
+<h2 id="computed">4. Un valor derivado</h2>
+
+<p>Añade el doble del contador. Cambia la línea del <code>import</code>, declara <code>double</code> y escríbelo en la plantilla:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const count = signal(0);
+  const double = computed(() =&gt; count() * 2);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output p"&gt;
+    &lt;p&gt;
+      &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+      &lt;output&gt;@@count()&lt;/output&gt;
+    &lt;/p&gt;
+    &lt;p&gt;Double: @@double()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa +1 tres veces: debajo pone Double: 6.</p>
+
+<p>Un <code>computed</code> se calcula a partir de otros signals y se recalcula solo cuando cambian. Se lee igual, <code>double()</code>, pero no tiene <code>set</code>.</p>
+
+<h2 id="parentheses">5. Sin paréntesis</h2>
+
+<p>El error más común es escribir el signal en la plantilla sin llamarlo. Prueba:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>      &lt;output&gt;@@count&lt;/output&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-counter/myapp-counter.fud:16:16 - error TS2345: Argument of type 'Signal&lt;number&gt;' is not assignable to parameter of type '$Scalar'.
+  my-app     16        &lt;output&gt;@@count&lt;/output&gt;
+  my-app                        ─────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Lo que importa del mensaje es <code>Signal&lt;number&gt;</code>: la plantilla recibe el signal, y lo que se puede pintar es su valor. Vuelve a escribir <code>@@count()</code> y el error desaparece.</p>
+
+<p><code>signal</code>, <code>computed</code> y <code>effect</code>, el tercero, están en <a href="/docs/reactivity">Signals</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/signals" target="_blank" rel="noopener">la solución de Un contador con signals, en GitHub</a>. Compara tu <code>myapp-counter.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/route-events", prevTitle: "Manejadores en la ruta", next: "/tutorials/signal-store", nextTitle: "Un signal compartido")

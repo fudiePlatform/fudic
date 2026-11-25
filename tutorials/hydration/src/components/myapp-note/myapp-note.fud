@@ -1,0 +1,5 @@
+<myapp-note>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p">
+    <p>This note is plain HTML and CSS.</p>
+  </template>
+</myapp-note>

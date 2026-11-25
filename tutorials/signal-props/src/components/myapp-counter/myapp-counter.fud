@@ -1,0 +1,21 @@
+<link rel="component" href="../myapp-display/myapp-display.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const count = signal(0);
+
+  function more() {
+    count.set(count() + 1);
+  }
+}
+
+<myapp-counter>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>
+      <button type="button" @click=@more>+1</button>
+      The parent has @count()
+    </p>
+    <myapp-display .value=@count></myapp-display>
+  </template>
+</myapp-counter>

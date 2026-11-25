@@ -1,0 +1,14 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-counter/myapp-counter.fud">
+<link rel="component" href="../components/myapp-note/myapp-note.fud">
+<link rel="component" href="../components/myapp-likes/myapp-likes.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-note></myapp-note>
+<myapp-counter></myapp-counter>
+<p style="height: 150vh">Scroll down.</p>
+<myapp-likes></myapp-likes>
