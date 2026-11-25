@@ -1,0 +1,171 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Condiciones y listas · Tutoriales de Fudic</title>
+  <meta name="description" content="Decide qué se pinta con &#64;if y pinta una lista con &#64;foreach en una plantilla de Fudic: la key de cada fila y lo que sale cuando la lista está vacía.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/if-and-foreach">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Condiciones y listas · Tutoriales de Fudic">
+  <meta property="og:description" content="&#64;if para decidir qué se pinta, &#64;foreach para pintar una lista, con su key y su &#64;empty.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/if-and-foreach">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("if-and-foreach")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#condition">2. Decide qué se pinta</a></li>
+        <li><a href="#list">3. Pinta una lista</a></li>
+        <li><a href="#empty">4. Cuando la lista está vacía</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Condiciones y listas</h1>
+
+<p class="lede">Escribes en la página de inicio un aviso de existencias que cambia según un número y una lista de tareas, con su key y un mensaje para cuando no queda ninguna.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Elegir qué se pinta con <code>@@if</code>, <code>else if</code> y <code>else</code>.</li>
+    <li>Pintar una lista con <code>@@foreach</code> y saber por qué cada fila lleva una key.</li>
+    <li>Enseñar otra cosa cuando la lista está vacía, con <code>@@empty</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="condition">2. Decide qué se pinta</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const stock: number = 3;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+@@if (stock === 0) &#123;
+  &lt;p&gt;Sold out.&lt;/p&gt;
+&#125; else if (stock &lt; 5) &#123;
+  &lt;p&gt;Only @@stock left.&lt;/p&gt;
+&#125; else &#123;
+  &lt;p&gt;In stock.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Guarda, y la página dice <code>Only 3 left.</code> Cambia <code>stock</code> a <code>0</code> y dirá <code>Sold out.</code>; a <code>12</code>, <code>In stock.</code></p>
+
+<ul>
+  <li><strong>Solo llega al navegador la rama que se cumple.</strong> El servidor decide al pintar la página, y las otras dos no aparecen en el HTML.</li>
+  <li><strong>La condición es un booleano</strong>, como <code>stock === 0</code>. Un <code>@@if (stock)</code> no vale, porque no todos los lenguajes de servidor deciden igual si un <code>0</code> o un <code>""</code> cuentan como falso.</li>
+</ul>
+
+<ui-note>
+  <p>El <code>: number</code> hace falta. Sin él, TypeScript da a <code>stock</code> el tipo exacto <code>3</code>, y la terminal rechaza la comparación con <code>0</code>:</p>
+  <pre class="output"><code>  my-app   src/routes/index.fud:13:6 - error TS2367: This comparison appears to be unintentional because the types '3' and '0' have no overlap.</code></pre>
+</ui-note>
+
+<p>Las condiciones, con <code>@@switch</code> para elegir entre varios valores, están en <a href="/docs/template-syntax/expressions#conditions">Expresiones y control de flujo</a>.</p>
+
+<h2 id="list">3. Pinta una lista</h2>
+
+<p>Añade la lista de tareas al <code>@@code</code>, debajo de <code>stock</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const tasks = ["Buy bread", "Call Ana", "Write the report"];</code></pre>
+</ui-code>
+
+<p>Y al final de la página, un <code>@@foreach</code> que pinta una fila por tarea:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;ul&gt;
+  @@foreach (const task of tasks) &#123;
+    &lt;li&gt;@@task&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:23:12 - error FUD0540: a loop must declare 'key (…)'
+  my-app     23    @@foreach (const task of tasks) &#123;
+  my-app                    ─────────────────────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0540
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Todo bucle de Fudic dice cómo se identifica cada fila. Si la lista cambia, Fudic conserva, mueve o quita cada fila por su key, en vez de rehacer la lista entera y perder el foco o lo escrito. Aquí cada tarea es distinta, así que la propia tarea sirve de key. En el editor, la bombilla lo escribe por ti con «Add key (task)»:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  @@foreach (const task of tasks) key (task) &#123;</code></pre>
+</ui-code>
+
+<pre class="output"><code>Only 3 left.
+• Buy bread
+• Call Ana
+• Write the report</code></pre>
+
+<p>Con una lista de objetos, la key es su identificador: <code>key (task.id)</code>. Los bucles, con <code>@@for</code> y <code>@@while</code>, están en <a href="/docs/template-syntax/expressions#loops">Expresiones y control de flujo</a>.</p>
+
+<h2 id="empty">4. Cuando la lista está vacía</h2>
+
+<p>Añade un <code>@@empty</code> detrás del bucle:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;ul&gt;
+  @@foreach (const task of tasks) key (task) &#123;
+    &lt;li&gt;@@task&lt;/li&gt;
+  &#125; @@empty &#123;
+    &lt;li&gt;Nothing to do.&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Para verlo, vacía la lista:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const tasks: string[] = [];</code></pre>
+</ui-code>
+
+<pre class="output"><code>Only 3 left.
+• Nothing to do.</code></pre>
+
+<p>El bloque de <code>@@empty</code> se pinta solo si la lista no tiene ninguna fila, y entonces se pinta solo él. Deja luego las tres tareas como estaban.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/if-and-foreach" target="_blank" rel="noopener">la solución de Condiciones y listas, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/expressions", prevTitle: "Pintar valores con @(…)", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -61,7 +61,7 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
 | 4 | `expressions` | Pintar valores con `@(…)`: operadores, llamadas, colecciones | P | — | template-syntax, template-syntax/expressions, server/pipes | `/vista` | En revisión |
-| 5 | `if-and-foreach` | Condiciones y listas | P | — | template-syntax | `/vista`, `vista-tareas` | Propuesto |
+| 5 | `if-and-foreach` | Condiciones y listas | P | — | template-syntax, template-syntax/expressions | `/vista`, `vista-tareas` | En revisión |
 | 6 | `props` | Pasar datos a un hijo | P | `g component` | template-syntax/components | `/value-prop`, `app-child` | Propuesto |
 | 7 | `slots` | Contenido por slot (los encabezados, en light DOM) | P | `g component` | template-syntax/components | `app-card`, `app-marco` | Propuesto |
 | 8 | `snippets` | Crear un snippet: declarado, importado y con scope | P | `g snippet` | template-syntax/snippets, cli/generate/snippet | `/snippets`, `src/snippets/` | Propuesto |
@@ -313,3 +313,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-25 | Decisión de Pedro: no se escriben más tutoriales hasta resolver cómo se prueba su código para que no se desfase (§6.1). `first-app` queda como muestra; su enlace a GitHub, roto hasta entonces. |
 | 2026-11-25 | A petición de Pedro, los otros dos tutoriales de Primeros pasos: `first-component` y `editor`, creados con `fudic g page`, con su solución en `tutorials/`. Todo de ejecuciones reales: `fudic g component` (con y sin `--in`), el aviso `FUD1440`, el error `FUD0191` en `fudic dev`, el diagnóstico y las dos acciones de la bombilla pedidos al language server por LSP, y `fudic fmt`. Lighthouse en las dos, móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | A petición de Pedro, la categoría Sintaxis de plantilla, de una en una con su revisión. `expressions`, creado con `fudic g page`, con su solución en `tutorials/expressions/`: valores, un pipe `currency`, `filter`/`reduce`/`.length` sobre una lista y el error `FUD1140` de `find` en `fudic dev` y en el language server (solo la acción «Explain FUD1140»). Menú `templateSyntaxNav` y tarjeta de la portada enlazada. Lighthouse móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100. |
+| 2026-11-25 | La skill monta el proyecto de prueba desde tarballs, todo fuera del repo. `if-and-foreach`, con su solución en `tutorials/if-and-foreach/`: `@if`/`else if`/`else`, el error `FUD0540` de un `@foreach` sin key con la acción «Add key (task)» del language server, y `@empty`. Hallazgo 57 del framework (`FUD1152` con un tipo literal). Lighthouse móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100. |

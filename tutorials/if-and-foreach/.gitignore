@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.fudic/
+*.local
+.DS_Store

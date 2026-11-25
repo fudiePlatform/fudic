@@ -189,4 +189,4 @@ First: 7</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/expressions" target="_blank" rel="noopener">la solución de Pintar valores con @@(…), en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/editor", prevTitle: "El editor a tu favor", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/editor", prevTitle: "El editor a tu favor", next: "/tutorials/if-and-foreach", nextTitle: "Condiciones y listas")

@@ -1,0 +1,28 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  const stock: number = 3;
+  const tasks = ["Buy bread", "Call Ana", "Write the report"];
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+@if (stock === 0) {
+  <p>Sold out.</p>
+} else if (stock < 5) {
+  <p>Only @stock left.</p>
+} else {
+  <p>In stock.</p>
+}
+
+<ul>
+  @foreach (const task of tasks) key (task) {
+    <li>@task</li>
+  } @empty {
+    <li>Nothing to do.</li>
+  }
+</ul>

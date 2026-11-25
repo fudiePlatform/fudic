@@ -824,3 +824,16 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   (`"beginner intermediate"`) y `levels.includes(…)`, que la vista no admite (`FUD1140`).
 - **Qué debería hacer.** Que el typecheck asigne cada argumento con nombre a su parámetro, como
   hace el render, y que los saltados tomen su valor por defecto.
+
+## 57. `<` sobre un `const` numérico da FUD1152 si su tipo es un literal
+
+- **Qué pasó.** Escribiendo el tutorial `if-and-foreach`, con `const stock = 0;` en el `@code` de
+  una página, `@if (stock === 0) { … } else if (stock < 5) { … }` termina en `fudic dev` con
+  `error FUD1152: \`<\` does not port for this type: convert the value in \`load()\``. TypeScript da
+  a `stock` el tipo literal `0`, y la comprobación de la vista no lo reconoce como número. Con
+  `const stock = 3;` sale antes `TS2367` (`=== 0` entre los tipos `3` y `0`), que es lo normal de
+  TypeScript.
+- **Cómo se resolvió en el tutorial.** Con el tipo explícito: `const stock: number = 3;`. El
+  tutorial explica el `TS2367`, no el `FUD1152`.
+- **Qué debería hacer.** Que un tipo literal numérico (o de texto) cuente como su tipo base para
+  los operadores de la vista, y que el mensaje no mande a `load()` un valor que ya es un número.

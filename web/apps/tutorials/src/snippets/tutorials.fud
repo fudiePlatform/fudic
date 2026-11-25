@@ -63,7 +63,7 @@
   <details class="toggle"><summary>Tutoriales de Sintaxis de plantilla</summary></details>
   <ol class="tutorial-list">
     @render tutorial("expressions", "Pintar valores con @(…)", "beginner", @current)
-    @render tutorial("if-and-foreach", "Condiciones y listas", "beginner", @current, false)
+    @render tutorial("if-and-foreach", "Condiciones y listas", "beginner", @current)
     @render tutorial("props", "Pasar datos a un hijo", "beginner", @current, false)
     @render tutorial("slots", "Contenido por slot", "beginner", @current, false)
     @render tutorial("snippets", "Crear un snippet", "beginner", @current, false)
