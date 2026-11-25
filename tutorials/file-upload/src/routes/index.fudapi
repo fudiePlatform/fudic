@@ -1,0 +1,10 @@
+# Up to three PDFs, a megabyte each: the browser checks on choosing, the server again while it reads.
+post attach
+  form attachForm
+
+form attachForm
+  docs  file[]
+    required             "Choose at least one file."
+    max-length 3         "At most {n} files."
+    accept "application/pdf"  "Only PDF files."
+    max-size 1mb         "Each one, at most {n}."

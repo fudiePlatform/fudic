@@ -146,9 +146,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Estilos (`scoped-styles`, `global-styles`, `style-guide`), el
   2026-11-25: el `href` frágil y los títulos «Scoped-styles», «Global-styles» y «Style-guide»,
   corregidos a mano: los tres de la categoría.
-- **Y otra vez** con los tutoriales de Formularios (`first-form`, `validation`, `submitting`), el
-  2026-11-25: el `href` frágil y los títulos «First-form», «Validation» y «Submitting», corregidos
-  a mano.
+- **Y otra vez** con los tutoriales de Formularios (`first-form`, `validation`, `submitting`,
+  `file-upload`), el 2026-11-25: el `href` frágil y los títulos «First-form», «Validation»,
+  «Submitting» y «File-upload», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

@@ -1,0 +1,148 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Subir ficheros · Tutoriales de Fudic</title>
+  <meta name="description" content="Un campo de ficheros en un formulario de Fudic: sus reglas de número, tipo y tamaño, que el navegador comprueba sin subir nada, y la subida en multipart a una función de servidor.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/file-upload">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Subir ficheros · Tutoriales de Fudic">
+  <meta property="og:description" content="Ficheros en un formulario de Fudic: reglas, comprobación en el navegador y subida al servidor.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/file-upload">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("file-upload")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#field">2. Un campo de ficheros</a></li>
+        <li><a href="#bind">3. La vista y el handler</a></li>
+        <li><a href="#try">4. Pruébalo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Formularios</span></p>
+
+<h1>Subir ficheros</h1>
+
+<p class="lede">Añades a un formulario un campo para subir hasta tres PDF, con sus reglas de número, tipo y tamaño, y los recibes en una función de servidor.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar un campo de ficheros con sus reglas.</li>
+    <li>Ver que el navegador las comprueba al elegir, sin subir nada.</li>
+    <li>Recibir los ficheros en el handler de una función.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Cómo se envía un formulario a una función está en <a href="/tutorials/submitting">Enviar al servidor</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+npx fudic add forms</code></pre>
+</ui-code>
+
+<p><code>fudic g api</code> crea el contrato de la página (<code>index.fudapi</code>) y su código de servidor (<code>src/server/routes/index.ts</code>), y <code>fudic add forms</code> añade los formularios e instala todo.</p>
+
+<h2 id="field">2. Un campo de ficheros</h2>
+
+<p>Sustituye el contrato por una función que recibe un formulario con un solo campo, una lista de ficheros:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Up to three PDFs, a megabyte each: the browser checks on choosing, the server again while it reads.
+post attach
+  form attachForm
+
+form attachForm
+  docs  file[]
+    required             "Choose at least one file."
+    max-length 3         "At most &#123;n&#125; files."
+    accept "application/pdf"  "Only PDF files."
+    max-size 1mb         "Each one, at most &#123;n&#125;."</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>file[]</code></strong> es una lista de ficheros. Para uno solo existe <code>file</code>, y <code>file?</code> si es opcional.</li>
+  <li><strong><code>max-length</code></strong>, en una lista, cuenta ficheros.</li>
+  <li><strong><code>accept</code></strong> comprueba el tipo, con la misma sintaxis que el atributo <code>accept</code> de HTML.</li>
+  <li><strong><code>max-size</code></strong> limita el tamaño de cada fichero.</li>
+</ul>
+
+<h2 id="bind">3. La vista y el handler</h2>
+
+<p>En la página, el campo se enlaza a un <code>&lt;input type="file"&gt;</code>, con <code>multiple</code> para poder elegir varios:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Documents&lt;/h1&gt;
+
+&lt;form control=@@attachForm form:=@@attach&gt;
+  &lt;label for="docs"&gt;PDF files&lt;/label&gt;
+  &lt;input id="docs" type="file" multiple control=@@attachForm.docs&gt;
+  &lt;small error=@@attachForm.docs&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Attach&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<p>En el handler, cada fichero es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/File" target="_blank" rel="noopener"><code>File</code></a> estándar, ya comprobado. Por ahora, escribe en la terminal el nombre y el tamaño de cada uno:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; attach &#125; from 'fudic:routes/index';
+
+attach.handle((ctx) =&gt; &#123;
+  const &#123; docs &#125; = ctx.form.$value();
+  for (const doc of docs) console.log(`[attach] $&#123;doc.name&#125; · $&#123;doc.size&#125; bytes`);
+&#125;);</code></pre>
+</ui-code>
+
+<p>Para guardarlo de verdad, un <code>File</code> se lee con su <code>stream()</code>, sin cargarlo entero en memoria. Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y mira el código fuente con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;input id="docs" type="file" multiple="" aria-describedby="fud-e-attachForm-docs" accept="application/pdf"&gt;</code></pre>
+
+<p>El compilador ha copiado en el <code>&lt;input&gt;</code> el <code>accept</code> de la regla, así que el diálogo del sistema ya solo enseña los PDF.</p>
+
+<h2 id="try">4. Pruébalo</h2>
+
+<p>Con la pestaña Red de las herramientas del navegador a la vista:</p>
+
+<ul>
+  <li><strong>Pulsa Attach sin elegir nada.</strong> «Choose at least one file.».</li>
+  <li><strong>Elige cuatro PDF.</strong> «At most 3 files.», en cuanto los eliges.</li>
+  <li><strong>Elige un PDF de más de un megabyte.</strong> «Each one, at most 1 MB.».</li>
+  <li><strong>Elige un PNG</strong>, cambiando el filtro del diálogo para que enseñe todos los archivos. «Only PDF files.».</li>
+</ul>
+
+<p>En ninguno de los cuatro casos aparece una petición en la pestaña Red: el navegador comprueba las reglas al elegir, sin subir ni un byte. Ahora elige dos PDF pequeños y pulsa Attach. Sale un <code>POST</code> a <code>/_fudic/fn/routes/index/attach</code> en <code>multipart/form-data</code>, que responde <code>204</code>, y en la terminal de <code>fudic dev</code>, una línea por fichero:</p>
+
+<pre class="output"><code>  my-app   [attach] invoice.pdf · 48213 bytes
+  my-app   [attach] contract.pdf · 120544 bytes</code></pre>
+
+<p>Un formulario con ficheros sube en <code>multipart/form-data</code>, una parte por fichero, y el servidor vuelve a comprobar las reglas, como con cualquier formulario. Una barra de progreso con <code>$progress()</code>, cancelar la subida y los límites del servidor en <code>fudic.json</code> están en <a href="/docs/forms/files">Ficheros</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/file-upload" target="_blank" rel="noopener">la solución de Subir ficheros, en GitHub</a>. Compara tu <code>index.fudapi</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/submitting", prevTitle: "Enviar al servidor", next: "/tutorials/", nextTitle: "Todas las categorías")

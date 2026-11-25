@@ -162,4 +162,4 @@ subscribe.handle((ctx) =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/submitting" target="_blank" rel="noopener">la solución de Enviar al servidor, en GitHub</a>. Compara tu <code>index.fudapi</code> y tu <code>src/server/routes/index.ts</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/validation", prevTitle: "Validación y mensajes de error", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/validation", prevTitle: "Validación y mensajes de error", next: "/tutorials/file-upload", nextTitle: "Subir ficheros")
