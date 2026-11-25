@@ -102,3 +102,14 @@
     @render tutorial("client-components", "Componentes creados en el navegador", "advanced", @current)
   </ol>
 }
+
+@snippet stylesNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Estilos</p>
+  <details class="toggle"><summary>Tutoriales de Estilos</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("scoped-styles", "El <style> del componente", "beginner", @current)
+    @render tutorial("global-styles", "Tema global y hojas compartidas", "intermediate", @current, false)
+    @render tutorial("style-guide", "Tu guía de estilos", "intermediate", @current, false)
+  </ol>
+}

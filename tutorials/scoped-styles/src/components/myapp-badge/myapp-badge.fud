@@ -1,0 +1,17 @@
+<head>
+  <style>
+    :host { display: inline-block; }
+    .label {
+      padding: 0.125rem 0.5rem;
+      border-radius: 1rem;
+      color: white;
+      background: var(--badge-color, rebeccapurple);
+    }
+  </style>
+</head>
+
+<myapp-badge>
+  <template shadowrootmode="open">
+    <span class="label"><slot></slot></span>
+  </template>
+</myapp-badge>

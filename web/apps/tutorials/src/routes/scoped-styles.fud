@@ -1,0 +1,187 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El &lt;style&gt; del componente · Tutoriales de Fudic</title>
+  <meta name="description" content="El CSS de un componente de Fudic: un style aislado en los dos sentidos, una custom property que cruza la frontera y una sola copia de la hoja por página.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/scoped-styles">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El &lt;style&gt; del componente · Tutoriales de Fudic">
+  <meta property="og:description" content="Un componente con su propio CSS, aislado de la página, y un color que le llega desde fuera.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/scoped-styles">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render stylesNav("scoped-styles")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#isolation">3. Un estilo aislado</a></li>
+        <li><a href="#custom-property">4. Un color desde fuera</a></li>
+        <li><a href="#one-copy">5. Una sola copia</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Estilos</span></p>
+
+<h1>El &lt;style&gt; del componente</h1>
+
+<p class="lede">Das a un componente su propio CSS y compruebas que no se mezcla con el de la página. Después le pasas un color desde fuera, y ves que la página recibe su hoja una sola vez.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Estilizar un componente con el <code>&lt;style&gt;</code> de su <code>&lt;head&gt;</code>, sin que choque con la página.</li>
+    <li>Pasarle un valor desde la página con una custom property.</li>
+    <li>Ver que todas las instancias comparten una sola copia de su hoja, y por qué esa hoja no admite expresiones.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component badge --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-badge&gt;</code> en <code>src/components/myapp-badge/</code> y lo enlaza desde la página de inicio. Su <code>.fud</code> nace con un <code>&lt;style&gt;</code> vacío en el <code>&lt;head&gt;</code>: es el sitio del CSS del componente.</p>
+
+<h2 id="isolation">3. Un estilo aislado</h2>
+
+<p>Sustituye el contenido del componente por una insignia redonda y morada:</p>
+
+<ui-code .path="src/components/myapp-badge/myapp-badge.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    :host &#123; display: inline-block; &#125;
+    .label &#123;
+      padding: 0.125rem 0.5rem;
+      border-radius: 1rem;
+      color: white;
+      background: rebeccapurple;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-badge&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;span class="label"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;
+  &lt;/template&gt;
+&lt;/myapp-badge&gt;</code></pre>
+</ui-code>
+
+<p><code>:host</code> es el propio tag, <code>&lt;myapp-badge&gt;</code>, visto desde dentro. El texto que la página escribe entre sus etiquetas entra por el <code>&lt;slot&gt;</code> (<a href="/tutorials/slots">Contenido por slot</a>).</p>
+
+<p>Ahora la página. Dale su propia regla <code>.label</code>, un párrafo con esa clase y una insignia:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-badge/myapp-badge.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+  &lt;style&gt;
+    .label &#123; text-decoration: underline; &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p class="label"&gt;A label of the page&lt;/p&gt;
+&lt;p&gt;&lt;myapp-badge&gt;New&lt;/myapp-badge&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Guarda. Las dos reglas <code>.label</code> no se tocan:</p>
+
+<ul>
+  <li><strong>El párrafo de la página sale subrayado y sin fondo.</strong> El <code>.label</code> del componente no sale de él.</li>
+  <li><strong>La insignia sale morada y sin subrayar.</strong> El <code>.label</code> de la página no entra en ella.</li>
+</ul>
+
+<p>Lo consigue el shadow DOM: el <code>&lt;template shadowrootmode&gt;</code> crea una frontera que el CSS no cruza, ni hacia fuera ni hacia dentro. No hace falta inventar nombres de clase que no se repitan.</p>
+
+<h2 id="custom-property">4. Un color desde fuera</h2>
+
+<p>Algunas cosas sí cruzan la frontera. Las propiedades que se heredan, como la fuente, pasan de la página al componente: la insignia ya usa la fuente de la página. Las custom properties (<code>--nombre</code>) también se heredan, y son la forma de pasarle valores.</p>
+
+<p>Cambia el fondo para que lea <code>--badge-color</code>, con el morado si nadie lo da:</p>
+
+<ui-code .path="src/components/myapp-badge/myapp-badge.fud">
+<pre><code>      background: var(--badge-color, rebeccapurple);</code></pre>
+</ui-code>
+
+<p>Y en la página, añade una segunda insignia que lo dé con el atributo <code>style</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;&lt;myapp-badge&gt;New&lt;/myapp-badge&gt; &lt;myapp-badge style="--badge-color: seagreen"&gt;Done&lt;/myapp-badge&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Guarda: New sigue morada y Done sale verde. El componente decide qué se puede cambiar desde fuera, y la página solo da el valor.</p>
+
+<p>Las cinco cosas que cruzan la frontera, entre ellas <code>::part()</code> y <code>::slotted()</code>, están en <a href="/docs/styles#boundary">Lo que cruza la frontera</a>.</p>
+
+<h2 id="one-copy">5. Una sola copia</h2>
+
+<p>Abre el código fuente con Ctrl+U. Ordenado aquí para leerlo mejor, al final del <code>&lt;head&gt;</code> y en el <code>&lt;body&gt;</code> está esto:</p>
+
+<pre class="output"><code>&lt;style type="module" specifier="myapp-badge"&gt;:host&#123;display:inline-block;&#125;.label&#123;padding:0.125rem 0.5rem;border-radius:1rem;color:white;background:var(--badge-color, rebeccapurple);&#125;&lt;/style&gt;
+…
+&lt;myapp-badge data-fud-adopt="base myapp-badge"&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base myapp-badge"&gt;&lt;span class="label"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;&lt;/template&gt;New
+&lt;/myapp-badge&gt;
+&lt;myapp-badge data-fud-adopt="base myapp-badge" style="--badge-color: seagreen"&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base myapp-badge"&gt;&lt;span class="label"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;&lt;/template&gt;Done
+&lt;/myapp-badge&gt;</code></pre>
+
+<ul>
+  <li><strong>El <code>&lt;style&gt;</code> del componente llega una vez, con un nombre:</strong> <code>specifier="myapp-badge"</code>.</li>
+  <li><strong>Cada instancia lo adopta por ese nombre</strong> en <code>shadowrootadoptedstylesheets</code>. Con cien insignias, la hoja seguiría llegando una vez.</li>
+  <li><strong><code>base</code> es la base de la guía de estilos,</strong> que adoptan todos los componentes.</li>
+</ul>
+
+<p>Las instancias pueden compartir la hoja porque es la misma para todas: el <code>&lt;style&gt;</code> no cambia. Compruébalo escribiendo una expresión en él:</p>
+
+<ui-code .path="src/components/myapp-badge/myapp-badge.fud">
+<pre><code>      background: @@color;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza, y el navegador enseña el mismo error:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-badge/myapp-badge.fud:8:19 - error FUD0132: Razor is not allowed inside &lt;style&gt;: its body is plain CSS. Write what changes in the markup (style=, style:, class:)
+  my-app     8        background: @@color;
+  my-app                          ──────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0132
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>En el <code>&lt;style&gt;</code>, la <code>@@</code> solo abre una at-rule de CSS, como <code>@@media</code>. Lo que cambia va en el markup, como el <code>style="--badge-color: …"</code> del paso 4. Vuelve a escribir <code>var(--badge-color, rebeccapurple)</code> y la terminal dice <code>the typecheck is clean again</code>.</p>
+
+<p>Cómo llega la hoja a cada instancia, y el polyfill que lo hace posible hoy, está en <a href="/docs/styles">El CSS de un componente</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/scoped-styles" target="_blank" rel="noopener">la solución de El &lt;style&gt; del componente, en GitHub</a>. Compara tu <code>myapp-badge.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/client-components", prevTitle: "Componentes creados en el navegador", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-badge/myapp-badge.fud">
+
+<head>
+  <title>Home</title>
+  <style>
+    .label { text-decoration: underline; }
+  </style>
+</head>
+
+<h1>Home</h1>
+<p class="label">A label of the page</p>
+<p><myapp-badge>New</myapp-badge> <myapp-badge style="--badge-color: seagreen">Done</myapp-badge></p>

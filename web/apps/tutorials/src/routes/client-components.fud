@@ -151,4 +151,4 @@ First · 1</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/client-components" target="_blank" rel="noopener">la solución de Componentes creados en el navegador, en GitHub</a>. Compara tu página y tu <code>myapp-item.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/hydration", prevTitle: "Hidratación guiada por el gesto", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/hydration", prevTitle: "Hidratación guiada por el gesto", next: "/tutorials/scoped-styles", nextTitle: "El <style> del componente")

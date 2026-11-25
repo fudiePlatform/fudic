@@ -1,0 +1,7 @@
+component myapp-badge
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-badge

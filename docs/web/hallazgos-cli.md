@@ -143,6 +143,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los siete tutoriales de Reactividad (`signals`, `signal-store`, `signal-props`,
   `route-signals`, `lifecycle`, `hydration`, `client-components`), el 2026-11-25: el `href` frágil
   y títulos como «Signal-store» o «Client-components», corregidos a mano.
+- **Y otra vez** con los tutoriales de Estilos (`scoped-styles`), el 2026-11-25: el `href` frágil y
+  el título «Scoped-styles», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
