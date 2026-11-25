@@ -121,7 +121,7 @@
   <ol class="tutorial-list">
     @render tutorial("first-form", "Un formulario con binding", "beginner", @current)
     @render tutorial("validation", "Validación y mensajes de error", "intermediate", @current)
-    @render tutorial("submitting", "Enviar al servidor", "intermediate", @current, false)
+    @render tutorial("submitting", "Enviar al servidor", "intermediate", @current)
     @render tutorial("file-upload", "Subir ficheros", "intermediate", @current, false)
     @render tutorial("form-events", "Eventos del formulario", "intermediate", @current, false)
     @render tutorial("form-control", "Un control form-associated", "advanced", @current, false)

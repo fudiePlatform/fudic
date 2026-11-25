@@ -192,4 +192,4 @@ messages
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/validation" target="_blank" rel="noopener">la solución de Validación y mensajes de error, en GitHub</a>. Compara tu <code>signup.fudapi</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/first-form", prevTitle: "Un formulario con binding", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/first-form", prevTitle: "Un formulario con binding", next: "/tutorials/submitting", nextTitle: "Enviar al servidor")

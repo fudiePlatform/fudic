@@ -1091,3 +1091,30 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   prosa.
 - **Qué debería hacer.** Recargar bien cualquier cambio del `.fudapi`, y que un fallo del render
   salga en la terminal (lo mismo que el nº 73).
+
+## 76. `throw redirect()` en una función de un formulario no navega sin `error-pages`
+
+- **Qué pasó.** Escribiendo el tutorial `submitting` (2026-11-25), en una app recién creada: una
+  función `post subscribe` con `form`, un handler que termina con `throw redirect('/thanks')` y
+  la página con `form:=@subscribe`. El handler se ejecuta y la función responde `303`
+  (`application/problem+fud`), pero la página se queda donde estaba, sin error en la consola. Con
+  un `src/http.fudapi` que pone `use error-pages` en la cadena, la misma página navega a
+  `/thanks`. El comentario de `examples/basic/src/routes/entrar.fudapi` lo dice («`error-pages`
+  of src/http.fudapi follows it»); la Documentación no: «Enviar al servidor» y «Funciones de
+  servidor» (`/docs/server/functions#redirect`) dicen que `redirect` hace que la página navegue.
+  Además, `use error-pages` sin `routes` da `FUD1087`, así que no hay forma de pedir solo eso.
+- **Cómo se resolvió en el tutorial.** El handler escribe en la terminal y no redirige. Enseñar la
+  respuesta en la página queda para `form-events`.
+- **Qué debería hacer.** Que el cliente de las funciones siga una redirección por su cuenta, sin
+  depender de un middleware, o que la Documentación diga que hace falta `error-pages` y que
+  `routes` sea opcional.
+
+## 77. `FUD1080` dice «unknown rule `required`» cuando falta `@fudic/forms`
+
+- **Qué pasó.** En el mismo tutorial, tras `fudic g api` (que añade `@fudic/http` pero no
+  `@fudic/forms`), un `form` en el contrato da en `fudic dev` «error FUD1080: unknown rule
+  `required`», y lo mismo con `pattern`. Son las reglas de serie de Fudic; lo que falta es el
+  paquete que las trae.
+- **Cómo se resolvió en el tutorial.** `fudic add forms` justo después de `fudic g api`.
+- **Qué debería hacer.** Que `FUD1080`, ante una regla de serie con `@fudic/forms` sin instalar,
+  diga que falta el paquete y proponga `fudic add forms`.
