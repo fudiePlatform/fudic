@@ -1,0 +1,7 @@
+component myapp-confirm
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-confirm

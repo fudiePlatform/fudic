@@ -1,0 +1,175 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Referencias con ref · Tutoriales de Fudic</title>
+  <meta name="description" content="Guarda un elemento de un componente de Fudic en una variable con ref y ábrelo desde un manejador: un diálogo de confirmación con el &lt;dialog&gt; estándar.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/ref">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Referencias con ref · Tutoriales de Fudic">
+  <meta property="og:description" content="Un diálogo de confirmación: el elemento en una variable con ref, y abierto desde un clic.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/ref">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("ref")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#ref">3. Apunta el diálogo con ref</a></li>
+        <li><a href="#try">4. Pruébalo</a></li>
+        <li><a href="#loop">5. Un ref en un bucle</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Referencias con ref</h1>
+
+<p class="lede">Haces un botón que abre un diálogo de confirmación. Para abrirlo hace falta el elemento <code>&lt;dialog&gt;</code>, y <code>ref</code> te lo da en una variable.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Guardar un elemento en una variable con <code>ref="@@variable"</code>.</li>
+    <li>Usarlo desde un manejador de eventos, que es donde existe.</li>
+    <li>Saber por qué <code>ref</code> no va dentro de un bucle.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component confirm --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>&lt;myapp-confirm&gt;</code> en <code>src/components/myapp-confirm/</code> y lo enlaza desde la página de inicio. Qué es cada fichero lo cuenta <a href="/tutorials/first-component">Tu primer componente</a>.</p>
+
+<h2 id="ref">3. Apunta el diálogo con ref</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-confirm/myapp-confirm.fud">
+<pre><code>@@code &#123;
+  let dialog: HTMLDialogElement | null = null;
+
+  function open() &#123;
+    dialog?.showModal();
+  &#125;
+&#125;
+
+&lt;myapp-confirm&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button dialog p"&gt;
+    &lt;button type="button" @@click=@@open&gt;Delete account&lt;/button&gt;
+    &lt;dialog ref="@@dialog"&gt;
+      &lt;p&gt;Delete your account? This cannot be undone.&lt;/p&gt;
+      &lt;form method="dialog"&gt;
+        &lt;button&gt;Cancel&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/dialog&gt;
+  &lt;/template&gt;
+&lt;/myapp-confirm&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La variable es tuya.</strong> La declaras en el <code>@@code</code>, con su tipo y empezando en <code>null</code>, y <code>ref="@@dialog"</code> le asigna el elemento.</li>
+  <li><strong><code>@@click=@@open</code> llama a <code>open</code> al pulsar el botón.</strong> Los eventos tienen su propio tutorial; aquí basta con saber que el manejador corre en el navegador, donde el elemento existe.</li>
+  <li><strong><code>showModal()</code> es del estándar</strong>, como todo el <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal" target="_blank" rel="noopener"><code>&lt;dialog&gt;</code></a>. Para cerrarlo no hace falta código: un <code>&lt;form method="dialog"&gt;</code> lo cierra al enviarse.</li>
+  <li><strong>El diálogo adopta la hoja <code>dialog</code> de la guía de estilos</strong>, así que se ve como el resto de la app sin escribir CSS.</li>
+</ul>
+
+<h2 id="try">4. Pruébalo</h2>
+
+<p>La CLI ya puso el <code>&lt;link rel="component"&gt;</code>. Escribe el tag debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-confirm/myapp-confirm.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-confirm&gt;&lt;/myapp-confirm&gt;</code></pre>
+</ui-code>
+
+<p>Pulsa Delete account: el diálogo se abre encima de la página y no deja usar el resto hasta cerrarlo. Cancel lo cierra.</p>
+
+<p>Abre el código fuente con Ctrl+U. El componente llega así, ordenado aquí para leerlo mejor:</p>
+
+<pre class="output"><code>&lt;myapp-confirm data-fud-id="0" data-fud-adopt="base button dialog p"&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button dialog p"&gt;
+    &lt;button type="button"&gt;Delete account&lt;/button&gt;
+    &lt;dialog&gt;&lt;p&gt;Delete your account? This cannot be undone.&lt;/p&gt;&lt;form method="dialog"&gt;&lt;button&gt;Cancel&lt;/button&gt;&lt;/form&gt;&lt;/dialog&gt;
+  &lt;/template&gt;
+&lt;/myapp-confirm&gt;</code></pre>
+
+<ul>
+  <li><strong>Ni el <code>ref</code> ni el <code>@@click</code> llegan al HTML.</strong> El servidor pinta el botón y el diálogo como HTML estándar.</li>
+  <li><strong><code>data-fud-id</code> marca un componente que se hidrata.</strong> Como tiene un manejador, Fudic manda su script, que en el navegador conecta el clic y le asigna a <code>dialog</code> su elemento.</li>
+</ul>
+
+<p>Por eso una referencia solo se usa en manejadores y efectos, nunca en la plantilla: el servidor que la pinta no tiene elementos.</p>
+
+<h2 id="loop">5. Un ref en un bucle</h2>
+
+<p>Prueba a guardar con <code>ref</code> una fila de una lista. Añade al <code>@@code</code>:</p>
+
+<ui-code .path="src/components/myapp-confirm/myapp-confirm.fud">
+<pre><code>  let item: HTMLElement | null = null;
+  const names = ["Ana", "Luis"];</code></pre>
+</ui-code>
+
+<p>Y la lista, encima del <code>&lt;dialog&gt;</code>:</p>
+
+<ui-code .path="src/components/myapp-confirm/myapp-confirm.fud">
+<pre><code>    &lt;ul&gt;
+      @@foreach (const name of names) key (name) &#123;
+        &lt;li ref="@@item"&gt;@@name&lt;/li&gt;
+      &#125;
+    &lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/components/myapp-confirm/myapp-confirm.fud:16:13 - error FUD0192: `ref` is not allowed inside a loop (@@foreach/@@for/@@while)
+  my-app     16          &lt;li ref="@@item"&gt;@@name&lt;/li&gt;
+  my-app                     ───────────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0192
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Un <code>ref</code> nombra un solo elemento, y dentro de un bucle tendría que nombrar uno por fila. Para actuar sobre una fila, se escucha el evento en la lista y se mira qué fila lo lanzó: es la <a href="/docs/template-syntax/events#delegation">delegación de eventos</a>. Quita la lista y la variable <code>item</code>, y el componente vuelve a funcionar.</p>
+
+<p><code>ref</code>, con su hermano <code>@@raw</code>, está en <a href="/docs/template-syntax/ref-and-raw#ref">ref y @@raw</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/ref" target="_blank" rel="noopener">la solución de Referencias con ref, en GitHub</a>. Compara tu <code>myapp-confirm.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/spread-and-rest", prevTitle: "Spread y resto de props", next: "/tutorials/", nextTitle: "Todas las categorías")

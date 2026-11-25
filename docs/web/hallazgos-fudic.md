@@ -931,3 +931,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **De paso.** `<strong>@name</strong> · $@price` deja `price` sin leer (la `@` detrás de un
   carácter se toma como texto, como en un email), y solo el editor lo insinúa, con
   `TS6133 'price' is declared but its value is never read`. `fudic dev` no dice nada.
+
+## 64. Leer un `ref` en la plantilla da un error que manda al `.fudapi`
+
+- **Qué pasó.** Escribiendo el tutorial `ref`, un componente con `let dialog: HTMLDialogElement |
+  null = null;` y `<dialog ref="@dialog">` que además escribe `<p>@dialog</p>` da dos errores:
+  `FUD1153: this type does not port: declare it in the \`.fudapi\`` sobre la declaración de
+  `dialog`, y un `TS2345` con el tipo interno `$Scalar`. Ninguno dice lo que pasa: un elemento
+  solo existe en el navegador, y el servidor que pinta la plantilla no lo tiene. Declarar
+  `HTMLDialogElement` en un `.fudapi` no tiene sentido.
+- **Cómo se resolvió en el tutorial.** No se enseña el error; una frase explica que una referencia
+  solo se usa en manejadores y efectos. El paso del error usa el `ref` dentro de un bucle, cuyo
+  `FUD0192` sí es claro.
+- **Qué debería hacer.** Un diagnóstico propio cuando la plantilla lee una variable que es
+  destino de un `ref`: «`dialog` is an element, set by `ref` in the browser: read it in a handler
+  or an effect».
