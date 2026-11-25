@@ -1,0 +1,4 @@
+@snippet row(label: string, value: string) {
+  <dt>@label</dt>
+  <dd>@value</dd>
+}

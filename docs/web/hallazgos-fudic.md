@@ -777,6 +777,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en la web.** No se puede desde la web; el aviso no rompe los tests.
 - **Qué debería hacer.** Que FUD1440 no se aplique al markup de un `@snippet`, ni al probarlo
   solo ni dentro de una página.
+- **Y otra vez** en el tutorial `snippets` (2026-11-25), ya en el proyecto de un usuario: el test de
+  un `row(label, value)` que pinta `<dt>` y `<dd>` avisa `FUD1440: <dt> is styled by the guide's
+  "dl"` (y lo mismo con `<dd>`) en `pnpm test`. `fudic dev`, el build y el editor no avisan.
 
 ## 55. Los ejemplos de código no se colorean (pospuesto, después de todos los hallazgos)
 

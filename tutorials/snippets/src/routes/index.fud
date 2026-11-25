@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="snippet" href="../snippets/ui.fud">
+
+@code {
+  const price = "$9 a month";
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<dl>
+  @render row("Plan", "Basic")
+  @render row("Users", "Up to 5")
+  @render row("Price", @price)
+</dl>

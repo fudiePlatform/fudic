@@ -1,0 +1,206 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Crear un snippet · Tutoriales de Fudic</title>
+  <meta name="description" content="Declara un snippet de Fudic en una página, pásale valores de la página con &#64; y llévalo a un fichero propio con fudic g snippet para usarlo desde cualquier página.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/snippets">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Crear un snippet · Tutoriales de Fudic">
+  <meta property="og:description" content="Un snippet declarado en la página, con valores de la página, y compartido en su propio fichero.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/snippets">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("snippets")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#declare">2. Declara un snippet</a></li>
+        <li><a href="#scope">3. Pásale valores de la página</a></li>
+        <li><a href="#share">4. Compártelo en su fichero</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Crear un snippet</h1>
+
+<p class="lede">Escribes una ficha de plan con un snippet que pinta cada fila, le pasas un valor de la página y lo llevas a su propio fichero para que lo use cualquier página.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar un snippet con <code>@@snippet</code> y usarlo con <code>@@render</code>.</li>
+    <li>Pasarle un texto fijo tal cual, y un valor de la página con <code>@@</code>.</li>
+    <li>Compartirlo en un fichero de snippets, creado con <code>fudic g snippet</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="declare">2. Declara un snippet</h2>
+
+<p>Un snippet es un trozo de markup con nombre y parámetros, para no repetirlo. Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;dl&gt;
+  @@render row("Plan", "Basic")
+  @@render row("Users", "Up to 5")
+&lt;/dl&gt;
+
+@@snippet row(label: string, value: string) &#123;
+  &lt;dt&gt;@@label&lt;/dt&gt;
+  &lt;dd&gt;@@value&lt;/dd&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Guarda y abre el código fuente con Ctrl+U. La lista llega así, ordenada aquí para leerla mejor:</p>
+
+<pre class="output"><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;dl&gt;
+  &lt;dt&gt;Plan&lt;/dt&gt; &lt;dd&gt;Basic&lt;/dd&gt;
+  &lt;dt&gt;Users&lt;/dt&gt; &lt;dd&gt;Up to 5&lt;/dd&gt;
+&lt;/dl&gt;</code></pre>
+
+<ul>
+  <li><strong><code>@@snippet</code> lo declara</strong>, con sus parámetros tipados, y <code>@@render</code> lo usa. La declaración puede ir donde quieras del fichero, también después de usarlo.</li>
+  <li><strong>No es un componente.</strong> El compilador copia su markup donde se usa: no hay tag propio, ni shadow DOM, ni JavaScript. Llega el mismo HTML que si hubieras escrito las dos filas a mano.</li>
+</ul>
+
+<h2 id="scope">3. Pásale valores de la página</h2>
+
+<p>Añade un precio al <code>@@code</code> y una tercera fila que lo use:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const price = "$9 a month";
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  @@render row("Price", price)</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:16:24 - error FUD0894: an argument that reads the scope is written with `@@`, as a prop is: `@@name`, `@@a.b` or `@@( … )`; only a literal goes bare
+  my-app     16    @@render row("Price", price)
+  my-app                                ─────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0894
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Un texto fijo, como <code>"Price"</code>, se pasa tal cual. Un valor de la página se pasa con <code>@@</code> delante, como en el resto de la plantilla. En el editor, la bombilla lo corrige con «Write @@price»:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  @@render row("Price", @@price)</code></pre>
+</ui-code>
+
+<p>Y la lista gana su tercera fila, <code>Price</code> con <code>$9 a month</code>.</p>
+
+<h2 id="share">4. Compártelo en su fichero</h2>
+
+<p>Un snippet declarado en una página solo lo usa esa página. Para usarlo desde cualquiera, va en un fichero de snippets. Créalo con la CLI:</p>
+
+<ui-code>
+<pre><code>npx fudic g snippet ui row</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created snippet row in src/snippets/ui.fud
+
+  ui.fud                  the snippet file
+  ui.test.ts              unit test               pnpm test
+
+Use it from a page of src/routes
+  &lt;link rel="snippet" href="../snippets/ui.fud"&gt;
+  @@render row()</code></pre>
+
+<p>Lleva a <code>ui.fud</code> el snippet de la página, en lugar del que generó la CLI:</p>
+
+<ui-code .path="src/snippets/ui.fud">
+<pre><code>@@snippet row(label: string, value: string) &#123;
+  &lt;dt&gt;@@label&lt;/dt&gt;
+  &lt;dd&gt;@@value&lt;/dd&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>En la página, quita la declaración y enlaza el fichero con <code>&lt;link rel="snippet"&gt;</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="snippet" href="../snippets/ui.fud"&gt;
+
+@@code &#123;
+  const price = "$9 a month";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;dl&gt;
+  @@render row("Plan", "Basic")
+  @@render row("Users", "Up to 5")
+  @@render row("Price", @@price)
+&lt;/dl&gt;</code></pre>
+</ui-code>
+
+<p>La página se ve igual que antes, pero el snippet ya está a mano de cualquier página o layout que enlace <code>ui.fud</code>.</p>
+
+<p>El test que generó la CLI busca el <code>.row</code> del snippet de muestra. Cámbialo para que pruebe el tuyo, y <code>pnpm test</code> pasa:</p>
+
+<ui-code .path="src/snippets/ui.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; renderSnippet &#125; from '@@fudic/testing';
+
+test('row renders the label and the value', async () =&gt; &#123;
+  const t = await renderSnippet('./ui.fud', 'row("Plan", "Basic")');
+  expect(t.query('dt')).toHaveTextContent('Plan');
+  expect(t.query('dd')).toHaveTextContent('Basic');
+&#125;);</code></pre>
+</ui-code>
+
+<ui-note>
+  <p>Un snippet no tiene estilos propios: toma los del sitio donde se usa. Si necesitas estado, eventos, estilos propios o slots, lo que quieres es un componente.</p>
+</ui-note>
+
+<p>Los snippets, con los valores por defecto, los argumentos por nombre y el prefijo para dos snippets que se llaman igual, están en <a href="/docs/template-syntax/snippets">Snippets</a>. Las opciones de la CLI, en <a href="/docs/cli/generate/snippet"><code>fudic generate snippet</code></a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/snippets" target="_blank" rel="noopener">la solución de Crear un snippet, en GitHub</a>. Compara tu <code>ui.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/slots", prevTitle: "Contenido por slot", next: "/tutorials/", nextTitle: "Todas las categorías")

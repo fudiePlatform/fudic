@@ -66,7 +66,7 @@
     @render tutorial("if-and-foreach", "Condiciones y listas", "beginner", @current)
     @render tutorial("props", "Pasar datos a un hijo", "beginner", @current)
     @render tutorial("slots", "Contenido por slot", "beginner", @current)
-    @render tutorial("snippets", "Crear un snippet", "beginner", @current, false)
+    @render tutorial("snippets", "Crear un snippet", "beginner", @current)
     @render tutorial("attributes-and-classes", "Atributos, propiedades y clases", "intermediate", @current, false)
     @render tutorial("spread-and-rest", "Spread y resto de props", "intermediate", @current, false)
     @render tutorial("ref", "Referencias con ref", "intermediate", @current, false)
