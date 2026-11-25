@@ -1105,6 +1105,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   Además, `use error-pages` sin `routes` da `FUD1087`, así que no hay forma de pedir solo eso.
 - **Cómo se resolvió en el tutorial.** El handler escribe en la terminal y no redirige. Enseñar la
   respuesta en la página queda para `form-events`.
+- **Lo mismo con `fudic:error`**, en el tutorial `form-events`: «Resultado y error» dice que, si
+  nadie escucha `fudic:error`, el error lleva a la página de error. Sin `error-pages` en la
+  cadena, un `500` de la función no hace nada visible en la página.
 - **Qué debería hacer.** Que el cliente de las funciones siga una redirección por su cuenta, sin
   depender de un middleware, o que la Documentación diga que hace falta `error-pages` y que
   `routes` sea opcional.
@@ -1118,3 +1121,16 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en el tutorial.** `fudic add forms` justo después de `fudic g api`.
 - **Qué debería hacer.** Que `FUD1080`, ante una regla de serie con `@fudic/forms` sin instalar,
   diga que falta el paquete y proponga `fudic add forms`.
+
+## 78. Una excepción en el handler de una función no sale en la terminal
+
+- **Qué pasó.** Escribiendo el tutorial `form-events` (2026-11-25), un handler que lanza
+  `throw new Error('the mail server is down')` hace que la función responda `500`, pero ni
+  `fudic dev` ni `fudic preview` escriben nada en la terminal: ni el mensaje ni la pila. En
+  `fudic dev` el mensaje sí llega al navegador, en el `detail` de la respuesta
+  (`{"status":500,"title":"Internal Server Error","detail":"the mail server is down"}`); en la
+  preview, no. Quien desarrolla solo lo ve en la pestaña Red.
+- **Cómo se resolvió en el tutorial.** El fallo es a propósito y el tutorial lo explica; pide no
+  enseñar al usuario el mensaje del error.
+- **Qué debería hacer.** Escribir en la terminal cada excepción no recogida de un handler, con su
+  pila, en desarrollo y en la preview.

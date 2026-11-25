@@ -1,0 +1,13 @@
+# Subscribes an email and answers with the subscription the server made.
+post subscribe
+  form subscribeForm
+  -> Subscription
+
+form subscribeForm
+  email  str = ""
+    required       "Enter your email."
+    pattern email  "That email does not look valid."
+
+type Subscription
+  id     u32
+  email  str

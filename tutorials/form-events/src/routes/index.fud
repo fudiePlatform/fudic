@@ -1,0 +1,35 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+  import { HttpError } from "@fudic/http";
+  import type { Subscription } from "fudic:routes/index";
+
+  const notice = signal("");
+
+  function done(subscription: Subscription) {
+    notice.set(`Subscribed ${subscription.email} with number ${subscription.id}.`);
+    subscribeForm.$reset();
+  }
+
+  function failed(error: Error) {
+    const status = error instanceof HttpError ? ` (${error.status})` : "";
+    notice.set(`The server could not subscribe you${status}. Try again later.`);
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Newsletter</h1>
+
+<form control=@subscribeForm form:=@subscribe @fudic:result=@done @fudic:error=@failed>
+  <label for="email">Email</label>
+  <input id="email" type="email" control=@subscribeForm.email>
+  <small error=@subscribeForm.email></small>
+  <button type="submit">Subscribe</button>
+</form>
+
+<p role="status">@notice()</p>

@@ -1,0 +1,187 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Eventos del formulario · Tutoriales de Fudic</title>
+  <meta name="description" content="fudic:result y fudic:error: enseña en la página lo que respondió la función de servidor de un formulario de Fudic, y avisa cuando la llamada falla.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/form-events">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Eventos del formulario · Tutoriales de Fudic">
+  <meta property="og:description" content="Lo que respondió el servidor, y lo que falló, en un formulario de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/form-events">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("form-events")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#answer">2. Una función que responde</a></li>
+        <li><a href="#result">3. Lo que respondió: fudic:result</a></li>
+        <li><a href="#error">4. Lo que falló: fudic:error</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Formularios</span></p>
+
+<h1>Eventos del formulario</h1>
+
+<p class="lede">Enseñas en la página lo que respondió el servidor al enviar un formulario, vacías el formulario y avisas al usuario cuando la llamada falla.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar lo que devuelve la función de un formulario.</li>
+    <li>Recibirlo en la página con <code>@@fudic:result</code>.</li>
+    <li>Responder a una llamada que falla con <code>@@fudic:error</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Cómo se envía un formulario a una función está en <a href="/tutorials/submitting">Enviar al servidor</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+npx fudic add forms</code></pre>
+</ui-code>
+
+<p><code>fudic g api</code> crea el contrato de la página (<code>index.fudapi</code>) y su código de servidor (<code>src/server/routes/index.ts</code>), y <code>fudic add forms</code> añade los formularios e instala todo.</p>
+
+<h2 id="answer">2. Una función que responde</h2>
+
+<p>La función recibe un email y responde con la suscripción que ha creado. Lo que devuelve se declara con <code>-&gt;</code> y un tipo:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Subscribes an email and answers with the subscription the server made.
+post subscribe
+  form subscribeForm
+  -&gt; Subscription
+
+form subscribeForm
+  email  str = ""
+    required       "Enter your email."
+    pattern email  "That email does not look valid."
+
+type Subscription
+  id     u32
+  email  str</code></pre>
+</ui-code>
+
+<p>El handler da a cada suscripción un número. Para poder ver un fallo, finge que el servidor de correo no responde con los emails de <code>example.org</code>:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; subscribe &#125; from 'fudic:routes/index';
+
+let next = 1;
+
+subscribe.handle((ctx) =&gt; &#123;
+  const &#123; email &#125; = ctx.form.$value();
+  if (email.endsWith('@@example.org')) throw new Error('the mail server is down');
+  return &#123; id: next++, email &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<h2 id="result">3. Lo que respondió: <code>fudic:result</code></h2>
+
+<p>Cuando el servidor responde bien, el <code>&lt;form&gt;</code> lanza <code>fudic:result</code>, y su manejador recibe lo que devolvió la función:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import type &#123; Subscription &#125; from "fudic:routes/index";
+
+  const notice = signal("");
+
+  function done(subscription: Subscription) &#123;
+    notice.set(`Subscribed $&#123;subscription.email&#125; with number $&#123;subscription.id&#125;.`);
+    subscribeForm.$reset();
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Newsletter&lt;/h1&gt;
+
+&lt;form control=@@subscribeForm form:=@@subscribe @@fudic:result=@@done&gt;
+  &lt;label for="email"&gt;Email&lt;/label&gt;
+  &lt;input id="email" type="email" control=@@subscribeForm.email&gt;
+  &lt;small error=@@subscribeForm.email&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Subscribe&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;p role="status"&gt;@@notice()&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code>, escribe <code>ada@@example.com</code> y pulsa Subscribe. Debajo del formulario aparece:</p>
+
+<pre class="output"><code>Subscribed ada@@example.com with number 1.</code></pre>
+
+<p>Y el campo se vacía. Suscribe otro email y sale con el número 2.</p>
+
+<ul>
+  <li><strong><code>subscription</code> es la respuesta del servidor,</strong> con el tipo de su <code>.fudapi</code>: por eso trae el número, que el usuario nunca escribió.</li>
+  <li><strong><code>$reset()</code></strong> devuelve el formulario a sus valores iniciales y borra sus errores.</li>
+  <li><strong><code>role="status"</code></strong> hace que un lector de pantalla anuncie el aviso cuando cambia, sin mover el foco.</li>
+</ul>
+
+<h2 id="error">4. Lo que falló: <code>fudic:error</code></h2>
+
+<p>Escribe <code>ada@@example.org</code> y pulsa Subscribe. En la página no pasa nada: el aviso sigue igual y el email sigue en el campo. Solo la pestaña Red de las herramientas del navegador enseña que la función ha respondido <code>500</code>. Cuando la llamada falla, el <code>&lt;form&gt;</code> lanza <code>fudic:error</code>, y nadie lo escucha. Añade su manejador:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; HttpError &#125; from "@@fudic/http";
+  import type &#123; Subscription &#125; from "fudic:routes/index";
+
+  const notice = signal("");
+
+  function done(subscription: Subscription) &#123;
+    notice.set(`Subscribed $&#123;subscription.email&#125; with number $&#123;subscription.id&#125;.`);
+    subscribeForm.$reset();
+  &#125;
+
+  function failed(error: Error) &#123;
+    const status = error instanceof HttpError ? ` ($&#123;error.status&#125;)` : "";
+    notice.set(`The server could not subscribe you$&#123;status&#125;. Try again later.`);
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Y escúchalo en el <code>&lt;form&gt;</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;form control=@@subscribeForm form:=@@subscribe @@fudic:result=@@done @@fudic:error=@@failed&gt;</code></pre>
+</ui-code>
+
+<p>Vuelve a enviar <code>ada@@example.org</code>:</p>
+
+<pre class="output"><code>The server could not subscribe you (500). Try again later.</code></pre>
+
+<p>El email se queda en el campo, para que el usuario pueda volver a intentarlo. <code>failed</code> recibe un <code>Error</code>, y si viene del servidor es un <code>HttpError</code>, con su <code>status</code>. No enseñes el mensaje del error al usuario: en desarrollo trae el texto de la excepción del servidor, y en producción el servidor no lo envía.</p>
+
+<p>Qué errores se quedan en el formulario sin lanzar ningún evento, y cómo cruzan los dos eventos el shadow DOM de un componente, para que la página que lo usa se entere de lo que respondió el servidor, está en <a href="/docs/forms/events">Resultado y error</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/form-events" target="_blank" rel="noopener">la solución de Eventos del formulario, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/file-upload", prevTitle: "Subir ficheros", next: "/tutorials/", nextTitle: "Todas las categorías")

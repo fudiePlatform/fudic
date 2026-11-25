@@ -145,4 +145,4 @@ attach.handle((ctx) =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/file-upload" target="_blank" rel="noopener">la solución de Subir ficheros, en GitHub</a>. Compara tu <code>index.fudapi</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/submitting", prevTitle: "Enviar al servidor", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/submitting", prevTitle: "Enviar al servidor", next: "/tutorials/form-events", nextTitle: "Eventos del formulario")
