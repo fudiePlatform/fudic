@@ -280,11 +280,26 @@ WASM: en Windows no se puede probar porque no resuelve rutas `C:\`.
 
 ## 6. Orden de trabajo
 
+**En pausa desde el 2026-11-25, por decisión de Pedro.** No se escriben más tutoriales hasta
+resolver §6.1.
+
 1. Este documento, validado por Pedro: el índice (§3) y la app (§4).
 2. ~~Crear la app `tutorials` con la CLI y llevar el enlace «Tutoriales» del menú hasta ella.~~
-3. ~~La portada con las 16 categorías y la plantilla de página con `first-app`.~~ En revisión.
-4. Categoría a categoría, en el orden de §3, cada tutorial con su solución en `tutorials/<slug>/`.
+3. ~~La portada con las 16 categorías y la plantilla de página con `first-app`.~~ Hecho; sirve de
+   muestra del diseño.
+4. **En pausa.** Categoría a categoría, en el orden de §3.
 5. El día que se publique en npm: el botón de StackBlitz en todos.
+
+### 6.1 Pendiente: que el tutorial no se desfase del código
+
+- **El problema.** Un tutorial copia código y salidas de una ejecución. Cuando Fudic cambia, nada
+  avisa de que el tutorial ya no funciona, y acaba obsoleto.
+- **El requisito.** El código de cada tutorial se prueba. Si no se prueba, el tutorial deriva.
+- **Por decidir.** Cómo se prueba, y cómo salen los ejemplos (la solución) a partir del tutorial, en
+  vez de escribirse aparte.
+- **Lo que queda hasta entonces.** `first-app` y su solución en `tutorials/first-app/` se quedan como
+  muestra. Su enlace «la solución en GitHub» está roto: apunta a `main`, donde aún no existe.
+  La solución se regenerará cuando la CLI quite la fuente de la guía (hallazgo 23 de la CLI).
 
 Lo que la CLI no resuelva se apunta en [../hallazgos-cli.md](../hallazgos-cli.md); lo del framework,
 en [../hallazgos-fudic.md](../hallazgos-fudic.md).
@@ -295,3 +310,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 |---|---|
 | 2026-11-25 | Este documento, para revisión. Decisiones de Pedro: una app propia (no dentro de `/docs`); portada con 16 categorías; el tiempo no se muestra; soluciones en una carpeta de este repo, no en otro; nada fuera del índice; el layout lo decide Claude (tutoriales a la izquierda, pasos a la derecha). Prueba de oxc-parser en WASM para StackBlitz (§5.1). |
 | 2026-11-25 | App `web/apps/tutorials` creada con `fudic g app tutorials --uses ui --layout @web/ui/layouts/docs.fud --no-sw --locale es` sobre una copia de `web/` (hallazgos 5 y 6 de la CLI), servida en `/tutorials/`. «Tutoriales» en la cabecera y el pie de todas las páginas. La portada con las 16 categorías y el primer tutorial, `first-app`, creado con `fudic g page`: cada comando y cada salida, de una ejecución real de `fudic new`, `fudic dev`, `pnpm build` y `fudic preview` fuera del repo. Su solución, en `tutorials/first-app/`. Lighthouse en las dos páginas, móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100 (el 99 en móvil es el mismo que da una página de la Documentación en `vite preview`, sin compresión). El script de anclas de la skill lee ya las tres apps. Hallazgo 56 del framework: el typecheck asigna mal los argumentos con nombre de un snippet. |
+| 2026-11-25 | Decisión de Pedro: no se escriben más tutoriales hasta resolver cómo se prueba su código para que no se desfase (§6.1). `first-app` queda como muestra; su enlace a GitHub, roto hasta entonces. |
