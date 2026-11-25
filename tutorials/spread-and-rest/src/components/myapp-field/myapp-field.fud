@@ -1,0 +1,23 @@
+@code {
+  const { label, ...rest } = props<{
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    maxlength?: number;
+  }>();
+}
+
+<head>
+  <style>
+    label {
+      display: grid;
+      gap: 0.25rem;
+    }
+  </style>
+</head>
+
+<myapp-field>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="label input">
+    <label>@label <input ...rest></label>
+  </template>
+</myapp-field>

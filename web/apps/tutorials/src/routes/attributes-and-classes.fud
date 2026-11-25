@@ -194,4 +194,4 @@ npx fudic dev</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/attributes-and-classes" target="_blank" rel="noopener">la solución de Atributos, propiedades y clases, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/snippets", prevTitle: "Crear un snippet", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/snippets", prevTitle: "Crear un snippet", next: "/tutorials/spread-and-rest", nextTitle: "Spread y resto de props")

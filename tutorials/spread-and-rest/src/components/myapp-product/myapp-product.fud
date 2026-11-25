@@ -1,0 +1,25 @@
+@code {
+  const { name, price = 0, badge = "" } = props<{
+    name: string;
+    price?: number;
+    badge?: string;
+  }>();
+}
+
+<head>
+  <style>
+    .product {
+      padding: 0.75rem 1rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+
+<myapp-product>
+  <template shadowrootmode="open">
+    <div class="product">
+      <strong>@name</strong> · @("$" + price) @badge
+    </div>
+  </template>
+</myapp-product>

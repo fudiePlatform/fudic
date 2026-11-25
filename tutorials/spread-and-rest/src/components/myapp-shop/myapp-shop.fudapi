@@ -1,0 +1,5 @@
+type Product
+  id     str
+  name   str
+  price  i32?
+  sku    str

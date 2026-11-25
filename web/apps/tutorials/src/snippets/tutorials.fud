@@ -68,7 +68,7 @@
     @render tutorial("slots", "Contenido por slot", "beginner", @current)
     @render tutorial("snippets", "Crear un snippet", "beginner", @current)
     @render tutorial("attributes-and-classes", "Atributos, propiedades y clases", "intermediate", @current)
-    @render tutorial("spread-and-rest", "Spread y resto de props", "intermediate", @current, false)
+    @render tutorial("spread-and-rest", "Spread y resto de props", "intermediate", @current)
     @render tutorial("ref", "Referencias con ref", "intermediate", @current, false)
     @render tutorial("raw", "HTML sin escapar con @raw", "intermediate", @current, false)
     @render tutorial("await", "Esperar datos con @await", "intermediate", @current, false)

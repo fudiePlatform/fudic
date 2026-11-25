@@ -134,9 +134,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   la del MCP (nº 5): se creó sobre una copia de `web/`, se trajo, `@fudic/*` a `workspace:*` y fuera
   `"locales"`. Su primera página, `fudic g page first-app`, revienta igual con el `href` de la
   librería; con la ruta relativa, el `href` frágil y el título «First-app», corregidos a mano.
-- **Y otra vez** con los tutoriales de Sintaxis de plantilla (`fudic g page expressions`, `if-and-foreach`, `props`, `slots`, `snippets`, `attributes-and-classes`… en
+- **Y otra vez** con los tutoriales de Sintaxis de plantilla (`fudic g page expressions`, `if-and-foreach`, `props`, `slots`, `snippets`, `attributes-and-classes`, `spread-and-rest`… en
   `web/apps/tutorials`), el 2026-11-25: con la ruta relativa, el `href` frágil y el título
-  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets» o «Attributes-and-classes», corregidos a mano.
+  «Expressions», «If-and-foreach», «Props», «Slots», «Snippets», «Attributes-and-classes» o «Spread-and-rest», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

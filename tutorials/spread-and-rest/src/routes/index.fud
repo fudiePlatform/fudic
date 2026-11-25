@@ -1,0 +1,12 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-field/myapp-field.fud">
+<link rel="component" href="../components/myapp-shop/myapp-shop.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<myapp-field .label="Name" .placeholder="Ana" .required=true .maxlength=20></myapp-field>
+<myapp-shop></myapp-shop>

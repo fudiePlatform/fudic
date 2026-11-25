@@ -1,0 +1,228 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Spread y resto de props · Tutoriales de Fudic</title>
+  <meta name="description" content="Recoge con ...rest las props que un componente de Fudic no nombra y pásalas a un input, y pasa un objeto entero como props con un spread.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/spread-and-rest">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Spread y resto de props · Tutoriales de Fudic">
+  <meta property="og:description" content="El resto de las props hacia un input, y un objeto entero como props con un spread.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/spread-and-rest">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("spread-and-rest")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#rest">2. Recoge el resto</a></li>
+        <li><a href="#spread">3. Pasa objetos enteros</a></li>
+        <li><a href="#what-crosses">4. Lo que cruza y lo que no</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Spread y resto de props</h1>
+
+<p class="lede">Haces un campo de formulario que pasa a su <code>&lt;input&gt;</code> todo lo que no usa, y una tienda que pasa cada producto entero a su tarjeta. Si vienes de React, es el <code>&#123;...props&#125;</code> de JSX.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Recoger con <code>...rest</code> las props que un componente no nombra, y pasarlas a otro elemento.</li>
+    <li>Pasar un objeto entero como props con <code>...objeto</code>.</li>
+    <li>Saber qué claves del objeto llegan al componente y cuál gana si una prop se escribe también a mano.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="rest">2. Recoge el resto</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>, genera un campo de formulario:</p>
+
+<ui-code>
+<pre><code>npx fudic g component field --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>Sustituye su contenido por este:</p>
+
+<ui-code .path="src/components/myapp-field/myapp-field.fud">
+<pre><code>@@code &#123;
+  const &#123; label, ...rest &#125; = props&lt;&#123;
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    maxlength?: number;
+  &#125;&gt;();
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    label &#123;
+      display: grid;
+      gap: 0.25rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-field&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="label input"&gt;
+    &lt;label&gt;@@label &lt;input ...rest&gt;&lt;/label&gt;
+  &lt;/template&gt;
+&lt;/myapp-field&gt;</code></pre>
+</ui-code>
+
+<p>El campo solo usa <code>label</code> por su nombre. Las otras tres props llegan reunidas en <code>rest</code>, y <code>&lt;input ...rest&gt;</code> las escribe en el input. Úsalo en la página, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-field .label="Name" .placeholder="Ana" .required=true .maxlength=20&gt;&lt;/myapp-field&gt;</code></pre>
+</ui-code>
+
+<p>En el código fuente (Ctrl+U), el input llega con las tres:</p>
+
+<pre class="output"><code>&lt;label&gt;Name &lt;input maxlength="20" placeholder="Ana" required=""&gt;&lt;/label&gt;</code></pre>
+
+<p>En un elemento nativo, cada clave del resto se escribe como un atributo, con las mismas reglas que en <a href="/tutorials/attributes-and-classes">Atributos, propiedades y clases</a>: <code>true</code> deja <code>required</code> vacío. Si mañana el campo admite <code>autocomplete</code>, basta con declararlo en <code>props&lt;T&gt;()</code>: el input lo recibe sin tocar el markup.</p>
+
+<h2 id="spread">3. Pasa objetos enteros</h2>
+
+<p>Ahora el camino contrario: un objeto entero que se reparte en props. Genera una tarjeta de producto y una tienda que las lista, y para <code>fudic dev</code> con Ctrl+C mientras escribes este paso:</p>
+
+<ui-code>
+<pre><code>npx fudic g component product
+npx fudic g component shop --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La tarjeta declara tres props:</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  const &#123; name, price = 0, badge = "" &#125; = props&lt;&#123;
+    name: string;
+    price?: number;
+    badge?: string;
+  &#125;&gt;();
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    .product &#123;
+      padding: 0.75rem 1rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-product&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div class="product"&gt;
+      &lt;strong&gt;@@name&lt;/strong&gt; · @@("$" + price) @@badge
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p>La tienda tiene una lista de productos. Un objeto en la plantilla necesita un tipo que entienda cualquier servidor, no solo uno de JavaScript, así que el tipo del producto se declara en un fichero <code>.fudapi</code> junto al componente. Créalo:</p>
+
+<ui-code .path="src/components/myapp-shop/myapp-shop.fudapi">
+<pre><code>type Product
+  id     str
+  name   str
+  price  i32?
+  sku    str</code></pre>
+</ui-code>
+
+<p>Y la tienda, que lo enlaza con <code>&lt;link rel="server"&gt;</code> e importa el tipo:</p>
+
+<ui-code .path="src/components/myapp-shop/myapp-shop.fud">
+<pre><code>&lt;link rel="server" href="./myapp-shop.fudapi"&gt;
+&lt;link rel="component" href="../myapp-product/myapp-product.fud"&gt;
+
+@@code &#123;
+  import type &#123; Product &#125; from "fudic:components/myapp-shop/myapp-shop";
+
+  const products: Product[] = [
+    &#123; id: "p1", name: "Keyboard", price: 49, sku: "K-01" &#125;,
+    &#123; id: "p2", name: "Mouse", price: 19, sku: "M-07" &#125;,
+    &#123; id: "p3", name: "Mouse pad", sku: "P-22" &#125;,
+  ];
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    .list &#123;
+      display: grid;
+      gap: 0.5rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-shop&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div class="list"&gt;
+      @@foreach (const product of products) key (product.id) &#123;
+        &lt;myapp-product ...product .badge="Sale"&gt;&lt;/myapp-product&gt;
+      &#125;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-shop&gt;</code></pre>
+</ui-code>
+
+<p>Pon la tienda en la página, debajo del campo, y vuelve a arrancar <code>npx fudic dev</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-shop&gt;&lt;/myapp-shop&gt;</code></pre>
+</ui-code>
+
+<p>El lenguaje de los <code>.fudapi</code>, con todos sus tipos, está en <a href="/docs/reference/fudapi">El lenguaje .fudapi</a>.</p>
+
+<h2 id="what-crosses">4. Lo que cruza y lo que no</h2>
+
+<p>La página enseña tres tarjetas:</p>
+
+<pre class="output"><code>Keyboard · $49 Sale
+Mouse · $19 Sale
+Mouse pad · $0 Sale</code></pre>
+
+<ul>
+  <li><strong>Solo cruzan las claves que la tarjeta declara.</strong> <code>...product</code> se reparte contra los <code>props&lt;T&gt;()</code> de la tarjeta, no contra lo que trae el objeto: <code>name</code> y <code>price</code> llegan, y <code>id</code> y <code>sku</code> se quedan en la tienda.</li>
+  <li><strong>Una prop escrita a mano gana al spread.</strong> <code>.badge="Sale"</code> llega a las tres, aunque ningún producto lo traiga.</li>
+  <li><strong>Lo que falta toma su valor por defecto.</strong> Mouse pad no trae <code>price</code>, y la tarjeta pinta <code>$0</code>.</li>
+</ul>
+
+<ui-note>
+  <p>Un resto se puede leer (<code>@@rest.placeholder</code>), pasar a un tag o desestructurar otra vez, pero no recorrer: en otros lenguajes de servidor, un objeto no se recorre como en JavaScript.</p>
+</ui-note>
+
+<p>El spread y el resto están en <a href="/docs/template-syntax/attributes-and-properties#spread-and-rest">Atributos y propiedades</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/spread-and-rest" target="_blank" rel="noopener">la solución de Spread y resto de props, en GitHub</a>. Compara tu <code>myapp-shop.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/attributes-and-classes", prevTitle: "Atributos, propiedades y clases", next: "/tutorials/", nextTitle: "Todas las categorías")

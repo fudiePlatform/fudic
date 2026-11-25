@@ -1,0 +1,7 @@
+component myapp-field
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-field

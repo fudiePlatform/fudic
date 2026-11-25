@@ -1,0 +1,31 @@
+<link rel="server" href="./myapp-shop.fudapi">
+<link rel="component" href="../myapp-product/myapp-product.fud">
+
+@code {
+  import type { Product } from "fudic:components/myapp-shop/myapp-shop";
+
+  const products: Product[] = [
+    { id: "p1", name: "Keyboard", price: 49, sku: "K-01" },
+    { id: "p2", name: "Mouse", price: 19, sku: "M-07" },
+    { id: "p3", name: "Mouse pad", sku: "P-22" },
+  ];
+}
+
+<head>
+  <style>
+    .list {
+      display: grid;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+
+<myapp-shop>
+  <template shadowrootmode="open">
+    <div class="list">
+      @foreach (const product of products) key (product.id) {
+        <myapp-product ...product .badge="Sale"></myapp-product>
+      }
+    </div>
+  </template>
+</myapp-shop>

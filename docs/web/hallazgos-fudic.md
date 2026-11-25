@@ -913,16 +913,21 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que el watcher detecte un `.fudapi` nuevo y regenere sus tipos, como hace
   al cambiar uno que ya existe.
 
-## 63. `$@price` en un componente lo hace desaparecer, con tres errores que no apuntan a él
+## 63. Componentes generados con `fudic dev` en marcha dan errores falsos hasta reiniciarlo
 
-- **Qué pasó.** En el mismo tutorial, un componente con `<strong>@name</strong> · $@price` deja
-  `price` sin leer (la `@` detrás de un carácter se toma como texto, como en un email; el editor
-  solo da `TS6133 'price' is declared but its value is never read`). Pero `fudic dev` no avisa de
-  eso, sino de tres errores en otros ficheros: `FUD0949 no component <myapp-product> in the
-  workspace` y `FUD0953 no myapp-product.fixture.ts beside the spec` en su `.fudspec` (el fixture
-  existe), y `FUD0191` en la página que lo usa, que sí tiene su `<link rel="component">`. Con
-  `@("$" + price)` los tres desaparecen.
-- **Cómo se resolvió en el tutorial.** Con `@("$" + price)`.
-- **Qué debería hacer.** Que una `@` pegada a texto que sigue a un nombre declarado avise
-  (`$@price` casi nunca es un email), y que un fallo al leer un componente se diga en ese
-  componente, no como tres errores falsos en sus vecinos.
+- **Qué pasó.** Escribiendo el tutorial `spread-and-rest`, con `fudic dev` en marcha:
+  `fudic g component product`, `fudic g component shop --in src/routes/index.fud`, escribir los dos
+  (el `shop` usa `<myapp-product>` y tiene su `.fudapi`) y poner `<myapp-shop>` en la página. La
+  terminal da ocho errores, casi todos falsos: `FUD0949 no component <myapp-product> in the
+  workspace` y `FUD0953 no myapp-product.fixture.ts beside the spec` en los `.fudspec` de los dos
+  componentes (los fixtures existen), `FUD0191` en `myapp-shop.fud` y en la página (los dos tienen
+  su `<link rel="component">`), y el `TS2307` y el `FUD1153` del `.fudapi` nuevo (nº 62). Al parar
+  y arrancar `fudic dev`, cero errores y la página bien. En un primer intento, los mismos
+  `FUD0949`, `FUD0953` y `FUD0191` desaparecieron al volver a guardar el componente, sin reiniciar.
+- **Cómo se resolvió en el tutorial.** El tutorial pide arrancar `fudic dev` después de crear los
+  componentes y el `.fudapi` del paso del spread, sin explicar por qué.
+- **Qué debería hacer.** Que el watcher añada al índice del workspace los componentes, fixtures y
+  `.fudspec` nuevos en cuanto aparecen, como hace con los que ya conocía.
+- **De paso.** `<strong>@name</strong> · $@price` deja `price` sin leer (la `@` detrás de un
+  carácter se toma como texto, como en un email), y solo el editor lo insinúa, con
+  `TS6133 'price' is declared but its value is never read`. `fudic dev` no dice nada.
