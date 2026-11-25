@@ -1,0 +1,29 @@
+@code {
+  const { text, tone = "info" } = props<{
+    /** What the alert says. */
+    text: string;
+    /** Its color: blue for info, red for danger. */
+    tone?: "info" | "danger";
+  }>();
+}
+
+<head>
+  <style>
+    .alert {
+      padding: 0.75rem 1rem;
+      border-left: 4px solid;
+    }
+    .info {
+      border-color: steelblue;
+    }
+    .danger {
+      border-color: crimson;
+    }
+  </style>
+</head>
+
+<myapp-alert>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p">
+    <p class=@("alert " + tone)>@text</p>
+  </template>
+</myapp-alert>

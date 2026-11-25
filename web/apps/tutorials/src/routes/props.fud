@@ -1,0 +1,186 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Pasar datos a un hijo · Tutoriales de Fudic</title>
+  <meta name="description" content="Declara las props de un componente de Fudic, pásaselas desde la página y mira cómo avisa el editor cuando falta una o no encaja.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/props">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Pasar datos a un hijo · Tutoriales de Fudic">
+  <meta property="og:description" content="Declara las props de un componente, pásaselas desde la página y deja que el editor las compruebe.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/props">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("props")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#declare">3. Declara sus props</a></li>
+        <li><a href="#pass">4. Pásaselas desde la página</a></li>
+        <li><a href="#check">5. Cuando falta una o no encaja</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Pasar datos a un hijo</h1>
+
+<p class="lede">Creas un aviso que recibe su texto y su color de quien lo usa, lo pones dos veces en la página con datos distintos y ves cómo te avisa Fudic cuando falta una prop o su valor no encaja.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar las props de un componente con <code>props&lt;T&gt;()</code>, obligatorias y opcionales.</li>
+    <li>Pasárselas desde la página con un punto delante: <code>.text="…"</code>.</li>
+    <li>Leer el error cuando falta una prop o su valor no es de su tipo, y dejar que la bombilla la escriba.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component alert --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-alert&gt; in src/components/myapp-alert/
+
+  myapp-alert.fud         the component
+  myapp-alert.test.ts     unit test               pnpm test
+  myapp-alert.fudspec     acceptance criteria     pnpm spec
+  myapp-alert.fixture.ts  the props the criteria mount it with
+  linked from src/routes/index.fud</code></pre>
+
+<p>Qué es cada fichero lo cuenta <a href="/tutorials/first-component">Tu primer componente</a>. Aquí solo tocas <code>myapp-alert.fud</code>.</p>
+
+<h2 id="declare">3. Declara sus props</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-alert/myapp-alert.fud">
+<pre><code>@@code &#123;
+  const &#123; text, tone = "info" &#125; = props&lt;&#123;
+    /** What the alert says. */
+    text: string;
+    /** Its color: blue for info, red for danger. */
+    tone?: "info" | "danger";
+  &#125;&gt;();
+&#125;
+
+&lt;head&gt;
+  &lt;style&gt;
+    .alert &#123;
+      padding: 0.75rem 1rem;
+      border-left: 4px solid;
+    &#125;
+    .info &#123;
+      border-color: steelblue;
+    &#125;
+    .danger &#123;
+      border-color: crimson;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-alert&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p class=@@("alert " + tone)&gt;@@text&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-alert&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>props&lt;T&gt;()</code> declara lo que recibe</strong> el componente, con un tipo de TypeScript. La desestructuración saca cada prop a su nombre.</li>
+  <li><strong>Sin <code>?</code>, la prop es obligatoria.</strong> <code>text</code> lo es: un aviso sin texto no tiene sentido.</li>
+  <li><strong>Con <code>?</code>, es opcional</strong>, y su valor por defecto va en la desestructuración: si nadie pasa <code>tone</code>, vale <code>"info"</code>.</li>
+  <li><strong>El comentario <code>/** … */</code></strong> de cada prop lo enseña el editor al escribir el tag.</li>
+</ul>
+
+<h2 id="pass">4. Pásaselas desde la página</h2>
+
+<p>La CLI ya enlazó el componente desde la página. Añade dos avisos debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-alert/myapp-alert.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;myapp-alert .text="Your changes are saved."&gt;&lt;/myapp-alert&gt;
+&lt;myapp-alert .text="Your card has expired." .tone="danger"&gt;&lt;/myapp-alert&gt;</code></pre>
+</ui-code>
+
+<p>Guarda, y salen los dos avisos: el primero con la raya azul, porque no lleva <code>tone</code> y toma el de por defecto, y el segundo con la raya roja.</p>
+
+<ul>
+  <li><strong>El punto delante marca una prop.</strong> <code>.text</code> va al componente; sin el punto, <code>text</code> sería un atributo HTML del tag.</li>
+  <li><strong>El mismo componente, con datos distintos.</strong> Cada uso recibe los suyos, y el componente no sabe nada de la página.</li>
+</ul>
+
+<p>Las props, también las que el hijo puede cambiar o las funciones con las que avisa al padre, están en <a href="/docs/template-syntax/components#props">Componentes</a>.</p>
+
+<h2 id="check">5. Cuando falta una o no encaja</h2>
+
+<p>Añade un tercer aviso sin texto:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-alert&gt;&lt;/myapp-alert&gt;</code></pre>
+</ui-code>
+
+<p>Al guardar, la terminal de <code>fudic dev</code> lo rechaza:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:12:2 - error TS2345: Argument of type '&#123;&#125;' is not assignable to parameter of type '$Missing&lt;&#123; text: string; tone?: "info" | "danger"; &#125;, never&gt;'.
+  my-app     Property 'text' is missing in type '&#123;&#125;' but required in type '$Missing&lt;&#123; text: string; tone?: "info" | "danger"; &#125;, never&gt;'.
+  my-app     12  &lt;myapp-alert&gt;&lt;/myapp-alert&gt;
+  my-app          ───────────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>La línea que importa es la segunda: falta <code>text</code>, que es obligatoria. En el editor, el tag sale subrayado, y la bombilla ofrece «Add the required props of &lt;myapp-alert&gt;», que escribe <code>.text=""</code>. Rellénalo, y prueba de paso un tono que el aviso no tiene:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-alert .text="Check your email." .tone="warning"&gt;&lt;/myapp-alert&gt;</code></pre>
+</ui-code>
+
+<p>Ahora el texto está, pero <code>"warning"</code> no es uno de los tonos que acepta el aviso:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:12:41 - error TS2322: Type '"warning"' is not assignable to type '"info" | "danger"'.
+  my-app     12  &lt;myapp-alert .text="Check your email." .tone="warning"&gt;&lt;/myapp-alert&gt;
+  my-app                                                 ────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Las props se comprueban con su tipo, como cualquier llamada de TypeScript, y el error sale antes de abrir el navegador. Quita este tercer aviso y la página vuelve a funcionar.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/props" target="_blank" rel="noopener">la solución de Pasar datos a un hijo, en GitHub</a>. Compara tu <code>myapp-alert.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/if-and-foreach", prevTitle: "Condiciones y listas", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -1,0 +1,11 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-alert/myapp-alert.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<myapp-alert .text="Your changes are saved."></myapp-alert>
+<myapp-alert .text="Your card has expired." .tone="danger"></myapp-alert>

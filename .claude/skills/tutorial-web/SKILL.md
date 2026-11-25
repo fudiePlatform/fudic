@@ -51,8 +51,11 @@ repo no se toca: ni una copia en el workspace ni un cambio en `pnpm-lock.yaml`.
    { echo "overrides:"; for f in <scratchpad>/fudic-tgz/fudic-*.tgz; do
        b=$(basename "$f" -0.0.1.tgz); echo "  '@fudic/${b#fudic-}': 'file:$f'"; done; } > pnpm-workspace.yaml
    pnpm install
+   rm pnpm-workspace.yaml
    ```
-   Ese `pnpm-workspace.yaml` y el `pnpm-lock.yaml` que salga son del montaje: no van a la solución.
+   **Bórralo nada más instalar.** Con él, la CLI cree que está en un workspace y cambia sus
+   salidas (`pnpm --filter my-app test` en vez de `pnpm test`). El `pnpm-lock.yaml` que salga es
+   del montaje: no va a la solución, y tampoco `.fudic/edge`, que deja el build.
 4. Trabaja en ese proyecto: `npx fudic dev`, `npx fudic g …`, `pnpm build`, `npx fudic preview`.
    Fuera del repo, `fudic dev` levanta solo tu app, que es lo que ve el usuario (dentro levanta las
    21, hallazgo 8 de la CLI).
@@ -70,8 +73,8 @@ dependencies because lockfile has changed»), nunca cambiar lo que dice.
 
 ## 3. La solución
 
-El proyecto terminado, sin `node_modules`, `dist`, `.git`, ni el `pnpm-workspace.yaml` y el
-`pnpm-lock.yaml` del montaje, en **`tutorials/<slug>/`** en la raíz
+El proyecto terminado, sin `node_modules`, `dist`, `.git`, `.fudic/edge` ni el `pnpm-lock.yaml`
+del montaje, en **`tutorials/<slug>/`** en la raíz
 del repo, fuera del workspace. Es lo que tendría el usuario al acabar: con `@fudic/*` a la versión
 que escribe la CLI, no a `workspace:*`. Nunca en un repo aparte.
 

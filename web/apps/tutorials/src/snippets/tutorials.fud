@@ -64,7 +64,7 @@
   <ol class="tutorial-list">
     @render tutorial("expressions", "Pintar valores con @(…)", "beginner", @current)
     @render tutorial("if-and-foreach", "Condiciones y listas", "beginner", @current)
-    @render tutorial("props", "Pasar datos a un hijo", "beginner", @current, false)
+    @render tutorial("props", "Pasar datos a un hijo", "beginner", @current)
     @render tutorial("slots", "Contenido por slot", "beginner", @current, false)
     @render tutorial("snippets", "Crear un snippet", "beginner", @current, false)
     @render tutorial("attributes-and-classes", "Atributos, propiedades y clases", "intermediate", @current, false)

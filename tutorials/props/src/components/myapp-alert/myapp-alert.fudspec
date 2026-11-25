@@ -1,0 +1,7 @@
+component myapp-alert
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-alert

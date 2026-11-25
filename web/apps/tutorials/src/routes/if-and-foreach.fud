@@ -168,4 +168,4 @@ npx fudic dev</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/if-and-foreach" target="_blank" rel="noopener">la solución de Condiciones y listas, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/expressions", prevTitle: "Pintar valores con @(…)", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/expressions", prevTitle: "Pintar valores con @(…)", next: "/tutorials/props", nextTitle: "Pasar datos a un hijo")

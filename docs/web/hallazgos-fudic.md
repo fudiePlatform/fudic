@@ -837,3 +837,16 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   tutorial explica el `TS2367`, no el `FUD1152`.
 - **Qué debería hacer.** Que un tipo literal numérico (o de texto) cuente como su tipo base para
   los operadores de la vista, y que el mensaje no mande a `load()` un valor que ya es un número.
+
+## 58. Una prop obligatoria que falta da un error con el tipo interno `$Missing`
+
+- **Qué pasó.** Escribiendo el tutorial `props`, un `<myapp-alert></myapp-alert>` sin su prop
+  obligatoria `text` da en `fudic dev` y en el editor un `TS2345` de dos líneas: «Argument of type
+  '{}' is not assignable to parameter of type '$Missing<{ text: string; tone?: "info" | "danger";
+  }, never>'», y «Property 'text' is missing in type '{}' but required in type '$Missing<…>'». El
+  usuario no escribió ninguna llamada ni conoce `$Missing`. La bombilla sí acierta: «Add the
+  required props of <myapp-alert>» escribe `.text=""`.
+- **Cómo se resolvió en el tutorial.** Se enseña el error tal cual y se dice que la línea que
+  importa es la segunda.
+- **Qué debería hacer.** Un diagnóstico propio, como el resto de la vista: «<myapp-alert> needs
+  the prop `text`», con el span en el tag.
