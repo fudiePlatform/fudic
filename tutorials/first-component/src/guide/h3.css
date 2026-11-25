@@ -1,0 +1,10 @@
+:where(h3) {
+  margin: var(--my-app-space-5) 0 var(--my-app-space-2);
+  font-size: var(--my-app-text-xl);
+  font-weight: var(--my-app-weight-medium);
+  line-height: var(--my-app-leading-tight);
+}
+
+@supports (text-wrap: balance) {
+  :where(h3) { text-wrap: balance; }
+}

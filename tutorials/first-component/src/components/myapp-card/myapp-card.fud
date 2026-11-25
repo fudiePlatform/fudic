@@ -1,0 +1,17 @@
+<head>
+  <style>
+    .card {
+      padding: 1rem 1.25rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+
+<myapp-card>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p">
+    <div class="card">
+      <p>My first component.</p>
+    </div>
+  </template>
+</myapp-card>

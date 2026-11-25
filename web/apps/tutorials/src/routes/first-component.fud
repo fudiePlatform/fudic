@@ -1,0 +1,171 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu primer componente · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea un componente de Fudic con la CLI, dale markup y estilos, úsalo en una página y mira cómo llega al navegador, ya pintado.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/first-component">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu primer componente · Tutoriales de Fudic">
+  <meta property="og:description" content="Crea un componente con la CLI, úsalo en una página y mira cómo llega, ya pintado.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/first-component">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render firstStepsNav("first-component")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente</a></li>
+        <li><a href="#write">3. Escríbelo</a></li>
+        <li><a href="#use">4. Úsalo en la página</a></li>
+        <li><a href="#source">5. Mira lo que llega</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Primeros pasos</span></p>
+
+<h1>Tu primer componente</h1>
+
+<p class="lede">Creas un componente con la CLI, le das markup y estilos, lo usas en la página de inicio y ves cómo llega al navegador.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un componente con <code>fudic g component</code> y saber qué es cada fichero que escribe.</li>
+    <li>Darle markup y estilos que solo le afectan a él.</li>
+    <li>Usarlo en una página y ver que llega pintado, sin JavaScript.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal abierta. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component card --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-card&gt; in src/components/myapp-card/
+
+  myapp-card.fud          the component
+  myapp-card.test.ts      unit test               pnpm test
+  myapp-card.fudspec      acceptance criteria     pnpm spec
+  myapp-card.fixture.ts   the props the criteria mount it with
+  linked from src/routes/index.fud</code></pre>
+
+<ul>
+  <li><strong>El nombre lleva el prefijo de la app.</strong> <code>card</code> pasa a ser <code>&lt;myapp-card&gt;</code>, porque el estándar exige un guion en todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a>. El prefijo está en <code>fudic.json</code>.</li>
+  <li><strong>Cada componente tiene su carpeta</strong>, con el componente, su test unitario, sus criterios de aceptación y las props con las que se prueban.</li>
+  <li><strong><code>--in</code> lo enlaza desde la página.</strong> La CLI añade a <code>index.fud</code> la línea <code>&lt;link rel="component"&gt;</code> que lo declara.</li>
+</ul>
+
+<p>Todas las opciones están en la página de <a href="/docs/cli/generate/component"><code>fudic generate component</code></a>.</p>
+
+<h2 id="write">3. Escríbelo</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-card/myapp-card.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .card &#123;
+      padding: 1rem 1.25rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;div class="card"&gt;
+      &lt;p&gt;My first component.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>El tag envuelve un <code>&lt;template shadowrootmode&gt;</code>.</strong> Lo de dentro es el shadow DOM del componente: su propio árbol, separado del resto de la página.</li>
+  <li><strong>El <code>&lt;style&gt;</code> solo afecta al componente.</strong> Su <code>.card</code> no choca con ninguna otra <code>.card</code> de la página.</li>
+  <li><strong><code>shadowrootadoptedstylesheets="p"</code></strong> le da a su párrafo el aspecto de los párrafos de la página, porque adopta la hoja <code>p</code> de la guía de estilos.</li>
+</ul>
+
+<ui-note>
+  <p>Sin <code>p</code> en <code>shadowrootadoptedstylesheets</code>, el párrafo no se parecería al de la página, y <code>fudic dev</code> lo avisa en la terminal:</p>
+  <pre class="output"><code>warning FUD1440: &lt;p&gt; is styled by the guide's "p", which this component does not adopt: add it to shadowrootadoptedstylesheets to look like the page</code></pre>
+</ui-note>
+
+<p>La forma de un componente se explica en <a href="/docs/template-syntax/components">Componentes</a>, y sus estilos en <a href="/docs/styles">El CSS de un componente</a>.</p>
+
+<h2 id="use">4. Úsalo en la página</h2>
+
+<p>La CLI ya puso el <code>&lt;link rel="component"&gt;</code>. Escribe el tag debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;myapp-card&gt;&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Guarda. El navegador se recarga y la tarjeta aparece bajo el título.</p>
+
+<ui-note .kind="important">
+  <p>El <code>&lt;h1&gt;</code> se queda en la página, no dentro del componente. Los buscadores y los lectores de pantalla buscan los encabezados en el documento.</p>
+</ui-note>
+
+<h2 id="source">5. Mira lo que llega</h2>
+
+<p>Abre el código fuente con Ctrl+U. El componente llega así, ordenado aquí para leerlo mejor:</p>
+
+<pre class="output"><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-card data-fud-adopt="base p myapp-card"&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base p myapp-card"&gt;
+    &lt;div class="card"&gt;
+      &lt;p&gt;My first component.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
+
+<ul>
+  <li><strong>Es <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>.</strong> El navegador lo pinta mientras lee la página, sin JavaScript.</li>
+  <li><strong>Fudic ha añadido dos hojas.</strong> <code>base</code> es la base de la guía de estilos, y <code>myapp-card</code> es el <code>&lt;style&gt;</code> del componente.</li>
+  <li><strong>No llega ningún script del componente.</strong> Un componente sin estado ni eventos se queda en HTML y CSS.</li>
+</ul>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/first-component" target="_blank" rel="noopener">la solución de Tu primer componente, en GitHub</a>. Compara tu <code>myapp-card.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/first-app", prevTitle: "Tu primera app", next: "/tutorials/editor", nextTitle: "El editor a tu favor")

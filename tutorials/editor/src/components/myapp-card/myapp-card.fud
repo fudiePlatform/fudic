@@ -1,0 +1,8 @@
+<head>
+  <style></style>
+</head>
+
+<myapp-card>
+  <template shadowrootmode="open">
+  </template>
+</myapp-card>

@@ -52,7 +52,7 @@
   <details class="toggle"><summary>Tutoriales de Primeros pasos</summary></details>
   <ol class="tutorial-list">
     @render tutorial("first-app", "Tu primera app", "beginner", @current)
-    @render tutorial("first-component", "Tu primer componente", "beginner", @current, false)
-    @render tutorial("editor", "El editor a tu favor", "beginner", @current, false)
+    @render tutorial("first-component", "Tu primer componente", "beginner", @current)
+    @render tutorial("editor", "El editor a tu favor", "beginner", @current)
   </ol>
 }

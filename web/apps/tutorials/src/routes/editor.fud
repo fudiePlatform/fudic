@@ -1,0 +1,169 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El editor a tu favor · Tutoriales de Fudic</title>
+  <meta name="description" content="Instala la extensión de Fudic para VS Code, mira un error mientras escribes, arréglalo con la bombilla, lee qué significa su código y da formato a un .fud.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/editor">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El editor a tu favor · Tutoriales de Fudic">
+  <meta property="og:description" content="Un error mientras escribes, su arreglo con la bombilla, su explicación y el formato de un .fud.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/editor">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render firstStepsNav("editor")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#install">1. Instala la extensión</a></li>
+        <li><a href="#error">2. Provoca un error</a></li>
+        <li><a href="#fix">3. Arréglalo con la bombilla</a></li>
+        <li><a href="#explain">4. Lee qué significa</a></li>
+        <li><a href="#format">5. Dale formato</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Primeros pasos</span></p>
+
+<h1>El editor a tu favor</h1>
+
+<p class="lede">Instalas la extensión de Fudic, cometes un error a propósito, lo arreglas con la bombilla y dejas que el editor dé formato al fichero.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Instalar la extensión de Fudic en VS Code.</li>
+    <li>Ver un error mientras escribes y arreglarlo con la bombilla.</li>
+    <li>Leer qué significa un código <code>FUDnnnn</code> sin salir del editor.</li>
+    <li>Dar formato a un <code>.fud</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y VS Code, o un editor compatible como Cursor o Antigravity.</p>
+</section>
+
+<h2 id="install">1. Instala la extensión</h2>
+
+<p>Crea la app y ábrela en VS Code:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+code my-app</code></pre>
+</ui-code>
+
+<p>Abre la paleta rápida con Ctrl+P y escribe:</p>
+
+<ui-code>
+<pre><code>ext install fudic.fudic-vscode</code></pre>
+</ui-code>
+
+<p>La extensión se activa sola en cuanto el proyecto tiene un <code>.fud</code>. Cursor, Antigravity, Windsurf y VSCodium la instalan desde Open VSX. Lo cuenta <a href="/docs/editors#install">Instalarla</a>.</p>
+
+<h2 id="error">2. Provoca un error</h2>
+
+<p>Crea un componente, esta vez sin enlazarlo desde ninguna página:</p>
+
+<ui-code>
+<pre><code>npx fudic g component card</code></pre>
+</ui-code>
+
+<p>Ahora úsalo en la página de inicio, sin declararlo. Añade el tag al final:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;myapp-card&gt;&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<p>El editor subraya <code>&lt;myapp-card&gt;</code> en rojo. Pasa el ratón por encima y verás el error, con su código, <code>FUD0191</code>:</p>
+
+<pre class="output"><code>custom element `&lt;myapp-card&gt;` used without a `&lt;link rel="component"&gt;` declaration</code></pre>
+
+<p>Es el mismo error que daría <code>fudic dev</code> en la terminal. El editor lo enseña mientras escribes, sin esperar al build.</p>
+
+<h2 id="fix">3. Arréglalo con la bombilla</h2>
+
+<p>Con el cursor sobre el tag, pulsa Ctrl+. para abrir la bombilla. Ofrece dos acciones:</p>
+
+<pre class="output"><code>Explain FUD0191
+Add &lt;link rel="component"&gt; for &lt;myapp-card&gt;</code></pre>
+
+<p>Elige <strong>Add &lt;link rel="component"&gt; for &lt;myapp-card&gt;</strong>. El editor escribe la línea que faltaba, justo después del layout, y el subrayado desaparece:</p>
+
+<pre class="output"><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;</code></pre>
+
+<p>La bombilla solo aparece cuando el arreglo es seguro. Otros arreglos que ofrece están en <a href="/docs/editors/writing#fixes">La bombilla</a>.</p>
+
+<h2 id="explain">4. Lee qué significa</h2>
+
+<p>Cada error lleva un código. La otra acción de la bombilla, <strong>Explain FUD0191</strong>, abre su explicación en el propio editor: qué significa y cómo se arregla. Es la misma que tiene en la web, <a href="/docs/reference/diagnostics/FUD0191">la página de FUD0191</a>.</p>
+
+<p>Todos los códigos están en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</p>
+
+<h2 id="format">5. Dale formato</h2>
+
+<p>Desordena la página a propósito: sangrías mal puestas y una lista torcida.</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;
+
+&lt;head&gt;
+&lt;title&gt;Home&lt;/title&gt;
+    &lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;One&lt;/li&gt;
+      &lt;li&gt;Two&lt;/li&gt;
+&lt;/ul&gt;
+&lt;myapp-card&gt;&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Guarda. La extensión da formato al fichero al guardar, con el mismo formateador que la CLI. Desde la terminal se hace así:</p>
+
+<ui-code>
+<pre><code>npx fudic fmt</code></pre>
+</ui-code>
+
+<pre class="output"><code>  modify  src/routes/index.fud</code></pre>
+
+<p>Y la página queda así:</p>
+
+<pre class="output"><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;One&lt;/li&gt;
+  &lt;li&gt;Two&lt;/li&gt;
+&lt;/ul&gt;
+&lt;myapp-card&gt;&lt;/myapp-card&gt;</code></pre>
+
+<p>Las opciones del formateador, y cómo usarlo en la integración continua, están en <a href="/docs/tools/format">El formateador</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/editor" target="_blank" rel="noopener">la solución de El editor a tu favor, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/first-component", prevTitle: "Tu primer componente", next: "/tutorials/", nextTitle: "Todas las categorías")

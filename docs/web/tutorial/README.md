@@ -53,8 +53,8 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 | # | Slug | Tutorial | Nivel | CLI | Docs | En basic | Estado |
 |---|---|---|---|---|---|---|---|
 | 1 | `first-app` | Tu primera app | P | `new`, `dev`, `preview` | cli/new, cli/dev, vite/build, routes-and-layouts, expressions | `index.fud` | En revisión |
-| 2 | `first-component` | Tu primer componente | P | `g component` | template-syntax/components, cli/generate/component | `app-card` | Propuesto |
-| 3 | `editor` | El editor a tu favor: diagnósticos, quick fix y formato | P | `fmt` | editors, editors/writing, tools/format | — | Propuesto |
+| 2 | `first-component` | Tu primer componente | P | `g component` | template-syntax/components, cli/generate/component, styles | `app-card` | En revisión |
+| 3 | `editor` | El editor a tu favor: diagnósticos, quick fix y formato | P | `g component`, `fmt` | editors, editors/writing, reference/diagnostics, tools/format | — | En revisión |
 
 ### 3.2 Sintaxis de plantilla
 
@@ -287,7 +287,7 @@ resolver §6.1.
 2. ~~Crear la app `tutorials` con la CLI y llevar el enlace «Tutoriales» del menú hasta ella.~~
 3. ~~La portada con las 16 categorías y la plantilla de página con `first-app`.~~ Hecho; sirve de
    muestra del diseño.
-4. **En pausa.** Categoría a categoría, en el orden de §3.
+4. **En pausa.** Categoría a categoría, en el orden de §3. Primeros pasos, la primera, está completa.
 5. El día que se publique en npm: el botón de StackBlitz en todos.
 
 ### 6.1 Pendiente: que el tutorial no se desfase del código
@@ -297,8 +297,8 @@ resolver §6.1.
 - **El requisito.** El código de cada tutorial se prueba. Si no se prueba, el tutorial deriva.
 - **Por decidir.** Cómo se prueba, y cómo salen los ejemplos (la solución) a partir del tutorial, en
   vez de escribirse aparte.
-- **Lo que queda hasta entonces.** `first-app` y su solución en `tutorials/first-app/` se quedan como
-  muestra. Su enlace «la solución en GitHub» está roto: apunta a `main`, donde aún no existe.
+- **Lo que queda hasta entonces.** Los tres tutoriales de Primeros pasos y sus soluciones en
+  `tutorials/` se quedan como muestra. Sus enlaces «la solución en GitHub» están rotos: apuntan a `main`, donde aún no existen.
   La solución se regenerará cuando la CLI quite la fuente de la guía (hallazgo 23 de la CLI).
 
 Lo que la CLI no resuelva se apunta en [../hallazgos-cli.md](../hallazgos-cli.md); lo del framework,
@@ -311,3 +311,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-25 | Este documento, para revisión. Decisiones de Pedro: una app propia (no dentro de `/docs`); portada con 16 categorías; el tiempo no se muestra; soluciones en una carpeta de este repo, no en otro; nada fuera del índice; el layout lo decide Claude (tutoriales a la izquierda, pasos a la derecha). Prueba de oxc-parser en WASM para StackBlitz (§5.1). |
 | 2026-11-25 | App `web/apps/tutorials` creada con `fudic g app tutorials --uses ui --layout @web/ui/layouts/docs.fud --no-sw --locale es` sobre una copia de `web/` (hallazgos 5 y 6 de la CLI), servida en `/tutorials/`. «Tutoriales» en la cabecera y el pie de todas las páginas. La portada con las 16 categorías y el primer tutorial, `first-app`, creado con `fudic g page`: cada comando y cada salida, de una ejecución real de `fudic new`, `fudic dev`, `pnpm build` y `fudic preview` fuera del repo. Su solución, en `tutorials/first-app/`. Lighthouse en las dos páginas, móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100 (el 99 en móvil es el mismo que da una página de la Documentación en `vite preview`, sin compresión). El script de anclas de la skill lee ya las tres apps. Hallazgo 56 del framework: el typecheck asigna mal los argumentos con nombre de un snippet. |
 | 2026-11-25 | Decisión de Pedro: no se escriben más tutoriales hasta resolver cómo se prueba su código para que no se desfase (§6.1). `first-app` queda como muestra; su enlace a GitHub, roto hasta entonces. |
+| 2026-11-25 | A petición de Pedro, los otros dos tutoriales de Primeros pasos: `first-component` y `editor`, creados con `fudic g page`, con su solución en `tutorials/`. Todo de ejecuciones reales: `fudic g component` (con y sin `--in`), el aviso `FUD1440`, el error `FUD0191` en `fudic dev`, el diagnóstico y las dos acciones de la bombilla pedidos al language server por LSP, y `fudic fmt`. Lighthouse en las dos, móvil y escritorio, claro y oscuro: 99–100 / 100 / 100 / 100. |
