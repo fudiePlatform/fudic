@@ -338,8 +338,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 
 - **Qué pasó.** Escribiendo el tutorial `await` (2026-11-25), en una app recién creada,
   `fudic g api src/routes/index.fud` escribe `modify  package.json` (añade `"@fudic/http":
-  "0.0.1"`) y termina. No dice que falta `pnpm install`, y el `notFound` de `@fudic/http` que usa
-  el tutorial no resuelve hasta instalarla.
+  "0.0.1"`) y termina. No dice que falta `pnpm install`, y el manejador que se escribe después
+  importa de `@fudic/http`.
 - **Cómo se resolvió.** El tutorial pone `pnpm install` justo después de `fudic g api`.
 - **Qué debería hacer.** Instalarla, como hace `fudic new` salvo con `--no-install`, o al menos
   terminar con un `Next  pnpm install`.
