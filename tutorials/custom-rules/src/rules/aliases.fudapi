@@ -1,0 +1,9 @@
+# Lowercase letters, digits and hyphens, nothing else.
+pattern alias  [a-z0-9-]+
+
+# The alias belongs to somebody else. The list stays on the server: the browser asks while the
+# user types, and the server checks again on submit.
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken

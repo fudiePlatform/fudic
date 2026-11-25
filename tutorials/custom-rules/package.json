@@ -1,0 +1,32 @@
+{
+  "name": "my-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
+  },
+  "dependencies": {
+    "@fudic/core": "0.0.1",
+    "@fudic/dom": "0.0.1",
+    "@fudic/forms": "0.0.1",
+    "@fudic/http": "0.0.1",
+    "@fudic/ssr": "0.0.1",
+    "@fudic/transport": "0.0.1"
+  },
+  "devDependencies": {
+    "@fudic/cli": "0.0.1",
+    "@fudic/mcp": "0.0.1",
+    "@fudic/terms": "0.0.1",
+    "@fudic/testing": "0.0.1",
+    "@fudic/vite": "0.0.1",
+    "@fudic/workbench": "0.0.1",
+    "typescript": "5.9.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  }
+}

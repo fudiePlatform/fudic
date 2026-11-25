@@ -1,0 +1,6 @@
+# Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  alias  str = ""
+    required       "Choose an alias."
+    pattern alias  "Only lowercase letters, digits and hyphens."
+    alias-taken    "That alias is already taken."

@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="../forms/signup.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Sign up</h1>
+
+<form control=@signupForm>
+  <label for="alias">Alias</label>
+  <input id="alias" type="text" control=@signupForm.alias>
+  @if (signupForm.alias.pending()) {
+    <small role="status">Checking…</small>
+  }
+  <small error=@signupForm.alias></small>
+  <button type="submit">Sign up</button>
+</form>

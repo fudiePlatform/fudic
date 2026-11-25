@@ -1089,6 +1089,10 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   pudieron repetir.
 - **Cómo se resolvió en el tutorial.** Ningún paso quita una regla: el alias opcional se cuenta en
   prosa.
+- **Vuelto a comprobar (tutorial `custom-rules`), el 2026-11-25.** Lo mismo al declarar una regla
+  `remote` en `src/rules/aliases.fudapi` (que ya tenía un `pattern`), crear `src/server/rules.ts`
+  y usarla en el formulario con `fudic dev` en marcha: la página, cortada tras el `<head>`. Tras
+  reiniciar, todo funciona. El tutorial pide parar `fudic dev` antes de declararla.
 - **Qué debería hacer.** Recargar bien cualquier cambio del `.fudapi`, y que un fallo del render
   salga en la terminal (lo mismo que el nº 73).
 

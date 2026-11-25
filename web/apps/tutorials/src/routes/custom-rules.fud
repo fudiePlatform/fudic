@@ -1,0 +1,176 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Reglas y patrones propios · Tutoriales de Fudic</title>
+  <meta name="description" content="Un patrón con nombre y una regla propia que el navegador pregunta al servidor mientras el usuario escribe, con su indicador de espera, en un formulario de Fudic.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/custom-rules">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Reglas y patrones propios · Tutoriales de Fudic">
+  <meta property="og:description" content="Tus propias reglas de validación, también las que solo puede responder el servidor.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/custom-rules">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("custom-rules")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el formulario</a></li>
+        <li><a href="#pattern">2. Un patrón propio</a></li>
+        <li><a href="#rule">3. Una regla que responde el servidor</a></li>
+        <li><a href="#pending">4. Mientras pregunta</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Formularios</span></p>
+
+<h1>Reglas y patrones propios</h1>
+
+<p class="lede">Validas un alias con un patrón propio y con una regla que solo puede responder el servidor, «ese alias ya está cogido», que el navegador le pregunta mientras el usuario escribe.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar un patrón con nombre y usarlo en un campo.</li>
+    <li>Declarar una regla <code>remote</code> e implementarla en el servidor.</li>
+    <li>Enseñar que el campo espera la respuesta, con <code>pending()</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Las reglas de serie están en <a href="/tutorials/validation">Validación y mensajes de error</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el formulario</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g form signup --skip-test
+pnpm add @@fudic/http@@0.0.1</code></pre>
+</ui-code>
+
+<p>Los formularios necesitan <code>@@fudic/http</code>, y la CLI no lo añade. Pon el formulario en la página, con un solo campo:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="../forms/signup.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Sign up&lt;/h1&gt;
+
+&lt;form control=@@signupForm&gt;
+  &lt;label for="alias"&gt;Alias&lt;/label&gt;
+  &lt;input id="alias" type="text" control=@@signupForm.alias&gt;
+  &lt;small error=@@signupForm.alias&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Sign up&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<h2 id="pattern">2. Un patrón propio</h2>
+
+<p>Un patrón es una expresión regular con nombre, para la regla <code>pattern</code>. Las reglas y los patrones propios se declaran en un <code>.fudapi</code>, por convención en <code>src/rules/</code>. Crea este fichero a mano:</p>
+
+<ui-code .path="src/rules/aliases.fudapi">
+<pre><code># Lowercase letters, digits and hyphens, nothing else.
+pattern alias  [a-z0-9-]+</code></pre>
+</ui-code>
+
+<p>El patrón casa con el texto entero, así que no hace falta escribir <code>^</code> ni <code>$</code>. Úsalo en el campo por su nombre:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  alias  str = ""
+    required       "Choose an alias."
+    pattern alias  "Only lowercase letters, digits and hyphens."</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y escribe en Alias, saliendo del campo cada vez. <code>Ada Lovelace</code> y <code>ada_99</code> dicen «Only lowercase letters, digits and hyphens.», y <code>ada-99</code> vale. El patrón lo comprueba el navegador, sin preguntar a nadie.</p>
+
+<h2 id="rule">3. Una regla que responde el servidor</h2>
+
+<p>Saber si un alias ya está cogido necesita la lista de alias, que no sale del servidor. Para <code>fudic dev</code> con Ctrl+C: una regla nueva no se ve hasta arrancarlo otra vez. Declárala en el mismo fichero que el patrón:</p>
+
+<ui-code .path="src/rules/aliases.fudapi">
+<pre><code># Lowercase letters, digits and hyphens, nothing else.
+pattern alias  [a-z0-9-]+
+
+# The alias belongs to somebody else. The list stays on the server: the browser asks while the
+# user types, and the server checks again on submit.
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>on field str</code></strong>: valida un campo de texto.</li>
+  <li><strong><code>runs remote</code></strong>: la regla se ejecuta en el servidor, y el navegador se la pregunta mientras el usuario escribe. Al enviar, el servidor la vuelve a ejecutar.</li>
+  <li><strong><code>fails alias-taken</code></strong>: el código con el que falla, el que busca su texto.</li>
+</ul>
+
+<p>Impleméntala en el servidor con <code>check</code>, que recibe el valor y devuelve si es válido. La espera de un segundo hace de base de datos lenta, para que en el paso siguiente se vea la pregunta:</p>
+
+<ui-code .path="src/server/rules.ts">
+<pre><code>import &#123; aliasTaken &#125; from 'fudic:rules/aliases';
+
+const taken = ['admin', 'ada', 'grace'];
+
+aliasTaken.check(async (value) =&gt; &#123;
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+  return !taken.includes(value);
+&#125;);</code></pre>
+</ui-code>
+
+<p>Y añádela al campo, después del patrón, con su texto:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code>  alias  str = ""
+    required       "Choose an alias."
+    pattern alias  "Only lowercase letters, digits and hyphens."
+    alias-taken    "That alias is already taken."</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, escribe <code>ada</code> y sal del campo. Un segundo después aparece «That alias is already taken.». Cambia a <code>ada-99</code> y, tras otro segundo, el error se va. Si pulsas Sign up con <code>ada</code>, no se envía: el error está en el campo.</p>
+
+<p>Como las reglas van en orden, con <code>Ada</code> falla antes el patrón y el servidor no llega a oír la pregunta.</p>
+
+<h2 id="pending">4. Mientras pregunta</h2>
+
+<p>Ese segundo de espera, el usuario no sabe si el alias vale. Mientras espera la respuesta, el campo está <code>pending()</code>, y la página lo puede enseñar:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  &lt;input id="alias" type="text" control=@@signupForm.alias&gt;
+  @@if (signupForm.alias.pending()) &#123;
+    &lt;small role="status"&gt;Checking…&lt;/small&gt;
+  &#125;
+  &lt;small error=@@signupForm.alias&gt;&lt;/small&gt;</code></pre>
+</ui-code>
+
+<p>Guarda y abre la pestaña Red de las herramientas del navegador. Escribe <code>grac</code>, sal del campo, vuelve y añade una <code>e</code>:</p>
+
+<ul>
+  <li><strong>«Checking…» sale al momento,</strong> y se va cuando llega la respuesta.</li>
+  <li><strong>La pregunta sale cuando haces una pausa:</strong> un <code>POST</code> a <code>/_fudic/rule/rules/aliases/alias-taken</code>, 300 ms después de la última tecla, no uno por tecla.</li>
+  <li><strong>Una pregunta ya hecha no se repite.</strong> Borra la <code>e</code> y vuelve a escribirla: el error sale sin ninguna petición nueva.</li>
+</ul>
+
+<p>Las reglas <code>both</code>, que se implementan en <code>src/browser</code> y corren en los dos lados, y las que reciben parámetros, están en <a href="/docs/server/rules">Reglas y patrones</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/custom-rules" target="_blank" rel="noopener">la solución de Reglas y patrones propios, en GitHub</a>. Compara tu <code>aliases.fudapi</code> y tu <code>src/server/rules.ts</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/form-control", prevTitle: "Un control form-associated", next: "/tutorials/", nextTitle: "Todas las categorías")

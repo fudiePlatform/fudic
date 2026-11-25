@@ -125,6 +125,6 @@
     @render tutorial("file-upload", "Subir ficheros", "intermediate", @current)
     @render tutorial("form-events", "Eventos del formulario", "intermediate", @current)
     @render tutorial("form-control", "Un control form-associated", "advanced", @current)
-    @render tutorial("custom-rules", "Reglas y patrones propios", "advanced", @current, false)
+    @render tutorial("custom-rules", "Reglas y patrones propios", "advanced", @current)
   </ol>
 }
