@@ -1023,3 +1023,29 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   con su signal.
 - **Qué debería hacer.** Que `via: 'client'` monte de verdad en el cliente con la prop tal cual, y
   que el fixture que no da una prop obligatoria sea un error.
+
+## 71. Las hojas de `fudic.json` no se ven en `fudic dev` hasta reiniciarlo
+
+- **Qué pasó.** Escribiendo el tutorial `global-styles`, con `fudic dev` en marcha:
+  `fudic g style theme` añade `theme` a `globalStyles`, y una regla `.muted` en `theme.css` no
+  llega a la tarjeta (`data-fud-adopt="base p myapp-card"`, sin `theme`), ni al guardar el
+  componente ni la página. Tras reiniciar, sí. Peor: con `theme` ya cargada, cambiar `gray` por
+  `slategray` en `theme.css` tampoco se ve, ni tocando el componente; sigue sirviendo la versión
+  del arranque. Lo mismo al declarar `panel` en `styles`. La hoja de la página
+  (`<link rel="stylesheet">` del layout) sí se recarga sola.
+- **Cómo se resolvió en el tutorial.** Se pide parar `fudic dev` antes de crear o cambiar esas
+  hojas y arrancarlo después, sin explicar por qué.
+- **Qué debería hacer.** Vigilar `fudic.json` y las hojas de `globalStyles` y `styles`, y recargar
+  los componentes que las adoptan, como hace con su `<style>`.
+
+## 72. `FUD0744` en `fudic dev` solo sale al pedir la página, y con la pila de Vite
+
+- **Qué pasó.** En el mismo tutorial, `shadowrootadoptedstylesheets="p panle"` (una errata de
+  `panel`): el editor lo subraya al momento con un `FUD0744` claro, pero `fudic dev` solo dice
+  `page reload` y `the typecheck is clean`. Al abrir la página, un 500, y la terminal escribe
+  `Error when evaluating SSR module fudic-wrapper:/: … error FUD0744: "panle" is not a stylesheet
+  of this project…` seguido de una pila de una docena de líneas de `@fudic/vite` y Vite.
+- **Cómo se resolvió en el tutorial.** No se enseña; el paso del error usa `FUD0743`, que sale bien
+  al arrancar.
+- **Qué debería hacer.** Que el typecheck de `fudic dev` lo cuente como los demás errores, al
+  guardar, y sin pila: es un error del usuario, no del compilador.

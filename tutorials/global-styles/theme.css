@@ -1,0 +1,5 @@
+/* Adopted inside every component of my-app: write :host, not body. */
+.muted {
+  color: gray;
+  font-size: 0.875rem;
+}

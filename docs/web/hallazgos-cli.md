@@ -143,8 +143,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los siete tutoriales de Reactividad (`signals`, `signal-store`, `signal-props`,
   `route-signals`, `lifecycle`, `hydration`, `client-components`), el 2026-11-25: el `href` frágil
   y títulos como «Signal-store» o «Client-components», corregidos a mano.
-- **Y otra vez** con los tutoriales de Estilos (`scoped-styles`), el 2026-11-25: el `href` frágil y
-  el título «Scoped-styles», corregidos a mano.
+- **Y otra vez** con los tutoriales de Estilos (`scoped-styles`, `global-styles`), el 2026-11-25: el `href`
+  frágil y los títulos «Scoped-styles» y «Global-styles», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -351,3 +351,14 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** El tutorial pone `pnpm install` justo después de `fudic g api`.
 - **Qué debería hacer.** Instalarla, como hace `fudic new` salvo con `--no-install`, o al menos
   terminar con un `Next  pnpm install`.
+
+## 25. `fudic g style` deja la hoja en la raíz del proyecto
+
+- **Qué pasó.** Escribiendo el tutorial `global-styles` (2026-11-25), en una app recién creada,
+  `fudic g style theme` escribe `theme.css` junto a `package.json`, y en `fudic.json`
+  `"theme": "theme.css"`. El resto del CSS de la app vive en `src/` (la guía, en `src/guide/`), y
+  la Documentación pone las hojas compartidas en `src/styles/`. Termina con «Created theme.css in »,
+  con el nombre del proyecto vacío, como el `(in )` del nº 18 y el nº 22.
+- **Cómo se resolvió.** El tutorial deja `theme.css` donde la pone la CLI.
+- **Qué debería hacer.** Crearla en `src/styles/` (o junto a la guía), y nombrar el proyecto en el
+  mensaje.

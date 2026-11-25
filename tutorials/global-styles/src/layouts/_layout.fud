@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @* Keep this line: fudic puts its scripts here. *@
+    <script type="module" src="fudic:runtime"></script>
+    <link rel="stylesheet" href="../styles/site.css">
+    @RenderHead()
+  </head>
+  <body>
+
+    <main>@RenderBody()</main>
+  </body>
+</html>

@@ -1,0 +1,228 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tema global y hojas compartidas · Tutoriales de Fudic</title>
+  <meta name="description" content="Las hojas compartidas de Fudic: tokens en la hoja de la página que llegan a los componentes, una hoja para todos con fudic g style y otra que elige cada componente.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/global-styles">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tema global y hojas compartidas · Tutoriales de Fudic">
+  <meta property="og:description" content="Un color de marca para toda la app, una hoja que adoptan todos los componentes y otra que elige uno.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/global-styles">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render stylesNav("global-styles")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una tarjeta</a></li>
+        <li><a href="#tokens">2. Un token en la página</a></li>
+        <li><a href="#global">3. Una hoja para todos</a></li>
+        <li><a href="#chosen">4. Una hoja que se elige</a></li>
+        <li><a href="#root">5. :root no entra</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Estilos</span></p>
+
+<h1>Tema global y hojas compartidas</h1>
+
+<p class="lede">Das a toda la app un color de marca que llega a los componentes, creas una hoja que adoptan todos y otra que elige uno solo. Cada CSS compartido tiene su sitio, porque el de la página no entra en los componentes.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar tokens en la hoja de la página y usarlos dentro de un componente.</li>
+    <li>Crear con <code>fudic g style</code> una hoja que adoptan todos los componentes.</li>
+    <li>Declarar en <code>fudic.json</code> una hoja que solo adopta el componente que la nombra.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una tarjeta</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component card --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La CLI crea la app y <code>&lt;myapp-card&gt;</code> en <code>src/components/myapp-card/</code>, enlazado desde la página de inicio. Haz que la tarjeta pinte un borde con el color <code>--brand</code>, o gris si nadie lo da:</p>
+
+<ui-code .path="src/components/myapp-card/myapp-card.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .card &#123;
+      padding: 1rem;
+      border: 2px solid var(--brand, gray);
+      border-radius: 0.5rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;div class="card"&gt;
+      &lt;p&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Pon dos tarjetas en la página, la segunda dentro de una zona <code>promo</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-card&gt;First card&lt;/myapp-card&gt;
+&lt;div class="promo"&gt;
+  &lt;myapp-card&gt;Card on offer&lt;/myapp-card&gt;
+&lt;/div&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>: las dos tarjetas tienen el borde gris. Si es tu primer componente, <a href="/tutorials/first-component">Tu primer componente</a> cuenta su forma.</p>
+
+<h2 id="tokens">2. Un token en la página</h2>
+
+<p>Los valores de diseño de toda la app, como el color de marca, son custom properties en la hoja de la página. Créala:</p>
+
+<ui-code .path="src/styles/site.css">
+<pre><code>:root &#123;
+  --brand: darkorange;
+&#125;
+
+.promo &#123;
+  --brand: seagreen;
+&#125;</code></pre>
+</ui-code>
+
+<p>Y enlázala en el <code>&lt;head&gt;</code> del layout, antes de <code>@@RenderHead()</code>:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>    &lt;link rel="stylesheet" href="../styles/site.css"&gt;
+    @@RenderHead()</code></pre>
+</ui-code>
+
+<p>Guarda: la primera tarjeta sale naranja y la de la zona <code>promo</code>, verde.</p>
+
+<ul>
+  <li><strong>El CSS de la página no entra en los componentes,</strong> pero las custom properties se heredan, y cruzan la frontera.</li>
+  <li><strong>Una zona puede cambiar un token,</strong> y todo lo que hay dentro lo usa, también los componentes.</li>
+  <li><strong>Es un <code>&lt;link rel="stylesheet"&gt;</code> estándar,</strong> con el <code>href</code> relativo al <code>.fud</code>. Todas las páginas que usan el layout lo reciben.</li>
+</ul>
+
+<h2 id="global">3. Una hoja para todos</h2>
+
+<p>Una regla que comparten todos los componentes no puede ir en la hoja de la página, porque no entraría. Va en una hoja de <code>globalStyles</code>. Para <code>fudic dev</code> con Ctrl+C y créala:</p>
+
+<ui-code>
+<pre><code>npx fudic g style theme</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created theme.css in
+  adopted by every component of my-app, after the sheets of the libraries it uses</code></pre>
+
+<p>La CLI crea <code>theme.css</code> en la raíz del proyecto y la añade a <code>globalStyles</code> de <code>fudic.json</code>, junto a <code>base</code>, la base de la guía de estilos:</p>
+
+<pre class="output"><code>  "globalStyles": &#123;
+    "base": "src/guide/base.css",
+    "theme": "theme.css"
+  &#125;,</code></pre>
+
+<p>Escribe en ella una regla para un texto secundario:</p>
+
+<ui-code .path="theme.css">
+<pre><code>/* Adopted inside every component of my-app: write :host, not body. */
+.muted &#123;
+  color: gray;
+  font-size: 0.875rem;
+&#125;</code></pre>
+</ui-code>
+
+<p>Úsala en la tarjeta con un párrafo debajo del <code>&lt;slot&gt;</code>. El componente no tiene ninguna regla <code>.muted</code>:</p>
+
+<ui-code .path="src/components/myapp-card/myapp-card.fud">
+<pre><code>    &lt;div class="card"&gt;
+      &lt;p&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/p&gt;
+      &lt;p class="muted"&gt;Styled by theme.css&lt;/p&gt;
+    &lt;/div&gt;</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancar <code>npx fudic dev</code>. El párrafo nuevo sale gris y más pequeño en las dos tarjetas. Con Ctrl+U se ve qué hojas adopta cada una:</p>
+
+<pre class="output"><code>&lt;myapp-card data-fud-adopt="base theme p myapp-card"&gt;</code></pre>
+
+<p>Las de <code>globalStyles</code> van delante, después las que nombra el componente y al final su propio <code>&lt;style&gt;</code>, para que gane. Pon muy poco en <code>globalStyles</code>: llega a todos los componentes.</p>
+
+<h2 id="chosen">4. Una hoja que se elige</h2>
+
+<p>Si una hoja solo la necesitan algunos componentes, se declara en <code>styles</code> y la adopta el que la nombra. Para <code>fudic dev</code> otra vez y crea la hoja:</p>
+
+<ui-code .path="src/styles/panel.css">
+<pre><code>.panel &#123;
+  background: lightyellow;
+&#125;</code></pre>
+</ui-code>
+
+<p>Declárala en <code>fudic.json</code>, después de <code>globalStyles</code>:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "styles": &#123;
+    "panel": "src/styles/panel.css"
+  &#125;,</code></pre>
+</ui-code>
+
+<p>La tarjeta la nombra en <code>shadowrootadoptedstylesheets</code>, y usa la clase:</p>
+
+<ui-code .path="src/components/myapp-card/myapp-card.fud">
+<pre><code>  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p panel"&gt;
+    &lt;div class="card panel"&gt;</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancar <code>npx fudic dev</code>: las dos tarjetas tienen el fondo amarillo, y adoptan <code>base theme p panel myapp-card</code>. Un componente que no nombre <code>panel</code> no la recibe.</p>
+
+<h2 id="root">5. :root no entra</h2>
+
+<p>Dentro de un shadow root no hay <code>:root</code>, así que un token en una hoja de componente no llega a nadie. Para comprobarlo, para <code>fudic dev</code> y añade esta regla al final de <code>theme.css</code>:</p>
+
+<ui-code .path="theme.css">
+<pre><code>:root &#123;
+  --brand: purple;
+&#125;</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancarlo. Antes de servir, avisa:</p>
+
+<pre class="output"><code>  my-app   18:09:58 [vite] (client) warning: theme.css:6:1 - warning FUD0743: a ":root" rule in a project stylesheet matches nothing inside a shadow root — move it to the document stylesheet, the &lt;link rel="stylesheet"&gt; of the layout
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0743
+  my-app     Plugin: fudic
+  my-app     File: …/my-app/theme.css:6:1
+  my-app       6  :root &#123;
+  my-app          ─────</code></pre>
+
+<p>Las tarjetas siguen naranja y verde. El sitio de los tokens es el del paso 2, <code>src/styles/site.css</code>: quita la regla de <code>theme.css</code>.</p>
+
+<p>Las dos clases de hoja, y los detalles de cada una, están en <a href="/docs/styles/shared">Hojas compartidas</a>. Cómo llega cada hoja a la página, en <a href="/docs/styles/delivery">Cómo llega el CSS</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/global-styles" target="_blank" rel="noopener">la solución de Tema global y hojas compartidas, en GitHub</a>. Compara tu <code>fudic.json</code> y tus hojas con los suyos.</p>
+
+@render pager(prev: "/tutorials/scoped-styles", prevTitle: "El <style> del componente", next: "/tutorials/", nextTitle: "Todas las categorías")

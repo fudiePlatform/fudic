@@ -1,0 +1,18 @@
+<head>
+  <style>
+    .card {
+      padding: 1rem;
+      border: 2px solid var(--brand, gray);
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+
+<myapp-card>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p panel">
+    <div class="card panel">
+      <p><slot></slot></p>
+      <p class="muted">Styled by theme.css</p>
+    </div>
+  </template>
+</myapp-card>
