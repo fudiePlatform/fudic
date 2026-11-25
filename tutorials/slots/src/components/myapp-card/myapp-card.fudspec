@@ -1,0 +1,7 @@
+component myapp-card
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-card

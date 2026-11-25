@@ -183,4 +183,4 @@ npx fudic dev</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/props" target="_blank" rel="noopener">la solución de Pasar datos a un hijo, en GitHub</a>. Compara tu <code>myapp-alert.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/if-and-foreach", prevTitle: "Condiciones y listas", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/if-and-foreach", prevTitle: "Condiciones y listas", next: "/tutorials/slots", nextTitle: "Contenido por slot")

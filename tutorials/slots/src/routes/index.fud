@@ -1,0 +1,19 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-card/myapp-card.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Plans</h1>
+
+<myapp-card>
+  <h2 slot="title">Basic</h2>
+  <p>Everything you need to get started.</p>
+</myapp-card>
+
+<myapp-card>
+  <h2 slot="title">Pro</h2>
+  <p>For teams that ship every day.</p>
+  <p slot="footer">Cancel any time.</p>
+</myapp-card>

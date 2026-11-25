@@ -850,3 +850,19 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   importa es la segunda.
 - **Qué debería hacer.** Un diagnóstico propio, como el resto de la vista: «<myapp-alert> needs
   the prop `text`», con el span en el tag.
+- **Lo mismo con un slot**, en el tutorial `slots`: `<h2 slot="titel">` da «Argument of type
+  '"titel"' is not assignable to parameter of type '$Slots'». La bombilla acierta otra vez
+  («Change to slot="title"», «Change to slot="footer"»).
+
+## 59. Un encabezado dentro de un componente no avisa, y la bombilla lo afianza
+
+- **Qué pasó.** Escribiendo el tutorial `slots`, un `<h2>` dentro del `<template shadowrootmode>`
+  de un componente solo da `FUD1440` (que el componente no adopta la hoja `h2` de la guía), y la
+  bombilla ofrece «Adopt the guide's sheet for <h2>». La regla de Fudic es la contraria: los
+  encabezados van en la página, en light DOM, y el componente les deja un slot, porque dentro del
+  shadow DOM los buscadores y los lectores de pantalla no los cuentan en el índice de la página.
+- **Cómo se resolvió en el tutorial.** No se apoya en un aviso: enseña el código fuente y dónde
+  queda el `<h2>`.
+- **Qué debería hacer.** Un aviso propio para `h1`–`h6` dentro del shadow DOM de un componente,
+  con la acción de pasarlo a un slot, y que `FUD1440` no proponga adoptar la hoja de un
+  encabezado.

@@ -1,0 +1,207 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Contenido por slot · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea un componente de Fudic que recibe markup de la página por slots, con nombre y por defecto, y deja los encabezados en la página, donde los encuentran los buscadores.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/slots">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Contenido por slot · Tutoriales de Fudic">
+  <meta property="og:description" content="Un componente que recibe markup por slots, con los encabezados en la página.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/slots">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("slots")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#generate">2. Genera el componente con un slot</a></li>
+        <li><a href="#slots">3. Dale tres slots</a></li>
+        <li><a href="#fill">4. Rellénalos desde la página</a></li>
+        <li><a href="#typo">5. Un slot mal escrito</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>Contenido por slot</h1>
+
+<p class="lede">Creas una tarjeta que recibe su título, su texto y su pie desde la página, la usas para dos planes de precios y ves por qué el encabezado se queda en la página.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Recibir markup de la página con <code>&lt;slot&gt;</code>: uno sin nombre y otros con nombre.</li>
+    <li>Darle a un slot un contenido por defecto, para cuando nadie lo rellena.</li>
+    <li>Dejar los encabezados en la página y pasárselos al componente por un slot.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="generate">2. Genera el componente con un slot</h2>
+
+<p>En otra terminal, dentro de <code>my-app</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g component card --slot --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-card&gt; in src/components/myapp-card/
+
+  myapp-card.fud          the component
+  myapp-card.test.ts      unit test               pnpm test
+  myapp-card.fudspec      acceptance criteria     pnpm spec
+  myapp-card.fixture.ts   the props the criteria mount it with
+  linked from src/routes/index.fud</code></pre>
+
+<p>Con <code>--slot</code>, el componente nace con un <code>&lt;slot&gt;</code> dentro:</p>
+
+<pre class="output"><code>&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;slot&gt;&lt;/slot&gt;
+  &lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
+
+<p>Un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a> es el hueco donde el navegador pone lo que la página escribe dentro del tag. Es el mecanismo estándar del shadow DOM, no algo de Fudic.</p>
+
+<h2 id="slots">3. Dale tres slots</h2>
+
+<p>Sustituye el contenido del componente por este:</p>
+
+<ui-code .path="src/components/myapp-card/myapp-card.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .card &#123;
+      padding: 1rem 1.25rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    &#125;
+    ::slotted(h2) &#123;
+      margin-top: 0;
+    &#125;
+    footer &#123;
+      font-size: 0.875rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;article class="card"&gt;
+      &lt;slot name="title"&gt;&lt;/slot&gt;
+      &lt;slot&gt;&lt;/slot&gt;
+      &lt;footer&gt;
+        &lt;slot name="footer"&gt;No commitment.&lt;/slot&gt;
+      &lt;/footer&gt;
+    &lt;/article&gt;
+  &lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>Un slot con <code>name</code></strong> recibe lo que la página marca con ese nombre. <code>title</code> será el encabezado de la tarjeta.</li>
+  <li><strong>El slot sin nombre</strong> recibe todo lo demás.</li>
+  <li><strong>Lo que hay dentro de un slot es su contenido por defecto.</strong> <code>No commitment.</code> se ve si la página no rellena <code>footer</code>.</li>
+  <li><strong><code>::slotted(h2)</code></strong> da estilo, desde el componente, al <code>&lt;h2&gt;</code> que le llega por un slot.</li>
+</ul>
+
+<h2 id="fill">4. Rellénalos desde la página</h2>
+
+<p>La CLI ya enlazó el componente. Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-card/myapp-card.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Plans&lt;/h1&gt;
+
+&lt;myapp-card&gt;
+  &lt;h2 slot="title"&gt;Basic&lt;/h2&gt;
+  &lt;p&gt;Everything you need to get started.&lt;/p&gt;
+&lt;/myapp-card&gt;
+
+&lt;myapp-card&gt;
+  &lt;h2 slot="title"&gt;Pro&lt;/h2&gt;
+  &lt;p&gt;For teams that ship every day.&lt;/p&gt;
+  &lt;p slot="footer"&gt;Cancel any time.&lt;/p&gt;
+&lt;/myapp-card&gt;</code></pre>
+</ui-code>
+
+<p>Guarda, y salen dos tarjetas. La de Basic termina en <code>No commitment.</code>, el contenido por defecto, y la de Pro, en <code>Cancel any time.</code>, que es lo que le pasa la página.</p>
+
+<p>Abre el código fuente con Ctrl+U. La tarjeta de Pro llega así, ordenada aquí para leerla mejor:</p>
+
+<pre class="output"><code>&lt;myapp-card data-fud-adopt="base myapp-card"&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base myapp-card"&gt;
+    &lt;article class="card"&gt;
+      &lt;slot name="title"&gt;&lt;/slot&gt;
+      &lt;slot&gt;&lt;/slot&gt;
+      &lt;footer&gt;&lt;slot name="footer"&gt;No commitment.&lt;/slot&gt;&lt;/footer&gt;
+    &lt;/article&gt;
+  &lt;/template&gt;
+  &lt;h2 slot="title"&gt;Pro&lt;/h2&gt;
+  &lt;p&gt;For teams that ship every day.&lt;/p&gt;
+  &lt;p slot="footer"&gt;Cancel any time.&lt;/p&gt;
+&lt;/myapp-card&gt;</code></pre>
+
+<ul>
+  <li><strong>El <code>&lt;h2&gt;</code> está fuera del <code>&lt;template&gt;</code></strong>, en el documento de la página: lo que se llama light DOM. El slot solo decide dónde se ve.</li>
+  <li><strong>Por eso lo encuentran los buscadores y los lectores de pantalla.</strong> Recorren los encabezados del documento, y uno dentro del shadow DOM de un componente se les queda fuera del índice de la página.</li>
+  <li><strong>Lo que llega por un slot lleva los estilos de la página.</strong> Los párrafos se ven como los de la página sin que la tarjeta adopte ninguna hoja.</li>
+</ul>
+
+<ui-note .kind="important">
+  <p>Los encabezados (<code>h1</code> a <code>h6</code>) nunca van dentro de un componente. Los escribe la página, y el componente les deja un slot.</p>
+</ui-note>
+
+<p>Los slots, con el resto de la forma de un componente, están en <a href="/docs/template-syntax/components#slots">Componentes</a>.</p>
+
+<h2 id="typo">5. Un slot mal escrito</h2>
+
+<p>Escribe mal el nombre del slot en la tarjeta de Pro:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  &lt;h2 slot="titel"&gt;Pro&lt;/h2&gt;</code></pre>
+</ui-code>
+
+<p>En el navegador, ese encabezado ya no tendría dónde ir y no se vería. Fudic lo para antes, en la terminal de <code>fudic dev</code>:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:16:13 - error TS2345: Argument of type '"titel"' is not assignable to parameter of type '$Slots'.
+  my-app     16    &lt;h2 slot="titel"&gt;Pro&lt;/h2&gt;
+  my-app                     ─────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Fudic conoce los slots del componente, y <code>titel</code> no es uno de ellos. En el editor, la bombilla ofrece uno por cada slot con nombre, «Change to slot="title"» y «Change to slot="footer"». Elige el primero y la página vuelve a funcionar.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/slots" target="_blank" rel="noopener">la solución de Contenido por slot, en GitHub</a>. Compara tu <code>myapp-card.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/props", prevTitle: "Pasar datos a un hijo", next: "/tutorials/", nextTitle: "Todas las categorías")

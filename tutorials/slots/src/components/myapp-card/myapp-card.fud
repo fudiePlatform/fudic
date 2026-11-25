@@ -1,0 +1,27 @@
+<head>
+  <style>
+    .card {
+      padding: 1rem 1.25rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+    }
+    ::slotted(h2) {
+      margin-top: 0;
+    }
+    footer {
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+
+<myapp-card>
+  <template shadowrootmode="open">
+    <article class="card">
+      <slot name="title"></slot>
+      <slot></slot>
+      <footer>
+        <slot name="footer">No commitment.</slot>
+      </footer>
+    </article>
+  </template>
+</myapp-card>
