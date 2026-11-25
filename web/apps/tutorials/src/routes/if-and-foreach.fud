@@ -98,7 +98,7 @@ npx fudic dev</code></pre>
   <pre class="output"><code>  my-app   src/routes/index.fud:13:6 - error TS2367: This comparison appears to be unintentional because the types '3' and '0' have no overlap.</code></pre>
 </ui-note>
 
-<p>Las condiciones, con <code>@@switch</code> para elegir entre varios valores, están en <a href="/docs/template-syntax/expressions#conditions">Expresiones y control de flujo</a>.</p>
+<p>Además de <code>@@if</code> y <code>@@foreach</code>, la plantilla tiene <code>@@switch</code> para elegir entre varios valores, y <code>@@for</code> y <code>@@while</code> para recorrer con un índice o mientras se cumpla una condición. Están todos en <a href="/docs/template-syntax/expressions#conditions">Expresiones y control de flujo</a>.</p>
 
 <h2 id="list">3. Pinta una lista</h2>
 
