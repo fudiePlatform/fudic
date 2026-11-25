@@ -777,3 +777,32 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en la web.** No se puede desde la web; el aviso no rompe los tests.
 - **Qué debería hacer.** Que FUD1440 no se aplique al markup de un `@snippet`, ni al probarlo
   solo ni dentro de una página.
+
+## 55. Los ejemplos de código no se colorean (pospuesto, después de todos los hallazgos)
+
+- **Qué pasó.** Lo vio Pedro (2026-11-25): la portada colorea su ejemplo con `<span class="at">`
+  y `<span class="str">` escritos a mano, y el resto de la web enseña el código sin color. Son
+  460 `<pre><code>` en 117 páginas, y ninguno dice de qué lenguaje es.
+- **Lo que ya hay.** La extensión colorea con gramáticas TextMate
+  (`packages/vscode/syntaxes/fudic.tmLanguage.json`, `text.html.fudic`, que se apoya en
+  `source.ts`, `source.js` y `source.css`; y las de `.fudspec`, `.fudapi` y `.fudheaders`).
+  Shiki usa el mismo motor que VS Code (vscode-textmate): con esas gramáticas y un tema de VS Code,
+  los colores salen como en el editor, y en el cliente solo llegan `<span>` y CSS, sin JavaScript.
+- **Lo que costaría.**
+  - Marcar el lenguaje de los 460 bloques (`fud`, `ts`, `sh`, `json`, `fudspec`…). Es lo más
+    largo: un script con heurística y una revisión a mano.
+  - Deshacer el escape del `.fud` (`&lt;`, `@@`, `&#123;`) antes de colorear y volver a escapar
+    los `<span>` después, para que el compilador no lea sus `@` ni sus llaves.
+  - Colorear en el build, no por petición: las páginas se pintan en edge (`.fudic/edge/`) y Shiki
+    ahí sería caro. Un plugin de Vite con `enforce: 'pre'` antes del de Fudic.
+  - Tema claro y oscuro con las variables CSS que genera Shiki.
+- **Límites.** Shiki solo aplica la capa TextMate; el coloreado semántico del language server
+  (`packages/language-server/src/services/semantic-tokens.ts`) no llega, y algún matiz saldrá
+  distinto que en el editor. El HTML de cada bloque crece de 3 a 5 veces: medir con Lighthouse.
+  Shiki sería una dependencia nueva, con versión exacta.
+- **Cómo se resolvió en la web.** De momento, nada: Pedro lo deja para después de todos los
+  hallazgos, y puede que se descarte. Si se hace, primero en una sola página (por ejemplo
+  `docs/testing`) para comparar colores, peso y Lighthouse.
+- **Qué debería hacer.** Que Fudic coloree los bloques de código al compilar con sus propias
+  gramáticas (por ejemplo, un `<pre><code data-lang="fud">` que el plugin de Vite resuelva), para
+  que una web hecha con Fudic no tenga que montar el coloreado por su cuenta.
