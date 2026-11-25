@@ -25,8 +25,10 @@
 
 <ul class="proofs" aria-label="Lo que trae Fudic">
   <li><a href="#standard"><strong>Solo estándares</strong><span>Lo que aprendes te sirve fuera de Fudic</span></a></li>
+  <li><a href="#llm"><strong>Hecho para LLMs</strong><span>El MCP le enseña Fudic a tu modelo</span></a></li>
   <li><a href="#performance"><strong>100 · 100 · 100 · 100</strong><span>Lighthouse, en móvil y escritorio</span></a></li>
   <li><a href="#security"><strong>Seguridad de serie</strong><span>CSP con nonce, Trusted Types, HSTS</span></a></li>
+  <li><a href="#polyglot"><strong>Una vista, tu backend</strong><span>C#, Java, Go, Rust y Python, en camino</span></a></li>
 </ul>
 
 <section class="block" aria-labelledby="standard">
@@ -81,19 +83,6 @@
 
 </section>
 
-<section class="block" aria-labelledby="performance">
-  <div class="block-head">
-    <h2 id="performance">100 en los cuatro. También en móvil.</h2>
-  </div>
-  <ul class="scores">
-    <li><span class="value">100</span><span class="name">Rendimiento</span></li>
-    <li><span class="value">100</span><span class="name">Accesibilidad</span></li>
-    <li><span class="value">100</span><span class="name">Buenas prácticas</span></li>
-    <li><span class="value">100</span><span class="name">SEO</span></li>
-  </ul>
-  <p class="note">Medido con Lighthouse en todas las páginas de esta web, en móvil y en escritorio. En móvil, con el HTML comprimido, como lo sirve cualquier hosting. <a href="/docs/performance/lighthouse">Cómo se mide y qué movió la nota</a>.</p>
-</section>
-
 <section class="block" aria-labelledby="llm">
   <div class="block-head">
     <h2 id="llm">Hecho para escribirse con un LLM.</h2>
@@ -117,6 +106,19 @@
     </li>
   </ul>
   <p class="note">Claude Code, Copilot, Cursor, Codex, Gemini CLI, Windsurf, Antigravity: cualquier agente con MCP. <a href="/mcp/">Trabajar con el MCP</a>.</p>
+</section>
+
+<section class="block" aria-labelledby="performance">
+  <div class="block-head">
+    <h2 id="performance">100 en los cuatro. También en móvil.</h2>
+  </div>
+  <ul class="scores">
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Rendimiento</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Accesibilidad</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Buenas prácticas</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">SEO</span></li>
+  </ul>
+  <p class="note">Medido con Lighthouse en todas las páginas de esta web, en móvil y en escritorio. En móvil, con el HTML comprimido, como lo sirve cualquier hosting. <a href="/docs/performance/lighthouse">Cómo se mide y qué movió la nota</a>.</p>
 </section>
 
 <section class="block" aria-labelledby="security">

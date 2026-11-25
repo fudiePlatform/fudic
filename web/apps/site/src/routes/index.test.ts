@@ -12,14 +12,14 @@ test('answers / with the headline and the two ways in', async () => {
 test('each proof under the headline links to the block that proves it', async () => {
   const page = await visit('/');
   const targets = [...page.document.querySelectorAll('.proofs a')].map((a) => a.getAttribute('href'));
-  expect(targets).toEqual(['#standard', '#performance', '#security']);
+  expect(targets).toEqual(['#standard', '#llm', '#performance', '#security', '#polyglot']);
   for (const target of targets) {
     expect(page.document.querySelector(String(target))?.tagName).toBe('H2');
   }
 });
 
-test('the blocks come in order: standard, performance, the LLM, security', async () => {
+test('the blocks come in the order of the proofs: standard, the LLM, performance, security', async () => {
   const page = await visit('/');
   const ids = [...page.document.querySelectorAll('.block h2')].map((h) => h.id);
-  expect(ids).toEqual(['standard', 'performance', 'llm', 'security']);
+  expect(ids).toEqual(['standard', 'llm', 'performance', 'security']);
 });
