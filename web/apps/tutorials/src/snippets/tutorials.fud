@@ -110,6 +110,6 @@
   <ol class="tutorial-list">
     @render tutorial("scoped-styles", "El <style> del componente", "beginner", @current)
     @render tutorial("global-styles", "Tema global y hojas compartidas", "intermediate", @current)
-    @render tutorial("style-guide", "Tu guía de estilos", "intermediate", @current, false)
+    @render tutorial("style-guide", "Tu guía de estilos", "intermediate", @current)
   </ol>
 }

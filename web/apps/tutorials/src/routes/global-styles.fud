@@ -225,4 +225,4 @@ npx fudic g component card --in src/routes/index.fud</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/global-styles" target="_blank" rel="noopener">la solución de Tema global y hojas compartidas, en GitHub</a>. Compara tu <code>fudic.json</code> y tus hojas con los suyos.</p>
 
-@render pager(prev: "/tutorials/scoped-styles", prevTitle: "El <style> del componente", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/scoped-styles", prevTitle: "El <style> del componente", next: "/tutorials/style-guide", nextTitle: "Tu guía de estilos")

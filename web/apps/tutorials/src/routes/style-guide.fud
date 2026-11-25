@@ -1,0 +1,180 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu guía de estilos · Tutoriales de Fudic</title>
+  <meta name="description" content="La guía de estilos que crea fudic new: cambia sus tokens de color en modo claro y oscuro, usa la fuente del sistema, cambia el favicon y escribe reglas que le ganan.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/style-guide">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu guía de estilos · Tutoriales de Fudic">
+  <meta property="og:description" content="Tu color, tu fuente y tu favicon en la guía de estilos de una app de Fudic.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/style-guide">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render stylesNav("style-guide")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y mira su guía</a></li>
+        <li><a href="#tokens">2. Tu color</a></li>
+        <li><a href="#font">3. La fuente del sistema</a></li>
+        <li><a href="#favicon">4. Tu favicon</a></li>
+        <li><a href="#where">5. Tu regla gana</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Estilos</span></p>
+
+<h1>Tu guía de estilos</h1>
+
+<p class="lede">Haces tuya la guía de estilos que trae la app: le das tu color en modo claro y oscuro, cambias la fuente y el favicon, y escribes una regla que le gana sin pelear.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber dónde está la guía de estilos y cómo llega a cada página.</li>
+    <li>Cambiar el aspecto de la app con sus tokens: color, fuente y favicon.</li>
+    <li>Escribir reglas propias que ganan a la guía sin <code>!important</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y mira su guía</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app</code></pre>
+</ui-code>
+
+<p><code>fudic new</code> ya crea la guía de estilos, en <code>src/guide/</code>. Por eso, si pides otra, la CLI se niega:</p>
+
+<ui-code>
+<pre><code>npx fudic g guide</code></pre>
+</ui-code>
+
+<pre class="output"><code>error FUD1444: the project already has a style guide (src/guide/guide.css): one per project
+
+  https://fudic.dev/docs/reference/diagnostics/FUD1444</code></pre>
+
+<p>Dentro de <code>src/guide/</code> hay un fichero por elemento (<code>a.css</code>, <code>button.css</code>, <code>h1.css</code>…), <code>tokens.css</code> con los valores de diseño y <code>guide.css</code>, que los importa todos. <code>fudic.json</code> dice cuál es la hoja de entrada y cuál el favicon:</p>
+
+<pre class="output"><code>  "guide": &#123; "sheet": "src/guide/guide.css", "icon": "src/guide/logo.svg" &#125;</code></pre>
+
+<p>Pon en la página un enlace y un botón, para ver la guía en ellos:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;A paragraph with &lt;a href="/"&gt;a link&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;button type="button"&gt;Save&lt;/button&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>: el enlace y el botón son azules. Con Ctrl+U, al principio del <code>&lt;head&gt;</code> están la guía y el favicon, aunque nadie escribió esos <code>&lt;link&gt;</code>:</p>
+
+<pre class="output"><code>&lt;link rel="stylesheet" href="/@@fudic/sheet/guide-gwelUCjq.css"&gt;&lt;link rel="icon" href="/assets/logo-APNkgbql.svg"&gt;</code></pre>
+
+<h2 id="tokens">2. Tu color</h2>
+
+<p>Para cambiar el aspecto de la app no se tocan las hojas de los elementos, sino los tokens. Para <code>fudic dev</code> con Ctrl+C: la guía se lee al arrancarlo. En <code>tokens.css</code>, cambia el acento y el anillo de foco:</p>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>  --my-app-accent: light-dark(#0f766e, #5eead4);</code></pre>
+</ui-code>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>  --my-app-focus: light-dark(#0f766e, #5eead4);</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancar <code>npx fudic dev</code>. El enlace y el botón son ahora verde azulado oscuro. Cambia tu sistema a modo oscuro: pasan a un verde azulado claro, y el texto del botón, a oscuro.</p>
+
+<ul>
+  <li><strong><code>light-dark()</code> lleva dos valores:</strong> el del modo claro y el del oscuro. El modo lo elige el sistema, porque la guía declara <code>color-scheme: light dark</code>.</li>
+  <li><strong>El botón y el enlace leen el mismo token,</strong> <code>--my-app-accent</code>. Un cambio en un sitio cambia la app entera, también dentro de los componentes, porque las custom properties se heredan.</li>
+  <li><strong>Los colores de la guía cumplen el contraste de WCAG 2.2 AA en los dos modos.</strong> Si pones los tuyos, comprueba el contraste de cada uno.</li>
+</ul>
+
+<h2 id="font">3. La fuente del sistema</h2>
+
+<p>La guía trae la fuente Inter, servida desde tu propio origen. Si prefieres la del sistema, que no se descarga, para <code>fudic dev</code> y borra los dos bloques <code>@@font-face</code> del principio de <code>tokens.css</code>, de forma que empiece así:</p>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>/* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
+:root &#123;
+  color-scheme: light dark;</code></pre>
+</ui-code>
+
+<p>Quita <code>"Inter"</code> de la fuente de la app:</p>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>  --my-app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;</code></pre>
+</ui-code>
+
+<p>Y borra la carpeta de la fuente, que ya nadie usa:</p>
+
+<ui-code>
+<pre><code>rm -r src/guide/fonts</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancar <code>npx fudic dev</code>. La página usa la fuente de tu sistema, y en la pestaña Red de las herramientas del navegador ya no se pide ningún <code>.woff2</code>. Para usar otra fuente propia, se pone su fichero en <code>fonts/</code> y se nombra en su <code>@@font-face</code> y en <code>--my-app-font-sans</code>.</p>
+
+<h2 id="favicon">4. Tu favicon</h2>
+
+<p>El favicon es <code>src/guide/logo.svg</code>. Para <code>fudic dev</code> y dale el color nuevo cambiando el <code>fill</code> del rectángulo:</p>
+
+<ui-code .path="src/guide/logo.svg">
+<pre><code>&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"&gt;&lt;rect width="32" height="32" rx="8" fill="#0f766e"/&gt;&lt;path d="M11 23V9h11v3h-7.5v3H21v3h-6.5v5z" fill="#fff"/&gt;&lt;/svg&gt;</code></pre>
+</ui-code>
+
+<p>Vuelve a arrancar <code>npx fudic dev</code>: la pestaña del navegador lleva el icono verde azulado. En el código fuente, su nombre ha cambiado:</p>
+
+<pre class="output"><code>&lt;link rel="icon" href="/assets/logo-Jk4LFoxt.svg"&gt;</code></pre>
+
+<p>El nombre lleva un hash de su contenido. Así el navegador no se queda con el icono viejo en la caché.</p>
+
+<h2 id="where">5. Tu regla gana</h2>
+
+<p>La guía da valores por defecto, y tus reglas deben ganarle siempre. Dale al botón de la página una forma de píldora, con un token de la guía:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+  &lt;style&gt;
+    button &#123;
+      border-radius: var(--my-app-radius-full);
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<p>Guarda: el botón se redondea del todo, sin <code>!important</code> y sin preocuparte del orden de las hojas. Mira cómo empieza <code>src/guide/button.css</code>:</p>
+
+<pre class="output"><code>:where(button) &#123;
+  display: inline-flex;
+  …
+  border-radius: var(--my-app-radius-md);</code></pre>
+
+<p>Todas las reglas de la guía van dentro de <code>:where()</code>, que tiene especificidad cero. Cualquier selector tuyo, hasta un simple <code>button</code>, pesa más.</p>
+
+<p>Cómo está hecha la guía, por qué es un fichero por elemento y cómo lo adopta un componente están en <a href="/docs/styles/guide">La guía de estilos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/style-guide" target="_blank" rel="noopener">la solución de Tu guía de estilos, en GitHub</a>. Compara tu <code>src/guide/tokens.css</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/global-styles", prevTitle: "Tema global y hojas compartidas", next: "/tutorials/", nextTitle: "Todas las categorías")

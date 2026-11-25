@@ -1,0 +1,14 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Home</title>
+  <style>
+    button {
+      border-radius: var(--my-app-radius-full);
+    }
+  </style>
+</head>
+
+<h1>Home</h1>
+<p>A paragraph with <a href="/">a link</a>.</p>
+<p><button type="button">Save</button></p>

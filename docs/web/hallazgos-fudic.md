@@ -1035,8 +1035,12 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   (`<link rel="stylesheet">` del layout) sí se recarga sola.
 - **Cómo se resolvió en el tutorial.** Se pide parar `fudic dev` antes de crear o cambiar esas
   hojas y arrancarlo después, sin explicar por qué.
-- **Qué debería hacer.** Vigilar `fudic.json` y las hojas de `globalStyles` y `styles`, y recargar
-  los componentes que las adoptan, como hace con su `<style>`.
+- **Vuelto a comprobar (tutorial `style-guide`), el 2026-11-25.** Lo mismo con la guía: cambiar
+  `--my-app-accent` en `src/guide/tokens.css` da `page reload src/guide/tokens.css`, pero
+  `/@fudic/sheet/guide-….css` sigue sirviendo el color del arranque. El tutorial pide parar y
+  arrancar `fudic dev` en cada paso que toca la guía.
+- **Qué debería hacer.** Vigilar `fudic.json`, la guía y las hojas de `globalStyles` y `styles`, y
+  recargar las páginas y los componentes que las usan, como hace con su `<style>`.
 
 ## 72. `FUD0744` en `fudic dev` solo sale al pedir la página, y con la pila de Vite
 
