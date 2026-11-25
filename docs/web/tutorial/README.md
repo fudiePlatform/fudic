@@ -70,7 +70,7 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 | 11 | `ref` | `ref="@variable"` | I | — | template-syntax/ref-and-raw | `/ref`, `ref-demo` | En revisión |
 | 12 | `raw` | `@raw(html)` y cuándo no usarlo | I | — | template-syntax/ref-and-raw | `/raw`, `raw-demo` | En revisión |
 | 13 | `await` | Esperar datos con `@await`: orden, errores y status | I | `g api` | template-syntax/await, routing/data, cli/generate/api | `/espera` | En revisión |
-| 14 | `safe-urls` | URLs en atributos: el guardia y `trustedUrl` | I | — | template-syntax/attributes-and-properties, reference/dom | `/vista`, `vista-url` | Propuesto |
+| 14 | `safe-urls` | URLs en atributos: el guardia y `trustedUrl` | I | — | template-syntax/attributes-and-properties, reference/dom | `/vista`, `vista-url` | En revisión |
 
 ### 3.3 Eventos
 
@@ -322,3 +322,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-25 | `ref`, con su solución en `tutorials/ref/`: un `<myapp-confirm>` que abre un `<dialog>` con `ref` y `showModal()` desde un `@click` (presentado en una frase, porque los eventos llegan después), probado con un clic real en Chrome sin cabeza; el código fuente con `data-fud-id`, y el `FUD0192` de un `ref` en un bucle. Hallazgo 64 del framework (leer un `ref` en la plantilla manda al `.fudapi`). Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | `raw`, con su solución en `tutorials/raw/`: el mismo HTML escapado por una expresión y escrito con `@raw(trustedHtml(…))`, el `TS2345` de un string sin marcar, el `FUD0990` de un `@raw` con texto al lado y cuándo no usarlo. La página de la Documentación `ref y @raw` decía que un string sin marcar «se escribe como texto»; el typecheck lo rechaza, y se ha corregido. Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-25 | `await`, con su solución en `tutorials/await/`: `fudic g api` sobre la página de inicio, dos campos `later` (uno tarda 2 s, otro falla a los 3 con `notFound`), `@await` con `@catch`, el 200 aunque un bloque falle y el orden del documento, todo medido leyendo la respuesta como flujo. Los datos de la página se presentan en lo justo, porque su tutorial llega después. Hallazgo 24 de la CLI (`g api` no dice que hay que instalar). Lighthouse: 99–100 / 100 / 100 / 100. |
+| 2026-11-25 | `safe-urls`, con su solución en `tutorials/safe-urls/`: un `href` desde una expresión con una URL buena y un `javascript:` (que sale `about:blank`), el prefijo `/users/` que hace innecesaria la guarda, el `FUD0915` de un `javascript:` escrito a mano y un esquema `myapp:` que pasa con `trustedUrl`. Con él, la categoría Sintaxis de plantilla queda escrita entera, en revisión. Lighthouse en el tutorial y en la portada: 99–100 / 100 / 100 / 100. |

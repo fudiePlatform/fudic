@@ -1,0 +1,150 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>URLs en atributos · Tutoriales de Fudic</title>
+  <meta name="description" content="Mira cómo la guarda de URLs de Fudic deja inerte un javascript: que llega en una expresión, cuándo no hace falta y cómo dejar pasar un esquema propio con trustedUrl.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/safe-urls">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="URLs en atributos · Tutoriales de Fudic">
+  <meta property="og:description" content="La guarda de URLs, el prefijo que la hace innecesaria y trustedUrl para un esquema propio.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/safe-urls">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("safe-urls")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#guard">2. Una URL que llega de fuera</a></li>
+        <li><a href="#prefix">3. Cuando el texto fija el origen</a></li>
+        <li><a href="#trusted">4. Un esquema propio con trustedUrl</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>URLs en atributos</h1>
+
+<p class="lede">Pintas los enlaces que escriben dos usuarios, uno bueno y otro con un <code>javascript:</code>, y ves qué hace Fudic con cada uno, cuándo no tiene que hacer nada y cómo dejar pasar un enlace a tu propia app.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Ver cómo la guarda de URLs deja inerte una URL peligrosa que llega en una expresión.</li>
+    <li>Saber cuándo el propio texto del atributo hace innecesaria la guarda.</li>
+    <li>Dejar pasar un esquema propio, como <code>myapp:</code>, con <code>trustedUrl</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="guard">2. Una URL que llega de fuera</h2>
+
+<p>Imagina que cada usuario escribe la dirección de su web en su perfil. Ana pone una normal; Luis, una que ejecuta código al pulsarla. Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const website = "https://example.com";
+  const evil = "javascript:alert('hi')";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=@@website&gt;Ana's website&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=@@evil&gt;Luis's website&lt;/a&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Los dos enlaces se ven iguales, pero en el código fuente (Ctrl+U) no lo son:</p>
+
+<pre class="output"><code>&lt;p&gt;&lt;a href="https://example.com"&gt;Ana's website&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="about:blank"&gt;Luis's website&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<ul>
+  <li><strong>Un <code>href</code> que sale entero de una expresión pasa por la guarda de URLs</strong> antes de escribirse, igual en el servidor que en el navegador. No tienes que llamarla.</li>
+  <li><strong>Pasan</strong> <code>http:</code>, <code>https:</code>, <code>mailto:</code>, <code>tel:</code> y las URLs relativas. <strong>No pasan</strong> <code>javascript:</code>, ni otro esquema, ni una URL que empieza por <code>//</code>, que lleva a otro sitio.</li>
+  <li><strong>Lo que no pasa se cambia por <code>about:blank</code></strong>, una página en blanco. Pulsar el enlace de Luis no ejecuta nada.</li>
+</ul>
+
+<ui-note>
+  <p>Un <code>javascript:</code> escrito a mano en el atributo, <code>href="javascript:…"</code>, ni siquiera compila: la terminal da el error <code>FUD0915</code>.</p>
+</ui-note>
+
+<h2 id="prefix">3. Cuando el texto fija el origen</h2>
+
+<p>Ahora el enlace al perfil de Luis, con su nombre de usuario dentro de la ruta. Usa el mismo valor peligroso, para ver qué pasa. Añade al final:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;&lt;a href="/users/@@evil"&gt;Luis's profile&lt;/a&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;&lt;a href="/users/javascript:alert('hi')"&gt;Luis's profile&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<p>Aquí la guarda no interviene, y no hace falta. El texto fijo, <code>/users/</code>, ya decide que el enlace va a una ruta de tu sitio: lo que venga detrás es parte de la ruta, y no hay nada que ejecutar. Lo mismo vale para un texto que empieza por <code>#</code>, <code>?</code>, <code>./</code> o por un esquema seguro como <code>https://example.com/</code>.</p>
+
+<h2 id="trusted">4. Un esquema propio con trustedUrl</h2>
+
+<p>Tu app tiene una versión de escritorio que se abre con enlaces <code>myapp:</code>. Añade uno al <code>@@code</code>, debajo de <code>evil</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>  const app = "myapp:open";</code></pre>
+</ui-code>
+
+<p>Y el enlace, al final de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;&lt;a href=@@app&gt;Open in the app&lt;/a&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;&lt;a href="about:blank"&gt;Open in the app&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<p>La guarda no conoce <code>myapp:</code> y lo trata como cualquier esquema desconocido. Si la URL es tuya y la avalas, márcala con <code>trustedUrl</code>, de <code>@@fudic/dom</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; trustedUrl &#125; from "@@fudic/dom";
+
+  const website = "https://example.com";
+  const evil = "javascript:alert('hi')";
+  const app = trustedUrl("myapp:open");
+&#125;</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;&lt;a href="myapp:open"&gt;Open in the app&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<p>La marca va en el valor, en el <code>@@code</code>, donde la ve quien revisa el código. Ningún dato que llegue de fuera la lleva, así que la URL que escriba un usuario sigue pasando por la guarda.</p>
+
+<p>Las URLs en atributos están en <a href="/docs/template-syntax/attributes-and-properties#safe-urls">Atributos y propiedades</a>, y la guarda completa, con <code>srcset</code> y las imágenes en <code>data:</code>, en <a href="/docs/reference/dom#url-guard">&#64;fudic/dom</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/safe-urls" target="_blank" rel="noopener">la solución de URLs en atributos, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/await", prevTitle: "Esperar datos con @await", next: "/tutorials/", nextTitle: "Todas las categorías")

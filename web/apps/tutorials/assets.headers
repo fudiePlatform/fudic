@@ -6,3 +6,10 @@
 
 /assets/**
   Cache-Control: public, max-age=31536000, immutable
+
+/_fudic/**
+  Cache-Control: public, max-age=31536000, immutable
+
+# The per-route coordinator: fudic-main-<hash>-<build>.js, at the root and outside /assets/.
+/fudic-main-*.js
+  Cache-Control: public, max-age=31536000, immutable

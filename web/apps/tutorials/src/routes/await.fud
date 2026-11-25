@@ -196,4 +196,4 @@ status 200</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/await" target="_blank" rel="noopener">la solución de Esperar datos con @@await, en GitHub</a>. Compara tu <code>index.fud</code> y tu <code>src/server/routes/index.ts</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/raw", prevTitle: "HTML sin escapar con @raw", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/raw", prevTitle: "HTML sin escapar con @raw", next: "/tutorials/safe-urls", nextTitle: "URLs en atributos")

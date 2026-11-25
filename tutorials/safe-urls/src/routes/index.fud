@@ -1,0 +1,20 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import { trustedUrl } from "@fudic/dom";
+
+  const website = "https://example.com";
+  const evil = "javascript:alert('hi')";
+  const app = trustedUrl("myapp:open");
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<p><a href=@website>Ana's website</a></p>
+<p><a href=@evil>Luis's website</a></p>
+<p><a href="/users/@evil">Luis's profile</a></p>
+<p><a href=@app>Open in the app</a></p>
