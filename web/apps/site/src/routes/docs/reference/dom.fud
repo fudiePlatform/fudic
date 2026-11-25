@@ -47,7 +47,7 @@
 
 <p>Anuncia un evento del bus desde el componente. Sale como un <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar con <code>bubbles</code> y <code>composed</code>, así que cruza los shadow roots. Lo recibe cualquier elemento con <code>bus:name</code>. Fudic hidrata antes a los receptores, así que el primer evento no se pierde. Guía: <a href="/docs/template-syntax/events#event-bus">Eventos</a>.</p>
 
-<ui-code .path="src/components/item-picker.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; emit &#125; from "@@fudic/dom";
 
@@ -78,7 +78,7 @@ isTrustedHtml(value: unknown): value is TrustedHTML</code></pre>
 
 <p>Marca un texto como HTML del que respondes tú, para que <code>@@raw(…)</code> lo escriba como markup. Sin la marca, <code>@@raw</code> lo escapa. No limpia nada. Guía: <a href="/docs/template-syntax/ref-and-raw#raw"><code>ref</code> y <code>@@raw</code></a>.</p>
 
-<ui-code .path="src/components/post-body.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; trustedHtml &#125; from "@@fudic/dom";
 

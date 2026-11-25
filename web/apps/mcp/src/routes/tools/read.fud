@@ -56,7 +56,7 @@
   "path": "src/routes/index.fud",
   "lines": "1-7",
   "total": 7,
-  "text": "  1→&lt;link rel=\"layout\" href=\"../layouts/_layout.fud\"&gt;\n  2→\n  3→&lt;head&gt;\n  4→  &lt;title&gt;Home&lt;/title&gt;\n  5→&lt;/head&gt;\n  6→\n  7→&lt;h1&gt;Tienda&lt;/h1&gt;",
+  "text": "  1→&lt;link rel=\"layout\" href=\"../layouts/_layout.fud\"&gt;\n  2→\n  3→&lt;head&gt;\n  4→  &lt;title&gt;Home&lt;/title&gt;\n  5→&lt;/head&gt;\n  6→\n  7→&lt;h1&gt;Shop&lt;/h1&gt;",
   "diagnostics": [],
   "next": null
 &#125;</code></pre>

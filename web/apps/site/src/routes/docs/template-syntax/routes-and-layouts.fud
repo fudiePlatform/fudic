@@ -41,7 +41,7 @@
 
 <p>Una ruta es un <code>.fud</code> dentro de <code>src/routes/</code>, y su URL sale de dónde está: <code>src/routes/about.fud</code> es <code>/about</code>. Se crea con <code>fudic g page about</code>.</p>
 
-<ui-code .path="src/routes/blog/index.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../../layouts/_layout.fud"&gt;
 
 &lt;head&gt;
@@ -54,7 +54,7 @@
 &#125;
 
 @@section aside &#123;
-  &lt;p&gt;Escribimos cada dos semanas.&lt;/p&gt;
+  &lt;p&gt;We write every two weeks.&lt;/p&gt;
 &#125;</code></pre>
 </ui-code>
 
@@ -71,9 +71,9 @@
 
 <p>Un layout es un documento completo con <strong>huecos</strong>, en <code>src/layouts/</code>:</p>
 
-<ui-code .path="src/layouts/_layout.fud">
+<ui-code>
 <pre><code>&lt;!DOCTYPE html&gt;
-&lt;html lang="es"&gt;
+&lt;html lang="en"&gt;
   &lt;head&gt;
     &lt;meta charset="utf-8"&gt;
     &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
@@ -98,12 +98,12 @@
 
 <p>Lo habitual es que la maquetación (la rejilla, el lateral) sea un componente con sus estilos. El layout lo pone en su <code>&lt;body&gt;</code> y dice en qué slot cae cada hueco:</p>
 
-<ui-code .path="src/layouts/_layout-docs.fud">
+<ui-code>
 <pre><code>&lt;body&gt;
-  &lt;miapp-frame&gt;
+  &lt;myapp-frame&gt;
     @@RenderSection(nav, slot: "nav")
     @@RenderBody(slot: "content")
-  &lt;/miapp-frame&gt;
+  &lt;/myapp-frame&gt;
 &lt;/body&gt;</code></pre>
 </ui-code>
 

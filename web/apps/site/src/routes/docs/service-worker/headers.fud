@@ -38,7 +38,7 @@
 
 <p>Va en la raíz de la app, junto a <code>sw.json</code>, y contiene las cabeceras con las que se sirve <code>/fudic-sw.js</code>. Este es el que escribe <code>fudic new</code>:</p>
 
-<ui-code .path="sw.headers">
+<ui-code>
 <pre><code># The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
 # 'unsafe-eval' is what lets it link the route chunks: without it the app is served without it.
 

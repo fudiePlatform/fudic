@@ -40,11 +40,11 @@
 
 <p>Hay tres tipos: <code>file</code> (uno), <code>file?</code> (uno, opcional) y <code>file[]</code> (una lista). Sus reglas:</p>
 
-<ui-code .path="src/forms/person.fudapi">
+<ui-code>
 <pre><code>form personForm
   avatar  file?
-    accept "image/png, image/jpeg"  "Tiene que ser PNG o JPEG."
-    max-size 2mb                     "Como mucho &#123;n&#125;."</code></pre>
+    accept "image/png, image/jpeg"  "It must be a PNG or a JPEG."
+    max-size 2mb                     "At most &#123;n&#125;."</code></pre>
 </ui-code>
 
 <ul>
@@ -57,12 +57,12 @@
 
 <h2 id="bind">En la vista</h2>
 
-<ui-code .path="src/components/app-adjuntos.fud">
-<pre><code>&lt;form control=@@adjuntosForm form:=@@adjuntar&gt;
-  &lt;label for="docs"&gt;Documentos&lt;/label&gt;
-  &lt;input id="docs" type="file" multiple control=@@adjuntosForm.docs&gt;
-  &lt;small error=@@adjuntosForm.docs&gt;&lt;/small&gt;
-  &lt;button type="submit"&gt;Adjuntar&lt;/button&gt;
+<ui-code>
+<pre><code>&lt;form control=@@attachForm form:=@@attach&gt;
+  &lt;label for="docs"&gt;Documents&lt;/label&gt;
+  &lt;input id="docs" type="file" multiple control=@@attachForm.docs&gt;
+  &lt;small error=@@attachForm.docs&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Attach&lt;/button&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
@@ -78,7 +78,7 @@
 
 <p>Por defecto, el servidor acepta ficheros de hasta 10 MB y hasta 20 por llamada. Se cambia en <code>fudic.json</code>:</p>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "serve": &#123;
     "uploads": &#123; "maxFileSize": "50mb", "maxFiles": 10 &#125;
@@ -92,12 +92,12 @@
 
 <p>Mientras sube, <code>$progress()</code> dice cuánto lleva, y <code>$cancel()</code> corta la subida:</p>
 
-<ui-code .path="src/components/app-adjuntos.fud">
-<pre><code>@@if (adjuntosForm.$progress() !== null) &#123;
-  &lt;progress aria-label="Subiendo"
-            value=@@(adjuntosForm.$progress()?.loaded)
-            max=@@(adjuntosForm.$progress()?.total)&gt;&lt;/progress&gt;
-  &lt;button type="button" @@click=@@cancelar&gt;Cancelar&lt;/button&gt;
+<ui-code>
+<pre><code>@@if (attachForm.$progress() !== null) &#123;
+  &lt;progress aria-label="Uploading"
+            value=@@(attachForm.$progress()?.loaded)
+            max=@@(attachForm.$progress()?.total)&gt;&lt;/progress&gt;
+  &lt;button type="button" @@click=@@cancel&gt;Cancel&lt;/button&gt;
 &#125;</code></pre>
 </ui-code>
 

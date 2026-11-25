@@ -58,7 +58,7 @@
 
 <p>Instala <code>@@fudic/i18n</code> y escribe la lista en <code>fudic.json</code>:</p>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "kind": "app",
   "locales": ["es", "en"],
@@ -78,13 +78,13 @@
 <ul>
   <li><strong>El texto</strong> que tiene al menos una letra. Un número o un signo suelto no se traduce.</li>
   <li><strong>Los atributos que lee una persona</strong>: <code>title</code>, <code>alt</code>, <code>placeholder</code>, <code>aria-label</code> y los demás de la lista del estándar HTML y de ARIA.</li>
-  <li><strong>Los textos fijos de una expresión que se pinta</strong>: los dos lados de <code>@@(done ? "Hecho" : "Pendiente")</code>.</li>
+  <li><strong>Los textos fijos de una expresión que se pinta</strong>: los dos lados de <code>@@(done ? "Done" : "Pending")</code>.</li>
 </ul>
 
-<ui-code .path="src/components/app-search/app-search.fud">
+<ui-code>
 <pre><code>&lt;app-search&gt;
   &lt;template shadowrootmode="open"&gt;
-    &lt;input type="search" placeholder="Buscar en la tienda" aria-label="Buscar"&gt;
+    &lt;input type="search" placeholder="Search the store" aria-label="Search"&gt;
     &lt;p translate="no"&gt;Fudic Store&lt;/p&gt;
   &lt;/template&gt;
 &lt;/app-search&gt;</code></pre>
@@ -98,20 +98,20 @@
 
 <p>Un mensaje no es cada trozo de texto, sino la frase entera, con lo que lleva dentro:</p>
 
-<ui-code .path="src/routes/index.fud">
-<pre><code>&lt;p&gt;Hola &lt;b&gt;@@user.name&lt;/b&gt;, tienes @@count mensajes&lt;/p&gt;</code></pre>
+<ui-code>
+<pre><code>&lt;p&gt;Hello &lt;b&gt;@@user.name&lt;/b&gt;, you have @@count messages&lt;/p&gt;</code></pre>
 </ui-code>
 
 <p>Es un solo mensaje:</p>
 
 <ui-code>
-<pre><code>Hola &lt;0&gt;&#123;name&#125;&lt;/0&gt;, tienes &#123;count&#125; mensajes</code></pre>
+<pre><code>Hello &lt;0&gt;&#123;name&#125;&lt;/0&gt;, you have &#123;count&#125; messages</code></pre>
 </ui-code>
 
 <ul>
   <li><strong>Cada expresión es un hueco</strong> con nombre: <code>@@user.name</code> es <code>&#123;name&#125;</code>.</li>
   <li><strong>Cada elemento de la frase es una etiqueta numerada</strong>: <code>&lt;b&gt;</code> es <code>&lt;0&gt;…&lt;/0&gt;</code>. Sus atributos no viajan: quien traduce mueve la etiqueta, no la reescribe.</li>
-  <li><strong>El orden lo decide la traducción.</strong> <code>&#123;count&#125; messages for &lt;0&gt;&#123;name&#125;&lt;/0&gt;</code> es igual de válida, y la página se compila en ese orden.</li>
+  <li><strong>El orden lo decide la traducción.</strong> <code>&#123;count&#125; mensajes para &lt;0&gt;&#123;name&#125;&lt;/0&gt;</code> es igual de válida, y la página se compila en ese orden.</li>
 </ul>
 
 <p>Traducir trozo a trozo obliga a que todos los idiomas pongan las palabras en el mismo orden, y no lo hacen. Una frase termina donde empieza un elemento de bloque, un componente o un <code>@@if</code>. Los elementos de texto, como <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code> o <code>&lt;code&gt;</code>, quedan dentro de la frase.</p>

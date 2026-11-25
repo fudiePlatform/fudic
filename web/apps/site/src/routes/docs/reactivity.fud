@@ -42,7 +42,7 @@
 
 <h2 id="signal"><code>signal</code>: un valor que avisa</h2>
 
-<ui-code .path="src/components/miapp-order/miapp-order.fud">
+<ui-code>
 <pre><code>@@code {
   import { computed, signal } from "@@fudic/core";
 
@@ -55,12 +55,12 @@
   }
 }
 
-&lt;miapp-order&gt;
+&lt;myapp-order&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;p&gt;@@quantity() × @@price() € = @@total() €&lt;/p&gt;
     &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
   &lt;/template&gt;
-&lt;/miapp-order&gt;</code></pre>
+&lt;/myapp-order&gt;</code></pre>
 </ui-code>
 
 <ul>
@@ -87,7 +87,7 @@
 
 <ui-code>
 <pre><code>effect(() =&gt; {
-  document.title = `Pedido: ${total()} €`;
+  document.title = `Order: ${total()} €`;
 });</code></pre>
 </ui-code>
 
@@ -121,7 +121,7 @@
 
 <p>Un signal declarado en un módulo es el mismo para todos los componentes que lo importan. Es lo que se llama un <strong>store</strong>:</p>
 
-<ui-code .path="src/stores/cart.ts">
+<ui-code>
 <pre><code>import { computed, signal } from "@@fudic/core";
 
 export const items = signal&lt;readonly string[]&gt;([]);
@@ -132,16 +132,16 @@ export function add(name: string): void {
 }</code></pre>
 </ui-code>
 
-<ui-code .path="src/components/miapp-cart-badge/miapp-cart-badge.fud">
+<ui-code>
 <pre><code>@@code {
   import { count } from "../../stores/cart";
 }
 
-&lt;miapp-cart-badge&gt;
+&lt;myapp-cart-badge&gt;
   &lt;template shadowrootmode="open"&gt;
-    &lt;span&gt;Carrito (@@count())&lt;/span&gt;
+    &lt;span&gt;Cart (@@count())&lt;/span&gt;
   &lt;/template&gt;
-&lt;/miapp-cart-badge&gt;</code></pre>
+&lt;/myapp-cart-badge&gt;</code></pre>
 </ui-code>
 
 <p>Cualquier otro componente que llame a <code>add</code> actualiza este contador, aunque no se conozcan.</p>

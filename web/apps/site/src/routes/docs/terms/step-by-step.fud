@@ -38,7 +38,7 @@
 
 <h2 id="criterion">El criterio</h2>
 
-<ui-code .path="src/routes/shop.fudspec">
+<ui-code>
 <pre><code>page /shop
 
 criterion adding-a-book
@@ -62,7 +62,7 @@ fudic g term then cart-has --param count:number</code></pre>
 
 <p>Un <code>given</code> prepara el navegador antes de abrir la página. Aquí, la cookie de sesión de la tienda:</p>
 
-<ui-code .path="fudic/terms/given/signed-in-as.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: 'signed-in-as',
   block: 'given',
@@ -91,7 +91,7 @@ export const selfTest = [&#123; args: &#123; user: 'ana' &#125;, expect: 'pass' 
 
 <p>Un <code>when</code> hace lo que haría el usuario, y pasa el gesto por <code>ctx.act</code> para que Fudic espere a que la página termine:</p>
 
-<ui-code .path="fudic/terms/when/add-to-cart.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: 'add-to-cart',
   block: 'when',
@@ -119,7 +119,7 @@ export const selfTest = [&#123; args: &#123; product: 'The Hobbit' &#125;, expec
 
 <p>Un <code>then</code> mira la página y dice si se cumple, con la evidencia de lo que encontró:</p>
 
-<ui-code .path="fudic/terms/then/cart-has.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: 'cart-has',
   block: 'then',
@@ -159,7 +159,7 @@ export const selfTest = [&#123; args: &#123; count: 1 &#125;, expect: 'pass' &#1
 
 <p>Con <code>cart-has 0</code>, reintentar no tiene sentido: un carrito vacío ya está vacío, y esperar 5 segundos solo retrasa el resultado. <code>negative</code> lo dice:</p>
 
-<ui-code .path="fudic/terms/then/cart-has.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   …
   negative: (&#123; count &#125;) =&gt; Number(count) === 0,

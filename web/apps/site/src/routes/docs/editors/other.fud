@@ -56,7 +56,7 @@ fudic-language-server --stdio</code></pre>
 
 <p>Con Neovim 0.11 o posterior:</p>
 
-<ui-code .path="init.lua">
+<ui-code>
 <pre><code>vim.filetype.add(&#123; extension = &#123; fud = "fudic", fudapi = "fudapi", fudspec = "fudspec" &#125; &#125;)
 
 vim.lsp.config("fudic", &#123;

@@ -47,7 +47,7 @@
 <ui-code>
 <pre><code>&#123;
   "phase": "criteria",
-  "project": &#123; "name": "tienda", "kind": "app", "prefix": "tienda", … &#125;,
+  "project": &#123; "name": "shop", "kind": "app", "prefix": "shop", … &#125;,
   …
 &#125;</code></pre>
 </ui-code>
@@ -58,7 +58,7 @@
 
 <p>Claude Code lee el <code>.mcp.json</code> que deja <code>fudic new</code>:</p>
 
-<ui-code .path=".mcp.json">
+<ui-code>
 <pre><code>&#123; "mcpServers": &#123; "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125; &#125; &#125;</code></pre>
 </ui-code>
 
@@ -68,7 +68,7 @@
 
 <p>Copilot lee el mismo <code>.mcp.json</code> si activas el ajuste experimental <code>chat.mcp.workspaceRootConfig.enabled</code>. Sin ese ajuste, el servidor va en <code>.vscode/mcp.json</code>:</p>
 
-<ui-code .path=".vscode/mcp.json">
+<ui-code>
 <pre><code>&#123;
   "servers": &#123;
     "fudic": &#123; "type": "stdio", "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
@@ -80,7 +80,7 @@
 
 <h2 id="cursor">Cursor</h2>
 
-<ui-code .path=".cursor/mcp.json">
+<ui-code>
 <pre><code>&#123;
   "mcpServers": &#123;
     "fudic": &#123; "type": "stdio", "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
@@ -94,10 +94,10 @@
 
 <p><code>cwd</code> es la carpeta en la que arranca el servidor, y en ella va la ruta completa de tu proyecto:</p>
 
-<ui-code .path=".agents/mcp_config.json">
+<ui-code>
 <pre><code>&#123;
   "mcpServers": &#123;
-    "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"], "cwd": "/home/ana/tienda" &#125;
+    "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"], "cwd": "/home/ana/shop" &#125;
   &#125;
 &#125;</code></pre>
 </ui-code>
@@ -108,7 +108,7 @@
 
 <p>Windsurf se documenta hoy como Devin Desktop:</p>
 
-<ui-code .path=".devin/mcp_config.json">
+<ui-code>
 <pre><code>&#123;
   "mcpServers": &#123;
     "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125;
@@ -122,21 +122,21 @@
 
 <p>Codex usa un fichero TOML, <code>~/.codex/config.toml</code> o el <code>.codex/config.toml</code> de un proyecto de confianza. En <code>cwd</code>, la carpeta en la que arranca el servidor, va la ruta completa de tu proyecto:</p>
 
-<ui-code .path=".codex/config.toml">
+<ui-code>
 <pre><code>[mcp_servers.fudic]
 command = "pnpm"
 args = ["exec", "fudic-mcp"]
-cwd = "/home/ana/tienda"</code></pre>
+cwd = "/home/ana/shop"</code></pre>
 </ui-code>
 
 <p><code>codex mcp list</code> en la terminal, o <code>/mcp</code> en una sesión, enseña los servidores.</p>
 
 <h2 id="gemini-cli">Gemini CLI</h2>
 
-<ui-code .path=".gemini/settings.json">
+<ui-code>
 <pre><code>&#123;
   "mcpServers": &#123;
-    "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"], "cwd": "/home/ana/tienda" &#125;
+    "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"], "cwd": "/home/ana/shop" &#125;
   &#125;
 &#125;</code></pre>
 </ui-code>

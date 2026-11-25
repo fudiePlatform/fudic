@@ -43,50 +43,50 @@
 
 <h2 id="result"><code>fudic:result</code></h2>
 
-<ui-code .path="src/components/user-form.fud">
+<ui-code>
 <pre><code>@@code &#123;
-  function hecho(persona: Person) &#123;
-    aviso.set(`Guardado con el id $&#123;persona.id&#125;.`);
+  function done(person: Person) &#123;
+    notice.set(`Saved with id $&#123;person.id&#125;.`);
     personForm.$reset();
   &#125;
 &#125;
 
-&lt;form control=@@personForm form:=@@save @@fudic:result=@@hecho&gt;
+&lt;form control=@@personForm form:=@@save @@fudic:result=@@done&gt;
   …
 &lt;/form&gt;</code></pre>
 </ui-code>
 
-<p><code>persona</code> es lo que devolvió <code>save</code>, con el tipo que declara su <code>.fudapi</code>. Es el valor del servidor, no el que escribió el usuario: por eso trae el <code>id</code> que asignó la base de datos.</p>
+<p><code>person</code> es lo que devolvió <code>save</code>, con el tipo que declara su <code>.fudapi</code>. Es el valor del servidor, no el que escribió el usuario: por eso trae el <code>id</code> que asignó la base de datos.</p>
 
 <h2 id="error"><code>fudic:error</code></h2>
 
 <ui-code>
-<pre><code>&lt;form control=@@personForm form:=@@save @@fudic:error=@@fallo&gt;</code></pre>
+<pre><code>&lt;form control=@@personForm form:=@@save @@fudic:error=@@failed&gt;</code></pre>
 </ui-code>
 
-<p><code>fallo</code> recibe un <code>Error</code>. Si el error viene del servidor, es un <code>HttpError</code>, con su <code>status</code>. Si nadie escucha <code>fudic:error</code>, el error lleva a la página de error.</p>
+<p><code>failed</code> recibe un <code>Error</code>. Si el error viene del servidor, es un <code>HttpError</code>, con su <code>status</code>. Si nadie escucha <code>fudic:error</code>, el error lleva a la página de error.</p>
 
 <h2 id="composed">Cruzan el shadow DOM</h2>
 
 <p>Los dos eventos son <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent" target="_blank" rel="noopener"><code>CustomEvent</code></a> estándar que salen del componente y suben por la página. Así, la página que usa un componente con un formulario se entera de lo que respondió el servidor sin que el componente haga nada:</p>
 
-<ui-code .path="src/routes/usuarios.fud">
+<ui-code>
 <pre><code>@@code &#123;
-  const personas = signal(data.users);
+  const people = signal(data.users);
 
-  function alta(persona: Person) &#123;
-    personas.set([...personas(), persona]);
+  function added(person: Person) &#123;
+    people.set([...people(), person]);
   &#125;
 &#125;
 
-&lt;user-form @@fudic:result=@@alta&gt;&lt;/user-form&gt;</code></pre>
+&lt;user-form @@fudic:result=@@added&gt;&lt;/user-form&gt;</code></pre>
 </ui-code>
 
 <p>La persona aparece en la lista solo cuando el servidor dice que sí, con su <code>id</code> real y sin volver a pedir la lista. El componente no sabe nada de la lista.</p>
 
 <p id="others">En React se pasaría una función de componente en componente, y en Vue o Angular habría que reemitir el evento en cada nivel. Aquí lo hace el DOM.</p>
 
-<p id="event">Si necesitas el evento entero, escribe el handler como una llamada: <code>@@fudic:result=@@alta($event.detail)</code>.</p>
+<p id="event">Si necesitas el evento entero, escribe el handler como una llamada: <code>@@fudic:result=@@added($event.detail)</code>.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

@@ -39,7 +39,7 @@
 
 <p><code>baseline</code> dice a qué navegadores llega la app. Fudic avisa de todo lo que uses en HTML, CSS o TypeScript que no llegue a ellos, y compila el JavaScript para esos navegadores.</p>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "baseline": "widely"
 &#125;</code></pre>
@@ -75,7 +75,7 @@
 
 <p>Las funciones que usas a sabiendas por encima del nivel. Con <code>allow</code>, <code>baseline</code> pasa a ser un objeto:</p>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "baseline": &#123;
     "target": "widely",

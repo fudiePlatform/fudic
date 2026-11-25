@@ -53,8 +53,8 @@
 <pre><code>&#123;
   "files": [
     "src/browser/.gitkeep",
-    "src/components/tienda-button/tienda-button.fixture.ts",
-    "src/components/tienda-button/tienda-button.fud",
+    "src/components/shop-button/shop-button.fixture.ts",
+    "src/components/shop-button/shop-button.fud",
     …
   ],
   "diagnostics": [],

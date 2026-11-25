@@ -48,7 +48,7 @@
 
 <p>Registra una clase en la raíz, con una instancia por contenedor raíz. Devuelve la clase tal cual. Es un decorador de clase estándar, pero las herramientas aún no lo transforman, así que se llama debajo de la clase. El constructor de la clase no recibe argumentos: lo que necesita lo pide con <code>inject</code> en sus campos.</p>
 
-<ui-code .path="src/services/cart.ts">
+<ui-code>
 <pre><code>export class Cart &#123;
   private readonly log = inject(Logger);
   …
@@ -88,7 +88,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
   <li><strong><code>transient</code></strong>: una instancia nueva cada vez que se pide. Por defecto, una por contenedor.</li>
 </ul>
 
-<ui-code .path="src/components/cart-owner.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; provide &#125; from "@@fudic/di";
   import &#123; Cart &#125; from "../services/cart";
@@ -105,7 +105,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 
 <p>Una clave tipada para algo que no es una clase: una configuración, una lista. El nombre tiene que ser único en la ruta, porque es la clave con la que viaja lo publicado.</p>
 
-<ui-code .path="src/services/cart.ts">
+<ui-code>
 <pre><code>export const LINES = token&lt;readonly string[]&gt;("lines");</code></pre>
 </ui-code>
 
@@ -117,7 +117,7 @@ inject&lt;T&gt;(provider: Provider&lt;T&gt;, options: &#123; optional: true &#12
 
 <p>Deja un valor para el navegador. Se llama en el servidor, durante una petición. El valor viaja con la página y los dos lados construyen sus servicios a partir de él. Viajan valores, nunca instancias. Fuera de una petición, lanza un error. Guía: <a href="/docs/di/server#publish">En el servidor</a>.</p>
 
-<ui-code .path="src/server/cart.ts">
+<ui-code>
 <pre><code>load.handle(async () =&gt; &#123;
   const lines = await readLines();
   publish(LINES, lines);

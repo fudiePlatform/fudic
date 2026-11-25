@@ -46,7 +46,7 @@
 
 <p>A <code>app-tabs</code> le añadimos un criterio: la pestaña que eliges tiene que decir que es la elegida.</p>
 
-<ui-code .path="src/components/app-tabs/app-tabs.fudspec">
+<ui-code>
 <pre><code>criterion marks-the-tab
   when
     click role:tab/"Tab B"
@@ -69,7 +69,7 @@
 
 <p>El arreglo va en el componente: cada pestaña dice si es la elegida.</p>
 
-<ui-code .path="src/components/app-tabs/app-tabs.fud">
+<ui-code>
 <pre><code>&lt;button role="tab" aria-selected=@@(active() === 0 ? "true" : "false") @@click=@@pickA&gt;Tab A&lt;/button&gt;
 &lt;button role="tab" aria-selected=@@(active() === 1 ? "true" : "false") @@click=@@pickB&gt;Tab B&lt;/button&gt;</code></pre>
 </ui-code>

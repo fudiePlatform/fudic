@@ -108,7 +108,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<p>Cada diagnóstico lleva su <code>fichero:línea:columna</code> en <code>at</code> y la línea en <code>quote</code>. Cada código de Fudic se explica una sola vez, en <code>codes</code>, con su título, por qué pasa y cómo se arregla. Su página está en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</p>
+<p>Cada diagnóstico lleva su <code>file:line:column</code> en <code>at</code> y la línea en <code>quote</code>. Cada código de Fudic se explica una sola vez, en <code>codes</code>, con su título, por qué pasa y cómo se arregla. Su página está en <a href="/docs/reference/diagnostics">Diagnósticos</a>.</p>
 
 <h2 id="errors">Cuando no puede</h2>
 

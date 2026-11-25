@@ -54,9 +54,9 @@
   "symbols": [
     &#123;
       "kind": "components",
-      "name": "tienda-button",
+      "name": "shop-button",
       "from": null,
-      "at": "src/components/tienda-button/tienda-button.fud"
+      "at": "src/components/shop-button/shop-button.fud"
     &#125;
   ],
   "diagnostics": [],

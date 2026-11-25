@@ -45,7 +45,7 @@
 
 <h2 id="config"><code>fudicTest</code></h2>
 
-<ui-code .path="vitest.config.ts">
+<ui-code>
 <pre><code>import &#123; defineConfig &#125; from "vitest/config";
 import &#123; fudicTest &#125; from "@@fudic/testing/config";
 
@@ -80,7 +80,7 @@ export default defineConfig(&#123;
   <li><strong><code>unmount()</code></strong>: lo quita.</li>
 </ul>
 
-<ui-code .path="src/components/app-counter.test.ts">
+<ui-code>
 <pre><code>const t = await mount(AppCounter, &#123; props: &#123; start: 2 &#125; &#125;);
 await t.click(t.getByRole("button", &#123; name: "+1" &#125;));
 expect(t.query("output")).toHaveTextContent("3");</code></pre>
@@ -104,7 +104,7 @@ expect(t.query("output")).toHaveTextContent("3");</code></pre>
 
 <p>Devuelve un <code>Visited</code>: las consultas y los gestos, <code>document</code> y <code>status</code>. Una redirección lanza un error que dice adónde.</p>
 
-<ui-code .path="src/routes/blog/[slug].test.ts">
+<ui-code>
 <pre><code>const page = await visit("/blog/hello", &#123; data: &#123; title: "Hello", lang: "en" &#125; &#125;);
 expect(page.getByRole("heading", &#123; level: 1 &#125;)).toHaveTextContent("Hello");</code></pre>
 </ui-code>
@@ -169,7 +169,7 @@ renderSnippet(file: string, call: string, options?: SnippetOptions): Promise&lt;
 
 <h2 id="fixtures">Las fixtures</h2>
 
-<p>Las respuestas de una fixture (<code>&lt;ruta&gt;.fixture.ts</code>, <code>&lt;tag&gt;.fixture.ts</code>) se escriben con los ayudantes de <code>@@fudic/spec</code>. Devuelven datos, no promesas: el editor lee la fixture sin ejecutarla. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
+<p>Las respuestas de una fixture (<code>&lt;route&gt;.fixture.ts</code>, <code>&lt;tag&gt;.fixture.ts</code>) se escriben con los ayudantes de <code>@@fudic/spec</code>. Devuelven datos, no promesas: el editor lee la fixture sin ejecutarla. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
 
 <ui-code>
 <pre><code>fails(status: number, title: string): Failed
@@ -181,7 +181,7 @@ later.never(): Later&lt;never&gt;
 later.fails(ms: number, status: number, title: string): Later&lt;never&gt;</code></pre>
 </ui-code>
 
-<ui-code .path="src/routes/users.fixture.ts">
+<ui-code>
 <pre><code>import &#123; fails, file, later, redirects &#125; from "@@fudic/spec";
 import type &#123; Fixtures &#125; from "fudic:routes/users";
 

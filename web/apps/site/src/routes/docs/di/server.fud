@@ -44,7 +44,7 @@
 
 <p>En el servidor, un handler pide sus servicios con el mismo <code>inject()</code>:</p>
 
-<ui-code .path="src/server/users.ts">
+<ui-code>
 <pre><code>import &#123; inject &#125; from "@@fudic/di";
 import &#123; search &#125; from "fudic:routes/users";
 import &#123; Users &#125; from "../services/users";
@@ -60,7 +60,7 @@ search.handle((ctx) =&gt; inject(Users).find(ctx.args.q));</code></pre>
 
 <p>El <code>Cart</code> del servidor pintó tres líneas. El del navegador nace vacío, y al primer cambio pintaría cero líneas. Para que nazca igual, el servidor publica bajo un token el valor con el que se construye:</p>
 
-<ui-code .path="src/services/cart.ts">
+<ui-code>
 <pre><code>export const LINES = token&lt;readonly string[]&gt;("lines");
 
 export class Cart &#123;
@@ -69,7 +69,7 @@ export class Cart &#123;
 &#125;</code></pre>
 </ui-code>
 
-<ui-code .path="src/server/cart.ts">
+<ui-code>
 <pre><code>import &#123; publish &#125; from "@@fudic/di";
 import &#123; load &#125; from "fudic:routes/cart";
 import &#123; LINES &#125; from "../services/cart";
@@ -93,7 +93,7 @@ load.handle(() =&gt; &#123;
 
 <p>Un criterio del <code>.fudspec</code> puede cambiar un servicio por otro, sin tocar el código. El fixture, el fichero <code>.fixture.ts</code> que acompaña al flujo, da nombre a cada grupo de servicios:</p>
 
-<ui-code .path="src/flows/sign-up.fixture.ts">
+<ui-code>
 <pre><code>import type &#123; FlowFixtures &#125; from "@@fudic/spec";
 import &#123; Users &#125; from "../services/users";
 import &#123; MemoryUsers &#125; from "../services/memory-users";
@@ -108,7 +108,7 @@ export default &#123;
 &#125; satisfies FlowFixtures;</code></pre>
 </ui-code>
 
-<ui-code .path="src/flows/sign-up.fudspec">
+<ui-code>
 <pre><code>flow sign-up
 
 criterion signing-in-opens-the-account

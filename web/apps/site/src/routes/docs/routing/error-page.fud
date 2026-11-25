@@ -37,14 +37,14 @@
 
 <h2 id="file"><code>_error.fud</code></h2>
 
-<ui-code .path="src/routes/_error.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
 
 &lt;h1&gt;@@data.status · @@data.title&lt;/h1&gt;
 @@if (data.back !== undefined) &#123;
-  &lt;p&gt;&lt;a href=@@data.back&gt;Volver&lt;/a&gt;&lt;/p&gt;
+  &lt;p&gt;&lt;a href=@@data.back&gt;Go back&lt;/a&gt;&lt;/p&gt;
 &#125; else &#123;
-  &lt;p&gt;&lt;a href=@@data.home&gt;Ir al inicio&lt;/a&gt;&lt;/p&gt;
+  &lt;p&gt;&lt;a href=@@data.home&gt;Go to the home page&lt;/a&gt;&lt;/p&gt;
 &#125;</code></pre>
 </ui-code>
 

@@ -37,7 +37,7 @@
 
 <h2 id="styles">Estilos</h2>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "globalStyles": &#123; "base": "src/styles/base.css" &#125;,
   "styles": &#123; "panel": "src/styles/panel.css" &#125;,
@@ -52,7 +52,7 @@
   <li><strong><code>guide</code></strong>: solo en la librería que es la guía de estilos. <code>sheet</code> es la hoja de entrada, que reciben todas las páginas de la app que usa esa librería. <code>icon</code> es el favicon de esas páginas, y es opcional (<a href="/docs/styles/guide">La guía de estilos</a>).</li>
 </ul>
 
-<ui-code .path="libs/guide/fudic.json">
+<ui-code>
 <pre><code>&#123;
   "kind": "lib",
   "globalStyles": &#123; "base": "base.css" &#125;,
@@ -64,7 +64,7 @@
 
 <h2 id="locales">Idiomas y publicación</h2>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "locales": ["es", "en"],
   "site": "https://example.com"
@@ -76,11 +76,11 @@
   <li><strong><code>site</code></strong>: el origen en que se publica la app, sin ruta. El build lo usa para las URLs absolutas de <code>canonical</code> y <code>hreflang</code>, que una página prerenderizada no puede sacar de ninguna petición. Con dos idiomas o más, hace falta (<a href="/docs/i18n/urls#alternates">Las otras versiones de una página</a>).</li>
 </ul>
 
-<p>Una app servida bajo una ruta, como <code>/tienda/</code>, no la pone en <code>site</code>: va en el <code>base</code> de Vite.</p>
+<p>Una app servida bajo una ruta, como <code>/shop/</code>, no la pone en <code>site</code>: va en el <code>base</code> de Vite.</p>
 
 <h2 id="serve">Servir</h2>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "earlyHints": true,
   "serve": &#123;

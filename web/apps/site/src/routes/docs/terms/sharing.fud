@@ -40,13 +40,13 @@
   <li><strong><code>@@fudic/terms</code></strong>, los que trae Fudic.</li>
 </ol>
 
-<p>Gana el primer sitio que tiene <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>, y gana entero: un término no mezcla partes de los dos. Cada app y cada librería de un workspace es un proyecto con su carpeta. Los términos de una librería solo sirven a los <code>.fudspec</code> de esa librería.</p>
+<p>Gana el primer sitio que tiene <code>&lt;block&gt;/&lt;name&gt;.js</code>, y gana entero: un término no mezcla partes de los dos. Cada app y cada librería de un workspace es un proyecto con su carpeta. Los términos de una librería solo sirven a los <code>.fudspec</code> de esa librería.</p>
 
 <h2 id="replace">Sustituir uno de serie</h2>
 
 <p>Si tu producto necesita que un paso de serie se comporte de otra forma, se escribe uno con su nombre. Por ejemplo, un <code>text</code> que ignora mayúsculas:</p>
 
-<ui-code .path="fudic/terms/then/text.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: 'text',
   block: 'then',
@@ -73,7 +73,7 @@ export const selfTest = [&#123; args: &#123; target: 'h1', expected: 'shop' &#12
 
 <p>Un término es de su proyecto. Lo que se comparte es el código: el término lo carga Vite y puede importar de otro paquete del workspace. La lógica va en una librería, y cada proyecto deja un término de pocas líneas que la llama:</p>
 
-<ui-code .path="apps/shop/fudic/terms/then/cart-has.js">
+<ui-code>
 <pre><code>import &#123; cartCount &#125; from '@@acme/test-helpers';
 
 export const meta = &#123; name: 'cart-has', block: 'then', params: [&#123; name: 'count', type: 'number' &#125;] &#125;;

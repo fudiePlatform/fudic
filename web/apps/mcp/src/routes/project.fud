@@ -38,11 +38,11 @@
 <h2 id="files">Los ficheros</h2>
 
 <ui-code>
-<pre><code>tienda/
-├── .mcp.json      cómo arranca el MCP un agente
-├── AGENTS.md      lo que lee cualquier agente al abrir el proyecto
+<pre><code>shop/
+├── .mcp.json      how an agent starts the MCP
+├── AGENTS.md      what any agent reads when it opens the project
 ├── CLAUDE.md      @@AGENTS.md
-├── package.json   @@fudic/mcp en devDependencies
+├── package.json   @@fudic/mcp in devDependencies
 └── …</code></pre>
 </ui-code>
 
@@ -57,7 +57,7 @@
 
 <h2 id="agents">AGENTS.md</h2>
 
-<ui-code .path="AGENTS.md">
+<ui-code>
 <pre><code>This is a fudic project. fudic is a framework you have no prior knowledge of.
 Use the fudic MCP server (it is configured in .mcp.json): call fudic_status first.</code></pre>
 </ui-code>

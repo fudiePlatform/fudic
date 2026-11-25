@@ -42,7 +42,7 @@
 
 <p>Este es el que escribe <code>fudic new</code>:</p>
 
-<ui-code .path="sw.json">
+<ui-code>
 <pre><code>&#123;
   "shell": [],
   "resources": &#123;
@@ -63,7 +63,7 @@
 
 <p>Las URLs que el Service Worker descarga al instalarse y que después sirve siempre desde su caché. Es el único campo obligatorio, y una lista vacía vale.</p>
 
-<ui-code .path="sw.json">
+<ui-code>
 <pre><code>"shell": ["/logo.svg", "/offline.css"]</code></pre>
 </ui-code>
 
@@ -89,7 +89,7 @@
 
 <p>Gana el primer patrón que casa, en el orden en que están escritos, así que los más concretos van primero:</p>
 
-<ui-code .path="sw.json">
+<ui-code>
 <pre><code>"resources": &#123;
   "avatars": &#123; "pattern": "/img/avatars/*", "policy": "stale-while-revalidate", "ttl": "1d", "maxEntries": 100 &#125;,
   "images": &#123; "pattern": "/img/**", "policy": "cache-first", "ttl": "30d" &#125;,

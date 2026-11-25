@@ -51,7 +51,7 @@
 
 <p><code>diagnostics</code> da a cada código el nivel que quieras, o <code>"off"</code> para no verlo:</p>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "diagnostics": &#123;
     "warnings": "error",
@@ -72,7 +72,7 @@
 
 <p>Un aviso que has visto y quieres dejar se silencia donde ocurre, en un comentario, con el código y el motivo detrás de dos puntos:</p>
 
-<ui-code .path="src/components/app-menu/app-menu.fud">
+<ui-code>
 <pre><code>&lt;style&gt;
   /* fud-disable-next-line FUD1524: without it, older browsers show the menu without the animation */
   @@starting-style &#123; [popover]:popover-open &#123; opacity: 0; &#125; &#125;

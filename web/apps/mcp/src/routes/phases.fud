@@ -55,7 +55,7 @@
 
 <p>En <a href="/mcp/conversation">la conversación de ejemplo</a>, los tests salieron rotos dos veces antes de fallar como debían:</p>
 
-<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
+<ui-code>
 <pre><code>2026-11-23T20:16Z 2f3a378 tests       broken 0/8  hash f30f8f283e41
 2026-11-23T20:17Z 2f3a378 tests       broken 0/8  hash 945afa51a450
 2026-11-23T20:18Z 2f3a378 tests       red 0/8  hash 87829e018cf7</code></pre>

@@ -39,7 +39,7 @@
 
 <p>Los criterios de aceptación de un componente, una página o un flujo, escritos al lado de su código. <code>fudic spec</code> y el workbench los ejecutan en un navegador de verdad. Cada paso es un término: Fudic trae los suyos y el proyecto puede añadir más. Guía: <a href="/docs/testing">Probar</a>.</p>
 
-<ui-code .path="src/components/app-counter.fudspec">
+<ui-code>
 <pre><code>component app-counter
 
 criterion adds-one
@@ -124,7 +124,7 @@ criterion adds-one
 
 <h2 id="fixture-lines">Líneas de fixture</h2>
 
-<p>Las líneas de fixture van en <code>given</code> y dicen qué datos usa el criterio. Cada nombre que citan está en la fixture: <code>&lt;tag&gt;.fixture.ts</code>, <code>&lt;ruta&gt;.fixture.ts</code> (<code>index.fixture.ts</code> para <code>/</code>) o <code>src/flows/&lt;name&gt;.fixture.ts</code>. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
+<p>Las líneas de fixture van en <code>given</code> y dicen qué datos usa el criterio. Cada nombre que citan está en la fixture: <code>&lt;tag&gt;.fixture.ts</code>, <code>&lt;route&gt;.fixture.ts</code> (<code>index.fixture.ts</code> para <code>/</code>) o <code>src/flows/&lt;name&gt;.fixture.ts</code>. Guía: <a href="/docs/testing/pages-and-flows#fixture">Páginas y flujos</a>.</p>
 
 <ul>
   <li><strong><code>props &lt;case&gt;</code></strong>, en un componente: sus props. Obligatoria si tiene props obligatorias.</li>
@@ -137,7 +137,7 @@ criterion adds-one
 
 <p>Cada una va una vez. Una página con parámetros necesita <code>path</code> o <code>url</code> (<a href="/docs/reference/diagnostics/FUD1504"><code>FUD1504</code></a>).</p>
 
-<ui-code .path="src/routes/blog/[slug].fudspec">
+<ui-code>
 <pre><code>page /blog/[slug]
 
 criterion lists-the-first-post
@@ -152,7 +152,7 @@ criterion lists-the-first-post
 
 <p><code>as &lt;who&gt;</code>, en cualquier bloque: lo que sigue lo hace otra persona, con su navegador y sus cookies. <code>as main</code> vuelve a la primera. Sirve para probar lo que ve cada usuario en un flujo.</p>
 
-<ui-code .path="src/flows/sign-up.fudspec">
+<ui-code>
 <pre><code>  when
     as luis
     go "/users"
@@ -162,7 +162,7 @@ criterion lists-the-first-post
 
 <h2 id="terms">Los términos</h2>
 
-<p>Un término es un fichero <code>&lt;bloque&gt;/&lt;nombre&gt;.js</code>. Fudic los busca, en orden, en:</p>
+<p>Un término es un fichero <code>&lt;block&gt;/&lt;name&gt;.js</code>. Fudic los busca, en orden, en:</p>
 
 <ol>
   <li><strong><code>fudic/terms/</code></strong> del proyecto.</li>
@@ -171,7 +171,7 @@ criterion lists-the-first-post
 
 <p>Gana el primero que tiene el fichero. El editor los lee sin ejecutarlos, así que su <code>meta</code> tiene que ser literal:</p>
 
-<ui-code .path="fudic/terms/then/cart-has.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: "cart-has",
   block: "then",

@@ -40,8 +40,8 @@
 <p><code>@@</code> delante del nombre de un evento lo conecta con una función de <code>@@code</code>:</p>
 
 <ui-code>
-<pre><code>&lt;button type="button" @@click=@@save&gt;Guardar&lt;/button&gt;
-&lt;button type="button" @@click=@@remove(item.id)&gt;Borrar&lt;/button&gt;
+<pre><code>&lt;button type="button" @@click=@@save&gt;Save&lt;/button&gt;
+&lt;button type="button" @@click=@@remove(item.id)&gt;Delete&lt;/button&gt;
 &lt;input @@keydown=@@onKey($event)&gt;</code></pre>
 </ui-code>
 
@@ -75,7 +75,7 @@
   @@foreach (const task of tasks()) key (task.id) &#123;
     &lt;li&gt;
       @@task.title
-      &lt;button type="button" delegate:task="click"&gt;Borrar&lt;/button&gt;
+      &lt;button type="button" delegate:task="click"&gt;Delete&lt;/button&gt;
     &lt;/li&gt;
   &#125;
 &lt;/ul&gt;</code></pre>
@@ -91,7 +91,7 @@
 
 <p>Para que un componente avise a su padre, se le pasa una función (<a href="/docs/template-syntax/components#function-prop">Componentes</a>). Para avisar a cualquiera de la página, está el bus: <code>emit</code> anuncia un evento y <code>bus:</code> lo recibe.</p>
 
-<ui-code .path="src/components/miapp-products/miapp-products.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; emit &#125; from "@@fudic/dom";
 
@@ -101,8 +101,8 @@
 &#125;</code></pre>
 </ui-code>
 
-<ui-code .path="src/components/miapp-cart/miapp-cart.fud">
-<pre><code>&lt;span bus:cart-add=@@added&gt;Carrito (@@items().length)&lt;/span&gt;</code></pre>
+<ui-code>
+<pre><code>&lt;span bus:cart-add=@@added&gt;Cart (@@items().length)&lt;/span&gt;</code></pre>
 </ui-code>
 
 <ul>

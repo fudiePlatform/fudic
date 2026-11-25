@@ -52,12 +52,12 @@
 <h2 id="example">Ejemplo</h2>
 
 <ui-code>
-<pre><code>fudic_render &#123; "component": "tienda-button", "fixture": "disabled" &#125;</code></pre>
+<pre><code>fudic_render &#123; "component": "shop-button", "fixture": "disabled" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "component": "tienda-button",
+  "component": "shop-button",
   "fixture": "disabled",
   "engine": "happy-dom",
   "as": "outline",
@@ -71,18 +71,18 @@
 <p>En un navegador, con la captura. Desde un agente, la captura es un fichero; desde un chat, se dibuja en la conversación:</p>
 
 <ui-code>
-<pre><code>fudic_render &#123; "component": "tienda-button", "fixture": "secondary", "engine": "browser" &#125;</code></pre>
+<pre><code>fudic_render &#123; "component": "shop-button", "fixture": "secondary", "engine": "browser" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "component": "tienda-button",
+  "component": "shop-button",
   "fixture": "secondary",
   "engine": "browser",
   "as": "outline",
   "outline": "- button",
   "calls": [],
-  "shot": ".fudic/renders/tienda-button/secondary-c23d7820c2d0.png",
+  "shot": ".fudic/renders/shop-button/secondary-c23d7820c2d0.png",
   "diagnostics": [],
   "next": null
 &#125;</code></pre>

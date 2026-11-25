@@ -50,12 +50,12 @@
 <p>Un botón que nunca se aprobó, desde un agente:</p>
 
 <ui-code>
-<pre><code>fudic_look &#123; "piece": "src/components/tienda-button" &#125;</code></pre>
+<pre><code>fudic_look &#123; "piece": "src/components/shop-button" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "piece": "src/components/tienda-button/tienda-button.fud",
+  "piece": "src/components/shop-button/shop-button.fud",
   "look": "none",
   "hash": "adb1110ddcd3",
   "cases": [
@@ -65,26 +65,26 @@
         "renders"
       ],
       "verdict": "new",
-      "after": ".fudic/looks/tienda-button/adb1110ddcd3/base.png",
-      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/base.png"
+      "after": ".fudic/looks/shop-button/adb1110ddcd3/base.png",
+      "afterUrl": ".fudic/looks/shop-button/adb1110ddcd3/base.png"
     &#125;,
     &#123;
       "case": "secondary",
       "criteria": [],
       "verdict": "new",
-      "after": ".fudic/looks/tienda-button/adb1110ddcd3/secondary.png",
-      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/secondary.png"
+      "after": ".fudic/looks/shop-button/adb1110ddcd3/secondary.png",
+      "afterUrl": ".fudic/looks/shop-button/adb1110ddcd3/secondary.png"
     &#125;,
     &#123;
       "case": "disabled",
       "criteria": [],
       "verdict": "new",
-      "after": ".fudic/looks/tienda-button/adb1110ddcd3/disabled.png",
-      "afterUrl": ".fudic/looks/tienda-button/adb1110ddcd3/disabled.png"
+      "after": ".fudic/looks/shop-button/adb1110ddcd3/disabled.png",
+      "afterUrl": ".fudic/looks/shop-button/adb1110ddcd3/disabled.png"
     &#125;
   ],
   "diagnostics": [],
-  "next": "Show the user the before and after of tienda-button and ask whether they approve its look. Only if they do, call …"
+  "next": "Show the user the before and after of shop-button and ask whether they approve its look. Only if they do, call …"
 &#125;</code></pre>
 </ui-code>
 

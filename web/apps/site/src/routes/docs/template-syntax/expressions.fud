@@ -41,9 +41,9 @@
 <p><code>@@</code> seguido de un nombre escribe su valor. Para una operación, se usan paréntesis:</p>
 
 <ui-code>
-<pre><code>&lt;p&gt;Hola, @@user.name&lt;/p&gt;
-&lt;p&gt;Llevas @@count() clics&lt;/p&gt;
-&lt;p&gt;@@(stock &gt; 0 ? "Disponible" : "Agotado")&lt;/p&gt;</code></pre>
+<pre><code>&lt;p&gt;Hello, @@user.name&lt;/p&gt;
+&lt;p&gt;You have clicked @@count() times&lt;/p&gt;
+&lt;p&gt;@@(stock &gt; 0 ? "In stock" : "Sold out")&lt;/p&gt;</code></pre>
 </ui-code>
 
 <p>Lo que se escribe así siempre llega como texto: un <code>&lt;</code> nunca se convierte en una etiqueta. Para escribir HTML está <a href="/docs/template-syntax/ref-and-raw"><code>@@raw</code></a>.</p>
@@ -72,7 +72,7 @@
     <tr><td><code>xs.slice(0, 3)</code></td><td><code>xs.filter((x, i) =&gt; i &lt; 3)</code></td></tr>
     <tr><td><code>n.toFixed(2)</code></td><td>un pipe <code>number</code></td></tr>
     <tr><td><code>@@if (name)</code></td><td><code>@@if (name !== "")</code></td></tr>
-    <tr><td><code>title || "Sin título"</code></td><td><code>title ?? "Sin título"</code></td></tr>
+    <tr><td><code>title || "Untitled"</code></td><td><code>title ?? "Untitled"</code></td></tr>
   </tbody>
 </table>
 
@@ -84,9 +84,9 @@
 
 <ui-code>
 <pre><code>@@if (user === null) &#123;
-  &lt;a href="/login"&gt;Entrar&lt;/a&gt;
+  &lt;a href="/login"&gt;Log in&lt;/a&gt;
 &#125; else &#123;
-  &lt;span&gt;Hola, @@user.name&lt;/span&gt;
+  &lt;span&gt;Hello, @@user.name&lt;/span&gt;
 &#125;</code></pre>
 </ui-code>
 
@@ -95,9 +95,9 @@
 <ui-code>
 <pre><code>@@switch (order.status) &#123;
   case "pending":
-    &lt;p&gt;Lo estamos preparando.&lt;/p&gt;
+    &lt;p&gt;We are getting it ready.&lt;/p&gt;
   default:
-    &lt;p&gt;Entregado.&lt;/p&gt;
+    &lt;p&gt;Delivered.&lt;/p&gt;
 &#125;</code></pre>
 </ui-code>
 
@@ -110,7 +110,7 @@
   @@foreach (const task of tasks()) key (task.id) &#123;
     &lt;li&gt;@@task.title&lt;/li&gt;
   &#125; @@empty &#123;
-    &lt;li&gt;No hay tareas.&lt;/li&gt;
+    &lt;li&gt;No tasks.&lt;/li&gt;
   &#125;
 &lt;/ul&gt;</code></pre>
 </ui-code>
@@ -140,8 +140,8 @@
 <h2 id="comments">Comentarios y variables</h2>
 
 <ui-code>
-<pre><code>@@* Esto no llega al HTML. *@@
-&lt;!-- Esto sí: es un comentario HTML. --&gt;
+<pre><code>@@* This does not reach the HTML. *@@
+&lt;!-- This does: it is an HTML comment. --&gt;
 
 @@&#123; const subtotal = line.price * line.qty; &#125;
 &lt;td&gt;@@(subtotal | euros)&lt;/td&gt;</code></pre>

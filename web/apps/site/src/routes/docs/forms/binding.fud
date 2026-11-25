@@ -40,15 +40,15 @@
 
 <h2 id="three-attributes">Tres atributos</h2>
 
-<ui-code .path="src/components/app-form.fud">
+<ui-code>
 <pre><code>&lt;form control=@@userForm&gt;
   &lt;div summary=@@userForm fields&gt;&lt;/div&gt;
 
-  &lt;label for="nom"&gt;Nombre&lt;/label&gt;
-  &lt;input id="nom" type="text" control=@@userForm.name&gt;
+  &lt;label for="name"&gt;Name&lt;/label&gt;
+  &lt;input id="name" type="text" control=@@userForm.name&gt;
   &lt;small error=@@userForm.name&gt;&lt;/small&gt;
 
-  &lt;button type="submit"&gt;Guardar&lt;/button&gt;
+  &lt;button type="submit"&gt;Save&lt;/button&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
@@ -71,7 +71,7 @@
 <p>El compilador da un <code>id</code> al elemento del error y escribe en el campo el <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-describedby" target="_blank" rel="noopener"><code>aria-describedby</code></a> que apunta a él. Así, un lector de pantalla lee el error al llegar al campo:</p>
 
 <ui-code>
-<pre><code>&lt;input id="nom" type="text" aria-describedby="fud-e-userForm-name"&gt;
+<pre><code>&lt;input id="name" type="text" aria-describedby="fud-e-userForm-name"&gt;
 &lt;small id="fud-e-userForm-name"&gt;&lt;/small&gt;</code></pre>
 </ui-code>
 
@@ -89,7 +89,7 @@
 
 <p>Por defecto, un campo se valida al salir de él, y después, en cada cambio. Así el error no aparece mientras el usuario escribe por primera vez, y se va en cuanto lo corrige. Se cambia con <code>validate-on</code> en el formulario, en un grupo o en un campo:</p>
 
-<ui-code .path="src/forms/signup.fudapi">
+<ui-code>
 <pre><code>form signup
   validate-on submit
   alias  str = ""

@@ -30,7 +30,7 @@
 
 <h1>fudic_check</h1>
 
-<p><code>fudic_check</code> comprueba el proyecto entero como lo haría el build, sin construir: los <code>.fud</code>, el TypeScript, los <code>.fudapi</code>, los <code>.fudspec</code> y los <code>.headers</code>. Cada diagnóstico lleva su <code>fichero:línea:columna</code> y la línea en la que está.</p>
+<p><code>fudic_check</code> comprueba el proyecto entero como lo haría el build, sin construir: los <code>.fud</code>, el TypeScript, los <code>.fudapi</code>, los <code>.fudspec</code> y los <code>.headers</code>. Cada diagnóstico lleva su <code>file:line:column</code> y la línea en la que está.</p>
 
 <h2 id="arguments">Argumentos</h2>
 

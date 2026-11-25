@@ -66,12 +66,12 @@
 <p>Para engancharse al HTML, el componente necesita los valores con los que se pintó. El servidor los escribe al final de la página:</p>
 
 <ui-code>
-<pre><code>&lt;miapp-counter&gt;
+<pre><code>&lt;myapp-counter&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;button&gt;+1&lt;/button&gt;
     &lt;output&gt;10&lt;/output&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;
+&lt;/myapp-counter&gt;
 
 &lt;script type="application/json" id="fud-state"&gt;[[0,1],[10]]&lt;/script&gt;</code></pre>
 </ui-code>
@@ -81,7 +81,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><strong>El código va por tag.</strong> Cada componente es un fichero aparte. Al hidratarse el primer <code>&lt;miapp-counter&gt;</code>, todas las instancias de la página quedan listas, sin descargar nada más.</li>
+  <li><strong>El código va por tag.</strong> Cada componente es un fichero aparte. Al hidratarse el primer <code>&lt;myapp-counter&gt;</code>, todas las instancias de la página quedan listas, sin descargar nada más.</li>
   <li><strong>Los hijos van antes que el padre.</strong> Cuando el padre se engancha, sus hijos ya responden.</li>
   <li><strong>Con <a href="/docs/template-syntax/await"><code>@@await</code></a></strong>, la página llega en partes, y un componente se puede hidratar en cuanto llega la suya.</li>
 </ul>

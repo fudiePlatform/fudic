@@ -41,7 +41,7 @@
 
 <p>Un servicio es una clase normal de TypeScript. <code>Service</code> la registra en la raíz, así que toda la página comparte una sola instancia:</p>
 
-<ui-code .path="src/services/logger.ts">
+<ui-code>
 <pre><code>import &#123; Service &#125; from "@@fudic/di";
 
 export class Logger &#123;
@@ -62,7 +62,7 @@ Service(Logger);</code></pre>
 
 <p>Un componente lo pide en su <code>@@code</code>:</p>
 
-<ui-code .path="src/components/app-log/app-log.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; inject &#125; from "@@fudic/di";
   import &#123; Logger &#125; from "../../services/logger";
@@ -72,7 +72,7 @@ Service(Logger);</code></pre>
 
 &lt;app-log&gt;
   &lt;template shadowrootmode="open"&gt;
-    &lt;p&gt;@@logger.entries.length entradas&lt;/p&gt;
+    &lt;p&gt;@@logger.entries.length entries&lt;/p&gt;
   &lt;/template&gt;
 &lt;/app-log&gt;</code></pre>
 </ui-code>
@@ -87,7 +87,7 @@ Service(Logger);</code></pre>
 
 <p>Dentro de un servicio, <code>inject()</code> va en un campo de la clase:</p>
 
-<ui-code .path="src/services/cart.ts">
+<ui-code>
 <pre><code>import &#123; inject, Service &#125; from "@@fudic/di";
 import &#123; Logger &#125; from "./logger";
 
@@ -109,7 +109,7 @@ Service(Cart);</code></pre>
 
 <p>Una URL, un número o una configuración no tienen clase con la que pedirlos. Se crea un token, que lleva su tipo:</p>
 
-<ui-code .path="src/services/config.ts">
+<ui-code>
 <pre><code>import &#123; provide, token &#125; from "@@fudic/di";
 
 export const API_URL = token&lt;string&gt;("api-url");

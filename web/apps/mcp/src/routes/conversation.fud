@@ -34,7 +34,7 @@
 
 <h1>Una conversación de principio a fin</h1>
 
-<p>Esta es una conversación real con Claude Code, que no sabía nada de Fudic, en un proyecto recién creado con <a href="/docs/cli/new"><code>fudic new tienda</code></a>. La persona pide tres componentes y la conversación termina con el primero, un botón, aprobado y terminado. Las citas son lo que escribió la persona, y entre medias se resume lo que hizo el modelo.</p>
+<p>Esta es una conversación real con Claude Code, que no sabía nada de Fudic, en un proyecto recién creado con <a href="/docs/cli/new"><code>fudic new shop</code></a>. La persona pide tres componentes y la conversación termina con el primero, un botón, aprobado y terminado. Las citas son lo que escribió la persona, y entre medias se resume lo que hizo el modelo.</p>
 
 <h2 id="request">La petición</h2>
 
@@ -50,24 +50,24 @@
 
 <p>El modelo propuso cinco props, entre ellas la variante, el tamaño y si el botón está deshabilitado, y nueve criterios. Estos son dos de ellos:</p>
 
-<ui-code .path="src/components/tienda-button/tienda-button.fudspec">
-<pre><code># Un producto sin stock no se puede añadir: el botón está ahí, se lee, y no responde.
-criterion sin-stock-no-responde
+<ui-code>
+<pre><code># An out-of-stock product cannot be added: the button is there, it can be read, and it does not respond.
+criterion out-of-stock-does-not-respond
   given
-    props deshabilitada
+    props disabled
   then
-    visible role:button/"Sin stock"
-    disabled role:button/"Sin stock"
+    visible role:button/"Out of stock"
+    disabled role:button/"Out of stock"
 
-# Se puede pulsar con el dedo en el móvil, y un texto largo no lo deforma.
-criterion se-pulsa-con-el-dedo
+# It can be tapped with a finger on a phone, and a long text does not distort it.
+criterion can-be-tapped-with-a-finger
   given
     props base
   then
-    min-height tienda-button 40</code></pre>
+    min-height shop-button 40</code></pre>
 </ui-code>
 
-<p>Cada criterio monta el botón con un caso de su fixture, el fichero que guarda un juego de props con nombre para cada variante, como <code>base</code> o <code>deshabilitada</code>. Al enseñar la propuesta, el modelo preguntó si hacía falta un botón de ancho completo y si sobraba el tamaño pequeño.</p>
+<p>Cada criterio monta el botón con un caso de su fixture, el fichero que guarda un juego de props con nombre para cada variante, como <code>base</code> o <code>disabled</code>. Al enseñar la propuesta, el modelo preguntó si hacía falta un botón de ancho completo y si sobraba el tamaño pequeño.</p>
 
 <blockquote>
   <p>Quita el tamaño sm, de momento sobra, y no hace falta ancho completo. Lo demás está bien: apruebo las props y los criterios.</p>
@@ -102,7 +102,7 @@ criterion se-pulsa-con-el-dedo
 <p>El modelo cambió el CSS, volvió a pasar los tests y los criterios, y enseñó los seis casos otra vez:</p>
 
 <figure>
-  <img src="../images/tienda-button-look.webp" width="679" height="140" style="aspect-ratio: 679 / 140" loading="lazy" decoding="async" alt="Seis botones. Arriba, Añadir al carrito en azul, Seguir comprando en blanco con borde gris y Vaciar el carrito en rojo. Abajo, Sin stock en azul apagado, Añadir al carrito en azul con un aro que gira, y Añadir al carrito y seguir con la compra en una sola línea.">
+  <img src="../images/shop-button-look.webp" width="679" height="140" style="aspect-ratio: 679 / 140" loading="lazy" decoding="async" alt="Seis botones. Arriba, Añadir al carrito en azul, Seguir comprando en blanco con borde gris y Vaciar el carrito en rojo. Abajo, Sin stock en azul apagado, Añadir al carrito en azul con un aro que gira, y Añadir al carrito y seguir con la compra en una sola línea.">
   <figcaption>Los seis casos del fixture: base, secundaria y peligro arriba; deshabilitada, ocupada y texto largo abajo.</figcaption>
 </figure>
 
@@ -116,15 +116,15 @@ criterion se-pulsa-con-el-dedo
 
 <p>El modelo apuntó el aspecto, documentó el botón y lo marcó como terminado. El historial del botón guarda la conversación entera:</p>
 
-<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
-<pre><code>2026-11-23T20:01Z 2f3a378 started     by agent  "Un botón para la tienda: …"
+<ui-code>
+<pre><code>2026-11-23T20:01Z 2f3a378 started     by agent  "A button for the shop: …"
 2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d
 2026-11-23T20:16Z 2f3a378 tests       broken 0/8  hash f30f8f283e41
 2026-11-23T20:17Z 2f3a378 tests       broken 0/8  hash 945afa51a450
 2026-11-23T20:18Z 2f3a378 tests       red 0/8  hash 87829e018cf7
 2026-11-23T20:19Z 2f3a378 spec_run    error 0/9  hash 87829e018cf7  …
-2026-11-23T20:20Z 2f3a378 spec_run    error 0/1  hash fa30b29546a0  se-puede-enfocar
-2026-11-23T20:22Z 2f3a378 spec_run    fail 0/1  hash 3ac4bc2fc846  el-foco-llega-al-boton
+2026-11-23T20:20Z 2f3a378 spec_run    error 0/1  hash fa30b29546a0  can-be-focused
+2026-11-23T20:22Z 2f3a378 spec_run    fail 0/1  hash 3ac4bc2fc846  focus-reaches-the-button
 2026-11-23T20:24Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 188d180b8c14
 2026-11-23T20:30Z 2f3a378 tests       red 6/8  hash 41f240880583
 2026-11-23T20:31Z 2f3a378 spec_run    pass 9/9  hash 41f240880583

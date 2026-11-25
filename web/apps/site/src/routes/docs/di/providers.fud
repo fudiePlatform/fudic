@@ -39,7 +39,7 @@
 
 <p>Dos carritos en la misma página, el de la compra y el de la lista de deseos, cada uno con sus líneas. Aquí <code>Cart</code> no lleva <code>Service</code>: lo provee cada componente que lo necesita para su parte de la página.</p>
 
-<ui-code .path="src/components/app-shop/app-shop.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; provide &#125; from "@@fudic/di";
   import &#123; Cart &#125; from "../../services/cart";

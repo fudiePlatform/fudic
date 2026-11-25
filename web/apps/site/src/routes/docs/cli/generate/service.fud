@@ -78,7 +78,7 @@ fudic g service wizard --provided</code></pre>
 
 <p>El servicio que escribe <code>fudic g service cart</code>:</p>
 
-<ui-code .path="src/services/cart.service.ts">
+<ui-code>
 <pre><code>import &#123; Service &#125; from '@@fudic/di';
 
 // One for the whole app: inject(Cart) gives every component the same instance.

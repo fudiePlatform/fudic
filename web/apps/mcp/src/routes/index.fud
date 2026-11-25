@@ -42,10 +42,10 @@
 <p><a href="/docs/cli/new"><code>fudic new</code></a> crea el proyecto con el MCP ya instalado y configurado:</p>
 
 <ui-code>
-<pre><code>fudic new tienda</code></pre>
+<pre><code>fudic new shop</code></pre>
 </ui-code>
 
-<p>Abre tu agente en la carpeta <code>tienda</code>. Un agente es el asistente de IA de tu editor o tu terminal, como Claude Code o Copilot. Con Claude Code no hay nada más que hacer. Con Copilot, Cursor, Codex u otro agente, copia el fichero de configuración que da <a href="/mcp/connect">Desde un agente</a>. También se puede trabajar <a href="/mcp/connect/chat">desde un chat</a>.</p>
+<p>Abre tu agente en la carpeta <code>shop</code>. Un agente es el asistente de IA de tu editor o tu terminal, como Claude Code o Copilot. Con Claude Code no hay nada más que hacer. Con Copilot, Cursor, Codex u otro agente, copia el fichero de configuración que da <a href="/mcp/connect">Desde un agente</a>. También se puede trabajar <a href="/mcp/connect/chat">desde un chat</a>.</p>
 
 <h2 id="steps">La conversación</h2>
 

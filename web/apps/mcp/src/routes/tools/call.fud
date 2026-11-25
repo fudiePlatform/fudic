@@ -49,7 +49,7 @@
 <h2 id="example">Ejemplo</h2>
 
 <ui-code>
-<pre><code>fudic_call &#123; "fn": "routes/products.search", "args": &#123; "q": "mesa" &#125; &#125;</code></pre>
+<pre><code>fudic_call &#123; "fn": "routes/products.search", "args": &#123; "q": "table" &#125; &#125;</code></pre>
 </ui-code>
 
 <ui-code>
@@ -59,12 +59,12 @@
   "value": [
     &#123;
       "id": 1,
-      "name": "Mesa de roble",
+      "name": "Oak table",
       "price": 240
     &#125;,
     &#123;
       "id": 2,
-      "name": "Mesa auxiliar",
+      "name": "Side table",
       "price": 85
     &#125;
   ],

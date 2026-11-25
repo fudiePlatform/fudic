@@ -43,7 +43,7 @@
 
 <p>Los datos de la página salen de su <code>.fudapi</code>, y el editor los conoce en el markup:</p>
 
-<ui-code .path="src/routes/blog/index.fud">
+<ui-code>
 <pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
 @@foreach (const post of data.posts) key (post.slug) &#123;
   &lt;h2&gt;@@post.titel&lt;/h2&gt;
@@ -74,7 +74,7 @@
 
 <p>Dentro del <code>&lt;style&gt;</code> de un <code>.fud</code> funciona el completado estándar de CSS. Tras <code>var(--</code>, además, los tokens de tus hojas y de las de tus librerías, con su valor:</p>
 
-<ui-code .path="src/components/app-card.fud">
+<ui-code>
 <pre><code>:host &#123;
   padding: var(--space-m);
   color: var(--color-text);
@@ -98,7 +98,7 @@
 </ul>
 
 <figure>
-  <img src="../../../images/editor-fudapi.webp" width="1020" height="602" style="aspect-ratio: 1020 / 602" loading="lazy" decoding="async" alt="Un .fudapi con sus enlaces: en la primera línea Types, Server, Browser y Regenerate; encima de load, login, logout y search, implemented in src/server/usuarios.ts.">
+  <img src="../../../images/editor-fudapi.webp" width="1020" height="602" style="aspect-ratio: 1020 / 602" loading="lazy" decoding="async" alt="Un .fudapi con sus enlaces: en la primera línea Types, Server, Browser y Regenerate; encima de load, login, logout y search, implemented in src/server/users.ts.">
   <figcaption>Lo que genera el contrato, arriba, y quién implementa cada declaración.</figcaption>
 </figure>
 

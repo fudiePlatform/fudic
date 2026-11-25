@@ -39,42 +39,42 @@
 
 <h2 id="form-send"><code>form:=</code></h2>
 
-<ui-code .path="src/routes/entrar.fud">
-<pre><code>&lt;link rel="server" href="./entrar.fudapi"&gt;
+<ui-code>
+<pre><code>&lt;link rel="server" href="./login.fudapi"&gt;
 
-&lt;form control=@@entrarForm form:=@@entrar&gt;
-  &lt;label for="usuario"&gt;Usuario&lt;/label&gt;
-  &lt;input id="usuario" type="text" control=@@entrarForm.user&gt;
-  &lt;small error=@@entrarForm.user&gt;&lt;/small&gt;
-  &lt;button type="submit"&gt;Entrar&lt;/button&gt;
+&lt;form control=@@loginForm form:=@@login&gt;
+  &lt;label for="user"&gt;User&lt;/label&gt;
+  &lt;input id="user" type="text" control=@@loginForm.user&gt;
+  &lt;small error=@@loginForm.user&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Log in&lt;/button&gt;
 &lt;/form&gt;</code></pre>
 </ui-code>
 
-<p><code>form:=@@entrar</code> hace que un envío válido llame a la función <code>entrar</code> en vez de navegar. Lo que responde llega por dos eventos (<a href="/docs/forms/events">Resultado y error</a>).</p>
+<p><code>form:=@@login</code> hace que un envío válido llame a la función <code>login</code> en vez de navegar. Lo que responde llega por dos eventos (<a href="/docs/forms/events">Resultado y error</a>).</p>
 
 <h2 id="declare">La función que lo recibe</h2>
 
 <p>En el <code>.fudapi</code>, la función recibe el formulario con <code>form</code>, en lugar de argumentos:</p>
 
-<ui-code .path="src/routes/entrar.fudapi">
-<pre><code>post entrar
-  form entrarForm
+<ui-code>
+<pre><code>post login
+  form loginForm
 
-form entrarForm
+form loginForm
   user  str = ""
-    required  "Escribe tu usuario."</code></pre>
+    required  "Enter your user name."</code></pre>
 </ui-code>
 
 <p>En el handler, el formulario está en <code>ctx.form</code>, ya validado y con sus tipos:</p>
 
-<ui-code .path="src/server/entrar.ts">
+<ui-code>
 <pre><code>import &#123; redirect &#125; from "@@fudic/http";
-import &#123; entrar &#125; from "fudic:routes/entrar";
+import &#123; login &#125; from "fudic:routes/login";
 
-entrar.handle((ctx) =&gt; &#123;
+login.handle((ctx) =&gt; &#123;
   const &#123; user &#125; = ctx.form.$value();
   // …start the session for user
-  throw redirect("/cuenta");
+  throw redirect("/account");
 &#125;);</code></pre>
 </ui-code>
 
@@ -96,10 +96,10 @@ entrar.handle((ctx) =&gt; &#123;
 
 <p>Un error propio del handler se declara en la función con <code>fails</code>, con su status y su texto:</p>
 
-<ui-code .path="src/components/user-form.fudapi">
+<ui-code>
 <pre><code>put save
   form personForm
-  fails reserved 409 "Ese nombre está reservado."</code></pre>
+  fails reserved 409 "That name is reserved."</code></pre>
 </ui-code>
 
 <p>Un <code>422</code> se pinta en cada campo. Un <code>409</code>, que no es de un campo, se pinta en el resumen. En los dos casos el foco va al resumen, si tiene <code>fields</code>, o al primer campo con error.</p>

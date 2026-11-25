@@ -39,7 +39,7 @@
 
 <p><code>fudic new</code> deja este <code>vite.config.ts</code>, y no hace falta nada más:</p>
 
-<ui-code .path="vite.config.ts">
+<ui-code>
 <pre><code>import &#123; defineConfig &#125; from "vite";
 import &#123; fudic &#125; from "@@fudic/vite";
 
@@ -63,7 +63,7 @@ export default defineConfig(&#123;
 
 <p>Una app servida bajo <code>/admin/</code>:</p>
 
-<ui-code .path="vite.config.ts">
+<ui-code>
 <pre><code>export default defineConfig(&#123;
   base: "/admin/",
   plugins: [fudic()],
@@ -74,7 +74,7 @@ export default defineConfig(&#123;
 
 <h2 id="options">Las opciones</h2>
 
-<ui-code .path="vite.config.ts">
+<ui-code>
 <pre><code>fudic(&#123;
   routesDir: "pages",
   prerender: true,

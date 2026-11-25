@@ -48,7 +48,7 @@
 
 <p><code>load</code> declara los datos de la página, con sus tipos:</p>
 
-<ui-code .path="src/routes/blog/index.fudapi">
+<ui-code>
 <pre><code>load
   title  str
   posts  Post[]
@@ -60,7 +60,7 @@ type Post
 
 <p>Su handler, en el servidor, los devuelve:</p>
 
-<ui-code .path="src/server/blog.ts">
+<ui-code>
 <pre><code>import &#123; load &#125; from "fudic:routes/blog/index";
 
 load.handle(async () =&gt; (&#123; title: "Blog", posts: await listPosts() &#125;));</code></pre>
@@ -68,7 +68,7 @@ load.handle(async () =&gt; (&#123; title: "Blog", posts: await listPosts() &#125
 
 <p id="data">Y la página los lee como <code>data</code>, tipado y sin importarlo:</p>
 
-<ui-code .path="src/routes/blog/index.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../../layouts/_layout.fud"&gt;
 &lt;link rel="server" href="./index.fudapi"&gt;
 
@@ -89,7 +89,7 @@ load.handle(async () =&gt; (&#123; title: "Blog", posts: await listPosts() &#125
 
 <p>El handler recibe el <code>ctx</code> de una <a href="/docs/server/functions#handler">función de servidor</a>, con los parámetros de la URL ya tipados:</p>
 
-<ui-code .path="src/server/blog.ts">
+<ui-code>
 <pre><code>import &#123; load &#125; from "fudic:routes/blog/[slug]";
 
 load.handle(async (ctx) =&gt; &#123;
@@ -107,7 +107,7 @@ load.handle(async (ctx) =&gt; &#123;
 
 <ul>
   <li><code>notFound()</code> u otro error de <code>@@fudic/http</code>: la <a href="/docs/routing/error-page">página de error</a>, con su status. Un <code>/blog/no-existe</code> responde un <code>404</code> de verdad.</li>
-  <li><code>redirect("/entrar")</code>: la redirección.</li>
+  <li><code>redirect("/login")</code>: la redirección.</li>
   <li>Cualquier otro error: la página de error con un <code>500</code>.</li>
 </ul>
 
@@ -115,7 +115,7 @@ load.handle(async (ctx) =&gt; &#123;
 
 <p>Un campo marcado con <code>later</code> no retiene la página. El handler lo devuelve como una promesa y la página sale con lo demás. Cuando el campo llega, <a href="/docs/template-syntax/await"><code>@@await</code></a> pinta ese trozo.</p>
 
-<ui-code .path="src/routes/dashboard.fudapi">
+<ui-code>
 <pre><code>load ssr
   title    str
   summary  Summary  later</code></pre>
@@ -125,7 +125,7 @@ load.handle(async (ctx) =&gt; &#123;
 
 <p>Una página con parámetros puede decir qué valores existen, para que el build escriba una página por cada uno (<a href="/docs/routing/rendering#paths">Los modos</a>):</p>
 
-<ui-code .path="src/routes/blog/[slug].fudapi">
+<ui-code>
 <pre><code>load
   title  str
   body   str
@@ -133,7 +133,7 @@ load.handle(async (ctx) =&gt; &#123;
 paths</code></pre>
 </ui-code>
 
-<ui-code .path="src/server/blog.ts">
+<ui-code>
 <pre><code>paths.handle(async () =&gt; await listSlugs());</code></pre>
 </ui-code>
 
@@ -141,7 +141,7 @@ paths</code></pre>
 
 <p>Si el layout declara props (<a href="/docs/template-syntax/routes-and-layouts#layout-props">Rutas y layouts</a>), cada ruta se las da con <code>layout</code>. Se ejecuta después de <code>load</code> y recibe sus datos:</p>
 
-<ui-code .path="src/routes/blog/[slug].fudapi">
+<ui-code>
 <pre><code>load
   title  str
   lang   str
@@ -149,7 +149,7 @@ paths</code></pre>
 layout</code></pre>
 </ui-code>
 
-<ui-code .path="src/server/blog.ts">
+<ui-code>
 <pre><code>layout.handle((ctx, data) =&gt; (&#123; culture: data.lang &#125;));</code></pre>
 </ui-code>
 
@@ -161,11 +161,11 @@ layout</code></pre>
 
 <ui-code>
 <pre><code>post login
-  invalidates /usuarios
+  invalidates /users
   user  str</code></pre>
 </ui-code>
 
-<p>El navegador los pide a <code>/_fudic/data/&lt;ruta&gt;</code>, en el formato binario de Fudic: primero los datos de <code>load</code>, y después un bloque por cada campo <code>later</code>, según llegan (<a href="/docs/server/functions#wire">Cómo viaja</a>).</p>
+<p>El navegador los pide a <code>/_fudic/data/&lt;route&gt;</code>, en el formato binario de Fudic: primero los datos de <code>load</code>, y después un bloque por cada campo <code>later</code>, según llegan (<a href="/docs/server/functions#wire">Cómo viaja</a>).</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

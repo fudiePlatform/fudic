@@ -83,7 +83,7 @@ fudic g l docs --sections nav,aside</code></pre>
 
 <p>El layout que escribe <code>fudic g layout docs --sections nav,aside</code>:</p>
 
-<ui-code .path="src/layouts/docs.fud">
+<ui-code>
 <pre><code>&lt;!DOCTYPE html&gt;
 &lt;html lang="en"&gt;
   &lt;head&gt;

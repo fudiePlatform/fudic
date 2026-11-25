@@ -46,24 +46,24 @@
 
 <p>Fudic es un framework de <strong><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noopener">componentes web</a> estándar, pintados en el servidor</strong>. Escribes esto:</p>
 
-<ui-code .path="src/components/miapp-counter/miapp-counter.fud">
-<pre><code>&lt;miapp-counter&gt;
+<ui-code>
+<pre><code>&lt;myapp-counter&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;button @@click=@@inc&gt;+1&lt;/button&gt;
     &lt;output&gt;@@n()&lt;/output&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;</code></pre>
+&lt;/myapp-counter&gt;</code></pre>
 </ui-code>
 
 <p>Y el navegador recibe esto, ya pintado:</p>
 
 <ui-code>
-<pre><code>&lt;miapp-counter&gt;
+<pre><code>&lt;myapp-counter&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;button&gt;+1&lt;/button&gt;
     &lt;output&gt;10&lt;/output&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;</code></pre>
+&lt;/myapp-counter&gt;</code></pre>
 </ui-code>
 
 <p>Es HTML estándar. El contador se ve con su 10 antes de que cargue una sola línea de JavaScript, y lo ven igual el usuario, los buscadores y los lectores de pantalla.</p>
@@ -94,12 +94,12 @@
 <h2 id="create-an-app">1. Crea tu app</h2>
 
 <ui-code>
-<pre><code>npx @@fudic/cli new mi-app --locale es
-cd mi-app
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
 npx fudic dev</code></pre>
 </ui-code>
 
-<p>Abre <code>http://localhost:5173/</code>: ahí está tu página de inicio. <code>--locale es</code> hace que la app nazca en español, y <code>fudic new --help</code> lista el resto de opciones.</p>
+<p>Abre <code>http://localhost:5173/</code>: ahí está tu página de inicio. <code>fudic new --help</code> lista las opciones, como el idioma en el que nace la app.</p>
 
 <h2 id="first-component">2. Crea un componente</h2>
 
@@ -107,7 +107,7 @@ npx fudic dev</code></pre>
 <pre><code>npx fudic g component counter --in src/routes/index.fud</code></pre>
 </ui-code>
 
-<p>La CLI crea <code>&lt;miapp-counter&gt;</code> en <code>src/components/</code>, con su test, y lo enlaza desde la página de inicio. El nombre lleva el prefijo de la app porque el estándar exige un guion en todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a>.</p>
+<p>La CLI crea <code>&lt;myapp-counter&gt;</code> en <code>src/components/</code>, con su test, y lo enlaza desde la página de inicio. El nombre lleva el prefijo de la app porque el estándar exige un guion en todo <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a>.</p>
 
 <p id="component-shape">Ábrelo. Es el esqueleto de cualquier componente: su tag, que envuelve un <code>&lt;template shadowrootmode&gt;</code>, y sus estilos, en un <code>&lt;style&gt;</code>.</p>
 
@@ -115,7 +115,7 @@ npx fudic dev</code></pre>
 
 <p>Sustituye su contenido por este:</p>
 
-<ui-code .path="src/components/miapp-counter/miapp-counter.fud">
+<ui-code>
 <pre><code>@@code {
   import { signal } from "@@fudic/core";
 
@@ -133,14 +133,14 @@ npx fudic dev</code></pre>
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-counter&gt;
+&lt;myapp-counter&gt;
   &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output"&gt;
     &lt;div class="counter"&gt;
       &lt;button @@click=@@inc&gt;+1&lt;/button&gt;
       &lt;output&gt;@@n()&lt;/output&gt;
     &lt;/div&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;</code></pre>
+&lt;/myapp-counter&gt;</code></pre>
 </ui-code>
 
 <ul>
@@ -152,17 +152,17 @@ npx fudic dev</code></pre>
 
 <h2 id="use-it">4. Úsalo en la página</h2>
 
-<ui-code .path="src/routes/index.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
-&lt;link rel="component" href="../components/miapp-counter/miapp-counter.fud"&gt;
+&lt;link rel="component" href="../components/myapp-counter/myapp-counter.fud"&gt;
 
 &lt;head&gt;
-  &lt;title&gt;Inicio&lt;/title&gt;
+  &lt;title&gt;Home&lt;/title&gt;
 &lt;/head&gt;
 
-&lt;h1&gt;Inicio&lt;/h1&gt;
+&lt;h1&gt;Home&lt;/h1&gt;
 
-&lt;miapp-counter .start=10&gt;&lt;/miapp-counter&gt;</code></pre>
+&lt;myapp-counter .start=10&gt;&lt;/myapp-counter&gt;</code></pre>
 </ui-code>
 
 <p>El <code>&lt;link rel="component"&gt;</code> lo puso la CLI. <code>.start=10</code> pasa la prop: el punto la distingue de un atributo HTML.</p>
@@ -176,15 +176,15 @@ npx fudic dev</code></pre>
 <p>Guarda, recarga y mira el código fuente de la página:</p>
 
 <ui-code>
-<pre><code>&lt;h1&gt;Inicio&lt;/h1&gt;
-&lt;miapp-counter&gt;
-  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button output miapp-counter"&gt;
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button output myapp-counter"&gt;
     &lt;div class="counter"&gt;
       &lt;button&gt;+1&lt;/button&gt;
       &lt;output&gt;10&lt;/output&gt;
     &lt;/div&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;
+&lt;/myapp-counter&gt;
 &lt;script type="application/json" id="fud-state"&gt;[[0,1],[10]]&lt;/script&gt;</code></pre>
 </ui-code>
 
@@ -200,29 +200,29 @@ npx fudic dev</code></pre>
 
 <p>Junto al componente, la CLI creó un <code>.fudspec</code>: sus <strong>criterios de aceptación</strong>, escritos en pasos que se leen como frases. Escribe en él lo que tiene que pasar:</p>
 
-<ui-code .path="src/components/miapp-counter/miapp-counter.fudspec">
-<pre><code>component miapp-counter
+<ui-code>
+<pre><code>component myapp-counter
 
-criterion empieza-en-diez
+criterion starts-at-ten
   given
-    props diez
+    props ten
   then
     text output "10"
 
-criterion suma-uno-al-pulsar
+criterion adds-one-on-click
   given
-    props diez
+    props ten
   when
     click role:button/"+1"
   then
     text output "11"</code></pre>
 </ui-code>
 
-<p><code>props diez</code> son las props con las que se monta el componente. Están en su fixture, al lado del <code>.fudspec</code>:</p>
+<p><code>props ten</code> son las props con las que se monta el componente. Están en su fixture, al lado del <code>.fudspec</code>:</p>
 
-<ui-code .path="src/components/miapp-counter/miapp-counter.fixture.ts">
+<ui-code>
 <pre><code>export default &#123;
-  diez: &#123; start: 10 &#125;,
+  ten: &#123; start: 10 &#125;,
 &#125; satisfies Fixtures&lt;$Props&gt;;</code></pre>
 </ui-code>
 
@@ -239,17 +239,17 @@ criterion suma-uno-al-pulsar
 <h2 id="inside-the-app">Qué hay dentro</h2>
 
 <ui-code>
-<pre><code>mi-app/
-├── fudic.json        la app: su id y el prefijo de sus tags
-├── page.headers      las cabeceras de cada página, con su política de seguridad
-├── vite.config.ts    el plugin de Fudic; no hay nada más que configurar
+<pre><code>my-app/
+├── fudic.json        the app: its id and the prefix of its tags
+├── page.headers      the headers of every page, with its security policy
+├── vite.config.ts    the Fudic plugin; there is nothing else to configure
 └── src/
-    ├── routes/       las páginas: index.fud es /
-    ├── layouts/      el documento en el que se pinta cada página
-    ├── components/   tus componentes
-    ├── guide/        la guía de estilos: colores, modo oscuro, fuente
-    ├── server/       el código que solo corre en el servidor
-    └── browser/      el código que solo corre en el navegador</code></pre>
+    ├── routes/       the pages: index.fud is /
+    ├── layouts/      the document each page is painted in
+    ├── components/   your components
+    ├── guide/        the style guide: colors, dark mode, font
+    ├── server/       the code that only runs on the server
+    └── browser/      the code that only runs in the browser</code></pre>
 </ui-code>
 
 <p id="page-and-layout">Una página es un <code>.fud</code> en <code>src/routes/</code>, y su URL sale de dónde está. Enlaza un layout, que es el documento completo con su <code>&lt;html&gt;</code> y su <code>&lt;head&gt;</code>. Lo explica <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>.</p>

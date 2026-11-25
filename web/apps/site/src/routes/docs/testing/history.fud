@@ -37,7 +37,7 @@
 
 <h2 id="fudlog">El <code>.fudlog</code></h2>
 
-<ui-code .path="src/components/app-tabs/app-tabs.fudlog">
+<ui-code>
 <pre><code>2026-11-20T10:20Z d4e5f6a approved    by ana  spec 3 hash 2b8f3c91aa04
 2026-11-20T10:48Z 7f6e5d4 spec_run    fail 2/3  hash 4471a0c2be6d  marks-the-tab
 2026-11-20T10:52Z 3c2b1a0 spec_run    pass 3/3  hash 5e7a90c3d211

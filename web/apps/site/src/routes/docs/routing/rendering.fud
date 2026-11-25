@@ -75,7 +75,7 @@
   <li>Con los datos guardados, la página se pinta sin red, incluso sin conexión.</li>
 </ol>
 
-<ui-code .path="src/routes/blog/index.fudapi">
+<ui-code>
 <pre><code>load sw ttl 5m cache-first
   posts  Post[]</code></pre>
 </ui-code>
@@ -113,7 +113,7 @@
 <h2 id="line">La línea de <code>load</code>, entera</h2>
 
 <ui-code>
-<pre><code>load [ssg|ssr|sw] [ttl &lt;duración&gt;] [&lt;política&gt;] [page never|persist] [buffer &lt;bytes&gt;]</code></pre>
+<pre><code>load [ssg|ssr|sw] [ttl &lt;duration&gt;] [&lt;policy&gt;] [page never|persist] [buffer &lt;bytes&gt;]</code></pre>
 </ui-code>
 
 <p><code>ttl</code>, la política y <code>page</code> son del <a href="/docs/service-worker/caching">Service Worker</a>. <code>buffer</code> es cuántos bytes junta el streaming antes de enviarlos.</p>

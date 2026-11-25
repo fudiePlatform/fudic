@@ -42,7 +42,7 @@
 
 <p>Se declara en el <code>.fudapi</code> con su verbo HTTP, sus argumentos y lo que devuelve tras <code>-&gt;</code>:</p>
 
-<ui-code .path="src/routes/usuarios.fudapi">
+<ui-code>
 <pre><code>get search
   q  str
   -&gt; Person[]</code></pre>
@@ -50,7 +50,7 @@
 
 <p>Se implementa en <code>src/server</code> con <code>handle</code>:</p>
 
-<ui-code .path="src/server/usuarios.ts">
+<ui-code>
 <pre><code>search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 </ui-code>
 
@@ -106,15 +106,15 @@ find.handle(async (ctx) =&gt; &#123;
 
 <p>Algunos errores son para el usuario, que puede corregir algo. <code>catches</code> dice qué status se quedan en la página, y <code>fails</code> les da un código y un texto:</p>
 
-<ui-code .path="src/routes/usuarios.fudapi">
+<ui-code>
 <pre><code>put save
   catches 409
-  fails ana 409 "A Ana no se la puede desactivar."
+  fails ana 409 "Ana cannot be deactivated."
   id      i32
   active  bool</code></pre>
 </ui-code>
 
-<ui-code .path="src/server/usuarios.ts">
+<ui-code>
 <pre><code>save.handle((ctx) =&gt; &#123;
   if (ctx.args.id === 1) throw SaveFails.ana();
   …
@@ -125,7 +125,7 @@ find.handle(async (ctx) =&gt; &#123;
 
 <h3 id="redirect">Redirigir</h3>
 
-<p><code>throw redirect("/cuenta")</code>, de <code>@@fudic/http</code>, hace que la página navegue a ese destino. Las cookies que el handler puso antes viajan con la redirección.</p>
+<p><code>throw redirect("/account")</code>, de <code>@@fudic/http</code>, hace que la página navegue a ese destino. Las cookies que el handler puso antes viajan con la redirección.</p>
 
 <h2 id="invalidates">Páginas que se quedan viejas</h2>
 
@@ -133,11 +133,11 @@ find.handle(async (ctx) =&gt; &#123;
 
 <ui-code>
 <pre><code>post create
-  invalidates /usuarios
+  invalidates /users
   name  str</code></pre>
 </ui-code>
 
-<p>Cuando la llamada sale bien, si la página está en <code>/usuarios</code>, pide sus datos otra vez y se repinta, sin recargar. Sin <code>invalidates</code> no se repinta nada. Si la página ya sabe qué ha cambiado, actualiza ella misma sus signals, que es más rápido.</p>
+<p>Cuando la llamada sale bien, si la página está en <code>/users</code>, pide sus datos otra vez y se repinta, sin recargar. Sin <code>invalidates</code> no se repinta nada. Si la página ya sabe qué ha cambiado, actualiza ella misma sus signals, que es más rápido.</p>
 
 <h2 id="url">Una función como enlace</h2>
 
@@ -145,7 +145,7 @@ find.handle(async (ctx) =&gt; &#123;
 
 <ui-code>
 <pre><code>&lt;img src=@@avatar.url(&#123; id: p.id &#125;) alt=@@p.name&gt;
-&lt;a href=@@csv.url() download&gt;Exportar CSV&lt;/a&gt;</code></pre>
+&lt;a href=@@csv.url() download&gt;Export CSV&lt;/a&gt;</code></pre>
 </ui-code>
 
 <h2 id="wire">Cómo viaja una llamada</h2>
@@ -182,13 +182,13 @@ find.handle(async (ctx) =&gt; &#123;
 </ui-code>
 
 <ui-code>
-<pre><code>curl "https://example.com/_fudic/fn/routes/usuarios/searchJson?q=mar"</code></pre>
+<pre><code>curl "https://example.com/_fudic/fn/routes/users/searchJson?q=mar"</code></pre>
 </ui-code>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li id="arguments">En un <code>get</code>, los argumentos viajan en la URL. En los demás, en el cuerpo. En ellos, <code>query nombre tipo</code> manda un argumento en la URL, y <code>patch rename /:id</code> pone <code>id</code> en la ruta.</li>
+  <li id="arguments">En un <code>get</code>, los argumentos viajan en la URL. En los demás, en el cuerpo. En ellos, <code>query name type</code> manda un argumento en la URL, y <code>patch rename /:id</code> pone <code>id</code> en la ruta.</li>
   <li id="cancel">Una llamada se cancela con un <code>AbortSignal</code> estándar: <code>search(&#123; q &#125;, &#123; signal &#125;)</code>. En el servidor, <code>ctx.signal</code> se aborta si el navegador se va. Fudic no pone timeouts.</li>
   <li>Una función declarada que nadie implementa responde <code>404</code>.</li>
   <li>Con <code>csrf</code> en la cadena, una llamada que no es <code>get</code> necesita su cabecera (<a href="/docs/server/middlewares#csrf">CSRF</a>).</li>

@@ -35,7 +35,7 @@
 
 <p>El formulario que declara un <code>.fudapi</code> llega ya hecho y se importa de <code>fudic:forms/&lt;id&gt;</code>. Es un objeto con sus campos por nombre y una API cuyos miembros empiezan por <code>$</code>. De <code>@@fudic/forms</code> solo se importan tipos. Guía: <a href="/docs/forms">El formulario</a>.</p>
 
-<ui-code .path="src/components/user-editor.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; userForm &#125; from "fudic:forms/user";
   import type &#123; Issue &#125; from "@@fudic/forms";
@@ -117,7 +117,7 @@
 
 <p>Un componente que hace de campo recibe el control como prop:</p>
 
-<ui-code .path="src/components/app-input.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import type &#123; Control &#125; from "@@fudic/forms";
 

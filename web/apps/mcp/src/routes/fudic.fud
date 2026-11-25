@@ -37,7 +37,7 @@
 
 <p>Este es un botón de una tienda, entero:</p>
 
-<ui-code .path="src/components/tienda-button/tienda-button.fud">
+<ui-code>
 <pre><code>@@code &#123;
   /** A button for the actions of the shop. Its text is the default slot. */
   const &#123; variant = 'primary', disabled = false &#125; = props&lt;&#123;
@@ -49,23 +49,23 @@
 &lt;head&gt;
   &lt;style&gt;
     button &#123;
-      background: var(--tienda-accent);
-      color: var(--tienda-on-accent);
-      &amp;.secondary &#123; background: transparent; color: var(--tienda-accent); &#125;
+      background: var(--shop-accent);
+      color: var(--shop-on-accent);
+      &amp;.secondary &#123; background: transparent; color: var(--shop-accent); &#125;
     &#125;
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;tienda-button&gt;
+&lt;shop-button&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;button type="button" class:secondary=@@(variant === 'secondary') disabled=@@disabled&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/button&gt;
   &lt;/template&gt;
-&lt;/tienda-button&gt;</code></pre>
+&lt;/shop-button&gt;</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>HTML estándar.</strong> <code>&lt;tienda-button&gt;</code> es un custom element, y <code>&lt;template shadowrootmode&gt;</code> es Declarative Shadow DOM: el navegador monta el componente al leer el HTML, antes de ejecutar ningún script. <code>&lt;slot&gt;</code> es donde va el texto del botón.</li>
-  <li><strong>CSS estándar.</strong> El <code>&lt;style&gt;</code> solo afecta al componente, porque el shadow DOM lo aísla del resto de la página. <code>var(--tienda-accent)</code> lee un color del proyecto, guardado en una custom property de CSS.</li>
+  <li><strong>HTML estándar.</strong> <code>&lt;shop-button&gt;</code> es un custom element, y <code>&lt;template shadowrootmode&gt;</code> es Declarative Shadow DOM: el navegador monta el componente al leer el HTML, antes de ejecutar ningún script. <code>&lt;slot&gt;</code> es donde va el texto del botón.</li>
+  <li><strong>CSS estándar.</strong> El <code>&lt;style&gt;</code> solo afecta al componente, porque el shadow DOM lo aísla del resto de la página. <code>var(--shop-accent)</code> lee un color del proyecto, guardado en una custom property de CSS.</li>
   <li><strong>TypeScript estándar.</strong> El bloque <code>@@code</code> es TypeScript. <code>props</code> es una función de Fudic que declara las props, los datos que recibe el componente desde fuera, con su tipo.</li>
   <li><strong>La sintaxis de Fudic.</strong> <code>@@disabled</code> escribe un valor, <code>@@(…)</code> una expresión, y <code>class:secondary</code> pone la clase si la expresión es verdadera. Es lo único que no viene de un estándar.</li>
 </ul>
@@ -83,7 +83,7 @@
 <h2 id="mdn">El estándar, en MDN</h2>
 
 <ul>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Custom elements</a>: los tags propios, como <code>&lt;tienda-button&gt;</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Custom elements</a>: los tags propios, como <code>&lt;shop-button&gt;</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Shadow DOM</a>: el árbol aislado de un componente, y cómo se declara en HTML con <code>shadowrootmode</code>.</li>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting" target="_blank" rel="noopener">CSS nesting</a>: las reglas dentro de otras, como <code>&amp;.secondary</code>.</li>
 </ul>

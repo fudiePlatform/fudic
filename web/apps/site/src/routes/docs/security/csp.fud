@@ -45,7 +45,7 @@
 
 <h2 id="template">La de la plantilla</h2>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code>Content-Security-Policy:
   default-src 'self'
   script-src 'nonce-&#123;nonce&#125;' 'strict-dynamic' 'unsafe-inline' https:
@@ -76,7 +76,7 @@
 
 <p>Un <code>&lt;script&gt;</code> que escribas en el <code>&lt;head&gt;</code> de una página o de un layout recibe el nonce igual, venga de donde venga:</p>
 
-<ui-code .path="src/routes/support.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;title&gt;Support&lt;/title&gt;
   &lt;script type="module" src="https://widgets.example.com/chat.js"&gt;&lt;/script&gt;
@@ -89,7 +89,7 @@
 
 <p>Para permitir un origen de fuera, añade su host al final de la directiva que le toca. Para las imágenes de un CDN:</p>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code>  img-src 'self' data: https://images.example.com</code></pre>
 </ui-code>
 

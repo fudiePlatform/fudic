@@ -81,21 +81,21 @@
   <li><strong>Componente</strong>: empieza con su propio tag, que envuelve un <code>&lt;template shadowrootmode&gt;</code>. Es Declarative Shadow DOM estándar.</li>
   <li><strong>Ruta</strong>: empieza con <code>&lt;link rel="layout"&gt;</code>. Es una página, y su URL sale de dónde está el fichero.</li>
   <li><strong>Layout</strong>: empieza con <code>&lt;!DOCTYPE html&gt;</code>. Es el documento en el que se pinta cada ruta.</li>
-  <li><strong>Snippet</strong>: declara <code>@@snippet nombre(…)</code>. Es un trozo de markup que se repite, sin JavaScript.</li>
+  <li><strong>Snippet</strong>: declara <code>@@snippet name(…)</code>. Es un trozo de markup que se repite, sin JavaScript.</li>
 </ul>
 
-<ui-code .path="src/components/miapp-badge/miapp-badge.fud">
-<pre><code>&lt;miapp-badge&gt;
+<ui-code>
+<pre><code>&lt;myapp-badge&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;span class="badge"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;
   &lt;/template&gt;
-&lt;/miapp-badge&gt;</code></pre>
+&lt;/myapp-badge&gt;</code></pre>
 </ui-code>
 
-<ui-code .path="src/routes/about.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
 
-&lt;h1&gt;Quiénes somos&lt;/h1&gt;</code></pre>
+&lt;h1&gt;About us&lt;/h1&gt;</code></pre>
 </ui-code>
 
 <p>Cada pieza tiene su página: <a href="/docs/template-syntax/components">Componentes</a>, <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a> y <a href="/docs/template-syntax/snippets">Snippets</a>.</p>
@@ -105,7 +105,7 @@
 <p>En la plantilla se pueden leer valores, compararlos, combinarlos y recorrer listas, pero solo se pueden llamar las funciones de una lista cerrada:</p>
 
 <ui-code>
-<pre><code>&lt;p&gt;@@(items().filter(i =&gt; i.done).length) hechas&lt;/p&gt;   ✓
+<pre><code>&lt;p&gt;@@(items().filter(i =&gt; i.done).length) done&lt;/p&gt;   ✓
 &lt;p&gt;@@items().find(i =&gt; i.done).title&lt;/p&gt;             ✗ FUD1140</code></pre>
 </ui-code>
 

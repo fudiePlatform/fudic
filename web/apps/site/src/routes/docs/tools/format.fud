@@ -39,7 +39,7 @@
 
 <p>Un <code>.fud</code> mezcla cuatro lenguajes, y el formateador los trata de una pasada: el markup, las directivas con <code>@@</code>, el TypeScript de <code>@@code</code> y el CSS del <code>&lt;style&gt;</code>. Un componente escrito con prisa:</p>
 
-<ui-code .path="src/components/shop-cart/shop-cart.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
 &lt;style&gt;
 :host&#123;display:block&#125;
@@ -63,7 +63,7 @@ let items:&#123;name:string,price:number&#125;[]=[]
 
 <p>Después de <code>fudic fmt</code>:</p>
 
-<ui-code .path="src/components/shop-cart/shop-cart.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;style&gt;
     :host &#123;

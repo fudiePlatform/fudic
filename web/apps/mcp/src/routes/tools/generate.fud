@@ -62,16 +62,16 @@
   "command": "fudic g component button",
   "changes": [
     &#123;
-      "create": "src/components/tienda-button/tienda-button.fud"
+      "create": "src/components/shop-button/shop-button.fud"
     &#125;,
     &#123;
-      "create": "src/components/tienda-button/tienda-button.test.ts"
+      "create": "src/components/shop-button/shop-button.test.ts"
     &#125;,
     &#123;
-      "create": "src/components/tienda-button/tienda-button.fudspec"
+      "create": "src/components/shop-button/shop-button.fudspec"
     &#125;,
     &#123;
-      "create": "src/components/tienda-button/tienda-button.fixture.ts"
+      "create": "src/components/shop-button/shop-button.fixture.ts"
     &#125;
   ],
   "commands": [],
@@ -79,7 +79,7 @@
   "ran": [],
   "report": [
     "",
-    "Created &lt;tienda-button&gt; in src/components/tienda-button/",
+    "Created &lt;shop-button&gt; in src/components/shop-button/",
     "",
     …
   ],

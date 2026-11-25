@@ -40,11 +40,11 @@
 
 <p>Su sitio principal son los campos de un formulario, con el texto de su error (<a href="/docs/forms/validation">Validación y validez</a>):</p>
 
-<ui-code .path="src/forms/person.fudapi">
+<ui-code>
 <pre><code>form person
   name  str = ""
-    required    "Escribe tu nombre."
-    max-length 60 "Como mucho &#123;n&#125; letras."</code></pre>
+    required    "Enter your name."
+    max-length 60 "At most &#123;n&#125; letters."</code></pre>
 </ui-code>
 
 <p><code>&#123;n&#125;</code> en el texto sale como el parámetro de la regla, <code>60</code>. Las reglas que trae Fudic valen también en los argumentos de una función (<a href="/docs/server/types#arg-rules">Tipos</a>).</p>
@@ -57,7 +57,7 @@
   <li><code>required</code>: hay un valor. <code>""</code> y una lista vacía no lo son.</li>
   <li><code>min n</code> y <code>max n</code>: un número entre esos límites.</li>
   <li><code>min-length n</code> y <code>max-length n</code>: los caracteres de un texto, o los elementos de una lista.</li>
-  <li><code>pattern nombre</code>: el texto casa con un patrón.</li>
+  <li><code>pattern name</code>: el texto casa con un patrón.</li>
   <li><code>max-size 2mb</code> y <code>accept "image/png"</code>: el tamaño y el tipo de un fichero.</li>
 </ul>
 
@@ -67,7 +67,7 @@
 
 <p>Un patrón es una expresión regular con nombre, para la regla <code>pattern</code>. Casa con el texto entero, sin escribir <code>^</code> ni <code>$</code>:</p>
 
-<ui-code .path="src/rules/people.fudapi">
+<ui-code>
 <pre><code>pattern web-url  https?://.+</code></pre>
 </ui-code>
 
@@ -77,7 +77,7 @@
 
 <p>Una regla propia se declara en un <code>.fudapi</code>, por convención en <code>src/rules/</code>. La declaración dice qué valida, dónde se ejecuta y con qué código falla:</p>
 
-<ui-code .path="src/rules/people.fudapi">
+<ui-code>
 <pre><code># The alias is taken. Asked while the user types, and checked again on submit.
 rule alias-taken
   on field str
@@ -87,7 +87,7 @@ rule alias-taken
 
 <p>Se implementa con <code>check</code>, que recibe el valor y devuelve si es válido:</p>
 
-<ui-code .path="src/server/rules.ts">
+<ui-code>
 <pre><code>aliasTaken.check(async (value) =&gt; !(await aliases.exists(value)));</code></pre>
 </ui-code>
 

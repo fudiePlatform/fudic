@@ -36,7 +36,7 @@
 
 <h2 id="extension"><code>fudic/bench.js</code></h2>
 
-<ui-code .path="fudic/bench.js">
+<ui-code>
 <pre><code>import &#123; defineExtension &#125; from '@@fudic/terms';
 
 export default defineExtension(&#123;
@@ -63,7 +63,7 @@ export default defineExtension(&#123;
 
 <p>Si <code>fudic/bench.js</code> existe, <code>fudic g term</code> escribe el tipo del <code>ctx</code> con lo que añade <code>bench.js</code>, y el editor completa <code>ctx.signIn</code> y <code>ctx.cart</code>:</p>
 
-<ui-code .path="fudic/terms/given/signed-in-as.js">
+<ui-code>
 <pre><code>/** @@type &#123;import('@@fudic/terms').Term&lt;string, import('@@fudic/terms').ContextOf&lt;typeof import('../../bench.js').default&gt;&gt;['run']&#125; */
 export async function run(ctx, &#123; user &#125;) &#123;
   await ctx.signIn(String(user));
@@ -77,7 +77,7 @@ export async function run(ctx, &#123; user &#125;) &#123;
 
 <p><code>setup</code> prepara cada navegador antes de abrir la página, en todos los criterios:</p>
 
-<ui-code .path="fudic/bench.js">
+<ui-code>
 <pre><code>export default defineExtension(&#123;
   async setup(page) &#123;
     await page.emulateMedia(&#123; colorScheme: 'dark' &#125;);

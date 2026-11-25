@@ -74,7 +74,7 @@ const response = await server.fetch(request);</code></pre>
 
 <h2 id="serve"><code>serve</code>, en <code>fudic.json</code></h2>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "serve": &#123;
     "trustProxy": true,

@@ -73,7 +73,7 @@
 
 <p><code>@@fudic/server/node</code> lo monta en un servidor de Node, o como middleware de Connect, Express o Vite. Guía: <a href="/docs/server/running#node">Ponerlo en marcha</a>.</p>
 
-<ui-code .path="server.mjs">
+<ui-code>
 <pre><code>import &#123; createServer &#125; from "@@fudic/server";
 import &#123; diskSpool, nodeMiddleware, staticFiles, staticPages &#125; from "@@fudic/server/node";
 import &#123; config, createApp &#125; from "./.fudic/edge/server.mjs";

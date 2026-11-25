@@ -56,7 +56,7 @@
 
 <p>Un enlace que ya lleva un prefijo se queda como está. Así se escribe un selector de idioma:</p>
 
-<ui-code .path="src/layouts/_layout.fud">
+<ui-code>
 <pre><code>&lt;nav translate="no"&gt;
   &lt;a href="/es/" lang="es"&gt;Español&lt;/a&gt;
   &lt;a href="/en/" lang="en"&gt;English&lt;/a&gt;
@@ -92,7 +92,7 @@
 
 <p>Un criterio del <code>.fudspec</code> puede decir qué idioma habla el navegador, con <code>locale</code>. El workbench lo ejecuta en un navegador de verdad, así que se prueba la redirección real:</p>
 
-<ui-code .path="src/routes/index.fudspec">
+<ui-code>
 <pre><code>page /
 
 criterion an-english-browser-lands-in-english

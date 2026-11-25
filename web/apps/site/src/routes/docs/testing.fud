@@ -39,7 +39,7 @@
 
 <h2 id="criterion">Un criterio</h2>
 
-<ui-code .path="src/components/app-tabs/app-tabs.fudspec">
+<ui-code>
 <pre><code>component app-tabs
 
 # The first tab is the one open when the page loads.
@@ -80,7 +80,7 @@ criterion switches-tab
 
 <p>Si el componente tiene props, cada caso se escribe con su nombre en un fixture, un fichero TypeScript junto al componente:</p>
 
-<ui-code .path="src/components/app-card/app-card.fixture.ts">
+<ui-code>
 <pre><code>import type &#123; $Props &#125; from "./app-card.fud";
 
 export default &#123;
@@ -91,7 +91,7 @@ export default &#123;
 
 <p>Un criterio elige su caso con <code>props</code>:</p>
 
-<ui-code .path="src/components/app-card/app-card.fudspec">
+<ui-code>
 <pre><code>criterion long-title-is-visible
   given
     props long-title

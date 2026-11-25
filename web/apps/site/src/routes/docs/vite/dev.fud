@@ -51,7 +51,7 @@ fudic dev --port 3000</code></pre>
 
 <p>Al arrancar, <code>fudic dev</code> comprueba los tipos de todo el proyecto: los <code>.fud</code>, los <code>.ts</code> y los <code>.fudapi</code>. Después vuelve a comprobar cada fichero que guardas.</p>
 
-<ui-code .path="src/routes/profile.fud">
+<ui-code>
 <pre><code>&lt;p&gt;@@data.user.nmae&lt;/p&gt;</code></pre>
 </ui-code>
 

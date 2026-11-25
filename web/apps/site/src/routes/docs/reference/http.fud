@@ -61,7 +61,7 @@ save.handle((ctx: SaveCtx) =&gt; R | Promise&lt;R&gt;)</code></pre>
 
 <p>Por cada <code>fails</code>, el módulo exporta <code>&lt;Name&gt;Fails</code>, con una función por código que devuelve el error:</p>
 
-<ui-code .path="src/server/users.ts">
+<ui-code>
 <pre><code>import &#123; save, SaveFails &#125; from "fudic:routes/users";
 
 save.handle(async (ctx) =&gt; &#123;
@@ -93,7 +93,7 @@ save.handle(async (ctx) =&gt; &#123;
 
 <p>Un middleware se declara en un <code>.fudapi</code> y cada mitad se implementa en su carpeta: <code>.server</code> en <code>src/server</code>, <code>.client</code> en <code>src/browser</code>. Guía: <a href="/docs/server/middlewares">Middlewares</a>.</p>
 
-<ui-code .path="src/server/log.ts">
+<ui-code>
 <pre><code>import &#123; log &#125; from "fudic:middlewares/log";
 
 log.server(async (ctx, next) =&gt; &#123;

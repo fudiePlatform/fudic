@@ -39,7 +39,7 @@
 
 <p>Los criterios del <code>.fudspec</code> y los casos de su fixture se aprueban juntos. Cuando dices que sí, el modelo llama a <code>fudic_record</code>, que hace lo mismo que <a href="/docs/cli/approve"><code>fudic approve</code></a> en la terminal. En el <code>.fudlog</code> de la pieza queda tu nombre de git, cuántos criterios aprobaste y una huella de lo aprobado, un hash que cambia si cambia cualquier letra:</p>
 
-<ui-code .path="src/components/tienda-button/tienda-button.fudlog">
+<ui-code>
 <pre><code>2026-11-23T20:11Z 2f3a378 approved    by Pedro-Hurtado  spec 9 hash 78d405c0391d</code></pre>
 </ui-code>
 

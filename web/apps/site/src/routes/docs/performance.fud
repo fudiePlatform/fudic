@@ -63,10 +63,10 @@
 
 <p>Un dato lento no retrasa el primer byte. Con <code>@@await</code>, la página sale con lo que ya tiene, y cada bloque se escribe en su sitio cuando llega su dato, sin JavaScript (<a href="/docs/template-syntax/await"><code>@@await</code></a>):</p>
 
-<ui-code .path="src/routes/dashboard.fud">
+<ui-code>
 <pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
 @@await data.summary &#123;
-  &lt;p&gt;@@data.summary.active de @@data.summary.total activos&lt;/p&gt;
+  &lt;p&gt;@@data.summary.active of @@data.summary.total active&lt;/p&gt;
 &#125;</code></pre>
 </ui-code>
 

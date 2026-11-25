@@ -51,7 +51,7 @@
 
 <p>Es un <code>&lt;link rel="stylesheet"&gt;</code> estándar en el <code>&lt;head&gt;</code> de un layout, y estiliza todas las páginas que lo usan:</p>
 
-<ui-code .path="libs/ui/src/layouts/docs.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;link rel="stylesheet" href="../styles/docs.css"&gt;
 &lt;/head&gt;</code></pre>
@@ -68,7 +68,7 @@
   <li><strong><code>styles</code></strong>: las adopta el componente que las nombra.</li>
 </ul>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>{
   "globalStyles": { "base": "src/styles/base.css" },
   "styles": { "panel": "src/styles/panel.css" }
@@ -77,7 +77,7 @@
 
 <p>Un componente nombra las de <code>styles</code> en <code>shadowrootadoptedstylesheets</code>:</p>
 
-<ui-code .path="src/components/app-counter/app-counter.fud">
+<ui-code>
 <pre><code>&lt;app-counter&gt;
   &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="panel"&gt;
     &lt;div class="panel"&gt;…&lt;/div&gt;
@@ -93,13 +93,13 @@
 
 <p>Los valores de diseño (colores, espacios) son custom properties en el <code>:root</code> de la hoja de la página. Se heredan, así que los componentes los usan sin declararlos:</p>
 
-<ui-code .path="src/styles/tokens.css">
+<ui-code>
 <pre><code>:root {
   --gap: 0.75rem;
 }</code></pre>
 </ui-code>
 
-<ui-code .path="src/styles/panel.css">
+<ui-code>
 <pre><code>.panel {
   padding: var(--gap);
 }</code></pre>
@@ -112,7 +112,7 @@
 <h2 id="details">Detalles</h2>
 
 <ul>
-  <li><code>fudic g style nombre</code> crea una hoja y la añade a <code>globalStyles</code>.</li>
+  <li><code>fudic g style name</code> crea una hoja y la añade a <code>globalStyles</code>.</li>
   <li>Las <code>globalStyles</code> de las librerías van antes que las del proyecto.</li>
   <li>Un nombre que no existe (<a href="/docs/reference/diagnostics/FUD0744"><code>FUD0744</code></a>) o repetido (<a href="/docs/reference/diagnostics/FUD0741"><code>FUD0741</code></a>) es un error.</li>
   <li>Una hoja de componente no puede tener <code>@@import</code> (<a href="/docs/reference/diagnostics/FUD0854"><code>FUD0854</code></a>): el estándar no lo carga en una hoja adoptada.</li>

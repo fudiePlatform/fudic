@@ -44,7 +44,7 @@
     <tr><td><code>src/routes/index.fud</code></td><td><code>/</code></td></tr>
     <tr><td><code>src/routes/about.fud</code></td><td><code>/about</code></td></tr>
     <tr><td><code>src/routes/docs/index.fud</code></td><td><code>/docs</code></td></tr>
-    <tr><td><code>src/routes/blog/[slug].fud</code></td><td><code>/blog/lo-que-sea</code></td></tr>
+    <tr><td><code>src/routes/blog/[slug].fud</code></td><td><code>/blog/any-post</code></td></tr>
   </tbody>
 </table>
 
@@ -81,5 +81,5 @@
 
 <ul>
   <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a" target="_blank" rel="noopener"><code>&lt;a&gt;</code></a>: el enlace con el que se navega.</li>
-  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la sintaxis <code>:nombre</code> de los patrones de ruta, en el estándar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API" target="_blank" rel="noopener">URL Pattern API</a>: la sintaxis <code>:name</code> de los patrones de ruta, en el estándar.</li>
 </ul>

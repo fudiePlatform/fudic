@@ -38,7 +38,7 @@
 
 <h2 id="text">Una expresión escribe texto</h2>
 
-<ui-code .path="src/components/app-comment/app-comment.fud">
+<ui-code>
 <pre><code>&lt;p class="body"&gt;@@comment.body&lt;/p&gt;</code></pre>
 </ui-code>
 
@@ -58,7 +58,7 @@
 
 <p>Con <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types</a>, el navegador rechaza un texto en <code>innerHTML</code>, <code>insertAdjacentHTML</code>, <code>eval</code> y el resto de sitios donde un texto se convierte en código. Solo acepta un objeto creado por una política, y la CSP dice qué políticas valen. La de la plantilla lo activa:</p>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code>  require-trusted-types-for 'script'
   trusted-types fudic</code></pre>
 </ui-code>
@@ -69,7 +69,7 @@
 
 <p>El editor avisa antes de que lo haga el navegador. En el código que va al navegador, un texto en <code>innerHTML</code> es un aviso:</p>
 
-<ui-code .path="src/lib/notice.ts">
+<ui-code>
 <pre><code>export function notify(message: string): void &#123;
   const box = document.querySelector("#notice")!;
   box.innerHTML = message; // warning: Trusted Types will block this

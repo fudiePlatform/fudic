@@ -39,7 +39,7 @@
 
 <h2 id="mount">Montar un componente</h2>
 
-<ui-code .path="src/components/app-counter/app-counter.test.ts">
+<ui-code>
 <pre><code>import &#123; expect, test &#125; from "vitest";
 import &#123; mount &#125; from "@@fudic/testing";
 import * as AppCounter from "./app-counter.fud";
@@ -64,7 +64,7 @@ test("adds on click", async () =&gt; &#123;
 
 <p>Solo se simula lo que simulas tú. Una llamada pasa por la cadena del navegador, el formato de la red, los middlewares y la validación del servidor, y llega a tu handler. Para cambiar lo que ve el servidor, simula el módulo de datos:</p>
 
-<ui-code .path="src/forms/user-form.test.ts">
+<ui-code>
 <pre><code>vi.mock("../data/aliases", () =&gt; (&#123; aliasTaken: async (alias: string) =&gt; alias === "admin" &#125;));</code></pre>
 </ui-code>
 
@@ -75,7 +75,7 @@ test("adds on click", async () =&gt; &#123;
 
 <h2 id="visit">Visitar una ruta</h2>
 
-<ui-code .path="src/routes/users.test.ts">
+<ui-code>
 <pre><code>const page = await visit("/users");
 expect(page.status).toBe(200);
 
@@ -88,7 +88,7 @@ const empty = await visit("/users", &#123; fixture: "nobody" &#125;);</code></pr
 
 <p><code>clientGraphOf</code> recorre lo que descargaría el navegador, sin ejecutarlo. Sirve para comprobar que el código de servidor no se cuela en el navegador:</p>
 
-<ui-code .path="src/forms/user-form.test.ts">
+<ui-code>
 <pre><code>const graph = await clientGraphOf(UserForm);
 expect(graph).not.toReach("src/data/aliases.ts");</code></pre>
 </ui-code>

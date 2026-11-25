@@ -51,18 +51,18 @@
 <p>Sin un <code>fudic_look</code> de los ficheros tal como están, no escribe nada:</p>
 
 <ui-code>
-<pre><code>fudic_record &#123; "piece": "src/components/tienda-button", "event": "look" &#125;</code></pre>
+<pre><code>fudic_record &#123; "piece": "src/components/shop-button", "event": "look" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "piece": "src/components/tienda-button/tienda-button.fud",
+  "piece": "src/components/shop-button/shop-button.fud",
   "diagnostics": [
     &#123;
       "code": "FUD1427",
       "severity": "error",
-      "message": "the look of src/components/tienda-button/tienda-button.fud as it is now was never shown: run fudic_look first",
-      "at": "src/components/tienda-button/tienda-button.fud"
+      "message": "the look of src/components/shop-button/shop-button.fud as it is now was never shown: run fudic_look first",
+      "at": "src/components/shop-button/shop-button.fud"
     &#125;
   ],
   "codes": &#123;
@@ -79,12 +79,12 @@
 <p>Después de <code>fudic_look</code>:</p>
 
 <ui-code>
-<pre><code>fudic_record &#123; "piece": "src/components/tienda-button", "event": "look" &#125;</code></pre>
+<pre><code>fudic_record &#123; "piece": "src/components/shop-button", "event": "look" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "piece": "src/components/tienda-button/tienda-button.fud",
+  "piece": "src/components/shop-button/shop-button.fud",
   "recorded": [
     "look"
   ],

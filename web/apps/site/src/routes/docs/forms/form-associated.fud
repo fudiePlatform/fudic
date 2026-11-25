@@ -47,7 +47,7 @@
 
 <p>En Fudic basta con un marcador en la plantilla del componente:</p>
 
-<ui-code .path="src/components/app-input.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import type &#123; Control &#125; from "@@fudic/forms";
 
@@ -55,16 +55,16 @@
 &#125;
 
 &lt;app-input&gt;
-  &lt;template shadowrootmode="open" formassociated shadowrootreferencetarget="campo"&gt;
+  &lt;template shadowrootmode="open" formassociated shadowrootreferencetarget="field"&gt;
     &lt;slot name="icon"&gt;&lt;/slot&gt;
-    &lt;input id="campo" control=@@ctrl&gt;
+    &lt;input id="field" control=@@ctrl&gt;
   &lt;/template&gt;
 &lt;/app-input&gt;</code></pre>
 </ui-code>
 
 <p>La página le pasa el campo con <code>control</code>, como a un <code>&lt;input&gt;</code>, y escribe fuera su label y su error:</p>
 
-<ui-code .path="src/components/app-form.fud">
+<ui-code>
 <pre><code>&lt;label for="ali"&gt;Alias&lt;/label&gt;
 &lt;app-input id="ali" control=@@userForm.alias&gt;&lt;/app-input&gt;
 &lt;app-error error=@@userForm.alias&gt;&lt;/app-error&gt;</code></pre>

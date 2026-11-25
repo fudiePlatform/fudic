@@ -41,7 +41,7 @@
 
 <p>El <code>.fudspec</code> va junto a la ruta y empieza por <code>page</code> y la ruta tal como está en disco:</p>
 
-<ui-code .path="src/routes/users.fudspec">
+<ui-code>
 <pre><code>page /users
 
 criterion lists-the-people
@@ -72,7 +72,7 @@ criterion down-shows-the-error
 
 <h2 id="fixture">Lo que el fixture nombra es falso</h2>
 
-<ui-code .path="src/routes/users.fixture.ts">
+<ui-code>
 <pre><code>import type &#123; Fixtures, Person &#125; from "fudic:routes/users";
 import &#123; fails, later, redirects &#125; from "@@fudic/spec";
 
@@ -113,7 +113,7 @@ export default &#123;
 
 <p>Una ruta como <code>/blog/[slug]</code> se abre de dos formas: con <code>path</code> y uno de los valores de su <code>paths</code>, o con <code>url</code> y una URL cualquiera:</p>
 
-<ui-code .path="src/routes/blog/[slug].fudspec">
+<ui-code>
 <pre><code>page /blog/[slug]
 
 criterion unknown-slug
@@ -128,7 +128,7 @@ criterion unknown-slug
 
 <p>Un flujo prueba lo que cruza varias páginas: entrar, crear algo y encontrarlo después. Vive en <code>src/flows</code> y lo crea <code>fudic g flow sign-up</code>. Aquí el servidor es el de verdad:</p>
 
-<ui-code .path="src/flows/sign-up.fudspec">
+<ui-code>
 <pre><code>flow sign-up
 
 criterion created-user-is-found
@@ -156,7 +156,7 @@ criterion created-user-is-found
 
 <p>Con <code>as</code>, los pasos que siguen los hace otra persona, con su navegador y sus cookies. Así se prueba que una persona no ve lo de otra:</p>
 
-<ui-code .path="src/flows/sign-up.fudspec">
+<ui-code>
 <pre><code>criterion luis-does-not-see-ana
   given
     services two-people

@@ -80,7 +80,7 @@ fudic g s /users</code></pre>
 
 <p>Los criterios que escribe para un componente:</p>
 
-<ui-code .path="src/components/shop-button/shop-button.fudspec">
+<ui-code>
 <pre><code>component shop-button
 
 criterion renders

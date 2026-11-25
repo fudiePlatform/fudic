@@ -55,12 +55,12 @@
 <p>En una carpeta vacía, sin escribir nada:</p>
 
 <ui-code>
-<pre><code>fudic_new &#123; "name": "tienda", "dryRun": true &#125;</code></pre>
+<pre><code>fudic_new &#123; "name": "shop", "dryRun": true &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
-  "command": "fudic new tienda",
+  "command": "fudic new shop",
   "changes": [
     &#123;
       "create": "package.json"
@@ -77,7 +77,7 @@
     "pnpm install",
     "git init -b main",
     "git add -A",
-    "git commit -m chore: create app tienda"
+    "git commit -m chore: create app shop"
   ],
   "written": false,
   "diagnostics": [],

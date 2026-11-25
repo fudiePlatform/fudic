@@ -35,12 +35,12 @@
 
 <h1>Componentes</h1>
 
-<p>Un componente es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a> estándar: una etiqueta propia, como <code>&lt;miapp-card&gt;</code>, con su markup, sus estilos y su comportamiento. Se crea con <code>fudic g component card</code>.</p>
+<p>Un componente es un <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">custom element</a> estándar: una etiqueta propia, como <code>&lt;myapp-card&gt;</code>, con su markup, sus estilos y su comportamiento. Se crea con <code>fudic g component card</code>.</p>
 
 <h2 id="file-shape">La forma del fichero</h2>
 
-<ui-code .path="src/components/miapp-card/miapp-card.fud">
-<pre><code>&lt;link rel="component" href="../miapp-badge/miapp-badge.fud"&gt;
+<ui-code>
+<pre><code>&lt;link rel="component" href="../myapp-badge/myapp-badge.fud"&gt;
 
 @@code &#123;
   const &#123; tone = "neutral" &#125; = props&lt;&#123; tone?: string &#125;&gt;();
@@ -52,14 +52,14 @@
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-card&gt;
+&lt;myapp-card&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;article class="card"&gt;
-      &lt;miapp-badge .tone=@@tone&gt;&lt;/miapp-badge&gt;
+      &lt;myapp-badge .tone=@@tone&gt;&lt;/myapp-badge&gt;
       &lt;slot&gt;&lt;/slot&gt;
     &lt;/article&gt;
   &lt;/template&gt;
-&lt;/miapp-card&gt;</code></pre>
+&lt;/myapp-card&gt;</code></pre>
 </ui-code>
 
 <p>De arriba abajo:</p>
@@ -77,7 +77,7 @@
 
 <p>Las props son lo que el componente recibe de quien lo usa. Se declaran con <code>props&lt;T&gt;()</code>:</p>
 
-<ui-code .path="src/components/miapp-alert/miapp-alert.fud">
+<ui-code>
 <pre><code>@@code &#123;
   const &#123; text, tone = "info" &#125; = props&lt;&#123;
     /** What the alert says. */
@@ -86,17 +86,17 @@
   &#125;&gt;();
 &#125;
 
-&lt;miapp-alert&gt;
+&lt;myapp-alert&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;p class=@@tone&gt;@@text&lt;/p&gt;
   &lt;/template&gt;
-&lt;/miapp-alert&gt;</code></pre>
+&lt;/myapp-alert&gt;</code></pre>
 </ui-code>
 
 <p>Quien lo usa pasa cada prop con un punto delante. El punto la distingue de un atributo HTML:</p>
 
 <ui-code>
-<pre><code>&lt;miapp-alert .text="Guardado" .tone="info"&gt;&lt;/miapp-alert&gt;</code></pre>
+<pre><code>&lt;myapp-alert .text="Saved" .tone="info"&gt;&lt;/myapp-alert&gt;</code></pre>
 </ui-code>
 
 <ul>
@@ -109,18 +109,18 @@
 
 <p>Declara la prop como <code>Signal&lt;T&gt;</code>. El padre pasa el signal sin llamarlo (<code>.value=@@quantity</code>), y los dos comparten el mismo:</p>
 
-<ui-code .path="src/components/miapp-stepper/miapp-stepper.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import type &#123; Signal &#125; from "@@fudic/core";
 
   const &#123; value &#125; = props&lt;&#123; value: Signal&lt;number&gt; &#125;&gt;();
 &#125;
 
-&lt;miapp-stepper&gt;
+&lt;myapp-stepper&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;button type="button" @@click=@@(() =&gt; value.set(value() + 1))&gt;+&lt;/button&gt;
   &lt;/template&gt;
-&lt;/miapp-stepper&gt;</code></pre>
+&lt;/myapp-stepper&gt;</code></pre>
 </ui-code>
 
 <h3 id="function-prop">Para que el hijo avise al padre</h3>
@@ -128,7 +128,7 @@
 <p>El padre le pasa una función, sin llamarla, y el hijo la llama cuando toca:</p>
 
 <ui-code>
-<pre><code>&lt;miapp-choice .options=@@answers .onPick=@@chosen&gt;&lt;/miapp-choice&gt;</code></pre>
+<pre><code>&lt;myapp-choice .options=@@answers .onPick=@@chosen&gt;&lt;/myapp-choice&gt;</code></pre>
 </ui-code>
 
 <p>Para avisar a cualquiera de la página, no solo al padre, está el <a href="/docs/template-syntax/events#event-bus">bus de eventos</a>.</p>
@@ -137,22 +137,22 @@
 
 <p>Un componente recibe markup de la página con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/slot" target="_blank" rel="noopener"><code>&lt;slot&gt;</code></a>, el mecanismo estándar del shadow DOM:</p>
 
-<ui-code .path="src/components/miapp-card/miapp-card.fud">
-<pre><code>&lt;miapp-card&gt;
+<ui-code>
+<pre><code>&lt;myapp-card&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;article&gt;
       &lt;slot name="title"&gt;&lt;/slot&gt;
       &lt;slot&gt;&lt;/slot&gt;
     &lt;/article&gt;
   &lt;/template&gt;
-&lt;/miapp-card&gt;</code></pre>
+&lt;/myapp-card&gt;</code></pre>
 </ui-code>
 
 <ui-code>
-<pre><code>&lt;miapp-card&gt;
-  &lt;h2 slot="title"&gt;Plan básico&lt;/h2&gt;
-  &lt;p&gt;Todo lo que necesitas para empezar.&lt;/p&gt;
-&lt;/miapp-card&gt;</code></pre>
+<pre><code>&lt;myapp-card&gt;
+  &lt;h2 slot="title"&gt;Basic plan&lt;/h2&gt;
+  &lt;p&gt;Everything you need to get started.&lt;/p&gt;
+&lt;/myapp-card&gt;</code></pre>
 </ui-code>
 
 <p>El <code>&lt;h2&gt;</code> va al slot <code>title</code>, y el párrafo, al slot sin nombre. Lo que escribas dentro de un <code>&lt;slot&gt;</code> se ve si nadie lo rellena.</p>
@@ -165,14 +165,14 @@
 
 <p>El tag que envuelve el <code>&lt;template&gt;</code> es el <strong>host</strong>, el elemento que ve la página. Lo que escribas en él se aplica al propio componente: atributos, atributos con expresión y eventos.</p>
 
-<ui-code .path="src/components/miapp-switch/miapp-switch.fud">
-<pre><code>&lt;miapp-switch role="switch" tabindex="0"
+<ui-code>
+<pre><code>&lt;myapp-switch role="switch" tabindex="0"
   aria-checked=@@(on() ? "true" : "false")
   @@click=@@flip&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;span class="track"&gt;&lt;/span&gt;
   &lt;/template&gt;
-&lt;/miapp-switch&gt;</code></pre>
+&lt;/myapp-switch&gt;</code></pre>
 </ui-code>
 
 <p>El servidor pinta el host con su <code>role</code> y su <code>aria-checked</code>, así que los lectores de pantalla anuncian bien el switch antes de que cargue ningún script. Al pulsarlo, <code>aria-checked</code> se actualiza solo.</p>
@@ -192,7 +192,7 @@
 <p>Se enlaza con <code>&lt;link rel="component"&gt;</code> y se usa escribiendo su tag. Uno de una librería se enlaza por el nombre del paquete:</p>
 
 <ui-code>
-<pre><code>&lt;link rel="component" href="../miapp-card/miapp-card.fud"&gt;
+<pre><code>&lt;link rel="component" href="../myapp-card/myapp-card.fud"&gt;
 &lt;link rel="component" href="@@shop/ui/ui-button.fud"&gt;</code></pre>
 </ui-code>
 

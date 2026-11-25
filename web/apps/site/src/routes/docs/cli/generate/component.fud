@@ -82,7 +82,7 @@ fudic g c card --in src/routes/index.fud</code></pre>
 
 <h2 id="output">Lo que escribe</h2>
 
-<ui-code .path="src/components/shop-button/shop-button.fud">
+<ui-code>
 <pre><code>fudic g component button --dry-run
 dry run — nothing written
   create  src/components/shop-button/shop-button.fud
@@ -93,7 +93,7 @@ dry run — nothing written
 
 <p>El componente que escribe:</p>
 
-<ui-code .path="src/components/shop-button/shop-button.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;style&gt;&lt;/style&gt;
 &lt;/head&gt;

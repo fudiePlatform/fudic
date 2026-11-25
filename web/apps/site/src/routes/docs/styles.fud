@@ -41,7 +41,7 @@
 
 <p>Un componente lleva su CSS en un <code>&lt;style&gt;</code>, dentro del <code>&lt;head&gt;</code> de su <code>.fud</code>:</p>
 
-<ui-code .path="src/components/miapp-card/miapp-card.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;style&gt;
     :host { display: block; }
@@ -49,12 +49,12 @@
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-card&gt;
+&lt;myapp-card&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;p class="title"&gt;&lt;slot name="title"&gt;&lt;/slot&gt;&lt;/p&gt;
     &lt;slot&gt;&lt;/slot&gt;
   &lt;/template&gt;
-&lt;/miapp-card&gt;</code></pre>
+&lt;/myapp-card&gt;</code></pre>
 </ui-code>
 
 <p>Ese <code>.title</code> solo afecta al componente, y ningún <code>.title</code> de la página le afecta a él. Lo consigue el <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">shadow DOM</a>: el <code>&lt;template shadowrootmode&gt;</code> crea un shadow root. El CSS de dentro no sale de él, y el de fuera no entra.</p>
@@ -65,7 +65,7 @@
 
 <ul>
   <li><strong>La herencia.</strong> <code>color</code>, <code>font-family</code> y las demás propiedades que se heredan pasan de la página al componente.</li>
-  <li><strong>Las <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">custom properties</a></strong> (<code>--nombre</code>) también se heredan. Son la forma de pasar colores y espacios a un componente.</li>
+  <li><strong>Las <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties" target="_blank" rel="noopener">custom properties</a></strong> (<code>--name</code>) también se heredan. Son la forma de pasar colores y espacios a un componente.</li>
   <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:host" target="_blank" rel="noopener"><code>:host</code></a></strong> es, desde dentro, el propio tag del componente.</li>
   <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::slotted" target="_blank" rel="noopener"><code>::slotted()</code></a></strong> estiliza, desde dentro, lo que la página pone en un <code>&lt;slot&gt;</code>.</li>
   <li><strong><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part" target="_blank" rel="noopener"><code>::part()</code></a></strong> estiliza, desde fuera, los elementos que el componente marca con <code>part</code>.</li>
@@ -73,14 +73,14 @@
 
 <p>Este ejemplo usa dos de ellas. El componente marca su barra con <code>part="bar"</code> y lee su ancho de <code>--progress</code>. La página le da forma con <code>::part()</code> y valor con <code>--progress</code>:</p>
 
-<ui-code .path="src/routes/index.fud">
+<ui-code>
 <pre><code>&lt;head&gt;
   &lt;style&gt;
-    miapp-progress::part(bar) { block-size: 4px; }
+    myapp-progress::part(bar) { block-size: 4px; }
   &lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-progress style="--progress: 40%"&gt;&lt;/miapp-progress&gt;</code></pre>
+&lt;myapp-progress style="--progress: 40%"&gt;&lt;/myapp-progress&gt;</code></pre>
 </ui-code>
 
 <h2 id="one-copy">Una copia por página</h2>
@@ -89,15 +89,15 @@
 
 <ui-code>
 <pre><code>&lt;head&gt;
-  &lt;style type="module" specifier="miapp-card"&gt;…&lt;/style&gt;
+  &lt;style type="module" specifier="myapp-card"&gt;…&lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-card&gt;
-  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="miapp-card"&gt;…&lt;/template&gt;
-&lt;/miapp-card&gt;
-&lt;miapp-card&gt;
-  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="miapp-card"&gt;…&lt;/template&gt;
-&lt;/miapp-card&gt;</code></pre>
+&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="myapp-card"&gt;…&lt;/template&gt;
+&lt;/myapp-card&gt;
+&lt;myapp-card&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="myapp-card"&gt;…&lt;/template&gt;
+&lt;/myapp-card&gt;</code></pre>
 </ui-code>
 
 <p>El navegador parsea la hoja una vez y todas las instancias la comparten. El componente llega del servidor ya con su estilo, sin esperar a ninguna petición.</p>

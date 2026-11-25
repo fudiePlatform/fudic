@@ -41,7 +41,7 @@
 
 <p>En el <code>.fudapi</code> de la página, un campo marcado con <code>later</code> llega después (<a href="/docs/routing/data">Los datos de la página</a>):</p>
 
-<ui-code .path="src/routes/dashboard.fudapi">
+<ui-code>
 <pre><code>load ssr
   title    str
   summary  Summary  later</code></pre>
@@ -49,7 +49,7 @@
 
 <p>El servidor lo devuelve como una promesa, sin esperarla:</p>
 
-<ui-code .path="src/server/routes/dashboard.ts">
+<ui-code>
 <pre><code>load.handle(() =&gt; (&#123;
   title: 'Panel',
   summary: stats.monthly(),
@@ -58,13 +58,13 @@
 
 <p>Y la vista lo espera donde lo pinta:</p>
 
-<ui-code .path="src/routes/dashboard.fud">
+<ui-code>
 <pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
 
 @@await data.summary &#123;
-  &lt;p&gt;@@data.summary.active de @@data.summary.total activos&lt;/p&gt;
+  &lt;p&gt;@@data.summary.active of @@data.summary.total active&lt;/p&gt;
 &#125; @@catch (e) &#123;
-  &lt;p role="alert"&gt;No se pudo cargar el resumen.&lt;/p&gt;
+  &lt;p role="alert"&gt;The summary could not be loaded.&lt;/p&gt;
 &#125;</code></pre>
 </ui-code>
 
@@ -97,11 +97,11 @@
 
 <ui-code>
 <pre><code>&lt;section&gt;
-  &lt;?start name="summary"&gt;Cargando…&lt;?end&gt;
+  &lt;?start name="summary"&gt;Loading…&lt;?end&gt;
 &lt;/section&gt;
 
 &lt;template for="summary"&gt;
-  &lt;p&gt;87 de 120 activos.&lt;/p&gt;
+  &lt;p&gt;87 of 120 active.&lt;/p&gt;
 &lt;/template&gt;</code></pre>
 </ui-code>
 

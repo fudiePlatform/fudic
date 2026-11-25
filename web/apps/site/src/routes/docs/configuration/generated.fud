@@ -70,7 +70,7 @@
 <ul>
   <li><strong>Las páginas prerenderizadas</strong>, como <code>index.html</code> o <code>docs/…/index.html</code>, las que salen en modo <code>ssg</code> (<a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>).</li>
   <li><strong><code>assets/</code></strong>: las hojas, el JavaScript de cada componente, las imágenes y las fuentes, cada fichero con un hash en el nombre. Un contenido nuevo es un nombre nuevo, así que se guardan en caché para siempre.</li>
-  <li><strong><code>_fudic/&lt;versión&gt;/</code></strong>: el runtime de Fudic, versionado y compartido por todas las apps del mismo dominio (<a href="/docs/performance/caching#runtime">El runtime de Fudic</a>).</li>
+  <li><strong><code>_fudic/&lt;version&gt;/</code></strong>: el runtime de Fudic, versionado y compartido por todas las apps del mismo dominio (<a href="/docs/performance/caching#runtime">El runtime de Fudic</a>).</li>
   <li><strong><code>fudic-main-….js</code></strong>: el arranque de cada página, uno por cada combinación de piezas que se usan juntas.</li>
   <li><strong><code>fudic-routes.json</code></strong>: el manifiesto de rutas. Lista cada ruta con su modo, sus cabeceras y sus early hints. Lo leen el servidor y el Service Worker.</li>
   <li><strong><code>fudic-sw.js</code> y <code>sw/</code></strong>, solo con <code>sw.json</code>: el Service Worker y el código de las rutas que pinta él (<a href="/docs/configuration/sw-json"><code>sw.json</code></a>).</li>
@@ -86,7 +86,7 @@
 
 <p>En el <code>src/</code> de cada proyecto. Deja que un fichero <code>.ts</code>, como un test o un fixture, importe un componente <code>.fud</code>:</p>
 
-<ui-code .path="src/fudic-env.d.ts">
+<ui-code>
 <pre><code>// Lets a .ts file import a .fud component: its tests and its fixtures.
 declare module '*.fud' &#123;
   export type $Props = any;
@@ -107,4 +107,4 @@ declare module '*.fud' &#123;
 
 <h2 id="locales">Los catálogos</h2>
 
-<p>Los <code>src/locales/&lt;idioma&gt;.json</code> son generados a medias: los crea y los pone al día <code>fudic translate</code>, pero las traducciones las escribes tú, y van en git (<a href="/docs/i18n/catalogs">Los catálogos</a>).</p>
+<p>Los <code>src/locales/&lt;locale&gt;.json</code> son generados a medias: los crea y los pone al día <code>fudic translate</code>, pero las traducciones las escribes tú, y van en git (<a href="/docs/i18n/catalogs">Los catálogos</a>).</p>

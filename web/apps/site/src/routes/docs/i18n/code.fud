@@ -44,25 +44,25 @@
 
 <p>El valor de una prop puede ser un texto, como un título, o un valor, como <code>"highlight"</code>. El compilador solo lo traduce si se marca:</p>
 
-<ui-code .path="src/routes/about.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; t &#125; from "@@fudic/i18n";
 &#125;
 
-&lt;app-card .title=@@t("Acerca de") .variant="highlight"&gt;&lt;/app-card&gt;</code></pre>
+&lt;app-card .title=@@t("About") .variant="highlight"&gt;&lt;/app-card&gt;</code></pre>
 </ui-code>
 
 <p>El título se traduce; <code>"highlight"</code> sigue igual en todos los idiomas.</p>
 
 <h2 id="typescript">En TypeScript</h2>
 
-<p>En un módulo <code>.ts</code> de la app, <code>t()</code> funciona igual. Un hueco se escribe <code>&#123;nombre&#125;</code> y su valor va en el segundo argumento:</p>
+<p>En un módulo <code>.ts</code> de la app, <code>t()</code> funciona igual. Un hueco se escribe <code>&#123;name&#125;</code> y su valor va en el segundo argumento:</p>
 
-<ui-code .path="src/services/posts.ts">
+<ui-code>
 <pre><code>import &#123; t &#125; from "@@fudic/i18n";
 
 export function notFound(slug: string): string &#123;
-  return t("No hay ninguna entrada llamada &#123;slug&#125;", &#123; slug &#125;);
+  return t("There is no post called &#123;slug&#125;", &#123; slug &#125;);
 &#125;</code></pre>
 </ui-code>
 
@@ -76,20 +76,20 @@ export function notFound(slug: string): string &#123;
 
 <p>Los textos de las reglas de un formulario y el <code>detail</code> de un <code>fails</code> también son mensajes, y no se marcan:</p>
 
-<ui-code .path="src/forms/user.fudapi">
+<ui-code>
 <pre><code>form userForm
   alias  str = ""
-    required              "Elige un alias."
-    min-length 3          "Al menos &#123;n&#125; caracteres."</code></pre>
+    required              "Choose an alias."
+    min-length 3          "At least &#123;n&#125; characters."</code></pre>
 </ui-code>
 
-<p>El navegador pinta «Elige un alias.» o «Choose an alias.» según la página (<a href="/docs/forms/validation#messages">Los textos de la validación</a>). El servidor nunca manda textos, solo códigos, así que no hay nada que traducir en él.</p>
+<p>El navegador pinta «Choose an alias.» o «Elige un alias.» según la página (<a href="/docs/forms/validation#messages">Los textos de la validación</a>). El servidor nunca manda textos, solo códigos, así que no hay nada que traducir en él.</p>
 
 <h2 id="content">El contenido de los datos</h2>
 
 <p>El título de un artículo no es interfaz: es contenido, y llega de los datos en cada idioma. Para elegirlo está <code>locale</code>, el idioma de la página que se está pintando:</p>
 
-<ui-code .path="src/services/posts.ts">
+<ui-code>
 <pre><code>import &#123; locale &#125; from "@@fudic/core";
 
 const POSTS: Record&lt;string, &#123; title: Record&lt;string, string&gt; &#125;&gt; = &#123;

@@ -34,7 +34,7 @@
 
 <h1>Atributos y propiedades</h1>
 
-<p>El estándar distingue dos cosas: el <strong>atributo</strong>, que está en el HTML (<code>&lt;input value="hola"&gt;</code>), y la <strong>propiedad</strong>, que está en el objeto del DOM (<code>input.value</code>). En Fudic, la diferencia se escribe con un punto.</p>
+<p>El estándar distingue dos cosas: el <strong>atributo</strong>, que está en el HTML (<code>&lt;input value="hello"&gt;</code>), y la <strong>propiedad</strong>, que está en el objeto del DOM (<code>input.value</code>). En Fudic, la diferencia se escribe con un punto.</p>
 
 <h2 id="attributes">Atributos</h2>
 
@@ -43,7 +43,7 @@
 <ui-code>
 <pre><code>&lt;img src=@@photo.url alt=@@photo.caption&gt;
 &lt;a href="/blog/@@post.slug"&gt;@@post.title&lt;/a&gt;
-&lt;button disabled=@@saving()&gt;Guardar&lt;/button&gt;</code></pre>
+&lt;button disabled=@@saving()&gt;Save&lt;/button&gt;</code></pre>
 </ui-code>
 
 <ul>
@@ -54,7 +54,7 @@
 
 <h2 id="classes">Clases</h2>
 
-<p>Para encender o apagar una clase se usa <code>class:nombre=@@condición</code>:</p>
+<p>Para encender o apagar una clase se usa <code>class:name=@@condition</code>:</p>
 
 <ui-code>
 <pre><code>&lt;li class="item" class:done=@@task.done&gt;@@task.title&lt;/li&gt;</code></pre>
@@ -76,15 +76,15 @@
 </ul>
 
 <ui-code>
-<pre><code>&lt;miapp-alert .text="Guardado"&gt;&lt;/miapp-alert&gt;   @@* a string *@@
-&lt;miapp-pager .page=3 .loop=true&gt;&lt;/miapp-pager&gt;  @@* a number, a boolean *@@
-&lt;miapp-alert .text=@@message&gt;&lt;/miapp-alert&gt;     @@* an expression *@@</code></pre>
+<pre><code>&lt;myapp-alert .text="Saved"&gt;&lt;/myapp-alert&gt;      @@* a string *@@
+&lt;myapp-pager .page=3 .loop=true&gt;&lt;/myapp-pager&gt;  @@* a number, a boolean *@@
+&lt;myapp-alert .text=@@message&gt;&lt;/myapp-alert&gt;     @@* an expression *@@</code></pre>
 </ui-code>
 
 <p>Las comillas siempre son texto: <code>.page="3"</code> es el string <code>"3"</code>.</p>
 
 <ui-note .kind="tip">
-  <p>En un formulario, <code>control=@@form.campo</code> enlaza el campo con su modelo, con validación (<a href="/docs/forms/binding">Enlazar la vista</a>).</p>
+  <p>En un formulario, <code>control=@@form.field</code> enlaza el campo con su modelo, con validación (<a href="/docs/forms/binding">Enlazar la vista</a>).</p>
 </ui-note>
 
 <h2 id="spread-and-rest">Spread y resto</h2>
@@ -94,12 +94,12 @@
 <p id="spread"><strong>Spread</strong> pasa un objeto entero a un componente. Solo llegan las claves que el componente declara, y una prop escrita en el tag gana:</p>
 
 <ui-code>
-<pre><code>&lt;miapp-product ...product .badge="Oferta"&gt;&lt;/miapp-product&gt;</code></pre>
+<pre><code>&lt;myapp-product ...product .badge="Sale"&gt;&lt;/myapp-product&gt;</code></pre>
 </ui-code>
 
 <p id="rest"><strong>Resto</strong> recoge las props que no nombras, para pasarlas a otro elemento:</p>
 
-<ui-code .path="src/components/miapp-field/miapp-field.fud">
+<ui-code>
 <pre><code>@@code &#123;
   const &#123; label, ...rest &#125; = props&lt;&#123;
     label: string;
@@ -108,14 +108,14 @@
   &#125;&gt;();
 &#125;
 
-&lt;miapp-field&gt;
+&lt;myapp-field&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;label&gt;@@label &lt;input ...rest&gt;&lt;/label&gt;
   &lt;/template&gt;
-&lt;/miapp-field&gt;</code></pre>
+&lt;/myapp-field&gt;</code></pre>
 </ui-code>
 
-<p><code>&lt;miapp-field .label="Nombre" .required=true&gt;</code> pinta <code>&lt;input required&gt;</code>. En un elemento nativo, cada clave se escribe como un atributo; en un componente, como una prop.</p>
+<p><code>&lt;myapp-field .label="Name" .required=true&gt;</code> pinta <code>&lt;input required&gt;</code>. En un elemento nativo, cada clave se escribe como un atributo; en un componente, como una prop.</p>
 
 <p id="rest-rules">Un resto se puede leer (<code>@@rest.placeholder</code>), pasar a un tag o desestructurar otra vez. Lo que no se puede es recorrerlo (<a href="/docs/reference/diagnostics/FUD1147"><code>FUD1147</code></a>), porque en otros lenguajes de servidor un objeto no se recorre como en JavaScript.</p>
 

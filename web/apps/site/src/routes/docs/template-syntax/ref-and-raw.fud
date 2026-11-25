@@ -38,17 +38,17 @@
 
 <p>Algunas cosas necesitan el elemento: darle el foco, abrir un <code>&lt;dialog&gt;</code>, pasárselo a una librería. Declara una variable en <code>@@code</code> y apúntala con <code>ref</code>:</p>
 
-<ui-code .path="src/components/miapp-confirm/miapp-confirm.fud">
+<ui-code>
 <pre><code>@@code &#123;
   let dialog: HTMLDialogElement | null = null;
 &#125;
 
-&lt;miapp-confirm&gt;
+&lt;myapp-confirm&gt;
   &lt;template shadowrootmode="open"&gt;
-    &lt;button type="button" @@click=@@(() =&gt; dialog?.showModal())&gt;Borrar cuenta&lt;/button&gt;
+    &lt;button type="button" @@click=@@(() =&gt; dialog?.showModal())&gt;Delete account&lt;/button&gt;
     &lt;dialog ref="@@dialog"&gt;…&lt;/dialog&gt;
   &lt;/template&gt;
-&lt;/miapp-confirm&gt;</code></pre>
+&lt;/myapp-confirm&gt;</code></pre>
 </ui-code>
 
 <ul>
@@ -61,18 +61,18 @@
 
 <p>Lo que escribe una expresión siempre llega como texto. Para escribir un valor como HTML está <code>@@raw</code>. El valor se marca antes en el <code>@@code</code>:</p>
 
-<ui-code .path="src/components/miapp-article/miapp-article.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; trustedHtml &#125; from "@@fudic/dom";
 
   const body = trustedHtml("&lt;p&gt;Written by &lt;em&gt;us&lt;/em&gt;.&lt;/p&gt;");
 &#125;
 
-&lt;miapp-article&gt;
+&lt;myapp-article&gt;
   &lt;template shadowrootmode="open"&gt;
     &lt;div class="body"&gt;@@raw(body)&lt;/div&gt;
   &lt;/template&gt;
-&lt;/miapp-article&gt;</code></pre>
+&lt;/myapp-article&gt;</code></pre>
 </ui-code>
 
 <ul>

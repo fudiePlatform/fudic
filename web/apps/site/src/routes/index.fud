@@ -20,13 +20,13 @@
 
 <div class="actions">
   <a class="start" href="/docs/getting-started">Empezar con Fudic <span class="arrow" aria-hidden="true">→</span></a>
-  <ui-command .command=@("npx @fudic/cli new mi-app")></ui-command>
+  <ui-command .command=@("npx @fudic/cli new my-app")></ui-command>
 </div>
 
 <section class="demo" aria-label="Un componente de Fudic y lo que recibe el navegador">
   <div class="panes">
     <div class="pane">
-      <div class="pane-head"><span class="file">miapp-counter.fud</span><span class="who">Lo que escribes</span></div>
+      <div class="pane-head"><span class="file">myapp-counter.fud</span><span class="who">Lo que escribes</span></div>
 <pre><code><span class="at">@@code</span> {
   <span class="at">import</span> { signal } <span class="at">from</span> <span class="str">"@@fudic/core"</span>;
 
@@ -38,25 +38,25 @@
   &lt;style&gt;output { min-inline-size: 2ch; }&lt;/style&gt;
 &lt;/head&gt;
 
-&lt;miapp-counter&gt;
+&lt;myapp-counter&gt;
   &lt;template shadowrootmode=<span class="str">"open"</span>&gt;
     &lt;button <span class="at">@@click</span>=<span class="at">@@inc</span>&gt;+1&lt;/button&gt;
     &lt;output&gt;<span class="at">@@n()</span>&lt;/output&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;</code></pre>
+&lt;/myapp-counter&gt;</code></pre>
     </div>
     <div class="pane">
       <div class="pane-head"><span class="file">GET /</span><span class="who painted">Pintado sin JavaScript</span></div>
-<pre><code>&lt;miapp-counter&gt;
+<pre><code>&lt;myapp-counter&gt;
   &lt;template shadowrootmode=<span class="str">"open"</span>
-            shadowrootadoptedstylesheets=<span class="str">"base miapp-counter"</span>&gt;
+            shadowrootadoptedstylesheets=<span class="str">"base myapp-counter"</span>&gt;
     &lt;button&gt;+1&lt;/button&gt;
     &lt;output&gt;0&lt;/output&gt;
   &lt;/template&gt;
-&lt;/miapp-counter&gt;
+&lt;/myapp-counter&gt;
 
-<span class="dim">&lt;!-- Simplificado. El contador se activa
-     con el primer clic. --&gt;</span></code></pre>
+<span class="dim">&lt;!-- Simplified. The counter comes alive
+     on the first click. --&gt;</span></code></pre>
     </div>
   </div>
   <ul class="speed">

@@ -50,7 +50,7 @@
   <li><strong>Una línea que empieza por un texto</strong> y va más sangrada de la cuenta continúa la de arriba.</li>
 </ul>
 
-<ui-code .path="src/routes/users.fudapi">
+<ui-code>
 <pre><code># Turns a person on or off.
 put save
   use auth
@@ -102,7 +102,7 @@ put save
   <li><strong><code>compress gzip|deflate|deflate-raw [&lt;bytes&gt;]</code></strong> o <strong><code>compress off</code></strong>: comprime la respuesta a partir de ese tamaño.</li>
 </ul>
 
-<ui-code .path="src/routes/users.fudapi">
+<ui-code>
 <pre><code>get search
   q  str
     max-length 80
@@ -146,7 +146,7 @@ post signIn
   <li><strong>Debajo</strong> van también <code>use</code> y <code>skip</code>. <code>fails</code> no: <code>load</code> lanza el error (<a href="/docs/reference/diagnostics/FUD1360"><code>FUD1360</code></a>).</li>
 </ul>
 
-<ui-code .path="src/routes/dashboard.fudapi">
+<ui-code>
 <pre><code>load ssr
   title    str
   summary  Summary  later</code></pre>
@@ -161,7 +161,7 @@ post signIn
 
 <p>La cadena de middlewares de un fichero, o de toda la app en <code>src/http.fudapi</code>. Lleva <code>use</code>, <code>skip</code> y <code>compress</code>. Una función hereda la cadena global, menos lo que quite el <code>skip</code> de su fichero y más lo que añada la <code>chain</code> de su fichero. Guía: <a href="/docs/server/middlewares#chain">Middlewares</a>.</p>
 
-<ui-code .path="src/http.fudapi">
+<ui-code>
 <pre><code>chain
   use log
   use error-pages
@@ -172,7 +172,7 @@ post signIn
 
 <h2 id="types"><code>type</code>, <code>enum</code> y los tipos</h2>
 
-<ui-code .path="src/routes/users.fudapi">
+<ui-code>
 <pre><code>type Person
   id      i32
   name    str
@@ -243,7 +243,7 @@ enum Tone
 
 <p>Una expresión lee campos por su ruta, contada desde el formulario o el grupo de su <code>summary</code>: <code>password</code> dentro de <code>access</code>, <code>access.password</code> desde el formulario. Puede usar <code>or</code>, <code>and</code> y <code>not</code>; las comparaciones <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code> y <code>&gt;=</code>; <code>contains</code>; y <code>valid x</code>, <code>empty x</code> y <code>length x</code>. Las comparaciones de orden son para números y fechas.</p>
 
-<ui-code .path="src/forms/user.fudapi">
+<ui-code>
 <pre><code>form userForm
   validate-on blur
   name  str
@@ -260,7 +260,7 @@ enum Tone
 
 <p><code>messages</code>, una por proyecto, da el texto por defecto de cada código de error:</p>
 
-<ui-code .path="src/messages.fudapi">
+<ui-code>
 <pre><code>messages
   required  "This field is required."
   min-length  "At least &#123;n&#125; characters."</code></pre>
@@ -285,7 +285,7 @@ enum Tone
 
 <p>Una regla propia, que se implementa con <code>check</code>. <code>on</code>, <code>runs</code> y al menos un <code>fails</code> son obligatorios (<a href="/docs/reference/diagnostics/FUD1097"><code>FUD1097</code></a>). En <code>on field</code>, <code>*</code> es cualquier tipo y <code>*[]</code> cualquier lista. <code>debounce</code> solo vale en una regla <code>remote</code>, y por defecto es de 300 ms. <code>use</code> y <code>skip</code> no valen en una regla <code>both</code>. Guía: <a href="/docs/server/rules">Reglas</a>.</p>
 
-<ui-code .path="src/rules/people.fudapi">
+<ui-code>
 <pre><code>rule alias-taken
   on field str
   runs remote
@@ -306,14 +306,14 @@ enum Tone
 
 <p><code>client</code> y <code>server</code> dicen qué mitades tiene. <code>adds</code> declara lo que añade al <code>ctx</code> de quien viene detrás. Un middleware sin mitades es una marca que lee el compilador. Guía: <a href="/docs/server/middlewares">Middlewares</a>.</p>
 
-<ui-code .path="src/middlewares/auth.fudapi">
+<ui-code>
 <pre><code>middleware auth
   server
   adds
     user  User</code></pre>
 </ui-code>
 
-<p>Los parámetros se le dan debajo de cada <code>use</code>, uno por línea; una lista lleva sus valores o <code>[]</code>, y un <code>map</code> repite la línea <code>clave valor</code> (<a href="/docs/reference/diagnostics/FUD1087"><code>FUD1087</code></a>).</p>
+<p>Los parámetros se le dan debajo de cada <code>use</code>, uno por línea; una lista lleva sus valores o <code>[]</code>, y un <code>map</code> repite la línea <code>key value</code> (<a href="/docs/reference/diagnostics/FUD1087"><code>FUD1087</code></a>).</p>
 
 <h3 id="pattern"><code>pattern</code></h3>
 

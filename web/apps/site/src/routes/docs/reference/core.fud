@@ -156,7 +156,7 @@
   <li><strong><code>options</code></strong>: <a href="#task-options"><code>TaskOptions</code></a>. Con <code>initial</code>, <code>value()</code> deja de poder ser <code>undefined</code>.</li>
 </ul>
 
-<ui-code .path="src/routes/users.fud">
+<ui-code>
 <pre><code>@@code &#123;
   import &#123; signal, task &#125; from "@@fudic/core";
 

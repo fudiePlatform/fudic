@@ -40,18 +40,18 @@
 
 <h2 id="field">Las reglas de un campo</h2>
 
-<ui-code .path="src/forms/user.fudapi">
+<ui-code>
 <pre><code>form userForm
   alias  str = ""
-    required              "Elige un alias."
-    min-length 3          "Al menos &#123;n&#125; caracteres."
-    alias-taken           "Ese alias ya está cogido."
+    required              "Choose an alias."
+    min-length 3          "At least &#123;n&#125; characters."
+    alias-taken           "That alias is already taken."
   web  str = ""
-    pattern web-url       "La web empieza por http:// o https://."</code></pre>
+    pattern web-url       "The website starts with http:// or https://."</code></pre>
 </ui-code>
 
 <ul>
-  <li><strong>Van en orden, y la comprobación se detiene en la primera que falla.</strong> Un alias vacío dice «Elige un alias», y no se pregunta al servidor si está cogido.</li>
+  <li><strong>Van en orden, y la comprobación se detiene en la primera que falla.</strong> Un alias vacío dice «Choose an alias», y no se pregunta al servidor si está cogido.</li>
   <li><strong>Salvo <code>required</code>, todas aceptan el campo vacío.</strong> <code>web</code> es opcional, pero si se escribe tiene que ser una URL.</li>
   <li><strong>Las de serie no se importan</strong>: <code>required</code>, <code>min</code>, <code>max</code>, <code>min-length</code>, <code>max-length</code>, <code>pattern</code>… Las propias, como <code>alias-taken</code>, se declaran en el <code>.fudapi</code> (<a href="/docs/server/rules">Reglas y patrones</a>).</li>
 </ul>
@@ -60,10 +60,10 @@
 
 <p>Una regla falla con un código, y su texto se busca en este orden: el que va al lado de la regla, el del bloque <code>messages</code> del proyecto, y si no hay ninguno, el propio código.</p>
 
-<ui-code .path="src/rules/messages.fudapi">
+<ui-code>
 <pre><code>messages
-  required    "Este campo es obligatorio."
-  min-length  "Al menos &#123;n&#125; caracteres."</code></pre>
+  required    "This field is required."
+  min-length  "At least &#123;n&#125; characters."</code></pre>
 </ui-code>
 
 <p>Los textos están en el <code>.fudapi</code>, no en el servidor: el navegador los pinta en el idioma de la página, y se traducen con el resto de la app.</p>
@@ -72,20 +72,20 @@
 
 <p>Un error que depende de dos campos va en el <code>summary</code> del formulario o del grupo, con <code>require</code>: un código, la condición que tiene que cumplirse y su texto.</p>
 
-<ui-code .path="src/forms/user.fudapi">
+<ui-code>
 <pre><code>  summary
-    require same-as-name  empty alias or alias != name  "El alias no puede ser tu nombre."</code></pre>
+    require same-as-name  empty alias or alias != name  "The alias cannot be your name."</code></pre>
 </ui-code>
 
 <ul>
   <li>La condición admite campos, textos y números, comparaciones, <code>contains</code>, <code>empty</code>, <code>length</code>, <code>and</code>, <code>or</code> y <code>not</code>.</li>
   <li>Al contrario que las reglas de un campo, los <code>require</code> se comprueban todos, y el resumen muestra todos sus errores a la vez.</li>
-  <li><code>on campo</code> pinta el error en ese campo, y <code>when</code> agrupa los <code>require</code> que solo cuentan si se cumple una condición.</li>
+  <li><code>on field</code> pinta el error en ese campo, y <code>when</code> agrupa los <code>require</code> que solo cuentan si se cumple una condición.</li>
 </ul>
 
 <h2 id="remote">Reglas del servidor</h2>
 
-<p>«Ese alias ya está cogido» necesita datos que solo tiene el servidor. Al declarar la regla, <code>runs</code> dice dónde se ejecuta:</p>
+<p>Saber si un alias ya está cogido necesita datos que solo tiene el servidor. Al declarar la regla, <code>runs</code> dice dónde se ejecuta:</p>
 
 <ul>
   <li><code>both</code>: en el navegador mientras se escribe, y otra vez en el servidor al enviar.</li>
@@ -93,7 +93,7 @@
   <li><code>remote</code>: el navegador se la pregunta al servidor mientras se escribe, y el servidor la vuelve a ejecutar al enviar.</li>
 </ul>
 
-<ui-code .path="src/rules/people.fudapi">
+<ui-code>
 <pre><code>rule alias-taken
   on field str
   runs remote
@@ -104,7 +104,7 @@
 
 <ui-code>
 <pre><code>@@if (userForm.alias.pending()) &#123;
-  &lt;small role="status"&gt;Comprobando…&lt;/small&gt;
+  &lt;small role="status"&gt;Checking…&lt;/small&gt;
 &#125;</code></pre>
 </ui-code>
 
@@ -115,7 +115,7 @@
 <p><code>valid()</code> en un campo y <code>$valid()</code> en el formulario dicen si los valores cumplen las reglas, sin pintar ningún error. Un botón puede seguirlas:</p>
 
 <ui-code>
-<pre><code>&lt;button type="submit" disabled=@@(!userForm.$valid())&gt;Guardar&lt;/button&gt;</code></pre>
+<pre><code>&lt;button type="submit" disabled=@@(!userForm.$valid())&gt;Save&lt;/button&gt;</code></pre>
 </ui-code>
 
 <p>Por defecto, la validez solo tiene en cuenta los campos por los que el usuario ya ha pasado, así que el botón nace habilitado. Con <code>validity rules</code>, cuentan todas las reglas desde el principio, y el botón nace deshabilitado.</p>

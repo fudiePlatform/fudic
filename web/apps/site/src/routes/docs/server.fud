@@ -61,7 +61,7 @@
 
 <p>Una página que lista personas y las busca. El contrato:</p>
 
-<ui-code .path="src/routes/usuarios.fudapi">
+<ui-code>
 <pre><code># The data of the page.
 load ssr
   users  Person[]
@@ -78,8 +78,8 @@ type Person
 
 <p>Quien lo cumple, en <code>src/server</code>:</p>
 
-<ui-code .path="src/server/usuarios.ts">
-<pre><code>import &#123; load, search &#125; from "fudic:routes/usuarios";
+<ui-code>
+<pre><code>import &#123; load, search &#125; from "fudic:routes/users";
 
 load.handle(() =&gt; (&#123; users: db.users.all() &#125;));
 search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
@@ -87,9 +87,9 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 
 <p>Y la página, que lo enlaza con <code>&lt;link rel="server"&gt;</code> y lo usa sin importar nada:</p>
 
-<ui-code .path="src/routes/usuarios.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
-&lt;link rel="server" href="./usuarios.fudapi"&gt;
+&lt;link rel="server" href="./users.fudapi"&gt;
 
 &lt;ul&gt;
   @@foreach (const p of data.users) key (p.id) &#123;
@@ -98,7 +98,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 &lt;/ul&gt;</code></pre>
 </ui-code>
 
-<p id="link"><code>data</code> y <code>search</code> llegan tipados del contrato: el editor marca como error un <code>p.nombre</code>, que <code>Person</code> no tiene, antes de compilar. Si el <code>@@code</code> necesita un tipo, se importa: <code>import type &#123; Person &#125; from "fudic:routes/usuarios"</code>.</p>
+<p id="link"><code>data</code> y <code>search</code> llegan tipados del contrato: el editor marca como error un <code>p.fullName</code>, que <code>Person</code> no tiene, antes de compilar. Si el <code>@@code</code> necesita un tipo, se importa: <code>import type &#123; Person &#125; from "fudic:routes/users"</code>.</p>
 
 <h2 id="declarations">Todo lo que se declara</h2>
 
@@ -123,7 +123,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 
 <h2 id="implement">Implementarlo</h2>
 
-<p>Cada <code>.fudapi</code> se convierte en un módulo que se llama <code>fudic:</code> seguido de su ruta dentro de <code>src/</code>, sin extensión. Así, <code>src/routes/usuarios.fudapi</code> es <code>fudic:routes/usuarios</code>. El módulo exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
+<p>Cada <code>.fudapi</code> se convierte en un módulo que se llama <code>fudic:</code> seguido de su ruta dentro de <code>src/</code>, sin extensión. Así, <code>src/routes/users.fudapi</code> es <code>fudic:routes/users</code>. El módulo exporta una pieza por declaración, y cada pieza se implementa con su método:</p>
 
 <ul>
   <li>una función, <code>load</code>, <code>paths</code> o <code>layout</code>: <code>search.handle(fn)</code>, en <code>src/server</code>;</li>
@@ -158,7 +158,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
   <li>Los nombres van en kebab-case (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>).</li>
 </ul>
 
-<p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/usuarios.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code> crea la cadena global.</p>
+<p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/users.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code> crea la cadena global.</p>
 
 <h2 id="mdn">El estándar, en MDN</h2>
 

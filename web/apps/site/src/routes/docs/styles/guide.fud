@@ -38,7 +38,7 @@
 
 <p>Es una librería del workspace, y una app la usa con solo depender de ella. El <code>fudic.json</code> de la guía dice cuál es su hoja de entrada y su favicon:</p>
 
-<ui-code .path="libs/guide/fudic.json">
+<ui-code>
 <pre><code>{
   "kind": "lib",
   "globalStyles": { "base": "base.css" },
@@ -60,7 +60,7 @@
 
 <p>Las notas de esta web solo tienen párrafos, y adoptan solo <code>p</code>:</p>
 
-<ui-code .path="libs/ui/src/components/ui-note/ui-note.fud">
+<ui-code>
 <pre><code>&lt;ui-note&gt;
   &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
     &lt;slot&gt;&lt;/slot&gt;
@@ -74,7 +74,7 @@
 
 <p>La guía da valores por defecto, y un valor por defecto debe perder ante cualquier regla tuya. Por eso todas sus reglas van dentro de <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:where" target="_blank" rel="noopener"><code>:where()</code></a>, que tiene especificidad cero:</p>
 
-<ui-code .path="libs/guide/button.css">
+<ui-code>
 <pre><code>:where(button) {
   background: var(--guide-accent);
 }</code></pre>
@@ -86,7 +86,7 @@
 
 <p>Los colores de la guía son tokens escritos con <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark" target="_blank" rel="noopener"><code>light-dark()</code></a>: un valor para el modo claro y otro para el oscuro.</p>
 
-<ui-code .path="libs/guide/tokens.css">
+<ui-code>
 <pre><code>:root {
   color-scheme: light dark;
   --guide-ink: light-dark(#141413, #eeece4);
@@ -106,7 +106,7 @@
 
 <p>La guía es un fichero por elemento porque hoy el estándar no permite nombrar varias hojas dentro de un fichero. La propuesta <a href="https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/AtSheet/explainer.md" target="_blank" rel="noopener"><code>@@sheet</code></a> lo permitiría:</p>
 
-<ui-code .path="guide.css">
+<ui-code>
 <pre><code>@@sheet button { :where(button) { … } }
 @@sheet input  { :where(input) { … } }</code></pre>
 </ui-code>

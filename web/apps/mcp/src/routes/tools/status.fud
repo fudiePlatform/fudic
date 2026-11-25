@@ -38,7 +38,7 @@
 
 <h2 id="example">Ejemplo</h2>
 
-<p>En un proyecto recién creado con <code>fudic new tienda</code>:</p>
+<p>En un proyecto recién creado con <code>fudic new shop</code>:</p>
 
 <ui-code>
 <pre><code>fudic_status &#123;&#125;</code></pre>
@@ -48,9 +48,9 @@
 <pre><code>&#123;
   "phase": "criteria",
   "project": &#123;
-    "name": "tienda",
+    "name": "shop",
     "kind": "app",
-    "prefix": "tienda",
+    "prefix": "shop",
     "errorPage": &#123;
       "from": "none"
     &#125;

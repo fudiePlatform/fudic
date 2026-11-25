@@ -56,7 +56,7 @@
 
 <p>Estos son los de esta web, el de la app y el de su librería de componentes:</p>
 
-<ui-code .path="apps/site/fudic.json">
+<ui-code>
 <pre><code>&#123;
   "id": "site",
   "kind": "app",
@@ -67,7 +67,7 @@
 &#125;</code></pre>
 </ui-code>
 
-<ui-code .path="libs/ui/fudic.json">
+<ui-code>
 <pre><code>&#123;
   "kind": "lib",
   "prefix": "ui",
@@ -113,7 +113,7 @@
   <li><strong><code>api</code></strong>, solo en una librería, por defecto <code>fudapi</code>: la carpeta de los <code>.fudapi</code> que publica. La app los lee de cada librería de la que depende.</li>
 </ul>
 
-<ui-code .path="fudic.json">
+<ui-code>
 <pre><code>&#123;
   "server": "src/backend",
   "browser": "src/client"

@@ -44,8 +44,8 @@
 &#125;
 
 &lt;dl&gt;
-  @@render row("Plan", "Básico")
-  @@render row("Precio", @@plan.price)
+  @@render row("Plan", "Basic")
+  @@render row("Price", @@plan.price)
 &lt;/dl&gt;</code></pre>
 </ui-code>
 
@@ -55,7 +55,7 @@
 
 <p>Un snippet que solo usa un fichero se declara en ese fichero. Para compartirlo, va en un fichero de snippets en <code>src/snippets/</code>, que se crea con <code>fudic g snippet ui priceTag</code>. Después se enlaza con <code>&lt;link rel="snippet"&gt;</code>:</p>
 
-<ui-code .path="src/routes/pricing.fud">
+<ui-code>
 <pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
 &lt;link rel="snippet" href="../snippets/ui.fud"&gt;
 

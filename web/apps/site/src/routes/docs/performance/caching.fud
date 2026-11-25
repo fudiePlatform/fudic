@@ -52,7 +52,7 @@
 
 <p>Las cabeceras de los ficheros estáticos se escriben en <code>assets.headers</code>, en la raíz de la app, por ruta:</p>
 
-<ui-code .path="assets.headers">
+<ui-code>
 <pre><code>/**
   Cache-Control: no-cache
 

@@ -80,7 +80,7 @@ fudic g t when log-in</code></pre>
 
 <p>El paso que escribe <code>fudic g term then cart-has --param count:number</code>:</p>
 
-<ui-code .path="fudic/terms/then/cart-has.js">
+<ui-code>
 <pre><code>export const meta = &#123;
   name: 'cart-has',
   block: 'then',

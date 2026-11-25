@@ -46,15 +46,15 @@
 <h2 id="example">Ejemplo</h2>
 
 <ui-code>
-<pre><code>fudic_describe &#123; "name": "tienda-button" &#125;</code></pre>
+<pre><code>fudic_describe &#123; "name": "shop-button" &#125;</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>&#123;
   "kind": "component",
-  "name": "tienda-button",
+  "name": "shop-button",
   "from": null,
-  "link": "&lt;link rel=\"component\" href=\"../components/tienda-button/tienda-button.fud\"&gt;",
+  "link": "&lt;link rel=\"component\" href=\"../components/shop-button/shop-button.fud\"&gt;",
   "contract": &#123;
     "props": [
       &#123;
@@ -78,17 +78,17 @@
     "parts": [],
     "partsDynamic": false,
     "tokens": [
-      "--tienda-accent",
-      "--tienda-on-accent"
+      "--shop-accent",
+      "--shop-on-accent"
     ],
     "doc": "A button for the actions of the shop: buy, add to cart, cancel. Its text is the default slot."
   &#125;,
   "usedIn": [],
   "example": &#123;
-    "text": "&lt;tienda-button&gt;\n  Text\n&lt;/tienda-button&gt;",
+    "text": "&lt;shop-button&gt;\n  Text\n&lt;/shop-button&gt;",
     "fill": []
   &#125;,
-  "at": "src/components/tienda-button/tienda-button.fud",
+  "at": "src/components/shop-button/shop-button.fud",
   "diagnostics": [],
   "next": null
 &#125;</code></pre>

@@ -41,13 +41,13 @@
 <pre><code>@@code &#123;
   import &#123; task &#125; from "@@fudic/core";
 
-  const guardar = task(save);
+  const saving = task(save);
 &#125;
 
-&lt;button type="button" @@click=@@(() =&gt; guardar.run(&#123; id: 3 &#125;)) disabled=@@guardar.pending()&gt;
-  Guardar
+&lt;button type="button" @@click=@@(() =&gt; saving.run(&#123; id: 3 &#125;)) disabled=@@saving.pending()&gt;
+  Save
 &lt;/button&gt;
-&lt;p role="alert"&gt;@@guardar.message()&lt;/p&gt;</code></pre>
+&lt;p role="alert"&gt;@@saving.message()&lt;/p&gt;</code></pre>
 </ui-code>
 
 <p id="reads">Lo que se lee:</p>
@@ -65,11 +65,11 @@
 
 <ui-code>
 <pre><code>@@code &#123;
-  const texto = signal("");
-  const found = task(search, () =&gt; (&#123; q: texto() &#125;), &#123; initial: data.users &#125;);
+  const query = signal("");
+  const found = task(search, () =&gt; (&#123; q: query() &#125;), &#123; initial: data.users &#125;);
 &#125;
 
-&lt;input type="search" aria-label="Buscar" @@input=@@(() =&gt; texto.set($value))&gt;
+&lt;input type="search" aria-label="Search" @@input=@@(() =&gt; query.set($value))&gt;
 @@foreach (const p of found.value()) key (p.id) &#123;
   &lt;p&gt;@@p.name&lt;/p&gt;
 &#125;</code></pre>
@@ -82,10 +82,10 @@
 <p>Sin fuente, la tarea llama cuando se lo pides, con <code>run(args)</code>. <code>run</code> nunca lanza. Devuelve <code>&#123; ok: true, value &#125;</code> si sale bien, <code>&#123; ok: false, error &#125;</code> si falla y <code>&#123; ok: false &#125;</code>, sin <code>error</code>, si se canceló (<a href="/docs/reference/core#task-result"><code>TaskResult</code></a>). Así se escribe sin <code>try</code> un cambio optimista, el que se pinta antes de que responda el servidor:</p>
 
 <ui-code>
-<pre><code>async function activar(p: Person, active: boolean) &#123;
-  marcar(p.id, active);                        // paint it first
-  const r = await guardar.run(&#123; id: p.id, active &#125;);
-  if (!r.ok) marcar(p.id, !active);            // undo it if the server says no
+<pre><code>async function activate(p: Person, active: boolean) &#123;
+  mark(p.id, active);                          // paint it first
+  const r = await saving.run(&#123; id: p.id, active &#125;);
+  if (!r.ok) mark(p.id, !active);              // undo it if the server says no
 &#125;</code></pre>
 </ui-code>
 

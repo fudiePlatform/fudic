@@ -53,11 +53,11 @@
 <ui-code>
 <pre><code>&#123;
   "formatted": [
-    "src/components/tienda-button/tienda-button.fud",
+    "src/components/shop-button/shop-button.fud",
     "src/layouts/_layout.fud"
   ],
   "written": false,
-  "diff": "--- src/components/tienda-button/tienda-button.fud\n+++ src/components/tienda-button/tienda-button.fud\n@@@@ line 5 @@@@\n- …",
+  "diff": "--- src/components/shop-button/shop-button.fud\n+++ src/components/shop-button/shop-button.fud\n@@@@ line 5 @@@@\n- …",
   "diagnostics": [],
   "next": null
 &#125;</code></pre>

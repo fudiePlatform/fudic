@@ -50,14 +50,14 @@
 
 <p><code>fudic g form person</code> lo crea en <code>src/forms/</code>, con su test. Cada campo lleva su tipo, su valor inicial y, debajo, sus reglas con el texto de su error:</p>
 
-<ui-code .path="src/forms/person.fudapi">
+<ui-code>
 <pre><code>form personForm
   name  str = ""
-    required             "Escribe el nombre."
+    required             "Enter the name."
   email  str = ""
-    pattern email        "Ese email no parece válido."
+    pattern email        "That email does not look valid."
   age  u8
-    min 18               "Tiene que tener al menos &#123;n&#125; años."
+    min 18               "Must be at least &#123;n&#125; years old."
   active  bool = true</code></pre>
 </ui-code>
 
@@ -70,7 +70,7 @@
 <p>Los tipos son los del <code>.fudapi</code> (<a href="/docs/server/types">Tipos</a>), y en un formulario hacen dos cosas:</p>
 
 <ul>
-  <li><strong>Validan.</strong> Un <code>u8</code> va de 0 a 255, así que rechaza 300 sin escribir ninguna regla. El texto de ese error se escribe con <code>range "Entre &#123;min&#125; y &#123;max&#125;."</code>.</li>
+  <li><strong>Validan.</strong> Un <code>u8</code> va de 0 a 255, así que rechaza 300 sin escribir ninguna regla. El texto de ese error se escribe con <code>range "Between &#123;min&#125; and &#123;max&#125;."</code>.</li>
   <li><strong>Deciden cómo viaja.</strong> Un <code>u8</code> ocupa un byte al enviarse (<a href="/docs/forms/submitting#wire">Enviar al servidor</a>).</li>
 </ul>
 
@@ -80,13 +80,13 @@
 
 <p>Un grupo es un formulario dentro de otro, con sus propias reglas, como «las dos contraseñas coinciden». En la vista se enlaza a un <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener"><code>&lt;fieldset&gt;</code></a>:</p>
 
-<ui-code .path="src/forms/user.fudapi">
+<ui-code>
 <pre><code>form userForm
-  acceso  group
-    clave    str = ""
-    repetir  str = ""
+  access  group
+    password  str = ""
+    repeat    str = ""
     summary
-      require mismatch  clave == repetir  "Las contraseñas no coinciden."</code></pre>
+      require mismatch  password == repeat  "The passwords do not match."</code></pre>
 </ui-code>
 
 <h2 id="read">Leerlo y escribirlo</h2>
@@ -127,7 +127,7 @@ personForm.$value();     // &#123; name: "Ada", email: "", age: null, active: tr
 
 <p>Como no tiene DOM, se prueba sin navegador, con <code>fudic test</code>:</p>
 
-<ui-code .path="src/forms/person.test.ts">
+<ui-code>
 <pre><code>import &#123; expect, test &#125; from "vitest";
 import &#123; personForm &#125; from "fudic:forms/person";
 

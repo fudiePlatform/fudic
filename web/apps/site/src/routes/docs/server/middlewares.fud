@@ -57,11 +57,11 @@
   <li>la de una función, con <code>use</code> y <code>skip</code>.</li>
 </ul>
 
-<ui-code .path="src/http.fudapi">
+<ui-code>
 <pre><code>chain
   use log
   use error-pages
-    routes  403 /entrar
+    routes  403 /login
   use csrf</code></pre>
 </ui-code>
 
@@ -78,7 +78,7 @@
 
 <p>Se declara en un <code>.fudapi</code>, por convención en <code>src/middlewares/</code>, con sus mitades. Lo que deja en el <code>ctx</code> va en <code>adds</code>:</p>
 
-<ui-code .path="src/middlewares/auth.fudapi">
+<ui-code>
 <pre><code># Who is calling. The server half reads the session cookie.
 middleware auth
   server
@@ -88,7 +88,7 @@ middleware auth
 
 <p>Cada mitad se implementa en su carpeta (<code>src/server</code> o <code>src/browser</code>) con una función que recibe el <code>ctx</code> y <code>next</code>:</p>
 
-<ui-code .path="src/server/auth.ts">
+<ui-code>
 <pre><code>auth.server((ctx, next) =&gt; &#123;
   const session = ctx.cookies.get(SESSION_COOKIE);
   if (session === undefined) throw unauthorized();
@@ -115,7 +115,7 @@ middleware auth
 <p>Decide qué hace el navegador con un error que nadie espera:</p>
 
 <ul>
-  <li>Un status con ruta lleva a esa ruta: <code>routes 403 /entrar</code> manda a entrar a quien no tiene sesión.</li>
+  <li>Un status con ruta lleva a esa ruta: <code>routes 403 /login</code> manda a entrar a quien no tiene sesión.</li>
   <li>Cualquier otro lleva a <a href="/docs/routing/error-page">la página de error</a>.</li>
   <li>Una redirección se sigue.</li>
 </ul>

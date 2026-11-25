@@ -52,7 +52,7 @@
 
 <h2 id="format">El formato</h2>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code># The headers of every page.
 
 Referrer-Policy: strict-origin-when-cross-origin
@@ -62,7 +62,7 @@ Content-Security-Policy:
 </ui-code>
 
 <ul>
-  <li><strong><code>Nombre: valor</code></strong>, desde la primera columna.</li>
+  <li><strong><code>Name: value</code></strong>, desde la primera columna.</li>
   <li><strong>Una línea sangrada continúa</strong> la cabecera de arriba. Fudic las une con el separador de esa cabecera: <code>; </code> en la CSP, <code>, </code> en <code>Cache-Control</code>.</li>
   <li><strong><code>#</code></strong> empieza un comentario, en su propia línea.</li>
 </ul>
@@ -73,7 +73,7 @@ Content-Security-Policy:
 
 <p>Además de la CSP, que tiene su página (<a href="/docs/security/csp">La CSP</a>), la plantilla trae tres cabeceras:</p>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code>Referrer-Policy: strict-origin-when-cross-origin
 Cross-Origin-Opener-Policy: same-origin
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></pre>
@@ -89,7 +89,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
 
 <p>Una cabecera nueva es una línea más. Por ejemplo, <code>Permissions-Policy</code> apaga la cámara y la ubicación para la página y para todo lo que cargue:</p>
 
-<ui-code .path="page.headers">
+<ui-code>
 <pre><code>Permissions-Policy: camera=(), geolocation=()</code></pre>
 </ui-code>
 

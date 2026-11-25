@@ -41,7 +41,7 @@
 
 <h2 id="data">Se guardan los datos</h2>
 
-<ui-code .path="src/routes/blog/index.fudapi">
+<ui-code>
 <pre><code>load sw ttl 5m cache-first
   title  str
   posts  Post[]</code></pre>

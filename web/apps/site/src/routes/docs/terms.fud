@@ -38,7 +38,7 @@
 
 <p>El mismo criterio, con los términos de serie:</p>
 
-<ui-code .path="src/routes/shop.fudspec">
+<ui-code>
 <pre><code>criterion adding-a-book
   given
     cookie session ana
@@ -51,7 +51,7 @@
 
 <p>Y con tres términos propios:</p>
 
-<ui-code .path="src/routes/shop.fudspec">
+<ui-code>
 <pre><code>criterion adding-a-book
   given
     signed-in-as ana
@@ -75,7 +75,7 @@
 
 <h2 id="what-it-is">Qué es un término</h2>
 
-<p>Un término es un módulo de JavaScript en <code>fudic/terms/&lt;bloque&gt;/&lt;nombre&gt;.js</code>, con dos partes: <code>meta</code> dice cómo se escribe el paso y <code>run</code> dice qué hace en el navegador. Se crea con la CLI:</p>
+<p>Un término es un módulo de JavaScript en <code>fudic/terms/&lt;block&gt;/&lt;name&gt;.js</code>, con dos partes: <code>meta</code> dice cómo se escribe el paso y <code>run</code> dice qué hace en el navegador. Se crea con la CLI:</p>
 
 <ui-code>
 <pre><code>fudic g term then cart-has --param count:number</code></pre>

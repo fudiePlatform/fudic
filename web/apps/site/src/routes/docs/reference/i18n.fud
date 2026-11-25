@@ -49,7 +49,7 @@ type MessageArg = string | number | bigint</code></pre>
   <li>Si el mensaje tiene huecos, <strong><code>args</code></strong> es un objeto escrito en la propia llamada, con una clave por hueco.</li>
 </ul>
 
-<ui-code .path="src/services/posts.ts">
+<ui-code>
 <pre><code>import &#123; t &#125; from "@@fudic/i18n";
 
 throw notFound(t("There is no post called &#123;slug&#125;", &#123; slug &#125;));</code></pre>

@@ -58,7 +58,7 @@
   const day = date(&#123; dateStyle: "long", timeZone: "Europe/Madrid" &#125;);
 &#125;
 
-&lt;p&gt;Publicado el @@(post.published | day)&lt;/p&gt;</code></pre>
+&lt;p&gt;Published on @@(post.published | day)&lt;/p&gt;</code></pre>
 </ui-code>
 
 <p><code>date</code> exige <code>timeZone</code>: sin ella, el servidor y el navegador formatearían la misma fecha en zonas distintas.</p>
@@ -67,28 +67,28 @@
 
 <h2 id="own">Escribir un pipe</h2>
 
-<p>Para un formato que <code>Intl</code> no trae, <code>fudic g pipe iniciales --on str</code> crea tres ficheros en <code>src/pipes/</code>: la declaración, la implementación y su test.</p>
+<p>Para un formato que <code>Intl</code> no trae, <code>fudic g pipe initials --on str</code> crea tres ficheros en <code>src/pipes/</code>: la declaración, la implementación y su test.</p>
 
-<ui-code .path="src/pipes/iniciales.fudapi">
+<ui-code>
 <pre><code># The initials of a name: "ada lovelace" → "AL".
-pipe iniciales
+pipe initials
   on str</code></pre>
 </ui-code>
 
-<ui-code .path="src/pipes/iniciales.ts">
-<pre><code>import &#123; iniciales &#125; from "fudic:pipes/iniciales";
+<ui-code>
+<pre><code>import &#123; initials &#125; from "fudic:pipes/initials";
 
-export default iniciales.implement((value, locale) =&gt;
+export default initials.implement((value, locale) =&gt;
   value.split(/\s+/u).map((w) =&gt; w.charAt(0).toLocaleUpperCase(locale)).join(""),
 );</code></pre>
 </ui-code>
 
 <ui-code>
 <pre><code>@@code &#123;
-  import iniciales from "../pipes/iniciales";
+  import initials from "../pipes/initials";
 &#125;
 
-&lt;span class="avatar"&gt;@@(user.name | iniciales)&lt;/span&gt;</code></pre>
+&lt;span class="avatar"&gt;@@(user.name | initials)&lt;/span&gt;</code></pre>
 </ui-code>
 
 <ul>

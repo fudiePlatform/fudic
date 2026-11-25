@@ -77,12 +77,12 @@ fudic g pipe initials --on Person --project ui</code></pre>
 
 <p>El contrato y la implementación que escribe <code>fudic g pipe truncate</code>:</p>
 
-<ui-code .path="src/pipes/truncate.fudapi">
+<ui-code>
 <pre><code>pipe truncate
   on str</code></pre>
 </ui-code>
 
-<ui-code .path="src/pipes/truncate.ts">
+<ui-code>
 <pre><code>import &#123; truncate &#125; from 'fudic:pipes/truncate';
 
 export default truncate.implement((value, locale) =&gt; value);</code></pre>
