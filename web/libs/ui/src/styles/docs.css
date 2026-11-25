@@ -415,13 +415,15 @@ a[target="_blank"]::after {
   margin-top: var(--guide-space-6);
 }
 
-/* The pager: the previous page on the left and the next one on the right, under the content. A
-   page with only a next one keeps it on the right, where the reader looks for it. */
+/* The pager: the previous page on the left and the next one on the right, under the content. Two
+   fixed columns, so on a phone they stay side by side and a long title wraps inside its own box;
+   a page with only a next one keeps it on the right, where the reader looks for it. */
 
 .pager {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--guide-space-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--guide-space-3);
   margin-top: var(--guide-space-7);
   padding-top: var(--guide-space-5);
   border-top: 1px solid var(--guide-rule);
@@ -431,15 +433,19 @@ a[target="_blank"]::after {
   display: flex;
   flex-direction: column;
   gap: var(--guide-space-1);
-  max-width: 100%;
   padding: var(--guide-space-3) var(--guide-space-4);
+  overflow-wrap: break-word;
   text-decoration: none;
   border: 1px solid var(--guide-rule);
   border-radius: var(--guide-radius-md);
 }
 
+.pager .prev {
+  grid-column: 1;
+}
+
 .pager .next {
-  margin-inline-start: auto;
+  grid-column: 2;
   text-align: end;
 }
 
