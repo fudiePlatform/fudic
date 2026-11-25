@@ -70,7 +70,7 @@
     @render tutorial("attributes-and-classes", "Atributos, propiedades y clases", "intermediate", @current)
     @render tutorial("spread-and-rest", "Spread y resto de props", "intermediate", @current)
     @render tutorial("ref", "Referencias con ref", "intermediate", @current)
-    @render tutorial("raw", "HTML sin escapar con @raw", "intermediate", @current, false)
+    @render tutorial("raw", "HTML sin escapar con @raw", "intermediate", @current)
     @render tutorial("await", "Esperar datos con @await", "intermediate", @current, false)
     @render tutorial("safe-urls", "URLs en atributos", "intermediate", @current, false)
   </ol>

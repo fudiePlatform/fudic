@@ -172,4 +172,4 @@ npx fudic dev</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/ref" target="_blank" rel="noopener">la solución de Referencias con ref, en GitHub</a>. Compara tu <code>myapp-confirm.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/spread-and-rest", prevTitle: "Spread y resto de props", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/spread-and-rest", prevTitle: "Spread y resto de props", next: "/tutorials/raw", nextTitle: "HTML sin escapar con @raw")

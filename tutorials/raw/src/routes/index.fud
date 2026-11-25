@@ -1,0 +1,17 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import { trustedHtml } from "@fudic/dom";
+
+  const note = "Written by <em>us</em>.";
+  const body = trustedHtml("<p>Written by <em>us</em>.</p>");
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+
+<p>@note</p>
+<div>@raw(body)</div>

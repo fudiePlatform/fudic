@@ -76,7 +76,7 @@
 </ui-code>
 
 <ul>
-  <li><strong>El valor tiene que venir de <code>trustedHtml(…)</code></strong>, de <code>@@fudic/dom</code>. Así dices «este HTML lo avalo yo». Un string normal se escribe como texto.</li>
+  <li><strong>El valor tiene que venir de <code>trustedHtml(…)</code></strong>, de <code>@@fudic/dom</code>. Así dices «este HTML lo avalo yo». Con un string normal, el typecheck da un error.</li>
   <li><strong>La marca no viaja.</strong> Un HTML que llega en los datos de la página o de una función se escribe escapado, aunque sea de tipo <code>html</code>.</li>
   <li><strong><code>@@raw</code> es lo único que hay dentro de su elemento.</strong></li>
 </ul>

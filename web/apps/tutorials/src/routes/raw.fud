@@ -1,0 +1,161 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-note.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>HTML sin escapar con &#64;raw · Tutoriales de Fudic</title>
+  <meta name="description" content="Escribe HTML en una plantilla de Fudic con &#64;raw y trustedHtml, mira por qué una expresión normal siempre llega como texto y cuándo no usar &#64;raw.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/raw">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="HTML sin escapar con &#64;raw · Tutoriales de Fudic">
+  <meta property="og:description" content="&#64;raw y trustedHtml para escribir HTML, y cuándo no usarlos.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/raw">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render templateSyntaxNav("raw")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#escaped">2. Una expresión siempre es texto</a></li>
+        <li><a href="#raw">3. Escribe HTML con @@raw</a></li>
+        <li><a href="#rules">4. Las dos reglas de @@raw</a></li>
+        <li><a href="#when-not">5. Cuándo no usarlo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Sintaxis de plantilla</span></p>
+
+<h1>HTML sin escapar con <code>@@raw</code></h1>
+
+<p class="lede">Escribes el mismo HTML dos veces, una como texto y otra con <code>@@raw</code>, compruebas las dos reglas que Fudic le pone y ves cuándo no hay que usarlo.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Ver que lo que escribe una expresión siempre llega como texto.</li>
+    <li>Escribir HTML con <code>@@raw</code> y un valor marcado con <code>trustedHtml</code>.</li>
+    <li>Saber qué rechaza Fudic y por qué <code>trustedHtml</code> no sirve para lo que escribe un usuario.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y deja la terminal a la vista. Si es la primera vez, <a href="/tutorials/first-app">Tu primera app</a> cuenta cada comando.</p>
+
+<h2 id="escaped">2. Una expresión siempre es texto</h2>
+
+<p>Sustituye la página de inicio por esta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const note = "Written by &lt;em&gt;us&lt;/em&gt;.";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+
+&lt;p&gt;@@note&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>La página enseña las etiquetas tal cual, <code>Written by &lt;em&gt;us&lt;/em&gt;.</code>, sin cursiva. En el código fuente (Ctrl+U):</p>
+
+<pre class="output"><code>&lt;p&gt;Written by &amp;lt;em&amp;gt;us&amp;lt;/em&amp;gt;.&lt;/p&gt;</code></pre>
+
+<p>Fudic escapa lo que escribe una expresión: un <code>&lt;</code> llega como <code>&amp;lt;</code> y nunca se convierte en una etiqueta. Así, un nombre o un comentario que trae HTML no puede meter un script en tu página.</p>
+
+<h2 id="raw">3. Escribe HTML con <code>@@raw</code></h2>
+
+<p>Cuando el HTML es tuyo, como un texto con formato que escribe tu equipo, lo marcas con <code>trustedHtml</code> y lo escribes con <code>@@raw</code>. Cambia el <code>@@code</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; trustedHtml &#125; from "@@fudic/dom";
+
+  const note = "Written by &lt;em&gt;us&lt;/em&gt;.";
+  const body = trustedHtml("&lt;p&gt;Written by &lt;em&gt;us&lt;/em&gt;.&lt;/p&gt;");
+&#125;</code></pre>
+</ui-code>
+
+<p>Y añade al final de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;div&gt;@@raw(body)&lt;/div&gt;</code></pre>
+</ui-code>
+
+<p>Debajo del texto escapado sale la misma frase, ahora con <em>us</em> en cursiva. En el código fuente:</p>
+
+<pre class="output"><code>&lt;p&gt;Written by &amp;lt;em&amp;gt;us&amp;lt;/em&amp;gt;.&lt;/p&gt;
+&lt;div&gt;&lt;p&gt;Written by &lt;em&gt;us&lt;/em&gt;.&lt;/p&gt;&lt;/div&gt;</code></pre>
+
+<p><code>trustedHtml(…)</code> es tu firma: «este HTML lo avalo yo». La marca va en el valor, en el <code>@@code</code>, y <code>@@raw</code> solo escribe valores que la llevan.</p>
+
+<h2 id="rules">4. Las dos reglas de <code>@@raw</code></h2>
+
+<p>Prueba a pasarle el string sin marcar. Añade al final:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;div&gt;@@raw(note)&lt;/div&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:18:11 - error TS2345: Argument of type 'string' is not assignable to parameter of type '$TrustedHTML'.
+  my-app     18  &lt;div&gt;@@raw(note)&lt;/div&gt;
+  my-app                   ────
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p><code>note</code> es un <code>string</code>, sin la marca de <code>trustedHtml</code>, y el typecheck no lo deja pasar. Quita esa línea, y ahora pon un texto delante del <code>@@raw</code> que funcionaba:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;div&gt;Note: @@raw(body)&lt;/div&gt;</code></pre>
+</ui-code>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:17:12 - error FUD0990: `@@raw(…)` must be the only content of an element, e.g. `&lt;div class="post"&gt;@@raw(html)&lt;/div&gt;`
+  my-app     17  &lt;div&gt;Note: @@raw(body)&lt;/div&gt;
+  my-app                    ──────────
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0990
+  my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p><code>@@raw</code> es lo único que hay dentro de su elemento. Nadie sabe cuántos nodos va a escribir hasta que lo escribe, así que se queda con el elemento entero, y al hidratar Fudic no entra en él. Vuelve a <code>&lt;div&gt;@@raw(body)&lt;/div&gt;</code>.</p>
+
+<h2 id="when-not">5. Cuándo no usarlo</h2>
+
+<ui-note .kind="important">
+  <p><code>trustedHtml</code> no limpia nada: marca el valor como seguro, no lo hace seguro. Nunca lo uses con algo que escribe un usuario, como un comentario o un perfil. Si tiene que llevar formato, límpialo antes en el servidor.</p>
+</ui-note>
+
+<ul>
+  <li><strong>Para texto, una expresión normal.</strong> Si no necesitas etiquetas, <code>@@note</code> es más seguro y más simple.</li>
+  <li><strong>La marca no viaja.</strong> Un HTML que llega en los datos de la página o de una función se escribe escapado, aunque venga del servidor: la marca solo existe donde se escribe <code>trustedHtml</code>.</li>
+  <li><strong>El navegador también vigila.</strong> El <code>page.headers</code> de la app nueva lleva <code>require-trusted-types-for 'script'</code> y <code>trusted-types fudic</code>: los <a href="https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API" target="_blank" rel="noopener">Trusted Types</a> estándar rechazan un <code>innerHTML</code> escrito a mano, y <code>@@raw</code> funciona porque pasa por la política de Fudic.</li>
+</ul>
+
+<p><code>@@raw</code> está en <a href="/docs/template-syntax/ref-and-raw#raw">ref y @@raw</a>, y los Trusted Types, en <a href="/docs/security/trusted-types">HTML seguro</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/raw" target="_blank" rel="noopener">la solución de HTML sin escapar con @@raw, en GitHub</a>. Compara tu <code>index.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/ref", prevTitle: "Referencias con ref", next: "/tutorials/", nextTitle: "Todas las categorías")
