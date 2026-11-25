@@ -266,8 +266,8 @@
   color: var(--guide-code-muted);
 }
 
-/* The four Lighthouse scores, as Lighthouse draws them: a ring that fills, then sparks when all
-   four are 100. The resting state is the full ring; the motion below only plays it in. */
+/* The four Lighthouse scores, as Lighthouse draws them: a ring that fills, then fireworks when
+   all four are 100. The resting state is the full ring; the motion below only plays it in. */
 
 .home .scores {
   display: flex;
@@ -338,37 +338,75 @@
 .home .gauge .right::before { inset-inline-start: -100%; rotate: 225deg; }
 .home .gauge .left::before { inset-inline-start: 0; rotate: 45deg; }
 
-/* The sparks: eight dots that burst out of each ring, one every 45 degrees. */
+/* The fireworks: six bursts at different points of the block, one after another, each of
+   eighteen dots that fly out in a circle, every one in its own colour, then fall and fade.
+   Lighthouse draws them with box-shadow, which repaints every frame; here every dot is an element
+   that only moves, scales and fades. */
 
-.home .gauge i {
-  --angle: 0deg;
+.home .scores-block {
+  position: relative;
+}
+
+.home .pyro {
   position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  inline-size: 0.7rem;
-  block-size: 0.7rem;
-  margin: -0.35rem;
-  /* Behind the text around it: the heading and the names stay readable as they pass. */
+  inset: 0;
   z-index: -1;
-  background: var(--guide-brand);
+  pointer-events: none;
+}
+
+.home .pyro span {
+  --hue: 20deg;
+  position: absolute;
+  inset-block-start: 20%;
+  inset-inline-start: 15%;
+}
+
+.home .pyro span:nth-child(2) { --hue: 140deg; inset-block-start: 8%; inset-inline-start: 82%; }
+.home .pyro span:nth-child(3) { --hue: 260deg; inset-block-start: 2%; inset-inline-start: 38%; }
+.home .pyro span:nth-child(4) { --hue: 330deg; inset-block-start: 45%; inset-inline-start: 70%; }
+.home .pyro span:nth-child(5) { --hue: 80deg; inset-block-start: 30%; inset-inline-start: 52%; }
+.home .pyro span:nth-child(6) { --hue: 200deg; inset-block-start: 55%; inset-inline-start: 25%; }
+
+.home .pyro i {
+  --n: 0;
+  --angle: calc(var(--n) * 20deg);
+  --reach: 3.25rem;
+  position: absolute;
+  inline-size: 0.4rem;
+  block-size: 0.4rem;
+  margin: -0.2rem;
+  background: oklch(0.72 0.19 calc(var(--hue) + var(--n) * 23deg));
   border-radius: 50%;
   opacity: 0;
 }
 
-.home .gauge i:nth-of-type(2) { --angle: 45deg; background: var(--guide-success); }
-.home .gauge i:nth-of-type(3) { --angle: 90deg; background: var(--guide-warning); }
-.home .gauge i:nth-of-type(4) { --angle: 135deg; background: var(--guide-accent); }
-.home .gauge i:nth-of-type(5) { --angle: 180deg; }
-.home .gauge i:nth-of-type(6) { --angle: 225deg; background: var(--guide-success); }
-.home .gauge i:nth-of-type(7) { --angle: 270deg; background: var(--guide-warning); }
-.home .gauge i:nth-of-type(8) { --angle: 315deg; background: var(--guide-accent); }
+.home .pyro i:nth-child(3n + 2) { --reach: 4.5rem; }
+.home .pyro i:nth-child(3n) { --reach: 5.5rem; }
+.home .pyro i:nth-child(2n) { --angle: calc(var(--n) * 20deg + 9deg); }
+.home .pyro i:nth-child(2) { --n: 1; }
+.home .pyro i:nth-child(3) { --n: 2; }
+.home .pyro i:nth-child(4) { --n: 3; }
+.home .pyro i:nth-child(5) { --n: 4; }
+.home .pyro i:nth-child(6) { --n: 5; }
+.home .pyro i:nth-child(7) { --n: 6; }
+.home .pyro i:nth-child(8) { --n: 7; }
+.home .pyro i:nth-child(9) { --n: 8; }
+.home .pyro i:nth-child(10) { --n: 9; }
+.home .pyro i:nth-child(11) { --n: 10; }
+.home .pyro i:nth-child(12) { --n: 11; }
+.home .pyro i:nth-child(13) { --n: 12; }
+.home .pyro i:nth-child(14) { --n: 13; }
+.home .pyro i:nth-child(15) { --n: 14; }
+.home .pyro i:nth-child(16) { --n: 15; }
+.home .pyro i:nth-child(17) { --n: 16; }
+.home .pyro i:nth-child(18) { --n: 17; }
 
-/* It plays once, when the four rings are whole in the window, and only where the browser can
+/* It plays once, when the block is whole in the window, and only where the browser can
    start it there by itself (timeline-trigger) and the reader accepts motion. Anywhere else the
    rings are simply full. */
 @supports (animation-trigger: --t play-once) {
   @media (prefers-reduced-motion: no-preference) {
-    .home .scores {
+    .home .scores-block {
       timeline-trigger: --scores view() contain;
     }
 
@@ -376,7 +414,7 @@
     .home .gauge .left::before,
     .home .scores .num,
     .home .scores .value,
-    .home .gauge i {
+    .home .pyro i {
       animation-fill-mode: both;
       animation-trigger: --scores play-once;
     }
@@ -408,12 +446,18 @@
       animation-timing-function: ease-out;
     }
 
-    .home .gauge i {
-      animation-name: spark;
-      animation-duration: 1300ms;
+    .home .pyro i {
+      animation-name: burst;
+      animation-duration: 1400ms;
       animation-delay: 900ms;
-      animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+      animation-timing-function: cubic-bezier(0.15, 0.6, 0.35, 1);
     }
+
+    .home .pyro span:nth-child(2) i { animation-delay: 1150ms; }
+    .home .pyro span:nth-child(3) i { animation-delay: 1400ms; }
+    .home .pyro span:nth-child(4) i { animation-delay: 1600ms; }
+    .home .pyro span:nth-child(5) i { animation-delay: 1850ms; }
+    .home .pyro span:nth-child(6) i { animation-delay: 2100ms; }
   }
 }
 
@@ -423,11 +467,19 @@
 
 @keyframes pop { 40% { scale: 1.08; } }
 
-@keyframes spark {
-  0% { opacity: 0; transform: rotate(var(--angle)) translateY(-2.75rem) scale(0.4); }
-  15% { opacity: 1; transform: rotate(var(--angle)) translateY(-3.75rem) scale(1.1); }
-  65% { opacity: 1; transform: rotate(var(--angle)) translateY(-5.25rem) scale(0.8); }
-  100% { opacity: 0; transform: rotate(var(--angle)) translateY(-6rem) scale(0.3); }
+@keyframes burst {
+  0% { opacity: 0; translate: 0 0; scale: 0.5; }
+  8% { opacity: 1; }
+  55% {
+    opacity: 1;
+    translate: calc(cos(var(--angle)) * var(--reach)) calc(sin(var(--angle)) * var(--reach));
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: calc(cos(var(--angle)) * var(--reach) * 1.1) calc(sin(var(--angle)) * var(--reach) * 1.1 + 2.5rem);
+    scale: 0.4;
+  }
 }
 
 /* The three cards */

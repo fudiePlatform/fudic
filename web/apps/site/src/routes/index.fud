@@ -108,15 +108,16 @@
   <p class="note">Claude Code, Copilot, Cursor, Codex, Gemini CLI, Windsurf, Antigravity: cualquier agente con MCP. <a href="/mcp/">Trabajar con el MCP</a>.</p>
 </section>
 
-<section class="block" aria-labelledby="performance">
+<section class="block scores-block" aria-labelledby="performance">
+    <div class="pyro" aria-hidden="true"><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
   <div class="block-head">
     <h2 id="performance">100 en los cuatro. También en móvil.</h2>
   </div>
   <ul class="scores">
-    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Rendimiento</span></li>
-    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Accesibilidad</span></li>
-    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">Buenas prácticas</span></li>
-    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></span><span class="name">SEO</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span></span><span class="num">100</span></span><span class="name">Rendimiento</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span></span><span class="num">100</span></span><span class="name">Accesibilidad</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span></span><span class="num">100</span></span><span class="name">Buenas prácticas</span></li>
+    <li><span class="value"><span class="gauge" aria-hidden="true"><span class="half right"></span><span class="half left"></span></span><span class="num">100</span></span><span class="name">SEO</span></li>
   </ul>
   <p class="note">Medido con Lighthouse en todas las páginas de esta web, en móvil y en escritorio. En móvil, con el HTML comprimido, como lo sirve cualquier hosting. <a href="/docs/performance/lighthouse">Cómo se mide y qué movió la nota</a>.</p>
 </section>
