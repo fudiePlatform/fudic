@@ -1,0 +1,24 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="../forms/signup.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Sign up</h1>
+
+<form control=@signupForm>
+  <label for="name">Name</label>
+  <input id="name" type="text" control=@signupForm.name>
+  <small error=@signupForm.name></small>
+
+  <label for="alias">Alias</label>
+  <input id="alias" type="text" control=@signupForm.alias>
+  <small error=@signupForm.alias></small>
+
+  <label for="age">Age</label>
+  <input id="age" type="number" control=@signupForm.age>
+  <small error=@signupForm.age></small>
+
+  <button type="submit">Sign up</button>
+</form>

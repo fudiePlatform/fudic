@@ -1,0 +1,195 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Validación y mensajes de error · Tutoriales de Fudic</title>
+  <meta name="description" content="Varias reglas en un campo y su orden, el tipo que también valida, los textos de todo el proyecto con messages y un error que depende de dos campos, en un formulario de Fudic.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/validation">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Validación y mensajes de error · Tutoriales de Fudic">
+  <meta property="og:description" content="Las reglas de un formulario de Fudic y el texto de cada error.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/validation">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render formsNav("validation")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el formulario</a></li>
+        <li><a href="#rules">2. Varias reglas en un campo</a></li>
+        <li><a href="#type">3. El tipo también valida</a></li>
+        <li><a href="#messages">4. Los textos de todo el proyecto</a></li>
+        <li><a href="#cross">5. Un error de dos campos</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Formularios</span></p>
+
+<h1>Validación y mensajes de error</h1>
+
+<p class="lede">Das a un formulario de alta varias reglas por campo, escribes el texto de cada error una sola vez y añades una regla que compara dos campos.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Encadenar reglas en un campo y saber cuál de ellas da el error.</li>
+    <li>Dar el texto de un error en la regla o para todo el proyecto.</li>
+    <li>Escribir una regla que depende de dos campos.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Si no has hecho ningún formulario, empieza por <a href="/tutorials/first-form">Un formulario con binding</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el formulario</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g form signup --skip-test
+pnpm add @@fudic/http@@0.0.1</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created form signupForm in src/forms/
+  signup.fudapi    its fields, their rules and their texts: import it from fudic:forms/signup
+
+  Added @@fudic/forms 0.0.1 to my-app (it was not there)</code></pre>
+
+<p>Con <code>--skip-test</code> la CLI no crea el test del formulario. <code>@@fudic/http</code> lo necesitan los formularios, y la CLI no lo añade. Enlaza el formulario desde la página, con un campo para el nombre, otro para el alias y otro para la edad:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="../forms/signup.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Sign up&lt;/h1&gt;
+
+&lt;form control=@@signupForm&gt;
+  &lt;label for="name"&gt;Name&lt;/label&gt;
+  &lt;input id="name" type="text" control=@@signupForm.name&gt;
+  &lt;small error=@@signupForm.name&gt;&lt;/small&gt;
+
+  &lt;label for="alias"&gt;Alias&lt;/label&gt;
+  &lt;input id="alias" type="text" control=@@signupForm.alias&gt;
+  &lt;small error=@@signupForm.alias&gt;&lt;/small&gt;
+
+  &lt;label for="age"&gt;Age&lt;/label&gt;
+  &lt;input id="age" type="number" control=@@signupForm.age&gt;
+  &lt;small error=@@signupForm.age&gt;&lt;/small&gt;
+
+  &lt;button type="submit"&gt;Sign up&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<h2 id="rules">2. Varias reglas en un campo</h2>
+
+<p>Declara los tres campos. El alias lleva tres reglas, y la edad es un número:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  name  str = ""
+    required  "Enter your name."
+  alias  str = ""
+    required        "Choose an alias."
+    min-length 3    "At least &#123;n&#125; characters."
+    max-length 12   "At most &#123;n&#125; characters."
+  age  u8
+    required  "Enter your age."
+    min 18    "You must be at least &#123;n&#125;."</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y escribe en Alias, saliendo del campo cada vez:</p>
+
+<ul>
+  <li><strong>Nada:</strong> «Choose an alias.».</li>
+  <li><strong><code>ad</code>:</strong> «At least 3 characters.».</li>
+  <li><strong><code>ada</code>:</strong> ningún error.</li>
+  <li><strong><code>adalovelace99x</code>:</strong> «At most 12 characters.».</li>
+</ul>
+
+<p>Las reglas se comprueban en orden, y la comprobación se para en la primera que falla: un campo enseña un solo error. <code>&#123;n&#125;</code> en el texto sale como el número de la regla. Salvo <code>required</code>, todas las reglas aceptan el campo vacío, así que sin <code>required</code> el alias sería opcional, pero si se escribe tendría que medir de 3 a 12 caracteres.</p>
+
+<h2 id="type">3. El tipo también valida</h2>
+
+<p>Escribe <code>15</code> en Age y sal: «You must be at least 18.». Ahora escribe <code>300</code>. El error que sale es una sola palabra:</p>
+
+<pre class="output"><code>range</code></pre>
+
+<p>Ninguna regla tuya ha fallado. Ha fallado el tipo: un <code>u8</code> es un número de 0 a 255, así que rechaza 300 sin que escribas nada. Como no le has dado texto, el formulario enseña el código del error, <code>range</code>. Dale su texto en el campo:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code>  age  u8
+    required  "Enter your age."
+    min 18    "You must be at least &#123;n&#125;."
+    range     "Between &#123;min&#125; and &#123;max&#125;."</code></pre>
+</ui-code>
+
+<p>Guarda y vuelve a probar con <code>300</code> o con <code>-4</code>: «Between 0 and 255.». <code>&#123;min&#125;</code> y <code>&#123;max&#125;</code> salen como los límites del tipo.</p>
+
+<h2 id="messages">4. Los textos de todo el proyecto</h2>
+
+<p>Escribir «Enter your name.», «Choose an alias.» y «Enter your age.» en cada campo obligatorio se repite en cada formulario. Un bloque <code>messages</code> da el texto de un código para todo el proyecto. Quita los textos de los tres <code>required</code> y añade el bloque al final del fichero:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  name  str = ""
+    required
+  alias  str = ""
+    required
+    min-length 3    "At least &#123;n&#125; characters."
+    max-length 12   "At most &#123;n&#125; characters."
+  age  u8
+    required
+    min 18    "You must be at least &#123;n&#125;."
+    range     "Between &#123;min&#125; and &#123;max&#125;."
+
+messages
+  required  "This field is required."</code></pre>
+</ui-code>
+
+<p>Guarda, entra en Alias o en Age y sal sin escribir: los dos dicen «This field is required.». El texto de un error se busca en este orden: el que va al lado de la regla, el del bloque <code>messages</code> y, si no hay ninguno, el propio código, como el <code>range</code> del paso anterior. Hay un solo bloque <code>messages</code> por proyecto.</p>
+
+<h2 id="cross">5. Un error de dos campos</h2>
+
+<p>«El alias no puede ser tu nombre» no es de un campo solo: depende de dos. Un error así va en el <code>summary</code> del formulario, con <code>require</code>, un código, la condición que tiene que cumplirse y su texto. Añádelo al final del formulario, antes de <code>messages</code>:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code>    range     "Between &#123;min&#125; and &#123;max&#125;."
+  summary
+    require same-as-name  empty alias or alias != name  "The alias cannot be your name."  on alias</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong>La condición</strong> dice qué tiene que ser verdad: el alias está vacío o es distinto del nombre. Admite comparaciones, <code>empty</code>, <code>length</code>, <code>contains</code>, <code>and</code>, <code>or</code> y <code>not</code>.</li>
+  <li><strong><code>on alias</code></strong> pinta el error en el campo Alias, en su <code>&lt;small&gt;</code>.</li>
+</ul>
+
+<p>Guarda y prueba:</p>
+
+<ul>
+  <li><strong>Escribe <code>ada</code> en Name y <code>ada</code> en Alias, y sal.</strong> Alias dice «The alias cannot be your name.».</li>
+  <li><strong>Cambia el alias a <code>ada99</code>.</strong> El error se va.</li>
+  <li><strong>Vuelve a poner <code>ada</code> en los dos, una edad válida y pulsa Sign up.</strong> No se envía, y el foco va a Alias.</li>
+</ul>
+
+<p>Sin <code>on</code>, el error se pinta en un elemento con <code>summary</code>, que lista los errores de varios campos. Esa lista, la validez silenciosa con <code>$valid()</code> y las reglas que se preguntan al servidor están en <a href="/docs/forms/validation">Validación y validez</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/validation" target="_blank" rel="noopener">la solución de Validación y mensajes de error, en GitHub</a>. Compara tu <code>signup.fudapi</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/first-form", prevTitle: "Un formulario con binding", next: "/tutorials/", nextTitle: "Todas las categorías")

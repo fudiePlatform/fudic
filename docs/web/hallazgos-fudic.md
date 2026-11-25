@@ -1053,3 +1053,41 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   al arrancar.
 - **Qué debería hacer.** Que el typecheck de `fudic dev` lo cuente como los demás errores, al
   guardar, y sin pila: es un error del usuario, no del compilador.
+
+## 73. Un `summary` en una página da un 500 sin mensaje
+
+- **Qué pasó.** Escribiendo el tutorial `validation` (2026-11-25), con
+  `<div summary=@signupForm fields></div>` dentro del `<form>` de `src/routes/index.fud`.
+  `fudic dev` no dice nada, y la página sale cortada justo después del `<head>`: sin `<body>`,
+  ni formulario. El test de la página da `500`, sin mensaje. Solo `pnpm build` dice la causa:
+  `FUD0620: / failed to prerender: /: summaryEntriesOf is not defined`. Pasa con o sin `fields`,
+  y sin ningún `require` en el `.fudapi`. Dentro de un componente funciona (`app-form` de
+  `examples/basic`).
+- **Por qué.** El emit de la vista llama a `summaryEntriesOf` (`packages/compiler/src/emit/markup.ts:721`)
+  y `module.ts:460` añade su `import` solo en el módulo de un componente, no en el de una ruta.
+- **Cómo se resolvió en el tutorial.** El error de dos campos se pinta en un campo, con
+  `on alias`, y el `summary` se cita con un enlace a la Documentación.
+- **Qué debería hacer.** Importar `summaryEntriesOf` también en una ruta. Y que un error del
+  render en `fudic dev` salga en la terminal y en la página, no como un HTML cortado.
+
+## 74. Un texto de `messages` con `{min}` y `{max}` pinta el nombre del tipo
+
+- **Qué pasó.** En el mismo tutorial, con `age  u8` y en el bloque `messages` del proyecto
+  `range  "Between {min} and {max}."`, escribir `300` da «Between u8 and u8.». El mismo texto
+  puesto en el campo (`range "Between {min} and {max}."` debajo de `age`) da «Between 0 and 255.».
+- **Cómo se resolvió en el tutorial.** El texto de `range` va en el campo.
+- **Qué debería hacer.** Rellenar `{min}` y `{max}` con los límites del tipo también en
+  `messages`, o rechazar esos huecos ahí con `FUD1085`.
+
+## 75. Quitar un `required` con `fudic dev` en marcha corta la página
+
+- **Qué pasó.** En el mismo tutorial, con `fudic dev` en marcha, borrar la línea `required` del
+  campo `alias` deja la página cortada tras el `<head>`, sin nada en la terminal: `page reload`
+  y nada más. Volver a ponerla la arregla, y arrancar `fudic dev` con el fichero sin `required`
+  también. Reproducido dos veces. Añadir `range`, cambiar textos, añadir `messages` o un
+  `summary` sí se recargan bien. Antes, dos cortes iguales al reescribir el `.fudapi` entero no se
+  pudieron repetir.
+- **Cómo se resolvió en el tutorial.** Ningún paso quita una regla: el alias opcional se cuenta en
+  prosa.
+- **Qué debería hacer.** Recargar bien cualquier cambio del `.fudapi`, y que un fallo del render
+  salga en la terminal (lo mismo que el nº 73).

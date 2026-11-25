@@ -1,0 +1,17 @@
+# Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  name  str = ""
+    required
+  alias  str = ""
+    required
+    min-length 3    "At least {n} characters."
+    max-length 12   "At most {n} characters."
+  age  u8
+    required
+    min 18    "You must be at least {n}."
+    range     "Between {min} and {max}."
+  summary
+    require same-as-name  empty alias or alias != name  "The alias cannot be your name."  on alias
+
+messages
+  required  "This field is required."
