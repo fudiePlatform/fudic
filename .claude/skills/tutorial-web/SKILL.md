@@ -35,32 +35,43 @@ explicaciones de dos folios: si una idea no cabe en tres líneas, está mal cont
 ## 2. Nada inventado: ejecútalo de verdad
 
 Cada comando, cada fichero y cada salida del tutorial salen de una ejecución real. Los paquetes no
-están en npm, así que se monta así:
+están en npm, así que se instalan desde tarballs, **todo fuera del repo** (en el scratchpad). El
+repo no se toca: ni una copia en el workspace ni un cambio en `pnpm-lock.yaml`.
 
-1. Crea el proyecto con la CLI del repo, **fuera del repo** (en el scratchpad):
+1. **Una vez por sesión**, empaqueta todos los paquetes en el scratchpad. Los paquetes no cambian
+   mientras se escriben los tutoriales (los hallazgos se arreglan después), así que basta con
+   hacerlo al empezar la sesión:
+   `pnpm -r --filter "./packages/**" pack --pack-destination <scratchpad>/fudic-tgz`.
+2. **Por tutorial**, crea el proyecto con la CLI del repo, en el scratchpad:
    `node <repo>/packages/cli/dist/bin.js new my-app --no-install --no-git`.
-2. Copia ese proyecto a `examples/tmp-my-app` (que está en el workspace), cambia sus `@fudic/*` a
-   `workspace:*` y ejecuta `pnpm install` en la raíz.
-3. Enlaza su `node_modules` al proyecto del scratchpad con un junction, desde PowerShell:
-   `cmd /c mklink /J "<scratchpad>\my-app\node_modules" "<repo>\examples\tmp-my-app\node_modules"`.
-4. Trabaja en el del scratchpad: `npx fudic dev`, `npx fudic g …`, `pnpm build`, `npx fudic preview`.
-   Dentro del repo, `fudic dev` levanta las 21 apps (hallazgo 8 de la CLI); fuera, solo la tuya,
-   que es lo que ve el usuario.
+3. Escribe en el proyecto un `pnpm-workspace.yaml` con un override por tarball, para que cada
+   `@fudic/*` (también los que piden otros paquetes) salga de él, y ejecuta `pnpm install`:
+   ```sh
+   cd my-app
+   { echo "overrides:"; for f in <scratchpad>/fudic-tgz/fudic-*.tgz; do
+       b=$(basename "$f" -0.0.1.tgz); echo "  '@fudic/${b#fudic-}': 'file:$f'"; done; } > pnpm-workspace.yaml
+   pnpm install
+   ```
+   Ese `pnpm-workspace.yaml` y el `pnpm-lock.yaml` que salga son del montaje: no van a la solución.
+4. Trabaja en ese proyecto: `npx fudic dev`, `npx fudic g …`, `pnpm build`, `npx fudic preview`.
+   Fuera del repo, `fudic dev` levanta solo tu app, que es lo que ve el usuario (dentro levanta las
+   21, hallazgo 8 de la CLI).
 5. Para lo que enseña el editor (subrayado, bombilla), pregúntaselo al language server:
    `node .claude/skills/tutorial-web/scripts/lsp.mjs <repo>/packages/language-server/bin/fudic-language-server.js <proyecto> <fichero>`.
    Imprime los diagnósticos y las acciones de la bombilla con sus títulos reales. Lo que no puedas
    ver (la pantalla de VS Code), descríbelo sin inventar su formato.
-6. Al acabar: quita el junction (`cmd //c rmdir`), borra `examples/tmp-my-app`, vuelve a ejecutar
-   `pnpm install` (el lockfile no debe cambiar) y **para todo servidor que hayas arrancado**: al
-   parar la tarea, `npx` deja el proceso huérfano escuchando en su puerto. Uno que no arrancaste tú
-   no se toca: díselo a Pedro.
+6. Al acabar, **para todo servidor que hayas arrancado**: al parar la tarea, `npx` deja el proceso
+   huérfano escuchando en su puerto, así que mira el puerto y para el proceso. Uno que no
+   arrancaste tú no se toca: díselo a Pedro. Antes de entregar, `git status` debe mostrar solo lo
+   del tutorial, y tras el commit, nada.
 
 En una salida se puede quitar una línea que solo sale por el montaje (ej.: «Re-optimizing
 dependencies because lockfile has changed»), nunca cambiar lo que dice.
 
 ## 3. La solución
 
-El proyecto terminado, sin `node_modules`, `dist` ni `.git`, en **`tutorials/<slug>/`** en la raíz
+El proyecto terminado, sin `node_modules`, `dist`, `.git`, ni el `pnpm-workspace.yaml` y el
+`pnpm-lock.yaml` del montaje, en **`tutorials/<slug>/`** en la raíz
 del repo, fuera del workspace. Es lo que tendría el usuario al acabar: con `@fudic/*` a la versión
 que escribe la CLI, no a `workspace:*`. Nunca en un repo aparte.
 
