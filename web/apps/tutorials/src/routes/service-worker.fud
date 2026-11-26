@@ -1,0 +1,149 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Arrancar el service worker · Tutoriales de Fudic</title>
+  <meta name="description" content="Construye una app de Fudic, mira en Chrome su service worker y sus cachés, y comprueba que la segunda visita a una página ya no sale del servidor.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/service-worker">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Arrancar el service worker · Tutoriales de Fudic">
+  <meta property="og:description" content="El service worker de Fudic en marcha: dónde verlo, qué guarda y cómo se renueva con cada build.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/service-worker">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serviceWorkerNav("service-worker")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una segunda página</a></li>
+        <li><a href="#build">2. Construye y sirve el build</a></li>
+        <li><a href="#application">3. Míralo en Chrome</a></li>
+        <li><a href="#second-visit">4. La segunda visita</a></li>
+        <li><a href="#deploy">5. Un build nuevo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Service worker</span></p>
+
+<h1>Arrancar el service worker</h1>
+
+<p class="lede">Construyes una app con dos páginas, ves su service worker en Chrome y compruebas que, desde la segunda visita, cada página la pinta él y no el servidor.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber qué fichero activa el service worker y dónde se registra.</li>
+    <li>Ver en Chrome el service worker y las cachés que llena.</li>
+    <li>Comprobar qué visitas pinta él y cómo se renueva con un build nuevo.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una segunda página</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page about</code></pre>
+</ui-code>
+
+<p>Un service worker es un script estándar que el navegador instala para un sitio y que se pone entre la página y la red. La app ya tiene el suyo: <code>fudic new</code> escribe <code>sw.json</code> en la raíz, y basta con que exista para activarlo.</p>
+
+<pre class="output"><code>&#123;
+  "shell": [],
+  "resources": &#123;
+    "assets": &#123;
+      "pattern": "/assets/**",
+      "policy": "cache-first",
+      "ttl": null,
+      "maxEntries": 200
+    &#125;
+  &#125;,
+  "dev": "off"
+&#125;</code></pre>
+
+<p>No hace falta tocarlo. Qué significa cada campo está en <a href="/docs/configuration/sw-json">sw.json</a>.</p>
+
+<h2 id="build">2. Construye y sirve el build</h2>
+
+<p>Con <code>"dev": "off"</code>, <code>fudic dev</code> no lo registra, para que lo que ves sea siempre lo último que guardaste. Para verlo, construye la app y sírvela:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Entre los ficheros del build están el propio service worker y el código de cada página, que él usará para pintarlas:</p>
+
+<pre class="output"><code>dist/sw/c/_layout-ecdb25be.js                      0.68 kB
+dist/sw/c/index-ecdb25be.js                        1.33 kB
+dist/sw/c/about-ecdb25be.js                        1.34 kB
+dist/fudic-sw.js                                  23.96 kB</code></pre>
+
+<p>Abre <code>http://localhost:4173/</code>. Lo que hace <code>fudic preview</code> lo cuenta <a href="/tutorials/first-app#preview">Tu primera app</a>.</p>
+
+<h2 id="application">3. Míralo en Chrome</h2>
+
+<p>Abre las herramientas de Chrome con F12 y ve a la pestaña Aplicación (Application).</p>
+
+<ul>
+  <li><strong>En Service workers</strong> está <code>fudic-sw.js</code>, activado y en marcha. Lo ha registrado la página al cargar, sin que hagas nada.</li>
+  <li><strong>En Almacenamiento en caché</strong> (Cache storage) hay cinco cachés:</li>
+</ul>
+
+<pre class="output"><code>shell-my-app-ecdb25be
+fudic-runtime-0.0.1-689426ec
+routes-my-app-ecdb25be
+pages-my-app-ecdb25be
+data-my-app-ecdb25be</code></pre>
+
+<p>Cada nombre lleva el <code>id</code> de <code>fudic.json</code> y el del build, así que dos apps del mismo dominio no se pisan. Abre <code>routes-my-app-…</code>: ya tiene <code>_layout-ecdb25be.js</code> e <code>index-ecdb25be.js</code>, el código de la página que estás viendo. El de <code>about</code> no está, porque no la has visitado. Al instalarse no descarga la app entera.</p>
+
+<h2 id="second-visit">4. La segunda visita</h2>
+
+<p>Ve a la pestaña Red (Network) y abre <code>http://localhost:4173/about</code>. La primera vez, el documento <code>about</code> lo envía el servidor, y el service worker descarga <code>about-ecdb25be.js</code> para la próxima.</p>
+
+<p>Recarga la página. La fila del documento <code>about</code> dice ahora <code>(ServiceWorker)</code> en la columna Tamaño (Size): la página la ha pintado el service worker, en tu navegador, con el mismo código que el servidor y sin llegar a él. Lo mismo pasa al volver a <code>/</code>.</p>
+
+<p>Qué páginas puede pintar y cuáles deja pasar al servidor está en <a href="/docs/service-worker">Qué hace el Service Worker</a>.</p>
+
+<h2 id="deploy">5. Un build nuevo</h2>
+
+<p>Cambia el título de la página, sin parar <code>fudic preview</code>:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;About&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;About us&lt;/h1&gt;</code></pre>
+</ui-code>
+
+<p>Y construye otra vez, en otra terminal:</p>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<p>Recarga <code>/about</code>. Sigue diciendo About: esa recarga la ha atendido el service worker de antes, y es al cargar cuando el navegador descubre que hay uno nuevo y lo instala. Recarga otra vez y sale About us.</p>
+
+<p>En Almacenamiento en caché, las cachés llevan ya el id del build nuevo, y las del anterior han desaparecido. Cada build tiene las suyas, así que nunca se mezcla el código de uno con los datos de otro. Lo cuenta <a href="/docs/service-worker#updates">Un despliegue nuevo</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/service-worker" target="_blank" rel="noopener">la solución de Arrancar el service worker, en GitHub</a>. Compara tu <code>src/routes/about.fud</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/plurals-and-formats", prevTitle: "Plurales, moneda y t()", next: "/tutorials/", nextTitle: "Todas las categorías")

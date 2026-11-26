@@ -1,0 +1,15 @@
+/* Sub- and superscripts that do not push the line apart. */
+:where(sub, sup) {
+  position: relative;
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+:where(sub) {
+  bottom: -0.25em;
+}
+
+:where(sup) {
+  top: -0.5em;
+}

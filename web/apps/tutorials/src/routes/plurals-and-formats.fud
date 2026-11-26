@@ -233,4 +233,4 @@ Total: 1,20 €</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/plurals-and-formats" target="_blank" rel="noopener">la solución de Plurales, moneda y t(), en GitHub</a>. Compara tus dos catálogos del carrito y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/localized-urls", prevTitle: "URLs con idioma y un selector", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/localized-urls", prevTitle: "URLs con idioma y un selector", next: "/tutorials/service-worker", nextTitle: "Arrancar el service worker")

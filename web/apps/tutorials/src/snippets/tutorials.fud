@@ -152,3 +152,14 @@
     @render tutorial("plurals-and-formats", "Plurales, moneda y t()", "intermediate", @current)
   </ol>
 }
+
+@snippet serviceWorkerNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Service worker</p>
+  <details class="toggle"><summary>Tutoriales de Service worker</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("service-worker", "Arrancar el service worker", "intermediate", @current)
+    @render tutorial("offline", "Funcionar sin red: estrategias de caché", "advanced", @current, false)
+    @render tutorial("isomorphic", "Render isomórfico: el mismo HTML en tres sitios", "advanced", @current, false)
+  </ol>
+}

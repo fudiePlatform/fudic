@@ -35,7 +35,7 @@
   @render category("server", "Servidor", "Funciones de servidor y task, una API, middlewares, pipes y sesión.", 9, false, true, true, "/tutorials/server-functions")
   @render category("dependency-injection", "Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true, "/tutorials/services")
   @render category("i18n", "Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false, "/tutorials/two-languages")
-  @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true)
+  @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true, "/tutorials/service-worker")
   @render category("security", "Seguridad", "Cabeceras de seguridad, Content Security Policy y Trusted Types.", 3, false, true, true)
   @render category("performance", "Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true)
   @render category("tests", "Tests", "Tests unitarios, criterios en .fudspec, flujos e historial.", 6, true, true, true)

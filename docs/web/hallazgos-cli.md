@@ -165,6 +165,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Internacionalización (`two-languages`, `localized-urls`,
   `plurals-and-formats`), el 2026-11-26: el `href` frágil y los títulos «Two-languages»,
   «Localized-urls» y «Plurals-and-formats», corregidos a mano: los tres de la categoría.
+- **Y otra vez** con los tutoriales de Service worker (`service-worker`), el 2026-11-26: el `href`
+  frágil y el título «Service-worker», corregidos a mano.
 - **Y otra vez** con las cinco páginas de Vienes de otro framework (`docs/coming-from`,
   `docs/coming-from/react`, `angular`, `vue` y `web-components`), el 2026-11-26: sin `--layout`
   revienta con el mismo `ENOENT`; con la ruta relativa, el `href` frágil y títulos como
