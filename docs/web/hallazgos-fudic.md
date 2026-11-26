@@ -1365,7 +1365,25 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   página se pide por primera vez cuando el catálogo ya existe, todo funciona desde el principio.
 - **Por qué, probablemente.** El módulo de la página no registra como dependencia un catálogo
   que no existe al compilarla, así que Vite no lo invalida cuando aparece.
-- **Cómo se resolvió en el tutorial.** `two-languages` y `localized-urls` reinician `fudic dev`
-  después de traducir, y lo explican.
+- **Cómo se resolvió en el tutorial.** `two-languages`, `localized-urls` y `plurals-and-formats`
+  reinician `fudic dev` después de traducir, y lo explican.
 - **Qué debería hacer.** Vigilar `src/locales/` entero, o al menos la ruta del catálogo de cada
   fichero fuente aunque aún no exista, e invalidar la página cuando se cree.
+
+## 90. `fudic translate` no avisa de un `t()` con una variable, y borra su traducción
+
+- **Qué pasó.** Escribiendo el tutorial `plurals-and-formats` (2026-11-26). Una página con
+  `.title=@t("Your cart")` y su traducción «Tu carrito» en el catálogo de español. Al cambiarlo por
+  `const label = "Your cart";` y `.title=@t(label)`, `fudic dev` da bien el `FUD1020` (en la
+  terminal y con la página en `500`), pero `fudic translate` termina sin error ni aviso
+  («es 4 messages · 0 new · 0 to review · 0 untranslated») y borra del catálogo el mensaje con su
+  traducción. Al volver a `t("Your cart")`, el mensaje sale nuevo y sin traducir.
+- **Dónde lo dice la web.** «Textos en el código» (`/docs/i18n/code`) dice que `FUD1020` es el
+  error de un `t()` cuyo texto no es un string escrito tal cual; «Los catálogos» cuenta que un
+  mensaje que ya no existe se borra. Lo que no se espera es que `fudic translate` dé por bueno el
+  `t(label)`.
+- **Cómo se resolvió en el tutorial.** El paso de `FUD1020` avisa de que hay que volver a
+  `t("Your cart")` antes de ejecutar otra vez `fudic translate`.
+- **Qué debería hacer.** Que `fudic translate` informe `FUD1020` como error, con su posición, y no
+  toque el catálogo de ese fichero mientras lo haya, igual que hace con un catálogo que no es JSON
+  válido (`FUD1023`).

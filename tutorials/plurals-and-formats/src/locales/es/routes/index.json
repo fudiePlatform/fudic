@@ -1,0 +1,16 @@
+{
+  "routes/index.fud": {
+    "3c9be967": {
+      "source": "Home",
+      "translation": "Inicio",
+      "where": "src/routes/index.fud",
+      "at": 0
+    },
+    "b99eee0c": {
+      "source": "Your cart",
+      "translation": "Tu carrito",
+      "where": "src/routes/index.fud",
+      "at": 1
+    }
+  }
+}

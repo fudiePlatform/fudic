@@ -162,8 +162,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Inyección de dependencias (`services`, `providers`,
   `server-di`), el 2026-11-26: el `href` frágil y los títulos «Services», «Providers» y
   «Server-di», corregidos a mano: los tres de la categoría.
-- **Y otra vez** con los tutoriales de Internacionalización (`two-languages`, `localized-urls`), el
-  2026-11-26: el `href` frágil y los títulos «Two-languages» y «Localized-urls», corregidos a mano.
+- **Y otra vez** con los tutoriales de Internacionalización (`two-languages`, `localized-urls`,
+  `plurals-and-formats`), el 2026-11-26: el `href` frágil y los títulos «Two-languages»,
+  «Localized-urls» y «Plurals-and-formats», corregidos a mano: los tres de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

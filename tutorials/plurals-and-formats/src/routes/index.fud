@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-cart/myapp-cart.fud">
+
+@code {
+  import { t } from "@fudic/i18n";
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-cart .title=@t("Your cart")></myapp-cart>

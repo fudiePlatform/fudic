@@ -1,0 +1,20 @@
+@code {
+  import { currency, signal } from "@fudic/core";
+
+  const { title = "" } = props<{ title?: string }>();
+  const euros = currency("EUR");
+  const n = signal(0);
+
+  function add() {
+    n.set(n() + 1);
+  }
+}
+
+<myapp-cart>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p><strong>@title</strong></p>
+    <button type="button" @click=@add>Add a coffee</button>
+    <p>@n() coffees in the cart</p>
+    <p>Total: @(n() * 1.2 | euros)</p>
+  </template>
+</myapp-cart>

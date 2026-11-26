@@ -1,0 +1,236 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Plurales, moneda y t() · Tutoriales de Fudic</title>
+  <meta name="description" content="Un carrito de Fudic en inglés y en español: un plural escrito en el catálogo, un precio con el formato de cada idioma y t() para traducir el texto de una prop.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/plurals-and-formats">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Plurales, moneda y t() · Tutoriales de Fudic">
+  <meta property="og:description" content="«1 café», «2 cafés», «1,20 €» y el texto de una prop, cada uno en su idioma.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/plurals-and-formats">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render i18nNav("plurals-and-formats")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y un carrito</a></li>
+        <li><a href="#plural">2. Un plural en el catálogo</a></li>
+        <li><a href="#currency">3. El precio en cada idioma</a></li>
+        <li><a href="#t">4. El texto de una prop, con t()</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Internacionalización</span></p>
+
+<h1>Plurales, moneda y t()</h1>
+
+<p class="lede">Haces un carrito que dice «1 café» y «2 cafés», escribe el precio como se escribe en cada idioma, y traduce también el título que recibe por prop.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Escribir un plural en el catálogo, también en el idioma del código.</li>
+    <li>Ver cómo un pipe formatea el precio según el idioma de la página.</li>
+    <li>Saber qué no se traduce solo y marcarlo con <code>t()</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Usa <code>signal</code>, <code>props</code>, el pipe <code>currency</code> y los catálogos, que cuentan <a href="/tutorials/signals">Un contador con signals</a>, <a href="/tutorials/props">Pasar datos a un hijo</a>, <a href="/tutorials/pipes">Los pipes de Fudic, y uno propio</a> y <a href="/tutorials/two-languages">Tu app en dos idiomas</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y un carrito</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic add i18n --locales en,es
+npx fudic g component cart --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>El carrito recibe un título por prop, suma un café con cada clic y escribe cuántos hay y el total:</p>
+
+<ui-code .path="src/components/myapp-cart/myapp-cart.fud">
+<pre><code>@@code &#123;
+  import &#123; currency, signal &#125; from "@@fudic/core";
+
+  const &#123; title = "" &#125; = props&lt;&#123; title?: string &#125;&gt;();
+  const euros = currency("EUR");
+  const n = signal(0);
+
+  function add() &#123;
+    n.set(n() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-cart&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;&lt;strong&gt;@@title&lt;/strong&gt;&lt;/p&gt;
+    &lt;button type="button" @@click=@@add&gt;Add a coffee&lt;/button&gt;
+    &lt;p&gt;@@n() coffees in the cart&lt;/p&gt;
+    &lt;p&gt;Total: @@(n() * 1.2 | euros)&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-cart&gt;</code></pre>
+</ui-code>
+
+<p>Ponlo en la portada con su título, y quita el <code>lang="en"</code> del <code>&lt;html&gt;</code> de <code>src/layouts/_layout.fud</code>, para que cada página lleve el de su idioma:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-cart/myapp-cart.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-cart .title="Your cart"&gt;&lt;/myapp-cart&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/en/</code> y pulsa <strong>Add a coffee</strong> una vez:</p>
+
+<pre class="output"><code>Your cart
+Add a coffee
+1 coffees in the cart
+Total: €1.20</code></pre>
+
+<p>«1 coffees» está mal. El código solo dice qué número se pinta; cómo se dice cada número lo decide el catálogo.</p>
+
+<h2 id="plural">2. Un plural en el catálogo</h2>
+
+<ui-code>
+<pre><code>npx fudic translate</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/locales/en/components/myapp-cart/myapp-cart.json
+  create  src/locales/en/routes/index.json
+  create  src/locales/es/components/myapp-cart/myapp-cart.json
+  create  src/locales/es/routes/index.json
+  en  4 messages · 4 new · 0 to review · 0 untranslated
+  es  4 messages · 4 new · 0 to review · 4 untranslated</code></pre>
+
+<p>El idioma del código también tiene catálogo, y es ahí donde «&#123;n&#125; coffees in the cart» se convierte en un plural en inglés. Cambia su <code>translation</code>:</p>
+
+<ui-code .path="src/locales/en/components/myapp-cart/myapp-cart.json">
+<pre><code>    "51ad0f51": &#123;
+      "source": "&#123;n&#125; coffees in the cart",
+      "translation": "&#123;n, plural, =0 &#123;The cart is empty&#125; one &#123;# coffee in the cart&#125; other &#123;# coffees in the cart&#125;&#125;",
+      "holes": &#123;
+        "n": "n()"
+      &#125;,</code></pre>
+</ui-code>
+
+<p>Es el formato estándar de Unicode para mensajes, ICU MessageFormat. <code>plural</code> elige una forma según el número: <code>=0</code> es el cero exacto, <code>one</code> y <code>other</code> son las categorías del idioma, y <code>#</code> es el número ya formateado. El español tiene las mismas categorías que el inglés; otros idiomas tienen más, como <code>few</code> o <code>many</code>. Traduce el catálogo de español, con su propio plural:</p>
+
+<ui-code .path="src/locales/es/components/myapp-cart/myapp-cart.json">
+<pre><code>&#123;
+  "myapp-cart": &#123;
+    "eece6fbd": &#123;
+      "source": "Add a coffee",
+      "translation": "Añadir un café",
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 0
+    &#125;,
+    "51ad0f51": &#123;
+      "source": "&#123;n&#125; coffees in the cart",
+      "translation": "&#123;n, plural, =0 &#123;El carrito está vacío&#125; one &#123;# café en el carrito&#125; other &#123;# cafés en el carrito&#125;&#125;",
+      "holes": &#123;
+        "n": "n()"
+      &#125;,
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 1
+    &#125;,
+    "7c1eeeb1": &#123;
+      "source": "Total: &#123;arg1&#125;",
+      "translation": "Total: &#123;arg1&#125;",
+      "holes": &#123;
+        "arg1": "n() * 1.2 | euros"
+      &#125;,
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 2
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Pon también <code>"translation": "Inicio"</code> al mensaje «Home» de <code>src/locales/es/routes/index.json</code>. Reinicia <code>fudic dev</code>, porque no ve los catálogos que se crearon después de arrancar, y pulsa dos veces en <code>/en/</code>:</p>
+
+<pre class="output"><code>The cart is empty
+1 coffee in the cart
+2 coffees in the cart</code></pre>
+
+<p>El carrito se hidrata, así que la forma se elige en el navegador, con cada clic. Solo en ese caso la página descarga la pieza de <code>@@fudic/i18n</code> que la elige. Un plural en una página sin JavaScript sale ya escrito en el HTML.</p>
+
+<h2 id="currency">3. El precio en cada idioma</h2>
+
+<p>Abre <code>/es/</code> y pulsa una vez:</p>
+
+<pre class="output"><code>Your cart
+Añadir un café
+1 café en el carrito
+Total: 1,20 €</code></pre>
+
+<p>El catálogo no tocó el precio: el hueco <code>&#123;arg1&#125;</code> se quedó igual en las dos traducciones. Es el pipe <code>currency("EUR")</code> el que escribe «€1.20» en inglés y «1,20 €» en español, con la coma y la posición del símbolo de cada idioma. Los pipes formatean con <code>Intl</code>, el estándar de JavaScript, en el idioma de la página. El pipe <code>date</code> hace lo mismo con las fechas.</p>
+
+<h2 id="t">4. El texto de una prop, con t()</h2>
+
+<p>Todo está en español menos «Your cart». No es un despiste: el valor de una prop no se traduce solo. Un string que se pasa a un componente puede ser un texto, como un título, o un valor, como <code>"highlight"</code> o <code>"EUR"</code>, y el compilador no puede saber cuál es. Traducir un valor rompería el componente, así que Fudic solo traduce lo que tú marcas.</p>
+
+<p>Se marca con <code>t()</code>, de <code>@@fudic/i18n</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-cart/myapp-cart.fud"&gt;
+
+@@code &#123;
+  import &#123; t &#125; from "@@fudic/i18n";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-cart .title=@@t("Your cart")&gt;&lt;/myapp-cart&gt;</code></pre>
+</ui-code>
+
+<p>Ejecuta <code>npx fudic translate</code>. Ahora encuentra un mensaje más:</p>
+
+<pre class="output"><code>  modify  src/locales/en/routes/index.json
+  modify  src/locales/es/routes/index.json
+  en  5 messages · 1 new · 0 to review · 0 untranslated
+  es  5 messages · 1 new · 0 to review · 1 untranslated</code></pre>
+
+<p>Dale <code>"translation": "Tu carrito"</code> en <code>src/locales/es/routes/index.json</code> y recarga <code>/es/</code>. El título sale en español.</p>
+
+<p>Lo que hace <code>t()</code>:</p>
+
+<ul>
+  <li><strong>Marca el texto para <code>fudic translate</code></strong>, que lo añade al catálogo de la página que lo escribe.</li>
+  <li><strong>Desaparece al compilar.</strong> Cada página se compila una vez por idioma, y en cada versión <code>t("Your cart")</code> se sustituye por el texto ya traducido. En el navegador no queda ninguna llamada.</li>
+  <li><strong>Recibe siempre un string escrito tal cual.</strong> <code>fudic translate</code> lee el código sin ejecutarlo, así que con una variable, <code>t(label)</code>, no hay texto que extraer.</li>
+</ul>
+
+<p>Prueba lo último: escribe <code>const label = "Your cart";</code> en el <code>@@code</code> y <code>.title=@@t(label)</code>. La página responde <code>500</code>, y la terminal de <code>fudic dev</code> dice por qué:</p>
+
+<pre class="output"><code>  my-app   src/routes/index.fud:14:23 - error FUD1020: `t()` takes a string literal as its first argument: a computed message cannot be extracted or translated</code></pre>
+
+<p>Vuelve a <code>t("Your cart")</code> antes de ejecutar otra vez <code>fudic translate</code>. Con la variable, el mensaje deja de existir y se borra del catálogo con su traducción.</p>
+
+<p>En la vista no hace falta <code>t()</code>, porque el texto que se pinta ya se traduce solo. Fuera de ella sí: en una prop, como aquí, y en un módulo <code>.ts</code>, donde además admite huecos. Los dos casos están en <a href="/docs/i18n/code">Textos en el código</a>, y los plurales y <code>select</code>, en <a href="/docs/i18n/catalogs">Los catálogos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/plurals-and-formats" target="_blank" rel="noopener">la solución de Plurales, moneda y t(), en GitHub</a>. Compara tus dos catálogos del carrito y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/localized-urls", prevTitle: "URLs con idioma y un selector", next: "/tutorials/", nextTitle: "Todas las categorías")

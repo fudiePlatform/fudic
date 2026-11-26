@@ -1,0 +1,28 @@
+{
+  "myapp-cart": {
+    "eece6fbd": {
+      "source": "Add a coffee",
+      "translation": "Añadir un café",
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 0
+    },
+    "51ad0f51": {
+      "source": "{n} coffees in the cart",
+      "translation": "{n, plural, =0 {El carrito está vacío} one {# café en el carrito} other {# cafés en el carrito}}",
+      "holes": {
+        "n": "n()"
+      },
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 1
+    },
+    "7c1eeeb1": {
+      "source": "Total: {arg1}",
+      "translation": "Total: {arg1}",
+      "holes": {
+        "arg1": "n() * 1.2 | euros"
+      },
+      "where": "src/components/myapp-cart/myapp-cart.fud",
+      "at": 2
+    }
+  }
+}
