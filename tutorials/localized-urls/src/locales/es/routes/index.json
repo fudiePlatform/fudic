@@ -1,0 +1,10 @@
+{
+  "routes/index.fud": {
+    "3c9be967": {
+      "source": "Home",
+      "translation": "Inicio",
+      "where": "src/routes/index.fud",
+      "at": 0
+    }
+  }
+}

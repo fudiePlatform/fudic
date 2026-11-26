@@ -264,4 +264,4 @@ test('answers /es/ in Spanish', async () =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/two-languages" target="_blank" rel="noopener">la solución de Tu app en dos idiomas, en GitHub</a>. Compara tu catálogo de español y tu <code>fudic.json</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/server-di", prevTitle: "Proveedores en el servidor, por petición", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/server-di", prevTitle: "Proveedores en el servidor, por petición", next: "/tutorials/localized-urls", nextTitle: "URLs con idioma y un selector")

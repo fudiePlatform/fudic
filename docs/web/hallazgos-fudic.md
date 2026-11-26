@@ -1347,8 +1347,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   responde `302` hacia `/es/` o `/en/` según `Accept-Language`, así que la ruta existe; lo que pasa
   es que `visit` busca la ruta sin prefijo (`matchRouteBuild` en `packages/testing/src/visit.ts:72`)
   y no sabe nada de los idiomas. `visit('/en/')` y `visit('/es/')` funcionan, cada una en su idioma.
-- **Cómo se resolvió en el tutorial.** El último paso cambia el test por dos, uno por idioma, y lo
-  explica.
+- **Cómo se resolvió en el tutorial.** El último paso de `two-languages` cambia el test por dos,
+  uno por idioma, y lo explica. **Vuelto a comprobar** con `localized-urls` (2026-11-26): el test de
+  `fudic g page about` falla igual con `visit('/about')`.
 - **Qué debería hacer.** Que `visit('/')` en una app con varios idiomas diga lo mismo que con
   cualquier otra redirección («redirected … to /en/ — visit that URL instead»), o que acepte el
   idioma del navegador como opción. Y que `fudic add i18n` reescriba los tests de las rutas que ya
@@ -1364,7 +1365,7 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   página se pide por primera vez cuando el catálogo ya existe, todo funciona desde el principio.
 - **Por qué, probablemente.** El módulo de la página no registra como dependencia un catálogo
   que no existe al compilarla, así que Vite no lo invalida cuando aparece.
-- **Cómo se resolvió en el tutorial.** `two-languages` reinicia `fudic dev` después de traducir,
-  y lo explica.
+- **Cómo se resolvió en el tutorial.** `two-languages` y `localized-urls` reinician `fudic dev`
+  después de traducir, y lo explican.
 - **Qué debería hacer.** Vigilar `src/locales/` entero, o al menos la ruta del catálogo de cada
   fichero fuente aunque aún no exista, e invalidar la página cuando se cree.

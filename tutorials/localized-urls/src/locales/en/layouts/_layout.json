@@ -1,0 +1,10 @@
+{
+  "layouts/_layout.fud": {
+    "a7b1dc72": {
+      "source": "<0>Home</0> · <1>About us</1>",
+      "translation": "<0>Home</0> · <1>About us</1>",
+      "where": "src/layouts/_layout.fud",
+      "at": 0
+    }
+  }
+}

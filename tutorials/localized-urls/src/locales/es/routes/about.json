@@ -1,0 +1,10 @@
+{
+  "routes/about.fud": {
+    "c2c4bc05": {
+      "source": "About",
+      "translation": "Quiénes somos",
+      "where": "src/routes/about.fud",
+      "at": 0
+    }
+  }
+}

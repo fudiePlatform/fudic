@@ -1,0 +1,180 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>URLs con idioma y un selector · Tutoriales de Fudic</title>
+  <meta name="description" content="En una app de Fudic con dos idiomas, escribe los enlaces una vez para todos, añade un selector de idioma con translate=&quot;no&quot; y mira cómo la dirección sin prefijo elige el idioma del navegador.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/localized-urls">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="URLs con idioma y un selector · Tutoriales de Fudic">
+  <meta property="og:description" content="Enlaces que siguen al idioma de la página y un selector para cambiarlo.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/localized-urls">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render i18nNav("localized-urls")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una segunda página</a></li>
+        <li><a href="#links">2. Enlaces que siguen al idioma</a></li>
+        <li><a href="#switcher">3. Un selector de idioma</a></li>
+        <li><a href="#translate">4. Traduce el menú</a></li>
+        <li><a href="#redirect">5. La dirección sin prefijo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Internacionalización</span></p>
+
+<h1>URLs con idioma y un selector</h1>
+
+<p class="lede">Haces un menú que se escribe una vez y en cada idioma lleva a las páginas de ese idioma, y un selector para pasar de uno a otro.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Escribir enlaces que reciben solos el prefijo del idioma de la página.</li>
+    <li>Hacer un selector de idioma con <code>lang</code> y <code>translate="no"</code>.</li>
+    <li>Saber a qué idioma lleva la dirección sin prefijo.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Usa <code>fudic translate</code> y los catálogos, que cuenta <a href="/tutorials/two-languages">Tu app en dos idiomas</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una segunda página</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic add i18n --locales en,es
+npx fudic g page about</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/about.fud
+  create  src/routes/about.test.ts</code></pre>
+
+<p>La app tiene dos idiomas, inglés el del código, y dos páginas, la portada y <code>about</code>. Cada página existe una vez por idioma, bajo su prefijo: <code>src/routes/about.fud</code> se sirve como <code>/en/about</code> y como <code>/es/about</code>. La ruta no cambia; Fudic pone el prefijo.</p>
+
+<h2 id="links">2. Enlaces que siguen al idioma</h2>
+
+<p>Escribe un menú en el layout, con enlaces normales que empiezan por <code>/</code>. Quita también el <code>lang="en"</code> del <code>&lt;html&gt;</code>, para que cada página lleve el de su idioma:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;header&gt;
+      &lt;nav&gt;&lt;a href="/"&gt;Home&lt;/a&gt; · &lt;a href="/about"&gt;About us&lt;/a&gt;&lt;/nav&gt;
+    &lt;/header&gt;
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p>Arranca el servidor con <code>npx fudic dev</code>, abre <code>http://localhost:5173/es/about</code> y mira el código fuente. El menú no lleva a <code>/about</code>:</p>
+
+<pre class="output"><code>&lt;html lang="es"&gt;
+&lt;nav&gt;&lt;a href="/es/"&gt;Home&lt;/a&gt; · &lt;a href="/es/about"&gt;About us&lt;/a&gt;&lt;/nav&gt;</code></pre>
+
+<p>Un enlace que empieza por <code>/</code> recibe el prefijo de la página en que está. En <code>/en/about</code>, el mismo menú lleva a <code>/en/</code> y a <code>/en/about</code>. Escribes los enlaces una vez, y quien entra en español sigue en español al navegar.</p>
+
+<h2 id="switcher">3. Un selector de idioma</h2>
+
+<p>Para cambiar de idioma hace falta lo contrario: un enlace que lleve a otro prefijo. Un enlace que ya lleva prefijo se queda como está. Añade el selector debajo del menú:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>    &lt;header&gt;
+      &lt;nav&gt;&lt;a href="/"&gt;Home&lt;/a&gt; · &lt;a href="/about"&gt;About us&lt;/a&gt;&lt;/nav&gt;
+      &lt;p translate="no"&gt;&lt;a href="/es/" lang="es"&gt;Español&lt;/a&gt; · &lt;a href="/en/" lang="en"&gt;English&lt;/a&gt;&lt;/p&gt;
+    &lt;/header&gt;</code></pre>
+</ui-code>
+
+<p>Recarga <code>/es/about</code>. Los dos enlaces del selector salen tal cual, sin un segundo prefijo:</p>
+
+<pre class="output"><code>&lt;p translate="no"&gt;&lt;a href="/es/" lang="es"&gt;Español&lt;/a&gt; · &lt;a href="/en/" lang="en"&gt;English&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<p>El nombre de cada idioma se escribe en ese idioma, porque quien busca el español busca «Español», no «Spanish». Por eso lleva dos atributos estándar de HTML:</p>
+
+<ul>
+  <li><strong><code>translate="no"</code></strong> dice que ese trozo no se traduce. Sin él, el inglés del código haría de «Español» un mensaje más, y en <code>/es/</code> acabaría traducido. Con él, Fudic no lo extrae, y tampoco lo tocan los traductores del navegador. Vale para todo el elemento y lo que tiene dentro.</li>
+  <li><strong><code>lang</code></strong> dice en qué idioma está cada nombre, para que el lector de pantalla diga «English» con la voz inglesa aunque la página esté en español.</li>
+</ul>
+
+<h2 id="translate">4. Traduce el menú</h2>
+
+<ui-code>
+<pre><code>npx fudic translate</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/locales/en/layouts/_layout.json
+  create  src/locales/en/routes/about.json
+  create  src/locales/en/routes/index.json
+  create  src/locales/es/layouts/_layout.json
+  create  src/locales/es/routes/about.json
+  create  src/locales/es/routes/index.json
+  en  3 messages · 3 new · 0 to review · 0 untranslated
+  es  3 messages · 3 new · 0 to review · 3 untranslated</code></pre>
+
+<p>Tres mensajes, uno por fichero. En cada página, el <code>&lt;title&gt;</code> y el <code>&lt;h1&gt;</code> dicen lo mismo, y un texto repetido en el mismo fichero se traduce una sola vez. El del layout es el menú entero, con sus dos enlaces como etiquetas. El selector no está: lo dejó fuera <code>translate="no"</code>. Traduce el del layout:</p>
+
+<ui-code .path="src/locales/es/layouts/_layout.json">
+<pre><code>&#123;
+  "layouts/_layout.fud": &#123;
+    "a7b1dc72": &#123;
+      "source": "&lt;0&gt;Home&lt;/0&gt; · &lt;1&gt;About us&lt;/1&gt;",
+      "translation": "&lt;0&gt;Inicio&lt;/0&gt; · &lt;1&gt;Quiénes somos&lt;/1&gt;",
+      "where": "src/layouts/_layout.fud",
+      "at": 0
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Las etiquetas <code>&lt;0&gt;</code> y <code>&lt;1&gt;</code> son los dos <code>&lt;a&gt;</code>. Sus <code>href</code> no viajan al catálogo, así que quien traduce no puede romper un enlace. Rellena igual los otros dos: <code>"translation": "Inicio"</code> en <code>src/locales/es/routes/index.json</code> y <code>"translation": "Quiénes somos"</code> en <code>src/locales/es/routes/about.json</code>.</p>
+
+<p>Reinicia <code>fudic dev</code>, porque no ve los catálogos que se crearon después de arrancar, y abre <code>/es/about</code>:</p>
+
+<pre class="output"><code>&lt;title&gt;Quiénes somos&lt;/title&gt;
+&lt;nav&gt;&lt;a href="/es/"&gt;Inicio&lt;/a&gt; · &lt;a href="/es/about"&gt;Quiénes somos&lt;/a&gt;&lt;/nav&gt;
+&lt;p translate="no"&gt;&lt;a href="/es/" lang="es"&gt;Español&lt;/a&gt; · &lt;a href="/en/" lang="en"&gt;English&lt;/a&gt;&lt;/p&gt;
+&lt;h1&gt;Quiénes somos&lt;/h1&gt;</code></pre>
+
+<p>El menú está en español y el selector sigue igual. Pulsa <strong>English</strong> y llegas a <code>/en/</code>, con el menú en inglés y sus enlaces a <code>/en/…</code>.</p>
+
+<h2 id="redirect">5. La dirección sin prefijo</h2>
+
+<p>Queda <code>/about</code>, sin idioma, que es lo que alguien escribe a mano o lo que enlaza otra web. Pídela como lo haría un navegador configurado en español de México:</p>
+
+<ui-code>
+<pre><code>curl -i http://localhost:5173/about -H "Accept-Language: es-MX,es;q=0.9"</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 302 Found
+vary: Accept-Language
+location: /es/about</code></pre>
+
+<p>El navegador dice qué idiomas prefiere en la cabecera estándar <code>Accept-Language</code>, y Fudic elige el que mejor encaja: el mismo idioma y región, después el mismo idioma y, si no hay ninguno, el primero de <code>locales</code>. Con <code>fr-FR</code>, la misma petición lleva a <code>/en/about</code>, porque no hay francés y el inglés va primero. Una dirección con prefijo nunca redirige: <code>/en/about</code> responde <code>200</code> aunque el navegador prefiera el español, porque quien la pidió eligió ese idioma.</p>
+
+<p>Como en <a href="/tutorials/two-languages">Tu app en dos idiomas</a>, los tests que generó la CLI visitan <code>/</code> y <code>/about</code> sin prefijo y fallan. Los de la solución visitan <code>/en/</code>, <code>/es/</code> y <code>/es/about</code>. Lo que no recibe prefijo, como un enlace a un fichero, está en <a href="/docs/i18n/urls">Idiomas y URLs</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/localized-urls" target="_blank" rel="noopener">la solución de URLs con idioma y un selector, en GitHub</a>. Compara tu layout y tu catálogo del layout con los suyos.</p>
+
+@render pager(prev: "/tutorials/two-languages", prevTitle: "Tu app en dos idiomas", next: "/tutorials/", nextTitle: "Todas las categorías")
