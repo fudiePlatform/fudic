@@ -1,0 +1,3 @@
+# The global chain: every function of the app goes through it, before its file's chain.
+chain
+  use maintenance

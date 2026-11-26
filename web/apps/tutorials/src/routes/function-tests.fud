@@ -28,6 +28,7 @@
         <li><a href="#call">2. Llama a la función desde el test</a></li>
         <li><a href="#page">3. Prueba la página con un clic</a></li>
         <li><a href="#fail">4. Haz que el servidor falle</a></li>
+        <li><a href="#global">5. Prueba la cadena de toda la app</a></li>
         <li><a href="#solution">Solución</a></li>
       </ul>
   </ui-toc>
@@ -45,6 +46,7 @@
     <li>Llamar a una función de servidor desde un test, con su middleware ejecutándose de verdad.</li>
     <li>Probar la página que la usa: el clic, la respuesta y el error.</li>
     <li>Simular una respuesta del servidor con <code>fetch</code> y <code>respondProblem</code>.</li>
+    <li>Probar un middleware de la cadena global, la que pasa por todas las funciones de la app.</li>
   </ul>
   <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
 </section>
@@ -186,16 +188,65 @@ test('the page says why when the server refuses', async () =&gt; &#123;
 &#125;);</code></pre>
 </ui-code>
 
-<p>Añade <code>respondProblem</code> al <code>import</code> de <code>@@fudic/testing</code> y ejecuta los tests:</p>
+<p>Añade <code>respondProblem</code> al <code>import</code> de <code>@@fudic/testing</code>.</p>
+
+<h2 id="global">5. Prueba la cadena de toda la app</h2>
+
+<p><code>use auth</code> vale para las funciones de un fichero. La cadena de <code>src/http.fudapi</code> vale para todas las de la app, y se ejecuta antes. Crea una que cierre la app por mantenimiento:</p>
+
+<ui-code .path="src/http.fudapi">
+<pre><code># The global chain: every function of the app goes through it, before its file's chain.
+chain
+  use maintenance</code></pre>
+</ui-code>
+
+<ui-code .path="src/middlewares/maintenance.fudapi">
+<pre><code># Refuses every call while the app is closed for maintenance.
+middleware maintenance
+  server</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/status.ts">
+<pre><code>// Whether the app is closed for maintenance. Today a constant; tomorrow, a setting.
+export function isClosed() &#123;
+  return false;
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/maintenance.ts">
+<pre><code>import &#123; HttpError &#125; from '@@fudic/http';
+import &#123; maintenance &#125; from 'fudic:middlewares/maintenance';
+import &#123; isClosed &#125; from './status';
+
+maintenance.server((ctx, next) =&gt; &#123;
+  if (isClosed()) throw new HttpError(&#123; status: 503, title: 'Service Unavailable', detail: 'Back in five minutes.' &#125;);
+  return next(ctx);
+&#125;);</code></pre>
+</ui-code>
+
+<p>Para probar la app cerrada, el test simula <code>isClosed</code>. Va en un fichero propio, porque <code>vi.mock</code> cambia el módulo en todo el fichero, y los tests de antes necesitan la app abierta:</p>
+
+<ui-code .path="src/routes/maintenance.test.ts">
+<pre><code>import &#123; expect, test, vi &#125; from 'vitest';
+import &#123; login &#125; from 'fudic:routes/index';
+
+vi.mock('../server/status', () =&gt; (&#123; isClosed: () =&gt; true &#125;));
+
+test('while the app is closed, every function answers 503, even login', async () =&gt; &#123;
+  await expect(login(&#123; user: 'ana' &#125;)).rejects.toMatchObject(&#123; status: 503, message: 'Back in five minutes.' &#125;);
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>login</code> se salta <code>auth</code> con <code>skip auth</code>, pero no la cadena global, que va antes. Los tests de antes siguen pasando, porque en su fichero <code>isClosed</code> devuelve <code>false</code>.</p>
 
 <ui-code>
 <pre><code>npx fudic test</code></pre>
 </ui-code>
 
-<pre class="output"><code> Test Files  2 passed (2)
-      Tests  7 passed (7)
+<pre class="output"><code> Test Files  3 passed (3)
+      Tests  8 passed (8)
 
-fudic test · 1 project · passed · 5.1 s</code></pre>
+fudic test · 1 project · passed · 6.9 s</code></pre>
 
 <p>Las funciones del <code>.fudapi</code> de un componente se prueban igual, con <code>mount</code> en vez de <code>visit</code>. Lo cuenta <a href="/docs/testing/unit">Tests unitarios</a>.</p>
 
