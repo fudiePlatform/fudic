@@ -120,7 +120,7 @@
   <details class="toggle"><summary>Tutoriales de Rutas y layouts</summary></details>
   <ol class="tutorial-list">
     @render tutorial("pages-and-layout", "Páginas y un layout", "beginner", @current)
-    @render tutorial("dynamic-routes", "Rutas con parámetro", "beginner", @current, false)
+    @render tutorial("dynamic-routes", "Rutas con parámetro", "beginner", @current)
     @render tutorial("error-page", "Tu página de error", "beginner", @current, false)
     @render tutorial("route-data", "Datos del servidor para la página", "intermediate", @current, false)
     @render tutorial("alternate-layouts", "Varios layouts", "intermediate", @current, false)

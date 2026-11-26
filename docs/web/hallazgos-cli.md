@@ -150,8 +150,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `file-upload`, `form-events`, `form-control`, `custom-rules`), el 2026-11-25: el `href` frágil y
   los títulos «First-form», «Validation», «Submitting», «File-upload», «Form-events»,
   «Form-control» y «Custom-rules», corregidos a mano: los siete de la categoría.
-- **Y otra vez** con los tutoriales de Rutas y layouts (`pages-and-layout`), el 2026-11-26: el
-  `href` frágil y el título «Pages-and-layout», corregidos a mano.
+- **Y otra vez** con los tutoriales de Rutas y layouts (`pages-and-layout`, `dynamic-routes`), el
+  2026-11-26: el `href` frágil y los títulos «Pages-and-layout» y «Dynamic-routes», corregidos a
+  mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -360,6 +361,12 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** El tutorial pone `pnpm install` justo después de `fudic g api`.
 - **Qué debería hacer.** Instalarla, como hace `fudic new` salvo con `--no-install`, o al menos
   terminar con un `Next  pnpm install`.
+- **Y otra vez** con `fudic g page blog/:slug --server`, en el tutorial `dynamic-routes`
+  (2026-11-26), con una diferencia: aquí la CLI **sí instala** `@fudic/http` (aparece en
+  `node_modules` sin hacer nada más), pero su salida acaba en `modify  package.json` y no lo
+  dice. La página de la Documentación (`/docs/cli/generate/page`) enseña la línea
+  `run     pnpm install (in .)`, que la CLI no escribe. El tutorial no pide `pnpm install`.
+  Queda por comprobar si `g api` también instala en silencio.
 
 ## 25. `fudic g style` deja la hoja en la raíz del proyecto
 

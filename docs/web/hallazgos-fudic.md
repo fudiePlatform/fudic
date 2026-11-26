@@ -1138,3 +1138,15 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   enseñar al usuario el mensaje del error.
 - **Qué debería hacer.** Escribir en la terminal cada excepción no recogida de un handler, con su
   pila, en desarrollo y en la preview.
+
+## 79. `@fudic/http` publica sus `.map` sin los fuentes, y Vite avisa en cada arranque
+
+- **Qué pasó.** Escribiendo el tutorial `dynamic-routes` (2026-11-26), en una app con
+  `@fudic/http` instalado desde su tarball, `fudic dev` escribe al cargar la primera página con
+  datos: «Sourcemap for ".../@fudic/http/browser/middlewares.js" points to missing source files», y
+  lo mismo con `server/middlewares.js`. Sus `.map` apuntan a `../impl/browser/middlewares.ts`, y
+  `impl/` no está en el `files` de `packages/http/package.json`.
+- **Cómo se resolvió en el tutorial.** No se enseña: el tutorial muestra solo las líneas del error
+  que explica. El aviso le saldrá igual a quien lo siga.
+- **Qué debería hacer.** Publicar `impl/` junto a los `.map`, o no publicar los `.map` de esos dos
+  módulos.
