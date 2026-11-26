@@ -717,7 +717,7 @@
 .home .category {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   gap: var(--guide-space-2);
   margin: 0;
   padding: var(--guide-space-5);
@@ -794,3 +794,71 @@
   font-style: italic;
   color: var(--guide-muted);
 }
+
+/* The picture of a card goes first, though it follows the title in the markup: the title is what
+   a screen reader meets first, and the picture is decorative. Its SVG takes every colour from the
+   tokens, so it follows the theme; the code in it is on slate in both modes, like every code block.
+   A category still on its way shows its picture faded. */
+
+.home .category .art {
+  order: -1;
+  aspect-ratio: 240 / 132;
+  margin: 0 0 var(--guide-space-2);
+  overflow: hidden;
+  background: var(--guide-surface);
+  border: 1px solid var(--guide-rule);
+  border-radius: var(--guide-radius-md);
+}
+
+.home .category .art svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home .category:not(:has(a)) .art svg {
+  opacity: 0.55;
+}
+
+.art .ln { fill: none; stroke: var(--guide-line); stroke-width: 1.5; }
+.art .rl { fill: none; stroke: var(--guide-rule); stroke-width: 1.5; }
+.art .ac { fill: none; stroke: var(--guide-accent); stroke-width: 2; }
+.art .dash { stroke-dasharray: 4 4; }
+.art .halo { opacity: 0.35; }
+.art .fa { fill: var(--guide-accent); }
+.art .fb { fill: var(--guide-brand); }
+.art .fr { fill: var(--guide-raised); stroke: var(--guide-rule); stroke-width: 1; }
+.art .fs { fill: var(--guide-surface); stroke: var(--guide-line); stroke-width: 1; }
+.art .fi { fill: var(--guide-ink); }
+.art .fm { fill: var(--guide-rule); }
+.art .ok { fill: var(--guide-success); }
+.art .cursor { stroke: var(--guide-surface); stroke-width: 1.5; }
+.art .field { fill: var(--guide-surface); }
+.art .sok { fill: none; stroke: var(--guide-success); stroke-width: 1.5; }
+.art .sko { fill: none; stroke: var(--guide-danger); stroke-width: 1.5; }
+.art .sko.field { fill: var(--guide-surface); }
+.art .sok.field { fill: var(--guide-surface); }
+.art .thick { stroke-width: 2; }
+.art .tick { fill: none; stroke: var(--guide-on-accent); stroke-width: 3; }
+.art .gauge { fill: none; stroke: var(--guide-success); stroke-width: 7; }
+.art .code { fill: var(--guide-code-surface); stroke: var(--guide-code-rule); stroke-width: 1; }
+
+.art text { font-family: var(--guide-font-sans); font-size: 10px; fill: var(--guide-ink); }
+.art .mono { font-family: var(--guide-font-mono); font-size: 9px; }
+.art .pre { white-space: pre; }
+.art .small { font-size: 8.5px; }
+.art .tiny { font-size: 8px; }
+.art .big { font-size: 18px; }
+.art .score { font-size: 24px; font-weight: var(--guide-weight-bold); }
+.art .strong { font-weight: var(--guide-weight-bold); }
+.art .ct { fill: var(--guide-code-ink); }
+.art .cm { fill: var(--guide-code-muted); }
+.art .cc { fill: var(--guide-code-accent); }
+.art .cs { fill: var(--guide-code-string); }
+.art .tm { fill: var(--guide-muted); }
+.art .ta { fill: var(--guide-accent); }
+.art .tok { fill: var(--guide-success); }
+.art .tko { fill: var(--guide-danger); }
+.art .ton { fill: var(--guide-on-accent); font-weight: var(--guide-weight-bold); }

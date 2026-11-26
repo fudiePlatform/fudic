@@ -1,0 +1,25 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  async function signIn() {
+    await login({ user: "Ana" });
+  }
+
+  async function signOut() {
+    await logout();
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+@if (data.user !== "") {
+  <p>Hello, @data.user.</p>
+  <button type="button" @click=@signOut>Sign out</button>
+} else {
+  <p>Nobody is signed in.</p>
+  <button type="button" @click=@signIn>Sign in as Ana</button>
+}

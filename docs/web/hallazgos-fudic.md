@@ -784,6 +784,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Y otra vez** en el tutorial `snippets` (2026-11-25), ya en el proyecto de un usuario: el test de
   un `row(label, value)` que pinta `<dt>` y `<dd>` avisa `FUD1440: <dt> is styled by the guide's
   "dl"` (y lo mismo con `<dd>`) en `pnpm test`. `fudic dev`, el build y el editor no avisan.
+- **Vuelto a comprobar** (2026-11-26) con las imágenes de la portada de tutoriales: el test de
+  `categoryArt` en `apps/tutorials/src/snippets/home.fud` avisa `FUD1440: <svg> is styled by the
+  guide's "svg", which this component does not adopt` en cada uno de sus 16 `<svg>` en línea.
 
 ## 55. Los ejemplos de código no se colorean (pospuesto, después de todos los hallazgos)
 

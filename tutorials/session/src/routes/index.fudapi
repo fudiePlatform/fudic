@@ -1,0 +1,12 @@
+# Who is in: the name in the session cookie, or "" for nobody.
+load
+  user  str
+
+# Signs in as `user`: the session cookie holds the name.
+post login
+  invalidates /
+  user  str
+
+# Signs out: the cookie goes.
+post logout
+  invalidates /

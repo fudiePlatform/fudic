@@ -1,5 +1,5 @@
 <link rel="layout" href="@web/ui/layouts/home.fud">
-<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="snippet" href="../snippets/home.fud">
 
 <head>
   <title>Tutoriales de Fudic: aprende haciéndolo</title>
@@ -25,20 +25,20 @@
 </ul>
 
 <ol class="categories">
-  @render category("Primeros pasos", "Crea una app, tu primer componente, y deja que el editor te ayude.", 3, true, false, false, "/tutorials/first-app")
-  @render category("Sintaxis de plantilla", "Valores, condiciones, listas, props, slots y snippets dentro de un .fud.", 11, true, true, false, "/tutorials/expressions")
-  @render category("Eventos", "Clics, delegación y un bus para que los componentes hablen entre sí.", 4, true, true, false, "/tutorials/events")
-  @render category("Reactividad", "Signals, el ciclo de vida de un componente y la hidratación.", 7, true, true, true, "/tutorials/signals")
-  @render category("Estilos", "El CSS de un componente, el tema global y tu guía de estilos.", 3, true, true, false, "/tutorials/scoped-styles")
-  @render category("Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true, "/tutorials/pages-and-layout")
-  @render category("Formularios", "Binding, validación, envío, ficheros y controles propios.", 7, true, true, true, "/tutorials/first-form")
-  @render category("Servidor", "Funciones de servidor y task, una API, middlewares, pipes y sesión.", 9, false, true, true, "/tutorials/server-functions")
-  @render category("Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true)
-  @render category("Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false)
-  @render category("Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true)
-  @render category("Seguridad", "Cabeceras de seguridad, Content Security Policy y Trusted Types.", 3, false, true, true)
-  @render category("Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true)
-  @render category("Tests", "Tests unitarios, criterios en .fudspec, flujos e historial.", 6, true, true, true)
-  @render category("Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true)
-  @render category("Agentes", "Construye con tu agente y el MCP de Fudic.", 1, false, true, false)
+  @render category("first-steps", "Primeros pasos", "Crea una app, tu primer componente, y deja que el editor te ayude.", 3, true, false, false, "/tutorials/first-app")
+  @render category("template-syntax", "Sintaxis de plantilla", "Valores, condiciones, listas, props, slots y snippets dentro de un .fud.", 11, true, true, false, "/tutorials/expressions")
+  @render category("events", "Eventos", "Clics, delegación y un bus para que los componentes hablen entre sí.", 4, true, true, false, "/tutorials/events")
+  @render category("reactivity", "Reactividad", "Signals, el ciclo de vida de un componente y la hidratación.", 7, true, true, true, "/tutorials/signals")
+  @render category("styles", "Estilos", "El CSS de un componente, el tema global y tu guía de estilos.", 3, true, true, false, "/tutorials/scoped-styles")
+  @render category("routes", "Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true, "/tutorials/pages-and-layout")
+  @render category("forms", "Formularios", "Binding, validación, envío, ficheros y controles propios.", 7, true, true, true, "/tutorials/first-form")
+  @render category("server", "Servidor", "Funciones de servidor y task, una API, middlewares, pipes y sesión.", 9, false, true, true, "/tutorials/server-functions")
+  @render category("dependency-injection", "Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true)
+  @render category("i18n", "Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false)
+  @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true)
+  @render category("security", "Seguridad", "Cabeceras de seguridad, Content Security Policy y Trusted Types.", 3, false, true, true)
+  @render category("performance", "Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true)
+  @render category("tests", "Tests", "Tests unitarios, criterios en .fudspec, flujos e historial.", 6, true, true, true)
+  @render category("project", "Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true)
+  @render category("agents", "Agentes", "Construye con tu agente y el MCP de Fudic.", 1, false, true, false)
 </ol>

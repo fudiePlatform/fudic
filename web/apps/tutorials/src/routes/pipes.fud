@@ -192,4 +192,4 @@ test('initials takes the first letter of each word, in upper case', () =&gt; &#1
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/pipes" target="_blank" rel="noopener">la solución de Los pipes de Fudic, y uno propio, en GitHub</a>. Compara tu <code>src/pipes/</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/middlewares", prevTitle: "Un middleware de login", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/middlewares", prevTitle: "Un middleware de login", next: "/tutorials/session", nextTitle: "Sesión con una cookie")

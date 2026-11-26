@@ -1,0 +1,213 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Sesión con una cookie · Tutoriales de Fudic</title>
+  <meta name="description" content="Pinta la página de Fudic con el usuario de la cookie de sesión desde la primera petición, mira que la respuesta sale privada, y entra y sal con invalidates para que se repinte sin recargar.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/session">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Sesión con una cookie · Tutoriales de Fudic">
+  <meta property="og:description" content="La página sabe quién entra, su respuesta es privada y se repinta al entrar y salir.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/session">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("session")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#read">2. La página sabe quién entra</a></li>
+        <li><a href="#private">3. Una respuesta privada</a></li>
+        <li><a href="#sign-in">4. Entrar y salir</a></li>
+        <li><a href="#invalidates">5. Que la página se repinte</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Servidor</span></p>
+
+<h1>Sesión con una cookie</h1>
+
+<p class="lede">Haces que la página salude al usuario desde la primera petición, sin esperar a ningún JavaScript, y que cambie sola al entrar y al salir.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Leer la cookie de sesión en el <code>load</code> de una página.</li>
+    <li>Saber por qué esa respuesta sale privada, y por qué no se puede pintar en el build.</li>
+    <li>Repintar la página al entrar y al salir, con <code>invalidates</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>. Una cookie de sesión leída por un middleware está en <a href="/tutorials/middlewares">Un middleware de login</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<h2 id="read">2. La página sabe quién entra</h2>
+
+<p>La sesión es una cookie que pone el servidor y que el navegador manda solo en cada petición, también en la primera. Por eso el <code>load</code> de la página la puede leer y pintar ya el nombre. Declara el usuario como un texto, vacío si no hay nadie:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Who is in: the name in the session cookie, or "" for nobody.
+load
+  user  str</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/index';
+
+load.handle((ctx) =&gt; (&#123; user: ctx.cookies.get('session') ?? '' &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+@@if (data.user !== "") &#123;
+  &lt;p&gt;Hello, @@data.user.&lt;/p&gt;
+&#125; else &#123;
+  &lt;p&gt;Nobody is signed in.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y pide la página con <code>curl</code>, primero sin cookie y después con ella:</p>
+
+<ui-code>
+<pre><code>curl -s -H "Accept: text/html" http://localhost:5173/ | grep "&lt;p&gt;"
+curl -s -H "Accept: text/html" -H "Cookie: session=Ana" http://localhost:5173/ | grep "&lt;p&gt;"</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;Nobody is signed in.&lt;/p&gt;
+&lt;p&gt;Hello, Ana.&lt;/p&gt;</code></pre>
+
+<p>El saludo llega ya en el HTML: <code>curl</code> no ejecuta JavaScript.</p>
+
+<h2 id="private">3. Una respuesta privada</h2>
+
+<p>La página de Ana no puede acabar en la pantalla de Luis. Mira las cabeceras de la respuesta:</p>
+
+<ui-code>
+<pre><code>curl -s -o /dev/null -D - -H "Accept: text/html" -H "Cookie: session=Ana" http://localhost:5173/ | grep -i cache-control</code></pre>
+</ui-code>
+
+<pre class="output"><code>cache-control: private, no-store</code></pre>
+
+<p>No lo has escrito tú: como el <code>load</code> lee las cookies, Fudic manda la respuesta como privada, y ni el navegador, ni un CDN, ni el Service Worker la guardan. Por la misma razón, la página no se puede pintar en el build, que daría el mismo HTML a todos. Prueba a pedirlo con <code>load ssg</code> y ejecuta <code>pnpm build</code>:</p>
+
+<pre class="output"><code>Error: src/routes/index.fudapi:2:1 - error FUD1300: the prerender of / reads the session: its HTML would be the same for everyone
+  2  load ssg
+     ────</code></pre>
+
+<p>Vuelve a dejarlo en <code>load</code>, sin modo.</p>
+
+<h2 id="sign-in">4. Entrar y salir</h2>
+
+<p>Dos funciones: <code>login</code> pone la cookie con <code>setCookie</code>, y <code>logout</code> la quita con <code>deleteCookie</code>, las dos de <code>@@fudic/http</code>. Añádelas al contrato:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Signs in as `user`: the session cookie holds the name.
+post login
+  user  str
+
+# Signs out: the cookie goes.
+post logout</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; deleteCookie, setCookie &#125; from '@@fudic/http';
+import &#123; load, login, logout &#125; from 'fudic:routes/index';
+
+load.handle((ctx) =&gt; (&#123; user: ctx.cookies.get('session') ?? '' &#125;));
+
+login.handle((ctx) =&gt; &#123;
+  setCookie(ctx, 'session', ctx.args.user);
+&#125;);
+
+logout.handle((ctx) =&gt; &#123;
+  deleteCookie(ctx, 'session');
+&#125;);</code></pre>
+</ui-code>
+
+<p>Y un botón para cada una en la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  async function signIn() &#123;
+    await login(&#123; user: "Ana" &#125;);
+  &#125;
+
+  async function signOut() &#123;
+    await logout();
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+@@if (data.user !== "") &#123;
+  &lt;p&gt;Hello, @@data.user.&lt;/p&gt;
+  &lt;button type="button" @@click=@@signOut&gt;Sign out&lt;/button&gt;
+&#125; else &#123;
+  &lt;p&gt;Nobody is signed in.&lt;/p&gt;
+  &lt;button type="button" @@click=@@signIn&gt;Sign in as Ana&lt;/button&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y pulsa <strong>Sign in as Ana</strong>. La llamada responde <code>204</code> y la cookie ya está en el navegador, pero la página sigue diciendo «Nobody is signed in.». Recarga y sale «Hello, Ana.». Los datos de la página se calcularon antes de entrar, y nadie le ha dicho que se han quedado viejos.</p>
+
+<h2 id="invalidates">5. Que la página se repinte</h2>
+
+<p><code>invalidates</code> dice qué páginas se quedan viejas cuando una función sale bien. Las dos cambian lo que ve <code>/</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Signs in as `user`: the session cookie holds the name.
+post login
+  invalidates /
+  user  str
+
+# Signs out: the cookie goes.
+post logout
+  invalidates /</code></pre>
+</ui-code>
+
+<p>Pulsa <strong>Sign out</strong> y después <strong>Sign in as Ana</strong>. Ahora la página cambia sola, sin recargar. En la pestaña Red verás, justo después del <code>POST</code> a <code>/_fudic/fn/routes/index/login</code>, un <code>GET</code> a <code>/_fudic/data/</code>: la página pide sus datos nuevos y se repinta con ellos.</p>
+
+<p>Esos datos también salen con <code>cache-control: private, no-store</code>. Todo funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>, también con el Service Worker activo: con otra cookie, cada recarga pinta a su usuario.</p>
+
+<p>Aquí la cookie guarda el nombre tal cual. En una app de verdad guardaría un identificador de sesión firmado. Las opciones de la cookie (sale <code>HttpOnly</code> y <code>SameSite=Lax</code> sin pedirlo, y <code>Secure</code> cuando se sirve por HTTPS) están en <a href="/docs/server/session">Sesión y cookies</a>, y <code>invalidates</code>, en <a href="/docs/server/functions">Funciones de servidor</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/session" target="_blank" rel="noopener">la solución de Sesión con una cookie, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/pipes", prevTitle: "Los pipes de Fudic, y uno propio", next: "/tutorials/", nextTitle: "Todas las categorías")

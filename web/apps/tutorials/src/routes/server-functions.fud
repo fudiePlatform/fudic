@@ -114,9 +114,7 @@ greet.handle((ctx) =&gt; `Hello, $&#123;ctx.args.name&#125;!`);</code></pre>
 &lt;p&gt;@@answer()&lt;/p&gt;</code></pre>
 </ui-code>
 
-<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code>, escribe «Ana» y pulsa <strong>Greet</strong>: debajo sale «Hello, Ana!». En la pestaña Red de las herramientas del navegador verás la petición que ha hecho Fudic por ti:</p>
-
-<pre class="output"><code>GET /_fudic/fn/routes/index/greet?name=Ana    200    application/fud+bin</code></pre>
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code>, escribe «Ana» y pulsa <strong>Greet</strong>: debajo sale «Hello, Ana!». En la pestaña Red de las herramientas del navegador verás la petición que ha hecho Fudic por ti: un <code>GET</code> a <code>/_fudic/fn/routes/index/greet?name=Ana</code>, que responde <code>200</code> con <code>application/fud+bin</code>.</p>
 
 <p>Como es un <code>get</code>, el argumento viaja en la URL. La respuesta llega en <code>fud-bin</code>, el formato binario de Fudic: solo los valores, sin los nombres de los campos, porque el navegador y el servidor ya conocen el contrato.</p>
 

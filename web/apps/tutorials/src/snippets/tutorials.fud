@@ -15,37 +15,6 @@
   </li>
 }
 
-@* A card of the home page: one category, how many tutorials it has and of which levels. Its title
-   links to the first tutorial while there is one; until then the card says it is on its way. The
-   link covers the whole card, but only the title is its name. *@
-@snippet category(title: string, summary: string, count: number, beginner: boolean, intermediate: boolean, advanced: boolean, href: string = "") {
-  <li class="category">
-    <h2>
-      @if (href !== "") {
-        <a href=@href>@title</a>
-      } else {
-        @title
-      }
-    </h2>
-    <p class="summary">@summary</p>
-    <p class="count">@(count === 1 ? "1 tutorial" : count + " tutoriales")</p>
-    <ul class="levels" aria-label="Niveles">
-      @if (beginner) {
-        <li><span class="level" data-level="beginner">Principiante</span></li>
-      }
-      @if (intermediate) {
-        <li><span class="level" data-level="intermediate">Intermedio</span></li>
-      }
-      @if (advanced) {
-        <li><span class="level" data-level="advanced">Avanzado</span></li>
-      }
-    </ul>
-    @if (href === "") {
-      <p class="soon">En preparación</p>
-    }
-  </li>
-}
-
 @snippet firstStepsNav(current: string) {
   <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
   <p class="nav-category">Primeros pasos</p>
@@ -156,7 +125,7 @@
     @render tutorial("server-types", "Tipos compartidos", "intermediate", @current)
     @render tutorial("middlewares", "Un middleware de login", "intermediate", @current)
     @render tutorial("pipes", "Los pipes de Fudic, y uno propio", "intermediate", @current)
-    @render tutorial("session", "Sesión por petición", "advanced", @current, false)
+    @render tutorial("session", "Sesión con una cookie", "advanced", @current)
     @render tutorial("live-search", "Una búsqueda que sigue a un signal", "advanced", @current, false)
     @render tutorial("production-server", "Arrancarlo en Node", "advanced", @current, false)
   </ol>

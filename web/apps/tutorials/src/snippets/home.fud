@@ -1,0 +1,272 @@
+@* A card of the home page: its picture, one category, how many tutorials it has and of which
+   levels. Its title links to the first tutorial while there is one; until then the card says it is
+   on its way. The link covers the whole card, but only the title is its name. *@
+@snippet category(art: string, title: string, summary: string, count: number, beginner: boolean, intermediate: boolean, advanced: boolean, href: string = "") {
+  <li class="category">
+    <h2>
+      @if (href !== "") {
+        <a href=@href>@title</a>
+      } else {
+        @title
+      }
+    </h2>
+    @render categoryArt(@art)
+    <p class="summary">@summary</p>
+    <p class="count">@(count === 1 ? "1 tutorial" : count + " tutoriales")</p>
+    <ul class="levels" aria-label="Niveles">
+      @if (beginner) {
+        <li><span class="level" data-level="beginner">Principiante</span></li>
+      }
+      @if (intermediate) {
+        <li><span class="level" data-level="intermediate">Intermedio</span></li>
+      }
+      @if (advanced) {
+        <li><span class="level" data-level="advanced">Avanzado</span></li>
+      }
+    </ul>
+    @if (href === "") {
+      <p class="soon">En preparación</p>
+    }
+  </li>
+}
+
+@* The picture of a card: what the category teaches, drawn with real code and real results. Inline
+   SVG so its colours are the guide's tokens and follow the theme; decorative, because the card's
+   title already says it. Every picture is 240 by 132. *@
+@snippet categoryArt(name: string) {
+  <div class="art">
+    @switch (name) {
+      case "first-steps":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="code" x="12" y="18" width="132" height="84" rx="6"></rect>
+          <circle class="cm" cx="22" cy="28" r="2.5"></circle>
+          <circle class="cm" cx="30" cy="28" r="2.5"></circle>
+          <circle class="cm" cx="38" cy="28" r="2.5"></circle>
+          <text class="mono ct" x="20" y="50"><tspan class="cc">$</tspan> npm create fudic</text>
+          <text class="mono ct" x="20" y="66"><tspan class="cc">$</tspan> fudic dev</text>
+          <text class="mono cm" x="20" y="82">localhost:5173</text>
+          <rect class="fs" x="120" y="40" width="108" height="80" rx="6"></rect>
+          <line class="rl" x1="120" y1="54" x2="228" y2="54"></line>
+          <rect class="fm" x="128" y="44" width="56" height="6" rx="3"></rect>
+          <rect class="fi" x="130" y="64" width="62" height="7" rx="3.5"></rect>
+          <rect class="fm" x="130" y="77" width="86" height="4" rx="2"></rect>
+          <rect class="fm" x="130" y="85" width="70" height="4" rx="2"></rect>
+          <rect class="fa" x="130" y="98" width="40" height="12" rx="6"></rect>
+        </svg>
+      case "template-syntax":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="code" x="12" y="18" width="142" height="96" rx="6"></rect>
+          <text class="mono cm" x="20" y="38">&lt;ul&gt;</text>
+          <text class="mono ct pre" x="20" y="54">  <tspan class="cc">@@foreach</tspan> (t of tasks) &#123;</text>
+          <text class="mono ct pre" x="20" y="70">    &lt;li&gt;<tspan class="cc">@@(</tspan><tspan class="cs">t.title</tspan><tspan class="cc">)</tspan>&lt;/li&gt;</text>
+          <text class="mono ct pre" x="20" y="86">  &#125;</text>
+          <text class="mono cm" x="20" y="102">&lt;/ul&gt;</text>
+          <path class="ac" d="M158 66 h8 m-4 -4 l4 4 l-4 4"></path>
+          <rect class="fs" x="172" y="30" width="58" height="72" rx="6"></rect>
+          <circle class="fa" cx="182" cy="46" r="3"></circle>
+          <rect class="fi" x="190" y="43" width="30" height="6" rx="3"></rect>
+          <circle class="fa" cx="182" cy="66" r="3"></circle>
+          <rect class="fi" x="190" y="63" width="24" height="6" rx="3"></rect>
+          <circle class="fa" cx="182" cy="86" r="3"></circle>
+          <rect class="fi" x="190" y="83" width="32" height="6" rx="3"></rect>
+        </svg>
+      case "events":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="ac halo" x="16" y="44" width="88" height="44" rx="22"></rect>
+          <rect class="fa" x="24" y="52" width="72" height="28" rx="14"></rect>
+          <text class="ton" x="60" y="70" text-anchor="middle">Pulsar</text>
+          <path class="fi cursor" d="M86 72 v22 l6 -5 l4 9 l5 -2 l-4 -9 l8 -1 z"></path>
+          <line class="ln dash" x1="148" y1="18" x2="148" y2="114"></line>
+          <path class="ac" d="M104 66 h40 m-5 -5 l5 5 l-5 5"></path>
+          <path class="ac" d="M148 39 h20 m-5 -5 l5 5 l-5 5"></path>
+          <path class="ac" d="M148 93 h20 m-5 -5 l5 5 l-5 5"></path>
+          <rect class="fs" x="172" y="22" width="56" height="34" rx="6"></rect>
+          <rect class="fi" x="180" y="31" width="34" height="5" rx="2.5"></rect>
+          <rect class="fm" x="180" y="41" width="40" height="5" rx="2.5"></rect>
+          <rect class="fs" x="172" y="76" width="56" height="34" rx="6"></rect>
+          <rect class="fi" x="180" y="85" width="28" height="5" rx="2.5"></rect>
+          <rect class="fm" x="180" y="95" width="40" height="5" rx="2.5"></rect>
+          <text class="mono tm small" x="148" y="128" text-anchor="middle">bus</text>
+        </svg>
+      case "reactivity":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <path class="ac" d="M74 58 C104 40, 108 39, 132 39"></path>
+          <path class="ac" d="M74 74 C104 92, 108 93, 132 93"></path>
+          <circle class="fb" cx="104" cy="45" r="3"></circle>
+          <circle class="fb" cx="104" cy="87" r="3"></circle>
+          <circle class="fa" cx="52" cy="66" r="22"></circle>
+          <text class="ton big" x="52" y="72" text-anchor="middle">3</text>
+          <text class="mono tm" x="52" y="106" text-anchor="middle">count</text>
+          <rect class="fs" x="132" y="22" width="96" height="34" rx="6"></rect>
+          <text x="142" y="43">Total: <tspan class="ta strong">3</tspan></text>
+          <rect class="fs" x="132" y="76" width="96" height="34" rx="6"></rect>
+          <text x="142" y="97">Doble: <tspan class="ta strong">6</tspan></text>
+        </svg>
+      case "styles":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="ac dash" x="14" y="16" width="130" height="100" rx="8"></rect>
+          <text class="mono ta small" x="24" y="32">#shadow-root</text>
+          <rect class="fi" x="24" y="44" width="64" height="8" rx="4"></rect>
+          <rect class="fm" x="24" y="58" width="104" height="4" rx="2"></rect>
+          <rect class="fm" x="24" y="66" width="88" height="4" rx="2"></rect>
+          <rect class="fa" x="24" y="88" width="60" height="18" rx="9"></rect>
+          <text class="ton small" x="54" y="100" text-anchor="middle">Botón</text>
+          <text class="mono tm small" x="160" y="32">fuera</text>
+          <rect class="fr" x="160" y="44" width="68" height="34" rx="4"></rect>
+          <text class="mono ta small" x="166" y="58">.btn &#123; &#125;</text>
+          <text class="mono tm small" x="166" y="70">no le llega</text>
+          <rect class="ln" x="160" y="88" width="60" height="18" rx="2"></rect>
+          <text class="small" x="190" y="100" text-anchor="middle">Botón</text>
+        </svg>
+      case "routes":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fs" x="12" y="12" width="216" height="22" rx="11"></rect>
+          <text class="mono tm" x="26" y="26">fudic.dev/posts/<tspan class="ta strong">42</tspan></text>
+          <rect class="fr" x="12" y="42" width="216" height="80" rx="6"></rect>
+          <rect class="fs" x="20" y="50" width="200" height="12" rx="3"></rect>
+          <rect class="fs" x="20" y="68" width="44" height="46" rx="3"></rect>
+          <rect class="ac dash" x="72" y="68" width="148" height="46" rx="3"></rect>
+          <text class="mono ta" x="146" y="95" text-anchor="middle">@@RenderBody()</text>
+        </svg>
+      case "forms":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fr" x="40" y="8" width="160" height="116" rx="8"></rect>
+          <text class="small" x="52" y="24">Email</text>
+          <rect class="field sok" x="52" y="29" width="136" height="18" rx="4"></rect>
+          <path class="sok" d="M172 38 l3 3 l6 -6"></path>
+          <text class="small" x="52" y="62">Contraseña</text>
+          <rect class="field sko" x="52" y="67" width="136" height="18" rx="4"></rect>
+          <text class="tko tiny" x="52" y="96">Mínimo 8 caracteres</text>
+          <rect class="fa" x="52" y="104" width="52" height="14" rx="7"></rect>
+          <text class="ton tiny" x="78" y="114" text-anchor="middle">Enviar</text>
+        </svg>
+      case "server":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fs" x="12" y="24" width="72" height="84" rx="6"></rect>
+          <line class="rl" x1="12" y1="38" x2="84" y2="38"></line>
+          <rect class="fm" x="20" y="48" width="52" height="5" rx="2.5"></rect>
+          <rect class="fm" x="20" y="58" width="40" height="5" rx="2.5"></rect>
+          <rect class="fa" x="20" y="86" width="40" height="12" rx="6"></rect>
+          <text class="mono ta" x="92" y="46">await save(t)</text>
+          <path class="ac" d="M90 54 h70 m-5 -5 l5 5 l-5 5"></path>
+          <path class="ln" d="M160 86 h-70 m5 -5 l-5 5 l5 5"></path>
+          <text class="mono tm" x="96" y="102">&#123; ok: true &#125;</text>
+          <rect class="fr" x="168" y="28" width="60" height="22" rx="4"></rect>
+          <rect class="fr" x="168" y="55" width="60" height="22" rx="4"></rect>
+          <rect class="fr" x="168" y="82" width="60" height="22" rx="4"></rect>
+          <circle class="ok" cx="178" cy="39" r="3"></circle>
+          <circle class="ok" cx="178" cy="66" r="3"></circle>
+          <circle class="ok" cx="178" cy="93" r="3"></circle>
+          <rect class="fm" x="188" y="37" width="30" height="4" rx="2"></rect>
+          <rect class="fm" x="188" y="64" width="30" height="4" rx="2"></rect>
+          <rect class="fm" x="188" y="91" width="30" height="4" rx="2"></rect>
+        </svg>
+      case "dependency-injection":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="code" x="12" y="24" width="76" height="20" rx="10"></rect>
+          <text class="mono ct" x="50" y="37" text-anchor="middle">Api</text>
+          <rect class="code" x="12" y="56" width="76" height="20" rx="10"></rect>
+          <text class="mono ct" x="50" y="69" text-anchor="middle">Logger</text>
+          <rect class="code" x="12" y="88" width="76" height="20" rx="10"></rect>
+          <text class="mono ct" x="50" y="101" text-anchor="middle">Reloj</text>
+          <path class="ac" d="M88 34 C108 34, 110 48, 132 48"></path>
+          <path class="ac" d="M88 66 H132"></path>
+          <path class="ac" d="M88 98 C108 98, 110 84, 132 84"></path>
+          <rect class="fs" x="132" y="22" width="96" height="88" rx="8"></rect>
+          <circle class="fa" cx="132" cy="48" r="4"></circle>
+          <circle class="fa" cx="132" cy="66" r="4"></circle>
+          <circle class="fa" cx="132" cy="84" r="4"></circle>
+          <text class="mono small" x="144" y="40">&lt;ui-tasks&gt;</text>
+          <text class="mono ta small" x="144" y="70">inject(Api)</text>
+          <rect class="fm" x="144" y="82" width="66" height="4" rx="2"></rect>
+          <rect class="fm" x="144" y="92" width="50" height="4" rx="2"></rect>
+        </svg>
+      case "i18n":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fs" x="12" y="14" width="104" height="104" rx="6"></rect>
+          <text class="mono ta small" x="22" y="30">/es/tareas</text>
+          <line class="rl" x1="12" y1="38" x2="116" y2="38"></line>
+          <text x="22" y="58">Tienes 3 tareas</text>
+          <text class="mono tm small" x="22" y="80">26/11/2026</text>
+          <text class="mono tm small" x="22" y="98">1.234,50 €</text>
+          <rect class="fs" x="124" y="14" width="104" height="104" rx="6"></rect>
+          <text class="mono ta small" x="134" y="30">/en/tasks</text>
+          <line class="rl" x1="124" y1="38" x2="228" y2="38"></line>
+          <text x="134" y="58">You have 3 tasks</text>
+          <text class="mono tm small" x="134" y="80">11/26/2026</text>
+          <text class="mono tm small" x="134" y="98">€1,234.50</text>
+        </svg>
+      case "service-worker":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fs" x="12" y="16" width="124" height="100" rx="6"></rect>
+          <line class="rl" x1="12" y1="30" x2="136" y2="30"></line>
+          <rect class="fi" x="22" y="40" width="64" height="7" rx="3.5"></rect>
+          <rect class="fm" x="22" y="54" width="100" height="4" rx="2"></rect>
+          <rect class="fm" x="22" y="62" width="84" height="4" rx="2"></rect>
+          <rect class="fm" x="22" y="70" width="92" height="4" rx="2"></rect>
+          <rect class="fa" x="22" y="90" width="44" height="14" rx="7"></rect>
+          <path class="ln" d="M178 50 a10 10 0 0 1 3 -19 a13 13 0 0 1 25 3 a8 8 0 0 1 2 16 z"></path>
+          <line class="sko thick" x1="174" y1="24" x2="214" y2="56"></line>
+          <path class="ac" d="M178 80 v22 a17 5 0 0 0 34 0 v-22"></path>
+          <ellipse class="ac" cx="195" cy="80" rx="17" ry="5"></ellipse>
+          <path class="ac" d="M138 92 h34 m-5 -5 l5 5 l-5 5"></path>
+          <rect class="code" x="142" y="70" width="24" height="14" rx="3"></rect>
+          <text class="mono ct tiny" x="154" y="80" text-anchor="middle">sw</text>
+        </svg>
+      case "security":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="code" x="12" y="16" width="152" height="100" rx="6"></rect>
+          <text class="mono cc small" x="22" y="36">Content-Security-Policy</text>
+          <text class="mono cs small pre" x="22" y="50">  script-src 'self'</text>
+          <text class="mono cc small" x="22" y="70">X-Content-Type-Options</text>
+          <text class="mono cs small pre" x="22" y="84">  nosniff</text>
+          <text class="mono cc small" x="22" y="104">require-trusted-types-for</text>
+          <path class="fb" d="M202 30 l26 10 v22 c0 20 -12 32 -26 40 c-14 -8 -26 -20 -26 -40 v-22 z"></path>
+          <path class="tick" d="M190 66 l8 8 l16 -16"></path>
+        </svg>
+      case "performance":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <circle class="gauge" cx="66" cy="66" r="38"></circle>
+          <text class="tok score" x="66" y="74" text-anchor="middle">100</text>
+          <rect class="code" x="124" y="36" width="104" height="60" rx="6"></rect>
+          <text class="mono cc tiny" x="132" y="54">Cache-Control</text>
+          <text class="mono cs tiny" x="132" y="70">max-age=31536000</text>
+          <text class="mono cs tiny" x="132" y="84">immutable</text>
+        </svg>
+      case "tests":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="code" x="12" y="14" width="216" height="104" rx="6"></rect>
+          <text class="mono cm" x="24" y="32">tasks.fudspec</text>
+          <text class="mono ct pre" x="24" y="54"><tspan class="cs">✓</tspan>  añade una tarea</text>
+          <text class="mono ct pre" x="24" y="70"><tspan class="cs">✓</tspan>  avisa si falta el título</text>
+          <text class="mono ct pre" x="24" y="86"><tspan class="cs">✓</tspan>  envía el formulario</text>
+          <text class="mono cs" x="24" y="106">3 criterios cumplidos</text>
+        </svg>
+      case "project":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <rect class="fs" x="28" y="16" width="76" height="34" rx="6"></rect>
+          <text class="mono" x="66" y="37" text-anchor="middle">apps/web</text>
+          <rect class="fs" x="136" y="16" width="76" height="34" rx="6"></rect>
+          <text class="mono" x="174" y="37" text-anchor="middle">apps/admin</text>
+          <path class="ac" d="M120 82 C120 66, 66 66, 66 54 m-4 5 l4 -5 l4 5"></path>
+          <path class="ac" d="M120 82 C120 66, 174 66, 174 54 m-4 5 l4 -5 l4 5"></path>
+          <rect class="code" x="82" y="82" width="76" height="34" rx="6"></rect>
+          <text class="mono cc" x="120" y="103" text-anchor="middle">libs/ui</text>
+        </svg>
+      case "agents":
+        <svg viewBox="0 0 240 132" aria-hidden="true">
+          <path class="fs" d="M12 26 a8 8 0 0 1 8 -8 h72 a8 8 0 0 1 8 8 v36 a8 8 0 0 1 -8 8 h-56 l-12 10 v-10 h-4 a8 8 0 0 1 -8 -8 z"></path>
+          <rect class="fi" x="22" y="30" width="62" height="5" rx="2.5"></rect>
+          <rect class="fm" x="22" y="41" width="52" height="5" rx="2.5"></rect>
+          <rect class="fm" x="22" y="52" width="40" height="5" rx="2.5"></rect>
+          <path class="ac" d="M104 50 h18 m-5 -5 l5 5 l-5 5"></path>
+          <rect class="fa" x="126" y="38" width="36" height="24" rx="12"></rect>
+          <text class="ton small" x="144" y="54" text-anchor="middle">MCP</text>
+          <path class="ac" d="M144 62 v14 m-5 -5 l5 5 l5 -5"></path>
+          <rect class="code" x="96" y="80" width="132" height="40" rx="6"></rect>
+          <text class="mono ct small" x="106" y="97">fudic_status <tspan class="cs">✓</tspan></text>
+          <text class="mono cm small" x="106" y="111">app, rutas, componentes</text>
+        </svg>
+    }
+  </div>
+}
