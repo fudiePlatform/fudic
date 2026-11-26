@@ -1,0 +1,202 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Varios layouts · Tutoriales de Fudic</title>
+  <meta name="description" content="Un segundo layout en tu app de Fudic, con la rejilla en un componente con slots y una sección que toda página tiene que rellenar.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/alternate-layouts">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Varios layouts · Tutoriales de Fudic">
+  <meta property="og:description" content="Cada página elige su layout, y un layout puede ser un componente con slots.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/alternate-layouts">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("alternate-layouts")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y otro layout</a></li>
+        <li><a href="#page">2. Una página con el otro layout</a></li>
+        <li><a href="#frame">3. El marco, en un componente</a></li>
+        <li><a href="#required">4. Una sección obligatoria</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Varios layouts</h1>
+
+<p class="lede">Das a las páginas de una guía un layout propio, con un menú a la izquierda, mientras el resto de la app sigue con el suyo, y pones la rejilla en un componente.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un segundo layout con <code>fudic g layout</code> y elegirlo desde una página.</li>
+    <li>Llevar la maquetación del layout a un componente, y decir en qué slot cae cada hueco.</li>
+    <li>Marcar una sección como obligatoria.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Los huecos de un layout están en <a href="/tutorials/pages-and-layout">Páginas y un layout</a>, y los slots, en <a href="/tutorials/slots">Contenido por slot</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y otro layout</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g layout docs --sections nav</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created layout docs in src/layouts/
+
+  docs.fud                the layout
+  docs.test.ts            unit test               pnpm test
+
+Use it from a page of src/routes
+  &lt;link rel="layout" href="../layouts/docs.fud"&gt;</code></pre>
+
+<p>La app ya tenía <code>_layout.fud</code>, el de la página de inicio. El nuevo, <code>docs.fud</code>, tiene un hueco <code>nav</code> antes del contenido:</p>
+
+<pre class="output"><code>  &lt;body&gt;
+    @@RenderSection(nav)
+
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;</code></pre>
+
+<h2 id="page">2. Una página con el otro layout</h2>
+
+<p>Cada página elige su layout. La CLI enlaza el más cercano, <code>_layout.fud</code>, salvo que le digas otro:</p>
+
+<ui-code>
+<pre><code>npx fudic g page guide --layout src/layouts/docs.fud</code></pre>
+</ui-code>
+
+<p>La página enlaza <code>docs.fud</code> y trae su <code>@@section nav</code> vacía. Rellénala:</p>
+
+<ui-code .path="src/routes/guide.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/docs.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Guide&lt;/title&gt;
+&lt;/head&gt;
+
+@@section nav &#123;
+  &lt;a href="/guide"&gt;Guide&lt;/a&gt;
+  &lt;a href="/"&gt;Home&lt;/a&gt;
+&#125;
+
+&lt;h1&gt;Guide&lt;/h1&gt;
+&lt;p&gt;Every page of the guide shares this frame.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/guide</code>: los dos enlaces y, debajo, la página. <code>/</code> sigue con su layout, sin menú.</p>
+
+<h2 id="frame">3. El marco, en un componente</h2>
+
+<p>Para poner el menú a la izquierda hace falta una rejilla, y su CSS no es de ninguna página. Ponla en un componente:</p>
+
+<ui-code>
+<pre><code>npx fudic g component frame --slot</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/myapp-frame/myapp-frame.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    .frame &#123;
+      display: grid;
+      grid-template-columns: 12rem 1fr;
+      gap: 2rem;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-frame&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;div class="frame"&gt;
+      &lt;nav&gt;&lt;slot name="nav"&gt;&lt;/slot&gt;&lt;/nav&gt;
+      &lt;div&gt;&lt;slot name="content"&gt;&lt;/slot&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-frame&gt;</code></pre>
+</ui-code>
+
+<p>El layout lo enlaza, lo pone en su <code>&lt;body&gt;</code> y dice en qué slot cae cada hueco:</p>
+
+<ui-code .path="src/layouts/docs.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;link rel="component" href="../components/myapp-frame/myapp-frame.fud"&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;myapp-frame&gt;
+      @@RenderSection(nav, slot: "nav")
+      @@RenderBody(slot: "content")
+    &lt;/myapp-frame&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p>Guarda: el menú queda a la izquierda, en una columna de 12rem. Abre el código fuente con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;a href="/guide" slot="nav"&gt;Guide&lt;/a&gt; &lt;a href="/" slot="nav"&gt;Home&lt;/a&gt;  &lt;h1 slot="content"&gt;Guide&lt;/h1&gt;&lt;p slot="content"&gt;Every page of the guide shares this frame.&lt;/p&gt;</code></pre>
+
+<p>Cada elemento de la página sale con su <code>slot</code>, y la página no lo ha escrito: lo pone el layout. La página no sabe qué slots tiene el marco, y su <code>&lt;h1&gt;</code> sigue en el documento, donde lo encuentran un buscador y un lector de pantalla.</p>
+
+<h2 id="required">4. Una sección obligatoria</h2>
+
+<p>Una página de la guía sin menú se queda coja. Márcalo como obligatorio en el layout:</p>
+
+<ui-code .path="src/layouts/docs.fud">
+<pre><code>      @@RenderSection(nav, required: true, slot: "nav")</code></pre>
+</ui-code>
+
+<p>Crea otra página de la guía y borra su <code>@@section nav</code>:</p>
+
+<ui-code>
+<pre><code>npx fudic g page guide/install --layout src/layouts/docs.fud</code></pre>
+</ui-code>
+
+<p>El editor subraya el <code>&lt;link rel="layout"&gt;</code> con <code>FUD0890</code>, «the layout requires the section `nav`», y <code>/guide/install</code> responde un 500. La bombilla ofrece:</p>
+
+<pre class="output"><code>Add the layout's required sections (nav)</code></pre>
+
+<p>Acéptala, o escribe tú la sección con sus enlaces, y la página vuelve. El test que escribió la CLI para el layout también falla, porque lo pinta sin <code>nav</code>. Dale la sección, y comprueba de paso los slots:</p>
+
+<ui-code .path="src/layouts/docs.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; renderLayout &#125; from '@@fudic/testing';
+import * as Docs from './docs.fud';
+
+test('puts the page and its nav in the frame', async () =&gt; &#123;
+  const page = await renderLayout(Docs, &#123;
+    body: '&lt;p&gt;Hello&lt;/p&gt;',
+    sections: &#123; nav: '&lt;a href="/"&gt;Home&lt;/a&gt;' &#125;,
+  &#125;);
+  expect(page.document.querySelector('p')).toHaveAttribute('slot', 'content');
+  expect(page.document.querySelector('a')).toHaveAttribute('slot', 'nav');
+&#125;);</code></pre>
+</ui-code>
+
+<p>Un layout con un componente, y las props que cada página le puede dar a su layout, están en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>. El comando, en <a href="/docs/cli/generate/layout">fudic generate layout</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/alternate-layouts" target="_blank" rel="noopener">la solución de Varios layouts, en GitHub</a>. Compara tu <code>docs.fud</code> y tu <code>myapp-frame.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/route-data", prevTitle: "Datos del servidor para la página", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

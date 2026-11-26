@@ -1055,6 +1055,10 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   al arrancar.
 - **Qué debería hacer.** Que el typecheck de `fudic dev` lo cuente como los demás errores, al
   guardar, y sin pila: es un error del usuario, no del compilador.
+- **Y otra vez** con `FUD0890`, en el tutorial `alternate-layouts` (2026-11-26): una página sin la
+  sección que su layout marca `required: true`. El editor lo subraya al momento, `fudic dev` solo
+  dice `page reload`, y al abrir la página da un 500 con `Error when evaluating SSR module` y la
+  pila de `@fudic/vite` y Vite.
 
 ## 73. Un `summary` en una página da un 500 sin mensaje
 

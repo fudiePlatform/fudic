@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="component" href="../components/myapp-frame/myapp-frame.fud">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @* Keep this line: fudic puts its scripts here. *@
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <myapp-frame>
+      @RenderSection(nav, required: true, slot: "nav")
+      @RenderBody(slot: "content")
+    </myapp-frame>
+  </body>
+</html>

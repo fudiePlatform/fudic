@@ -1,0 +1,12 @@
+<link rel="layout" href="../../layouts/docs.fud">
+
+<head>
+  <title>Install</title>
+</head>
+
+@section nav {
+  <a href="/guide">Guide</a>
+  <a href="/guide/install">Install</a>
+}
+
+<h1>Install</h1>

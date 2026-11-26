@@ -1,0 +1,7 @@
+component myapp-frame
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-frame

@@ -1,0 +1,18 @@
+<head>
+  <style>
+    .frame {
+      display: grid;
+      grid-template-columns: 12rem 1fr;
+      gap: 2rem;
+    }
+  </style>
+</head>
+
+<myapp-frame>
+  <template shadowrootmode="open">
+    <div class="frame">
+      <nav><slot name="nav"></slot></nav>
+      <div><slot name="content"></slot></div>
+    </div>
+  </template>
+</myapp-frame>
