@@ -10,7 +10,7 @@
   <link rel="canonical" href="https://fudic.dev/tutorials/two-languages">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Tu app en dos idiomas · Tutoriales de Fudic">
-  <meta property="og:description" content="Una página en inglés y en español, sin marcar un solo texto.">
+  <meta property="og:description" content="Una página en inglés y en español, sin marcar los textos que se traducen.">
   <meta property="og:url" content="https://fudic.dev/tutorials/two-languages">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -38,7 +38,7 @@
 
 <h1>Tu app en dos idiomas</h1>
 
-<p class="lede">Traduces una página al español sin marcar un solo texto: Fudic saca los mensajes, tú escribes la traducción y cada idioma sale en su propia URL.</p>
+<p class="lede">Traduces una página al español sin marcar los textos que se traducen: Fudic saca los mensajes, tú escribes la traducción y cada idioma sale en su propia URL.</p>
 
 <section class="objectives" aria-labelledby="objectives">
   <h2 id="objectives">Objetivos</h2>
@@ -79,10 +79,13 @@ npx fudic add i18n --locales en,es</code></pre>
   &lt;title&gt;Home&lt;/title&gt;
 &lt;/head&gt;
 
+&lt;p translate="no"&gt;Sunrise Coffee&lt;/p&gt;
 &lt;h1&gt;Welcome to the shop&lt;/h1&gt;
 &lt;p&gt;Hello &lt;b&gt;@@name&lt;/b&gt;, today we have fresh coffee.&lt;/p&gt;
 &lt;input type="search" placeholder="Search the shop"&gt;</code></pre>
 </ui-code>
+
+<p>El nombre de la tienda lleva <code>translate="no"</code>, el atributo estándar de HTML que dice que un trozo no se traduce. Es lo único que marcas.</p>
 
 <p>Arranca el servidor:</p>
 
@@ -107,7 +110,7 @@ npx fudic add i18n --locales en,es</code></pre>
   en  4 messages · 4 new · 0 to review · 0 untranslated
   es  4 messages · 4 new · 0 to review · 4 untranslated</code></pre>
 
-<p>Ha encontrado cuatro mensajes: el título, el encabezado, la frase y el <code>placeholder</code>. Todo lo que la página pinta como texto se traduce solo, y también los atributos que lee una persona. El catálogo de inglés ya viene relleno, porque es el idioma del código. El de español trae cada mensaje sin traducir. Así llega la frase:</p>
+<p>Ha encontrado cuatro mensajes: el título, el encabezado, la frase y el <code>placeholder</code>. Todo lo que la página pinta como texto se traduce solo, y también los atributos que lee una persona, como <code>placeholder</code>, <code>title</code>, <code>alt</code> o <code>aria-label</code>. «Sunrise Coffee» no está, porque va bajo <code>translate="no"</code>: Fudic no lo extrae, y los traductores del navegador, que respetan el mismo atributo, tampoco lo tocan. El catálogo de inglés ya viene relleno, porque es el idioma del código. El de español trae cada mensaje sin traducir. Así llega la frase:</p>
 
 <pre class="output"><code>"38d19776": &#123;
   "source": "Hello &lt;0&gt;&#123;name&#125;&lt;/0&gt;, today we have fresh coffee.",
@@ -154,12 +157,13 @@ npx fudic add i18n --locales en,es</code></pre>
 &#125;</code></pre>
 </ui-code>
 
-<p>Al guardar, <code>fudic dev</code> recarga <code>/es/</code>, ya en español:</p>
+<p>Recarga <code>/es/</code>: sigue en inglés. <code>fudic dev</code> no ve un catálogo que no existía cuando compiló la página. Páralo con <kbd>Ctrl</kbd>+<kbd>C</kbd>, vuelve a arrancarlo con <code>npx fudic dev</code> y recarga. Ya sale en español:</p>
 
-<pre class="output"><code>Te damos la bienvenida a la tienda
+<pre class="output"><code>Sunrise Coffee
+Te damos la bienvenida a la tienda
 Hola, Ana. Hoy tenemos café recién hecho.</code></pre>
 
-<p>El cuadro de búsqueda dice «Busca en la tienda». Si vuelves a ejecutar <code>npx fudic translate</code>, el recuento confirma que no falta nada:</p>
+<p>El cuadro de búsqueda dice «Busca en la tienda», y el nombre de la tienda sigue igual. A partir de ahora, cada cambio que guardes en el catálogo recarga la página. Si vuelves a ejecutar <code>npx fudic translate</code>, el recuento confirma que no falta nada:</p>
 
 <pre class="output"><code>  en  4 messages · 0 new · 0 to review · 0 untranslated
   es  4 messages · 0 new · 0 to review · 0 untranslated</code></pre>

@@ -8,6 +8,7 @@
   <title>Home</title>
 </head>
 
+<p translate="no">Sunrise Coffee</p>
 <h1>Welcome to the shop</h1>
 <p>Hello <b>@name</b>, today we have fresh coffee.</p>
 <input type="search" placeholder="Search the shop">

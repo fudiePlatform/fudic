@@ -1353,3 +1353,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   cualquier otra redirección («redirected … to /en/ — visit that URL instead»), o que acepte el
   idioma del navegador como opción. Y que `fudic add i18n` reescriba los tests de las rutas que ya
   existen, o avise de que dejan de pasar.
+
+## 89. `fudic dev` no ve un catálogo que no existía cuando compiló la página
+
+- **Qué pasó.** Escribiendo los tutoriales `two-languages` y `localized-urls` (2026-11-26). Con
+  `fudic dev` en marcha se pide `/es/about` (sale en inglés, aún no hay catálogos), se ejecuta
+  `fudic translate` y se rellenan las traducciones: la página sigue en inglés, y la terminal no
+  escribe ningún `page reload`. Ni un `touch` del catálogo la cambia. Guardar el `.fud` o
+  reiniciar `fudic dev` sí: desde entonces, cada cambio del catálogo recarga la página. Si la
+  página se pide por primera vez cuando el catálogo ya existe, todo funciona desde el principio.
+- **Por qué, probablemente.** El módulo de la página no registra como dependencia un catálogo
+  que no existe al compilarla, así que Vite no lo invalida cuando aparece.
+- **Cómo se resolvió en el tutorial.** `two-languages` reinicia `fudic dev` después de traducir,
+  y lo explica.
+- **Qué debería hacer.** Vigilar `src/locales/` entero, o al menos la ruta del catálogo de cada
+  fichero fuente aunque aún no exista, e invalidar la página cuando se cree.
