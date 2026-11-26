@@ -1,0 +1,11 @@
+<link rel="layout" href="../../layouts/_layout.fud">
+
+<head>
+  <title>Intro</title>
+</head>
+
+@section aside {
+  <p>Next: install Fudic.</p>
+}
+
+<h1>Intro</h1>

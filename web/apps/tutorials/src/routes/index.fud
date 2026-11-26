@@ -30,7 +30,7 @@
   @render category("Eventos", "Clics, delegación y un bus para que los componentes hablen entre sí.", 4, true, true, false, "/tutorials/events")
   @render category("Reactividad", "Signals, el ciclo de vida de un componente y la hidratación.", 7, true, true, true, "/tutorials/signals")
   @render category("Estilos", "El CSS de un componente, el tema global y tu guía de estilos.", 3, true, true, false, "/tutorials/scoped-styles")
-  @render category("Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true)
+  @render category("Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true, "/tutorials/pages-and-layout")
   @render category("Formularios", "Binding, validación, envío, ficheros y controles propios.", 7, true, true, true, "/tutorials/first-form")
   @render category("Servidor", "Funciones de servidor, una API, middlewares, pipes y sesión.", 8, false, true, true)
   @render category("Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true)

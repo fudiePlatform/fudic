@@ -1,0 +1,172 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Páginas y un layout · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea páginas con la CLI de Fudic, ponles una cabecera común en el layout y rellena un hueco del layout desde una página.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/pages-and-layout">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Páginas y un layout · Tutoriales de Fudic">
+  <meta property="og:description" content="Cada fichero de src/routes es una URL, y el layout es el documento que comparten.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/pages-and-layout">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("pages-and-layout")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una página</a></li>
+        <li><a href="#layout">2. Lo que comparten todas</a></li>
+        <li><a href="#section">3. Un hueco en el layout</a></li>
+        <li><a href="#folder">4. Una página en una carpeta</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Páginas y un layout</h1>
+
+<p class="lede">Creas dos páginas con la CLI, les das una cabecera común en el layout y abres en él un hueco que cada página rellena a su manera.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear páginas con <code>fudic g page</code> y saber qué URL tiene cada una.</li>
+    <li>Poner en el layout lo que comparten todas las páginas.</li>
+    <li>Abrir un hueco en el layout con <code>@@RenderSection</code> y rellenarlo desde una página.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una página</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page about</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/about.fud
+  create  src/routes/about.test.ts</code></pre>
+
+<p>Cada <code>.fud</code> de <code>src/routes/</code> es una página, y su URL sale de dónde está: <code>about.fud</code> es <code>/about</code>, igual que <code>index.fud</code> es <code>/</code>. La CLI escribe también su test. Dale un poco de contenido:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;About&lt;/title&gt;
+  &lt;meta name="description" content="Who we are."&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;About&lt;/h1&gt;
+&lt;p&gt;We build small apps with Fudic.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/about</code>. La página empieza enlazando su layout, el documento en el que se pinta. Por eso no escribe <code>&lt;html&gt;</code> ni <code>&lt;body&gt;</code>, y su <code>&lt;head&gt;</code> se suma al del layout.</p>
+
+<h2 id="layout">2. Lo que comparten todas</h2>
+
+<p>Lo que se repite en todas las páginas, como la cabecera, va en el layout. Añádele un menú con un enlace a cada página:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;header&gt;
+      &lt;nav&gt;
+        &lt;a href="/"&gt;Home&lt;/a&gt;
+        &lt;a href="/about"&gt;About&lt;/a&gt;
+      &lt;/nav&gt;
+    &lt;/header&gt;
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p><code>@@RenderHead()</code> es el sitio del <code>&lt;head&gt;</code> de la página, y <code>@@RenderBody()</code>, el de su contenido. Guarda, pasa de Home a About con el menú y abre el código fuente de About con Ctrl+U:</p>
+
+<pre class="output"><code>&lt;title&gt;About&lt;/title&gt;&lt;meta name="description" content="Who we are."&gt;&lt;/head&gt;&lt;body&gt; &lt;header&gt; &lt;nav&gt; &lt;a href="/"&gt;Home&lt;/a&gt; &lt;a href="/about"&gt;About&lt;/a&gt; &lt;/nav&gt; &lt;/header&gt; &lt;main&gt;&lt;h1&gt;About&lt;/h1&gt;&lt;p&gt;We build small apps with Fudic.&lt;/p&gt;&lt;/main&gt; &lt;/body&gt;&lt;/html&gt;</code></pre>
+
+<p>El título y la descripción de la página están en el <code>&lt;head&gt;</code>, y su contenido, dentro de <code>&lt;main&gt;</code>. Cada clic carga un documento completo: Fudic no tiene un router en el navegador, así que el botón «atrás», abrir en otra pestaña o compartir la URL funcionan sin hacer nada.</p>
+
+<h2 id="section">3. Un hueco en el layout</h2>
+
+<p>Un layout puede tener más huecos que el del contenido. Abre uno con nombre, <code>aside</code>, debajo de <code>&lt;main&gt;</code>:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+    &lt;aside&gt;@@RenderSection(aside)&lt;/aside&gt;</code></pre>
+</ui-code>
+
+<p>Y rellénalo desde About con una <code>@@section</code> del mismo nombre, al final del fichero:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>@@section aside &#123;
+  &lt;p&gt;Write to us at hello@@@@example.com.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>La <code>@@</code> del email se escribe dos veces, porque una sola empieza una expresión. Guarda y mira el código fuente de las dos páginas:</p>
+
+<pre class="output"><code>/about  &lt;main&gt;&lt;h1&gt;About&lt;/h1&gt;&lt;p&gt;We build small apps with Fudic.&lt;/p&gt;&lt;/main&gt; &lt;aside&gt; &lt;p&gt;Write to us at hello@@example.com.&lt;/p&gt; &lt;/aside&gt;
+/       &lt;main&gt;&lt;h1&gt;Home&lt;/h1&gt;&lt;/main&gt; &lt;aside&gt;&lt;/aside&gt;</code></pre>
+
+<p>La sección de About cae en su hueco. Home no la rellena, y su hueco se queda vacío. Si una página tiene que rellenarlo siempre, el layout lo marca como obligatorio: <code>@@RenderSection(aside, required: true)</code>.</p>
+
+<h2 id="folder">4. Una página en una carpeta</h2>
+
+<ui-code>
+<pre><code>npx fudic g page docs/intro</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/docs/intro.fud
+  create  src/routes/docs/intro.test.ts</code></pre>
+
+<p>La carpeta forma parte de la URL: la página es <code>/docs/intro</code>. La CLI ya sabe que el layout tiene un hueco <code>aside</code>, y lo deja preparado, con la ruta al layout un nivel más arriba:</p>
+
+<pre class="output"><code>&lt;link rel="layout" href="../../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Intro&lt;/title&gt;
+&lt;/head&gt;
+
+@@section aside &#123;
+&#125;
+
+&lt;h1&gt;Intro&lt;/h1&gt;</code></pre>
+
+<p>Abre <code>http://localhost:5173/docs/intro</code>. En cambio, <code>/docs</code> responde 404, porque nadie ha creado <code>docs/index.fud</code>. Ahora escribe mal el nombre de la sección, <code>sidebar</code> en vez de <code>aside</code>, con un párrafo dentro, y guarda. La terminal de <code>fudic dev</code> avisa:</p>
+
+<pre class="output"><code>my-app   src/routes/docs/intro.fud:7:1 - warning FUD0429: no @@RenderSection(sidebar) in the layout chain: this section is not rendered
+my-app     7  @@section sidebar &#123;
+my-app        ──────────────────
+my-app     https://fudic.dev/docs/reference/diagnostics/FUD0429</code></pre>
+
+<p>El editor subraya la sección con el mismo aviso. La página se sigue pintando, pero sin el párrafo, que no tiene dónde caer. Vuelve a llamarla <code>aside</code> y escribe dentro el texto que quieras: sale en su hueco.</p>
+
+<p>Cómo se escriben una página y un layout está en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>, y cómo sale la URL de cada fichero, en <a href="/docs/routing">Rutas por carpetas</a>. El aviso se explica en <a href="/docs/reference/diagnostics/FUD0429">FUD0429</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/pages-and-layout" target="_blank" rel="noopener">la solución de Páginas y un layout, en GitHub</a>. Compara tu <code>_layout.fud</code> y tu <code>about.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/style-guide", prevTitle: "Tu guía de estilos", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

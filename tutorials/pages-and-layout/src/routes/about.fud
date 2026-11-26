@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>About</title>
+  <meta name="description" content="Who we are.">
+</head>
+
+<h1>About</h1>
+<p>We build small apps with Fudic.</p>
+
+@section aside {
+  <p>Write to us at hello@@example.com.</p>
+}
