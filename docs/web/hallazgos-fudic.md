@@ -1624,3 +1624,17 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que `visit` responda como `fudic dev`: `status` 404 y el `_error.fud` del
   proyecto, para que la página de error de «no encontrado» se pueda probar.
 
+## 103. Las búsquedas de un test no traen `getAll…`, y `data` de `visit` no está tipado
+
+- **Qué pasó.** Escribiendo el tutorial `load-tests` (2026-11-26), en una app de `fudic new`:
+  - `page.getAllByRole('listitem')` da `TypeError: page.getAllByRole is not a function`. Las
+    búsquedas de `mount` y `visit` (`packages/testing/src/queries.ts:18-25`) son `getByRole`,
+    `getByLabelText`, `getByText`, `queryByRole` y `query`, todas de un elemento. Quien viene de
+    Testing Library espera `getAllByRole` y `queryAll…`.
+  - `visit('/books', { data: { bookz: [] } })` pasa `tsc --noEmit` sin error: `data` no tiene el tipo
+    de lo que devuelve el `load` de la ruta.
+- **Cómo se resolvió en el tutorial.** Cuenta los `<li>` con `page.document.querySelectorAll('li')` y
+  no dice nada del tipo de `data`.
+- **Qué debería hacer.** Añadir `getAllByRole` (y su `queryAll`), y tipar `data` con el `load` de la
+  ruta, como ya se tipan los fixtures.
+

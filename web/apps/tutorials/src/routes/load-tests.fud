@@ -1,0 +1,186 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Probar el load de una página · Tutoriales de Fudic</title>
+  <meta name="description" content="Prueba el load de una página con visit: con sus datos de verdad, con una lista vacía o un fallo simulados con vi.mock, y con datos dados en el test sin ejecutar load.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/load-tests">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Probar el load de una página · Tutoriales de Fudic">
+  <meta property="og:description" content="El load de verdad, simulado y saltado, en cinco tests.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/load-tests">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("load-tests")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#page">1. Crea una página con datos</a></li>
+        <li><a href="#real">2. Prueba el load de verdad</a></li>
+        <li><a href="#mock">3. Cambia lo que devuelven los datos</a></li>
+        <li><a href="#data">4. Pinta la página sin load</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Tests</span></p>
+
+<h1>Probar el load de una página</h1>
+
+<p class="lede">Pruebas una lista de libros que sale del servidor: con sus datos de verdad, vacía, cuando falla y con datos que le das tú.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Probar el <code>load</code> de un <code>.fudapi</code> de verdad, con <code>visit</code>.</li>
+    <li>Simular el módulo de datos con <code>vi.mock</code> para probar una lista vacía y un fallo.</li>
+    <li>Pintar la página con datos dados en el test, sin ejecutar <code>load</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="page">1. Crea una página con datos</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page books --server</code></pre>
+</ui-code>
+
+<p>Con <code>--server</code>, la página tiene su <code>.fudapi</code>, el contrato con lo que lee del servidor, y el handler que lo cumple. Haz que lea una lista de libros:</p>
+
+<ui-code .path="src/routes/books.fudapi">
+<pre><code># The books on the shelf, read on the server: its handler is in src/server/routes/books.ts.
+load
+  books  Book[]
+
+type Book
+  id     i32
+  title  str</code></pre>
+</ui-code>
+
+<p>Los libros salen de un módulo aparte. Hoy es una lista, y mañana será una base de datos:</p>
+
+<ui-code .path="src/server/books.ts">
+<pre><code>// Where the books come from. Today a list; tomorrow, a database.
+export async function allBooks() &#123;
+  return [
+    &#123; id: 1, title: 'The Hobbit' &#125;,
+    &#123; id: 2, title: 'Dune' &#125;,
+    &#123; id: 3, title: 'Emma' &#125;,
+  ];
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/books.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/books';
+import &#123; allBooks &#125; from '../books';
+
+load.handle(async () =&gt; (&#123; books: await allBooks() &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/books.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./books.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;Books&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Books&lt;/h1&gt;
+&lt;ul&gt;
+  @@foreach (const book of data.books) key (book.id) &#123;
+    &lt;li&gt;@@book.title&lt;/li&gt;
+  &#125; @@empty &#123;
+    &lt;li&gt;No books yet.&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<h2 id="real">2. Prueba el load de verdad</h2>
+
+<p>La CLI dejó un test que comprueba que <code>/books</code> responde 200. Añade otro debajo que mire la lista:</p>
+
+<ui-code .path="src/routes/books.test.ts">
+<pre><code>test('lists every book that load returns', async () =&gt; &#123;
+  const page = await visit('/books');
+  expect(page.document.querySelectorAll('li')).toHaveLength(3);
+  expect(page.getByText('Dune')).toBeInTheDocument();
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>visit</code> ejecuta el <code>load</code> de verdad, con su handler y su módulo de datos, y pinta la página con lo que devuelve. No hay que levantar ningún servidor.</p>
+
+<h2 id="mock">3. Cambia lo que devuelven los datos</h2>
+
+<p>Para probar la lista vacía o un fallo, se simula el módulo de datos y no el <code>load</code>. Así el handler y el contrato siguen ejecutándose de verdad. Pon esto arriba del fichero de test, debajo de los <code>import</code>:</p>
+
+<ui-code .path="src/routes/books.test.ts">
+<pre><code>import &#123; expect, test, vi &#125; from 'vitest';
+import &#123; visit &#125; from '@@fudic/testing';
+import &#123; allBooks &#125; from '../server/books';
+
+vi.mock('../server/books', async (importOriginal) =&gt; &#123;
+  const real = await importOriginal&lt;typeof import('../server/books')&gt;();
+  return &#123; allBooks: vi.fn(real.allBooks) &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>vi.mock</code> cambia el módulo en todo el fichero. <code>vi.fn(real.allBooks)</code> sigue llamando a la función de verdad, así que los dos primeros tests no cambian. Cada test que lo necesite cambia una sola respuesta con <code>mockResolvedValueOnce</code> o <code>mockRejectedValueOnce</code>:</p>
+
+<ui-code .path="src/routes/books.test.ts">
+<pre><code>test('says so when there are no books', async () =&gt; &#123;
+  vi.mocked(allBooks).mockResolvedValueOnce([]);
+  const page = await visit('/books');
+  expect(page.getByText('No books yet.')).toBeInTheDocument();
+&#125;);
+
+test('shows the error page when the books cannot be read', async () =&gt; &#123;
+  vi.mocked(allBooks).mockRejectedValueOnce(new Error('the database is down'));
+  const page = await visit('/books');
+  expect(page.status).toBe(500);
+&#125;);</code></pre>
+</ui-code>
+
+<p>Cuando <code>load</code> lanza, <code>visit</code> pinta la página de error con su estado, como haría <code>fudic dev</code>.</p>
+
+<h2 id="data">4. Pinta la página sin load</h2>
+
+<p>A veces solo interesa cómo pinta la página unos datos concretos. Con <code>data</code>, <code>visit</code> no ejecuta <code>load</code> y usa lo que le das:</p>
+
+<ui-code .path="src/routes/books.test.ts">
+<pre><code>test('paints the data it is given, without running load', async () =&gt; &#123;
+  vi.mocked(allBooks).mockClear();
+  const page = await visit('/books', &#123; data: &#123; books: [&#123; id: 9, title: 'Ulysses' &#125;] &#125; &#125;);
+  expect(page.getByText('Ulysses')).toBeInTheDocument();
+  expect(allBooks).not.toHaveBeenCalled();
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>mockClear</code> borra la cuenta de llamadas de los tests anteriores. La última línea comprueba que nadie leyó los libros.</p>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> Test Files  3 passed (3)
+      Tests  7 passed (7)
+
+fudic test · 1 project · passed · 5.1 s</code></pre>
+
+<p>Los mismos datos con nombre, compartidos con los criterios del <code>.fudspec</code>, se llaman fixture. Lo explica <a href="/docs/testing/pages-and-flows">Páginas y flujos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/load-tests" target="_blank" rel="noopener">la solución de Probar el load de una página, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/page-tests", prevTitle: "Probar una página, su layout y un pipe", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")

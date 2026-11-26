@@ -1,0 +1,7 @@
+# The books on the shelf, read on the server: its handler is in src/server/routes/books.ts.
+load
+  books  Book[]
+
+type Book
+  id     i32
+  title  str

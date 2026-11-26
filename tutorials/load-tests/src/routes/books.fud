@@ -1,0 +1,14 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./books.fudapi">
+<head>
+  <title>Books</title>
+</head>
+
+<h1>Books</h1>
+<ul>
+  @foreach (const book of data.books) key (book.id) {
+    <li>@book.title</li>
+  } @empty {
+    <li>No books yet.</li>
+  }
+</ul>
