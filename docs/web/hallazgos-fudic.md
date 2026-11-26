@@ -1506,3 +1506,31 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `none`, que es lo que quiere decir quien lo escribe.
 - **De paso.** Con un `FUD1543` en `page.headers`, `fudic dev` escribe el error pero sigue mandando
   el valor que no vale; `pnpm build` sí se para.
+
+## 97. Un `<script src>` en el cuerpo de una página sale sin nonce, y nadie avisa
+
+- **Qué pasó.** Escribiendo el tutorial `csp` (2026-11-26): `<script type="module"
+  src="/hello.js"></script>` al final de una página sale en `dist/index.html` sin `nonce`, mientras
+  el mismo `<script>` en el `<head>` lo lleva. En `fudic preview`, Chrome lo bloquea: «Loading the
+  script … violates the following Content Security Policy directive: "script-src 'nonce-…'
+  'strict-dynamic' …"». Ni `pnpm build` ni el language server dicen nada.
+- **Dónde lo dice la web.** «La CSP» (`/docs/security/csp#nonce`) solo habla del `<head>`: «Un
+  `<script>` que escribas en el `<head>` de una página o de un layout recibe el nonce». Un
+  `<script>` con cuerpo en la página sí da error (`FUD0161`).
+- **Cómo se resolvió en el tutorial.** Se enseña tal cual, como un script sin nonce que el
+  navegador bloquea, y se lleva al `<head>`.
+- **Qué debería hacer.** El build «sabe qué mete en la página» y ya avisa de lo que la política
+  bloquea (`FUD1545`): que avise también de un `<script src>` fuera del `<head>`, que no llevará
+  nonce, con una acción que lo mueva al `<head>`. O que le ponga el nonce, como al del `<head>`.
+
+## 98. `FUD1547` no ofrece quitar lo que debilita la política
+
+- **Qué pasó.** En el mismo tutorial, `'unsafe-eval'` en `script-src` da `FUD1547` en el build y
+  en el editor. La bombilla ofrece «Explain FUD1547», «Turn FUD1547 off in the project», «Silence
+  FUD1547 in this file» y «Silence FUD1547 on this line», pero no quitar `'unsafe-eval'`. Para lo
+  que sobra (`FUD1556`) la bombilla sí lo quita, y para el nonce que falta (`FUD1545`) lo añade.
+- **Qué debería hacer.** Una acción «Remove 'unsafe-eval'» (y la de cada valor que da `FUD1547`),
+  la primera de la lista, antes de las de silenciar.
+- **De paso.** Sin `'nonce-{nonce}'`, el build da un solo `FUD1545` (el del `<script>` del
+  `<head>`) y el editor dos (también el del registro del service worker). La Documentación dice que
+  nombra lo que dejaría de cargar «como el runtime»; el mensaje no nombra el runtime.

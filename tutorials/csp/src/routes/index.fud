@@ -1,0 +1,8 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Home</title>
+  <script type="module" src="/hello.js"></script>
+</head>
+
+<h1>Home</h1>

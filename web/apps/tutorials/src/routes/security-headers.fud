@@ -77,7 +77,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 Cross-Origin-Opener-Policy: same-origin
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></pre>
 
-<p>Cada cabecera es una línea <code>Name: value</code>, y una línea sangrada continúa la de arriba. La Content Security Policy tiene su propio tutorial. Este va de las otras tres: <code>Referrer-Policy</code> no cuenta a otras webs de qué página viene el usuario, <code>Cross-Origin-Opener-Policy</code> impide que una ventana de otra web toque la tuya, y <code>Strict-Transport-Security</code> obliga al navegador a entrar siempre por HTTPS.</p>
+<p>Cada cabecera es una línea <code>Name: value</code>, y una línea sangrada continúa la de arriba. La Content Security Policy tiene su propio tutorial, <a href="/tutorials/csp">Content Security Policy</a>. Este va de las otras tres: <code>Referrer-Policy</code> no cuenta a otras webs de qué página viene el usuario, <code>Cross-Origin-Opener-Policy</code> impide que una ventana de otra web toque la tuya, y <code>Strict-Transport-Security</code> obliga al navegador a entrar siempre por HTTPS.</p>
 
 <h2 id="response">2. Las cabeceras en la respuesta</h2>
 
@@ -183,4 +183,4 @@ date: Thu, 26 Nov 2026 13:32:21 GMT</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/security-headers" target="_blank" rel="noopener">la solución de Cabeceras de seguridad, en GitHub</a>. Compara tu <code>page.headers</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/isomorphic", prevTitle: "Render isomórfico: el mismo HTML en tres sitios", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/isomorphic", prevTitle: "Render isomórfico: el mismo HTML en tres sitios", next: "/tutorials/csp", nextTitle: "Content Security Policy")

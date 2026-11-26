@@ -1,0 +1,175 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Content Security Policy · Tutoriales de Fudic</title>
+  <meta name="description" content="La Content Security Policy de una app de Fudic: el nonce que cambia en cada respuesta, un script que el navegador bloquea y otro que deja pasar, y lo que dicen el build y el editor si quitas el nonce o debilitas la política.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/csp">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Content Security Policy · Tutoriales de Fudic">
+  <meta property="og:description" content="Solo se ejecutan los scripts con el nonce de esa respuesta. Míralo en el navegador, y deja que el build vigile la política.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/csp">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render securityNav("csp")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#nonce">1. El nonce de cada respuesta</a></li>
+        <li><a href="#script">2. Un script sin nonce</a></li>
+        <li><a href="#remove">3. Si quitas el nonce</a></li>
+        <li><a href="#weaken">4. Lo que la debilita</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Seguridad</span></p>
+
+<h1>Content Security Policy</h1>
+
+<p class="lede">Ves el nonce que Fudic pone en cada respuesta, compruebas que el navegador bloquea un script sin él y dejas que el build te avise cuando la política se rompe o se debilita.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Entender qué es el nonce y dónde lo pone Fudic.</li>
+    <li>Cargar un script tuyo sin tocar la política.</li>
+    <li>Reconocer los avisos del build y del editor sobre la CSP.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm, <code>curl</code> y Chrome o Edge.</p>
+</section>
+
+<h2 id="nonce">1. El nonce de cada respuesta</h2>
+
+<p><code>fudic dev</code> no manda la CSP, porque el cliente de Vite que recarga la página no lleva nonce. La política se prueba con el build y la preview, que la mandan igual que en producción:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>En otra terminal, pide la portada dos veces y quédate con la cabecera de la CSP:</p>
+
+<ui-code>
+<pre><code>curl -sI http://localhost:4173/
+curl -sI http://localhost:4173/</code></pre>
+</ui-code>
+
+<pre class="output"><code>content-security-policy: default-src 'self'; script-src 'nonce-tbHDfeZwHVqZIIWIT5kfrA' 'strict-dynamic' 'unsafe-inline' https:; …
+content-security-policy: default-src 'self'; script-src 'nonce-5lrFadoMwj8RSjnP-cdERA' 'strict-dynamic' 'unsafe-inline' https:; …</code></pre>
+
+<p><code>page.headers</code> dice <code>'nonce-&#123;nonce&#125;'</code>, y Fudic lo rellena con un valor al azar distinto en cada respuesta. Abre <code>http://localhost:4173/</code> y su código fuente con Ctrl+U. El script de arranque lleva el mismo valor en su atributo <code>nonce</code>:</p>
+
+<pre class="output"><code>&lt;script type="module" nonce="_1byn66WJIFSMHSTQTEj8Q" src="/fudic-boot-321ca934.js"&gt;&lt;/script&gt;</code></pre>
+
+<p>Con esta política, el navegador solo ejecuta los scripts que llevan el nonce de esa respuesta, y los que ellos carguen. Un script que alguien consiga colar en la página no sabe el valor, y no se ejecuta.</p>
+
+<h2 id="script">2. Un script sin nonce</h2>
+
+<p>Para la preview con Ctrl+C. Crea un script tuyo en <code>public/</code>, la carpeta de los ficheros que se sirven tal cual:</p>
+
+<ui-code .path="public/hello.js">
+<pre><code>console.log("hello.js ran");</code></pre>
+</ui-code>
+
+<p>Cárgalo desde el final de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;script type="module" src="/hello.js"&gt;&lt;/script&gt;</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Abre la portada con la consola de las herramientas de desarrollo abierta. El script no se ejecuta:</p>
+
+<pre class="output"><code>Loading the script '…/hello.js' violates the following Content Security Policy directive: "script-src 'nonce-uiOl4SbnPNy7Nirw9Pc3og' 'strict-dynamic' 'unsafe-inline' https:". … The action has been blocked.</code></pre>
+
+<p>Fudic no le ha puesto nonce, así que el navegador lo trata igual que a uno colado. Fudic solo pone el nonce en los scripts del <code>&lt;head&gt;</code> de una página o de un layout. Para la preview y lleva el script ahí:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+  &lt;script type="module" src="/hello.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;</code></pre>
+</ui-code>
+
+<p>Construye y sirve otra vez. La consola dice <code>hello.js ran</code>, y el código fuente enseña el nonce en tu script:</p>
+
+<pre class="output"><code>&lt;script nonce="ozjXsIGuEJby0QRzznfVMg" type="module" src="/hello.js"&gt;&lt;/script&gt;</code></pre>
+
+<p>No has tocado la política. Con <code>'strict-dynamic'</code> lo que cuenta es el nonce y no de dónde viene el script, así que un script de otro dominio en el <code>&lt;head&gt;</code> también funciona.</p>
+
+<h2 id="remove">3. Si quitas el nonce</h2>
+
+<p>Para la preview. Quita <code>'nonce-&#123;nonce&#125;'</code> de <code>script-src</code> en <code>page.headers</code>:</p>
+
+<ui-code .path="page.headers">
+<pre><code>  script-src 'strict-dynamic' 'unsafe-inline' https:</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<pre class="output"><code>[plugin fudic] page.headers:7:31 - warning FUD1547: 'unsafe-inline' in script-src lets in more than the page needs
+  https://fudic.dev/docs/reference/diagnostics/FUD1547
+error during build:
+Build failed with 1 error:
+…
+Error: page.headers:7:3 - error FUD1545: script-src blocks a &lt;script src&gt; of the head: it needs 'nonce-&#123;nonce&#125;'
+  https://fudic.dev/docs/reference/diagnostics/FUD1545
+  7    script-src 'strict-dynamic' 'unsafe-inline' https:
+       ──────────</code></pre>
+
+<p>El build sabe qué scripts pone en la página y lee la política como el navegador, así que se para antes de publicar una página que no funcionaría. El aviso viene de lo mismo: sin nonce, el navegador vuelve a hacer caso a <code>'unsafe-inline'</code>, que deja pasar cualquier script en línea.</p>
+
+<p>El editor subraya <code>script-src</code> con dos errores <code>FUD1545</code>, uno por tu script y otro por el registro del service worker, y la bombilla ofrece «Add 'nonce-&#123;nonce&#125;'». Acéptala, o vuelve a escribirlo a mano.</p>
+
+<h2 id="weaken">4. Lo que la debilita</h2>
+
+<p>Ahora añade <code>'unsafe-eval'</code>, el permiso para convertir texto en código con <code>eval</code>:</p>
+
+<ui-code .path="page.headers">
+<pre><code>  script-src 'nonce-&#123;nonce&#125;' 'strict-dynamic' 'unsafe-eval' 'unsafe-inline' https:</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<pre class="output"><code>[plugin fudic] page.headers:7:47 - warning FUD1547: 'unsafe-eval' in script-src lets in more than the page needs
+  https://fudic.dev/docs/reference/diagnostics/FUD1547</code></pre>
+
+<p>Esta vez el build termina, porque la página funciona, pero avisa: ninguna pieza de la página necesita <code>eval</code>, y el permiso solo sirve a quien consiga colar código. El editor lo subraya igual, y su bombilla ofrece explicarlo o silenciarlo. Quítalo a mano.</p>
+
+<p>Lo que avisa el build, cómo se añade un origen a una directiva y la política aparte del service worker están en <a href="/docs/security/csp">La CSP</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/csp" target="_blank" rel="noopener">la solución de Content Security Policy, en GitHub</a>. Compara tu página con la suya.</p>
+
+@render pager(prev: "/tutorials/security-headers", prevTitle: "Cabeceras de seguridad", next: "/tutorials/", nextTitle: "Todas las categorías")

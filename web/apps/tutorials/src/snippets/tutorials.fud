@@ -170,7 +170,7 @@
   <details class="toggle"><summary>Tutoriales de Seguridad</summary></details>
   <ol class="tutorial-list">
     @render tutorial("security-headers", "Cabeceras de seguridad", "intermediate", @current)
-    @render tutorial("csp", "Content Security Policy", "advanced", @current, false)
+    @render tutorial("csp", "Content Security Policy", "advanced", @current)
     @render tutorial("trusted-types", "Trusted Types", "advanced", @current, false)
   </ol>
 }
