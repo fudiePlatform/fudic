@@ -982,6 +982,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   lo mismo que el nº 31 en el workbench. Un editor guarda de una vez, pero un agente o un script
   pueden escribir por partes.
 - **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher.
+- **Vuelto a comprobar** con el tutorial `error-page` (2026-11-26): `fudic g page about` seguido de
+  `cat > src/routes/about.fud` dio el mismo `FUD0156` a una página, hasta un `touch`.
 
 ## 68. Un componente que solo lee un store no se actualiza nunca
 
@@ -1138,6 +1140,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   enseñar al usuario el mensaje del error.
 - **Qué debería hacer.** Escribir en la terminal cada excepción no recogida de un handler, con su
   pila, en desarrollo y en la preview.
+- **Y otra vez** con un `load`, en el tutorial `error-page` (2026-11-26): `throw new Error('cannot
+  reach db.internal:5432')` da la página de error con un 500, con el mensaje en `fudic dev` y sin él
+  en `fudic preview`, que es lo correcto. Pero ninguna de las dos terminales escribe nada.
 
 ## 79. `@fudic/http` publica sus `.map` sin los fuentes, y Vite avisa en cada arranque
 
@@ -1150,3 +1155,14 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   que explica. El aviso le saldrá igual a quien lo siga.
 - **Qué debería hacer.** Publicar `impl/` junto a los `.map`, o no publicar los `.map` de esos dos
   módulos.
+
+## 80. Una URL que no existe, pedida sin `Accept: text/html`, responde el «Cannot GET» de Connect
+
+- **Qué pasó.** Escribiendo el tutorial `error-page` (2026-11-26), `curl localhost:5173/nope` (sin
+  cabeceras) responde 404 con el HTML de Connect, `<pre>Cannot GET /nope</pre>`, en `fudic dev` y
+  en `fudic preview`, con o sin `_error.fud`. Con `Accept: text/html`, como pide un navegador,
+  sale la página de error de la app. Un `load` que lanza `notFound()` sí responde la página de error
+  también sin esa cabecera.
+- **Cómo se resolvió en el tutorial.** No afecta: el tutorial se sigue en el navegador.
+- **Qué debería hacer.** Responder la página de error de la app, o un problema JSON si se pide
+  JSON, pero no la página por defecto de Connect, que además dice qué servidor hay detrás.

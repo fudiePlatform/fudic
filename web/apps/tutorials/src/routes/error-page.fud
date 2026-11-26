@@ -1,0 +1,172 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu página de error · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea la página de error de tu app de Fudic con la CLI: un 404 con tu layout, un enlace para volver, un 403 con su motivo y lo que un 500 no enseña en producción.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/error-page">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu página de error · Tutoriales de Fudic">
+  <meta property="og:description" content="Un 404, un 403 y un 500 con el aspecto de tu app, y el status de verdad.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/error-page">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("error-page")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y rompe un enlace</a></li>
+        <li><a href="#error-page">2. Tu página de error</a></li>
+        <li><a href="#detail">3. Un error con su motivo</a></li>
+        <li><a href="#production">4. Lo que un error no enseña</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Tu página de error</h1>
+
+<p class="lede">Cambias la página mínima que Fudic enseña ante un error por la tuya, con tu layout, un enlace para volver y el motivo del error cuando lo hay.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear la página de error con <code>fudic g error-page</code>.</li>
+    <li>Leer en ella el error que la trae: su status, su motivo y de dónde venía el usuario.</li>
+    <li>Saber qué enseña un error en desarrollo y qué en producción.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app y rompe un enlace</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page about</code></pre>
+</ui-code>
+
+<p>Pon en About un enlace a una página que no existe:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;About&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;About&lt;/h1&gt;
+&lt;p&gt;&lt;a href="/team"&gt;Meet the team&lt;/a&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/about</code> y pulsa el enlace. Sale la página mínima de Fudic, un «404» y un «Not Found» sin estilos ni layout. Funciona, pero no parece tu app.</p>
+
+<h2 id="error-page">2. Tu página de error</h2>
+
+<ui-code>
+<pre><code>npx fudic g error-page</code></pre>
+</ui-code>
+
+<p>La CLI escribe <code>src/routes/_error.fud</code>, con el mismo layout que las demás páginas:</p>
+
+<pre class="output"><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;head&gt;
+  &lt;title&gt;@@data.status · @@data.title&lt;/title&gt;
+&lt;/head&gt;
+…
+&lt;h1&gt;@@data.status · @@data.title&lt;/h1&gt;
+@@if (data.detail !== undefined) &#123;
+  &lt;p&gt;@@data.detail&lt;/p&gt;
+&#125;
+@@if (data.back !== undefined) &#123;
+  &lt;p&gt;&lt;a href=@@data.back&gt;Back&lt;/a&gt;&lt;/p&gt;
+&#125; @@else &#123;
+  &lt;p&gt;&lt;a href=@@data.home&gt;Home&lt;/a&gt;&lt;/p&gt;
+&#125;</code></pre>
+
+<p>Es una página como las demás, pero sin URL propia: el guion bajo la saca de las rutas, y <code>/_error</code> no existe. Su <code>data</code> es el error que la trae. Vuelve a About y pulsa el enlace:</p>
+
+<pre class="output"><code>404 · Not Found
+Back</code></pre>
+
+<ul>
+  <li><strong>El status sigue siendo 404.</strong> Míralo en la pestaña Red: la página de error se pinta en la URL que falló, <code>/team</code>, y un buscador sabe que no existe.</li>
+  <li><strong>«Back» lleva a <code>/about</code>,</strong> la página de la que venías. Sale de la cabecera <code>Referer</code> que envía el navegador, y solo si es de tu app. Escribe <code>http://localhost:5173/team</code> en la barra de direcciones: como no vienes de ninguna página, dice «Home».</li>
+</ul>
+
+<h2 id="detail">3. Un error con su motivo</h2>
+
+<p>La página de error también se pinta cuando el servidor no puede pintar una página. Crea una con datos del servidor:</p>
+
+<ui-code>
+<pre><code>npx fudic g page admin --server</code></pre>
+</ui-code>
+
+<p>Y haz que su <code>load</code>, el código que calcula sus datos, la rechace con <code>forbidden()</code> y un motivo:</p>
+
+<ui-code .path="src/server/routes/admin.ts">
+<pre><code>import &#123; forbidden &#125; from '@@fudic/http';
+import &#123; load &#125; from 'fudic:routes/admin';
+
+load.handle(() =&gt; &#123;
+  throw forbidden('Only editors can open this page.');
+&#125;);</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/admin</code>:</p>
+
+<pre class="output"><code>403 · Forbidden
+Only editors can open this page.
+Home</code></pre>
+
+<p>El motivo llega en <code>data.detail</code>, y el status es 403. <code>@@fudic/http</code> trae también <code>badRequest</code>, <code>unauthorized</code>, <code>notFound</code> y <code>conflict</code>, cada uno con su status. El test que escribió la CLI espera un 200; cámbialo para que espere el 403:</p>
+
+<ui-code .path="src/routes/admin.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; visit &#125; from '@@fudic/testing';
+
+test('answers 403 to /admin', async () =&gt; &#123;
+  const page = await visit('/admin');
+  expect(page.status).toBe(403);
+&#125;);</code></pre>
+</ui-code>
+
+<h2 id="production">4. Lo que un error no enseña</h2>
+
+<p>Un fallo que nadie esperaba no es un <code>forbidden</code>: es un error cualquiera, con un mensaje pensado para ti. Cambia el <code>load</code> de Admin:</p>
+
+<ui-code .path="src/server/routes/admin.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/admin';
+
+load.handle(() =&gt; &#123;
+  throw new Error('cannot reach db.internal:5432');
+&#125;);</code></pre>
+</ui-code>
+
+<p>En <code>fudic dev</code>, <code>/admin</code> dice «500 · Internal Server Error» y, debajo, el mensaje, que te ayuda a encontrar el fallo. Ahora para <code>fudic dev</code>, construye la app y sírvela como en producción:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>En <code>http://localhost:4173/admin</code> sale el mismo 500 sin el mensaje. Lo que dice un error cualquiera, como el nombre de un servidor interno, nunca llega al usuario. Lo que dices a propósito, con <code>forbidden('…')</code> y los demás, sí. Vuelve a dejar el <code>forbidden</code> en <code>admin.ts</code>.</p>
+
+<p>Qué más trae <code>data</code> y cuándo se pinta la página está en <a href="/docs/routing/error-page">La página de error</a>. El comando, en <a href="/docs/cli/generate/error-page">fudic generate error-page</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/error-page" target="_blank" rel="noopener">la solución de Tu página de error, en GitHub</a>. Compara tu <code>_error.fud</code> y tu <code>src/server/routes/admin.ts</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/dynamic-routes", prevTitle: "Rutas con parámetro", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

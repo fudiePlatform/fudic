@@ -151,8 +151,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   los títulos «First-form», «Validation», «Submitting», «File-upload», «Form-events»,
   «Form-control» y «Custom-rules», corregidos a mano: los siete de la categoría.
 - **Y otra vez** con los tutoriales de Rutas y layouts (`pages-and-layout`, `dynamic-routes`), el
-  2026-11-26: el `href` frágil y los títulos «Pages-and-layout» y «Dynamic-routes», corregidos a
-  mano.
+  2026-11-26: el `href` frágil y los títulos «Pages-and-layout», «Dynamic-routes» y «Error-page»,
+  corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -335,6 +335,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** `fudic g error-page --layout src/layouts/docs.fud`.
 - **Qué debería hacer.** Resolver `--layout` siempre igual y decirlo en la ayuda; ante un fichero
   que no existe, decir que no existe y no que no es un layout.
+- **Vuelto a comprobar** en una app, con el tutorial `error-page` (2026-11-26): sin `--layout`
+  funciona, pero sigue diciendo «Created src/routes/_error.fud in » con el hueco vacío, y su salida
+  no tiene la forma `create  …` de los demás generadores.
 
 
 ## 23. La guía de `fudic new` trae una fuente de 344 KB, y su cursiva de 379 KB
