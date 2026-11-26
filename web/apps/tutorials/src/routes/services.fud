@@ -167,4 +167,4 @@ Added. Items in your cart: 2</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/services" target="_blank" rel="noopener">la solución de Un servicio inyectado, en GitHub</a>. Compara tu <code>cart.service.ts</code> y tu <code>myapp-product.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/production-server", prevTitle: "Arrancarlo en Node", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/production-server", prevTitle: "Arrancarlo en Node", next: "/tutorials/providers", nextTitle: "Un servicio compartido por quien no se ve")

@@ -1,0 +1,17 @@
+<link rel="component" href="../myapp-product/myapp-product.fud">
+
+@code {
+  import { provide } from "@fudic/di";
+  import { Cart } from "../../services/cart.service";
+
+  const { label = "" } = props<{ label?: string }>();
+  provide(Cart, () => new Cart());
+}
+
+<myapp-shop>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="p">
+    <p>@label</p>
+    <myapp-product .name="Coffee beans"></myapp-product>
+    <myapp-product .name="Green tea"></myapp-product>
+  </template>
+</myapp-shop>

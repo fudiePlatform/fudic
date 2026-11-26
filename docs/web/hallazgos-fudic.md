@@ -1288,3 +1288,23 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `fudic dev` y en el build. El tutorial enseña la línea del error sin la pila.
 - **Qué debería hacer.** Dar `FUD0680` en el editor y en el typecheck de `fudic dev`, sin pila, con
   el span en el `inject(Cart)` del componente.
+- **Lo mismo con `FUD0684`**, en el tutorial `providers` (2026-11-26): un `provide(Cart, …)` escrito dos
+  veces en el `@code` de un componente. El editor no da nada, `fudic dev` solo dice `page reload`, y al
+  pedir la página da un 500 con `Error when evaluating SSR module` y la pila; `pnpm build` falla con el
+  mismo error. Aquí el span sí es bueno: el `Cart` del segundo `provide`. «Dueños y subárboles» decía
+  que sale en el editor; corregida.
+
+## 86. Un componente que inyecta un servicio provisto no se puede montar solo en un test
+
+- **Qué pasó.** En el tutorial `providers` (2026-11-26), `fudic g service cart --provided` (sin
+  `Service`), un `<myapp-shop>` que hace `provide(Cart, …)` y un `<myapp-product>` con
+  `inject(Cart)`. El test que generó `fudic g component product` (`mount(MyappProduct)`) falla en
+  `fudic test` con `FUD0680: Nothing registers Cart` sobre `node_modules/.fudic-test/mount-….fud`.
+  Con `mount(MyappProduct, { providers: [{ provide: Cart, use: () => new Cart() }] })`, que es para
+  lo que existe `providers`, falla igual: el `FUD0680` sale al compilar la envoltura del `mount`,
+  antes de que el test registre nada.
+- **Cómo se resolvió en el tutorial.** Como en el nº 70: la solución quita el test del producto, y
+  el de la tienda, que lo provee, lo monta dentro.
+- **Qué debería hacer.** Que `FUD0680` no salte en la envoltura de `mount` cuando el test da
+  `providers` (o nunca en ella: quien registra es el test), y que `fudic g component` no deje un
+  test que falla en un componente que inyecta un servicio provisto.

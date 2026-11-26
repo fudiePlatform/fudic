@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-shop/myapp-shop.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-shop .label="Shopping cart"></myapp-shop>
+<myapp-shop .label="Wish list"></myapp-shop>

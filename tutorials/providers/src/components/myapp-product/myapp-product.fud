@@ -1,0 +1,22 @@
+@code {
+  import { signal } from "@fudic/core";
+  import { inject } from "@fudic/di";
+  import { Cart } from "../../services/cart.service";
+
+  const { name = "" } = props<{ name?: string }>();
+  const cart = inject(Cart);
+  const message = signal("");
+
+  function buy() {
+    const count = cart.add(name);
+    message.set(`Added. Items: ${count}`);
+  }
+}
+
+<myapp-product>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>@name</p>
+    <button type="button" @click=@buy>Add</button>
+    <p>@message()</p>
+  </template>
+</myapp-product>

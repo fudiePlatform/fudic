@@ -1,0 +1,193 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un servicio compartido por quien no se ve · Tutoriales de Fudic</title>
+  <meta name="description" content="Haz que un componente de Fudic provea un carrito con provide() a los suyos, pon dos en la página, cada uno con su carrito, y comprueba que el dueño no descarga su código.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/providers">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un servicio compartido por quien no se ve · Tutoriales de Fudic">
+  <meta property="og:description" content="Dos tiendas en la misma página, cada una con su carrito, y un dueño que no se hidrata.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/providers">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render diNav("providers")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y sus piezas</a></li>
+        <li><a href="#inject">2. El producto pide el carrito</a></li>
+        <li><a href="#provide">3. La tienda lo provee</a></li>
+        <li><a href="#source">4. El dueño no se hidrata</a></li>
+        <li><a href="#twice">5. Proveerlo dos veces</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Inyección de dependencias</span></p>
+
+<h1>Un servicio compartido por quien no se ve</h1>
+
+<p class="lede">Pones dos tiendas en la misma página, la compra y la lista de deseos, y cada una da su propio carrito a los productos que tiene dentro.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Proveer un servicio desde un componente con <code>provide()</code>, para él y los que tiene debajo.</li>
+    <li>Ver que cada dueño tiene su instancia, y que el dueño no se hidrata.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Un servicio para toda la página, con <code>Service</code>, está en <a href="/tutorials/services">Un servicio inyectado</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y sus piezas</h2>
+
+<p>Esta vez el carrito no es de toda la página: lo provee un componente. Pídelo con <code>--provided</code>, y genera la tienda, enlazada desde la página de inicio, y el producto:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g service cart --provided
+npx fudic g component shop --in src/routes/index.fud
+npx fudic g component product</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created service Cart in src/services/
+  cart.service.ts         class Cart, provided by a component: provide(Cart) for its subtree
+  cart.service.test.ts    unit test
+
+  Added @@fudic/di 0.0.1 to my-app (it was not there)</code></pre>
+
+<p>El servicio sale sin <code>Service(Cart)</code>: nadie lo registra para toda la página. Dale una lista y un método que añade y devuelve cuántos hay:</p>
+
+<ui-code .path="src/services/cart.service.ts">
+<pre><code>// A component provides it with provide(): that component and the ones under it share one.
+export class Cart &#123;
+  readonly items: string[] = [];
+
+  add(name: string): number &#123;
+    this.items.push(name);
+    return this.items.length;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="inject">2. El producto pide el carrito</h2>
+
+<p>El producto no sabe quién le da el carrito: lo pide con <code>inject(Cart)</code>, como si fuera de toda la página.</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; inject &#125; from "@@fudic/di";
+  import &#123; Cart &#125; from "../../services/cart.service";
+
+  const &#123; name = "" &#125; = props&lt;&#123; name?: string &#125;&gt;();
+  const cart = inject(Cart);
+  const message = signal("");
+
+  function buy() &#123;
+    const count = cart.add(name);
+    message.set(`Added. Items: $&#123;count&#125;`);
+  &#125;
+&#125;
+
+&lt;myapp-product&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;@@name&lt;/p&gt;
+    &lt;button type="button" @@click=@@buy&gt;Add&lt;/button&gt;
+    &lt;p&gt;@@message()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<h2 id="provide">3. La tienda lo provee</h2>
+
+<p>La tienda hace <code>provide(Cart, …)</code> con la función que crea el carrito. Así es la dueña del carrito para todo lo que tiene dentro:</p>
+
+<ui-code .path="src/components/myapp-shop/myapp-shop.fud">
+<pre><code>&lt;link rel="component" href="../myapp-product/myapp-product.fud"&gt;
+
+@@code &#123;
+  import &#123; provide &#125; from "@@fudic/di";
+  import &#123; Cart &#125; from "../../services/cart.service";
+
+  const &#123; label = "" &#125; = props&lt;&#123; label?: string &#125;&gt;();
+  provide(Cart, () =&gt; new Cart());
+&#125;
+
+&lt;myapp-shop&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="p"&gt;
+    &lt;p&gt;@@label&lt;/p&gt;
+    &lt;myapp-product .name="Coffee beans"&gt;&lt;/myapp-product&gt;
+    &lt;myapp-product .name="Green tea"&gt;&lt;/myapp-product&gt;
+  &lt;/template&gt;
+&lt;/myapp-shop&gt;</code></pre>
+</ui-code>
+
+<p>Pon dos tiendas en la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-shop/myapp-shop.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-shop .label="Shopping cart"&gt;&lt;/myapp-shop&gt;
+&lt;myapp-shop .label="Wish list"&gt;&lt;/myapp-shop&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>. En Shopping cart, pulsa <strong>Add</strong> en los dos productos. Después, en Wish list, pulsa <strong>Add</strong> en Green tea:</p>
+
+<pre class="output"><code>Shopping cart
+Coffee beans
+Added. Items: 1
+Green tea
+Added. Items: 2
+Wish list
+Coffee beans
+Green tea
+Added. Items: 1</code></pre>
+
+<p>Los dos productos de Shopping cart comparten un carrito, y el de Wish list empieza en 1: es otro. <code>inject(Cart)</code> sube desde el producto y se queda con el dueño más cercano, su tienda. La instancia se crea la primera vez que alguien la pide.</p>
+
+<h2 id="source">4. El dueño no se hidrata</h2>
+
+<p>La tienda provee pero no inyecta nada, ni tiene eventos ni signals. Abre el código fuente con <kbd>Ctrl</kbd>+<kbd>U</kbd>. Cada producto lleva <code>data-fud-id</code>, porque se hidrata. La tienda lleva otra marca:</p>
+
+<pre class="output"><code>&lt;myapp-shop data-fud-adopt="base p" data-fud-ioc="1"&gt;</code></pre>
+
+<p>Y al final de la página, un bloque que dice dónde vive cada carrito:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-ioc"&gt;[[-1,0,0],["","myapp-shop","myapp-shop"]]&lt;/script&gt;</code></pre>
+
+<p>El navegador no encuentra al dueño subiendo por el DOM, porque la tienda nunca ejecuta una línea allí. El servidor anota quién es dueño de quién, y el navegador reconstruye con esa nota un contenedor por tienda. Tras <code>pnpm build</code> y <code>npx fudic preview</code>, la pestaña Red solo descarga de la tienda su fábrica, <code>myapp-shop.ioc-….js</code>, que llama al <code>provide</code>. El componente, <code>h/myapp-shop-….js</code>, no se descarga nunca.</p>
+
+<h2 id="twice">5. Proveerlo dos veces</h2>
+
+<p>Copia la línea del <code>provide</code> en la tienda, para que salga dos veces, y recarga. La página responde <code>500</code>, y la terminal dice por qué, seguido de la pila de Vite:</p>
+
+<pre class="output"><code>  my-app   11:54:34 [vite] (ssr) Error when evaluating SSR module fudic-wrapper:/: src/components/myapp-shop/myapp-shop.fud:9:11 - error FUD0684: `Cart` is provided twice in this @@code: the second registration replaces the first, and one of the two factories never runs.
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0684</code></pre>
+
+<p>La segunda reemplazaría a la primera, así que una de las dos funciones no se ejecutaría nunca. Borra la copia y la página vuelve.</p>
+
+<p>Un servicio de toda la página no puede pedir el carrito de una tienda: viviría más que ella. Esa regla y cómo se busca un servicio están en <a href="/docs/di/providers">Dueños y subárboles</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/providers" target="_blank" rel="noopener">la solución de Un servicio compartido por quien no se ve, en GitHub</a>. Compara tu <code>myapp-shop.fud</code> y tu <code>myapp-product.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/services", prevTitle: "Un servicio inyectado", next: "/tutorials/", nextTitle: "Todas las categorías")
