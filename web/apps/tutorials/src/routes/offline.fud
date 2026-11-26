@@ -164,4 +164,4 @@ Content-Security-Policy:
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/offline" target="_blank" rel="noopener">la solución de Funcionar sin red, en GitHub</a>. Compara tus dos <code>.fudapi</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/service-worker", prevTitle: "Arrancar el service worker", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/service-worker", prevTitle: "Arrancar el service worker", next: "/tutorials/isomorphic", nextTitle: "Render isomórfico: el mismo HTML en tres sitios")

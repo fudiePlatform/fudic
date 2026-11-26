@@ -1,0 +1,177 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Render isomórfico: el mismo HTML en tres sitios · Tutoriales de Fudic</title>
+  <meta name="description" content="Un componente de Fudic pintado por el servidor, por el build y por el service worker, con el mismo HTML en los tres: qué parte de su código se ejecuta al pintar y qué hacer con window.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/isomorphic">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Render isomórfico: el mismo HTML en tres sitios · Tutoriales de Fudic">
+  <meta property="og:description" content="El servidor, el build y el service worker pintan el mismo HTML. Lo que necesita el navegador va después.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/isomorphic">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serviceWorkerNav("isomorphic")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y un contador</a></li>
+        <li><a href="#server">2. Lo que pinta el servidor</a></li>
+        <li><a href="#window">3. Una API del navegador</a></li>
+        <li><a href="#three">4. El build y el service worker</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Service worker</span></p>
+
+<h1>Render isomórfico: el mismo HTML en tres sitios</h1>
+
+<p class="lede">Escribes un contador y comparas el HTML que pintan de él el servidor, el build y el service worker. Es el mismo en los tres, y lo que solo existe en el navegador se queda para después.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber qué parte del <code>@@code</code> se ejecuta al pintar y qué parte solo en el navegador.</li>
+    <li>Usar <code>window</code> sin romper el HTML del servidor.</li>
+    <li>Comprobar que el servidor, el build y el service worker escriben el mismo HTML.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Crea la app y un contador</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component counter --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>El contador muestra un número y su doble, pone el número en el título de la pestaña y suma uno con cada clic:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal, computed, effect &#125; from "@@fudic/core";
+
+  const count = signal(1);
+  const double = computed(() =&gt; count() * 2);
+
+  effect(() =&gt; &#123;
+    document.title = `$&#123;count()&#125; items`;
+  &#125;);
+
+  function add() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@add&gt;@@count() · @@double()&lt;/button&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Ponlo en la página, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-counter/myapp-counter.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-counter&gt;&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<h2 id="server">2. Lo que pinta el servidor</h2>
+
+<ui-code>
+<pre><code>npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code>. El botón dice 1 · 2, la pestaña dice «1 items» y cada clic suma uno. Ahora abre el código fuente con Ctrl+U, que es el HTML tal como lo envió el servidor:</p>
+
+<pre class="output"><code>&lt;title&gt;Home&lt;/title&gt;
+…
+&lt;main&gt;&lt;h1&gt;Home&lt;/h1&gt;&lt;myapp-counter data-fud-id="0" data-fud-adopt="base button"&gt;&lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button"&gt; &lt;button type="button"&gt;1 · 2&lt;/button&gt; &lt;/template&gt;&lt;/myapp-counter&gt;&lt;/main&gt;</code></pre>
+
+<p>El botón llega pintado con 1 · 2, pero el título sigue siendo Home. Al pintar, Fudic solo ejecuta lo que el HTML muestra: <code>count</code> y <code>double</code>. El <code>effect</code> toca <code>document</code>, y <code>add</code> solo se llama al hacer clic, así que los dos se quedan para el navegador, donde se ejecutan al hidratarse el componente.</p>
+
+<h2 id="window">3. Una API del navegador</h2>
+
+<p>Enseña también el ancho de la ventana. Añade un signal con <code>window.innerWidth</code> y muéstralo en un párrafo:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>  const double = computed(() =&gt; count() * 2);
+  const width = signal(window.innerWidth);
+…
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;button type="button" @@click=@@add&gt;@@count() · @@double()&lt;/button&gt;
+    &lt;p&gt;Window: @@width()px&lt;/p&gt;
+  &lt;/template&gt;</code></pre>
+</ui-code>
+
+<p>Guarda. La página da un error, y la terminal dice por qué:</p>
+
+<pre class="output"><code>my-app   src/components/myapp-counter/myapp-counter.fud:6:24 - error FUD0907: this name is not available to the view: the only global is `undefined`; declare or import the rest in `@@code`
+my-app     6    const width = signal(window.innerWidth);
+my-app                               ──────
+my-app     https://fudic.dev/docs/reference/diagnostics/FUD0907
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p><code>width</code> se muestra, así que se ejecuta también en el servidor y en el service worker, donde no hay <code>window</code>. Fudic lo detecta al compilar, y el editor subraya <code>window</code> con el mismo error. Dale al signal un valor fijo y pon el de verdad en un <code>afterHydrate</code>, que solo se ejecuta en el navegador:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>  const width = signal(0);
+
+  effect(() =&gt; &#123;
+    document.title = `$&#123;count()&#125; items`;
+  &#125;);
+
+  afterHydrate(() =&gt; &#123;
+    width.set(window.innerWidth);
+  &#125;);</code></pre>
+</ui-code>
+
+<p>Guarda: la página enseña el ancho de tu ventana, y el código fuente, <code>&lt;p&gt;Window: 0px&lt;/p&gt;</code>. Los hooks del ciclo de vida, como <code>afterHydrate</code>, están en <a href="/tutorials/lifecycle">El ciclo de vida</a>.</p>
+
+<h2 id="three">4. El build y el service worker</h2>
+
+<p>Para <code>fudic dev</code> con Ctrl+C. La página no tiene datos, así que es <code>ssg</code>: la pinta el build, una vez, y la guarda en un fichero. Constrúyela:</p>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<p>Abre <code>dist/index.html</code>. Su <code>&lt;main&gt;</code> es el mismo que envió el servidor:</p>
+
+<pre class="output"><code>&lt;main&gt;&lt;h1&gt;Home&lt;/h1&gt;&lt;myapp-counter data-fud-id="0" data-fud-adopt="base button p"&gt;&lt;template shadowrootmode="open" shadowrootadoptedstylesheets="base button p"&gt; &lt;button type="button"&gt;1 · 2&lt;/button&gt; &lt;p&gt;Window: 0px&lt;/p&gt; &lt;/template&gt;&lt;/myapp-counter&gt;&lt;/main&gt;</code></pre>
+
+<p>Falta el tercer sitio. Sirve el build:</p>
+
+<ui-code>
+<pre><code>npx fudic preview</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:4173/</code> con la pestaña Red (Network) abierta y recarga. Esta vez el documento lo pinta el service worker en tu navegador: su fila dice <code>(ServiceWorker)</code> en la columna Tamaño (Size). Pulsa en ella y abre Respuesta (Response). El <code>&lt;main&gt;</code> vuelve a ser el mismo, con su 1 · 2 y su <code>Window: 0px</code>.</p>
+
+<p>Los tres sitios ejecutan el mismo código y escriben el mismo HTML. Por eso una página pasa de un modo a otro sin tocar su <code>.fud</code>. Qué se ejecuta en cada uno, y las reglas para que pinte igual, están en <a href="/docs/service-worker/isomorphic">Render isomórfico</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/isomorphic" target="_blank" rel="noopener">la solución de Render isomórfico, en GitHub</a>. Compara tu componente con el suyo.</p>
+
+@render pager(prev: "/tutorials/offline", prevTitle: "Funcionar sin red: estrategias de caché", next: "/tutorials/", nextTitle: "Todas las categorías")

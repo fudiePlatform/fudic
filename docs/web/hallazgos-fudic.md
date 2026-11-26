@@ -994,6 +994,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   '"fudic:routes/index"' has no exported member 'rename'`, y lo mismo con `login` y `secret`)
   hasta un `touch`. Parecía un error del contrato (un `fails` sin `catches`, un `chain` con `skip`),
   y no lo era: con el mismo fichero guardado otra vez, el typecheck queda limpio.
+- **Vuelto a comprobar** con el tutorial `isomorphic` (2026-11-26): un componente reescrito con
+  `cat >` y un `FUD0907` de verdad dio además `FUD0949`, `FUD0953` y `FUD0191` en su `.fudspec` y
+  en la página («4 errors in 3 files»). Tras un `touch`, solo el `FUD0907` («1 error in 1 file»).
 
 ## 68. Un componente que solo lee un store no se actualiza nunca
 
@@ -1441,3 +1444,19 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   dice lo que pasa de verdad: «el Service Worker se instala pero no pinta ninguna página».
 - **Qué debería hacer.** Que el mensaje y el comentario digan lo mismo que la Documentación: que
   el service worker no podrá pintar ninguna página y todas irán al servidor.
+
+## 94. `FUD0907` sobre `window` no dice que solo existe en el navegador
+
+- **Qué pasó.** Escribiendo el tutorial `isomorphic` (2026-11-26): un componente con
+  `const width = signal(window.innerWidth)` que muestra `@width()` da, en `fudic dev` y en el
+  editor, ``FUD0907: this name is not available to the view: the only global is `undefined`;
+  declare or import the rest in `@code` ``, con la acción «Explain FUD0907». Su ficha
+  (`FUD0907.md`) habla de `Math`, `JSON` o `Date`, y propone declararlo en `@code` o calcularlo en
+  `load()`. Ninguno de los dos sirve para `window`: lo que hay que hacer es darle un valor fijo y
+  ponerle el de verdad en un `afterHydrate` o un `effect`, como cuenta «Render isomórfico»
+  (`/docs/service-worker/isomorphic#rules`).
+- **Dónde lo dice la web.** «Render isomórfico» dice que una página que lee `window.innerWidth`
+  para mostrarlo «falla en el servidor»; en realidad no llega a él, porque el compilador la para.
+- **Qué debería hacer.** Un mensaje propio para `window`, `document`, `navigator` y el resto de
+  globales del navegador: «``window`` exists only in the browser: give the signal a fixed value and
+  set it in afterHydrate or an effect», y una línea más en la ficha.

@@ -160,6 +160,6 @@
   <ol class="tutorial-list">
     @render tutorial("service-worker", "Arrancar el service worker", "intermediate", @current)
     @render tutorial("offline", "Funcionar sin red: estrategias de caché", "advanced", @current)
-    @render tutorial("isomorphic", "Render isomórfico: el mismo HTML en tres sitios", "advanced", @current, false)
+    @render tutorial("isomorphic", "Render isomórfico: el mismo HTML en tres sitios", "advanced", @current)
   </ol>
 }

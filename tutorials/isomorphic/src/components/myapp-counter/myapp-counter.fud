@@ -1,0 +1,26 @@
+@code {
+  import { signal, computed, effect } from "@fudic/core";
+
+  const count = signal(1);
+  const double = computed(() => count() * 2);
+  const width = signal(0);
+
+  effect(() => {
+    document.title = `${count()} items`;
+  });
+
+  afterHydrate(() => {
+    width.set(window.innerWidth);
+  });
+
+  function add() {
+    count.set(count() + 1);
+  }
+}
+
+<myapp-counter>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <button type="button" @click=@add>@count() · @double()</button>
+    <p>Window: @width()px</p>
+  </template>
+</myapp-counter>
