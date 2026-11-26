@@ -163,3 +163,14 @@
     @render tutorial("isomorphic", "Render isomórfico: el mismo HTML en tres sitios", "advanced", @current)
   </ol>
 }
+
+@snippet securityNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Seguridad</p>
+  <details class="toggle"><summary>Tutoriales de Seguridad</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("security-headers", "Cabeceras de seguridad", "intermediate", @current)
+    @render tutorial("csp", "Content Security Policy", "advanced", @current, false)
+    @render tutorial("trusted-types", "Trusted Types", "advanced", @current, false)
+  </ol>
+}

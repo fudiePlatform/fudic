@@ -1,0 +1,186 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Cabeceras de seguridad · Tutoriales de Fudic</title>
+  <meta name="description" content="Las cabeceras de seguridad de una app de Fudic: dónde están, cómo se ven en la respuesta, cómo se añade una nueva, qué hace el editor con un valor mal escrito y por qué Strict-Transport-Security solo sale por HTTPS.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/security-headers">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Cabeceras de seguridad · Tutoriales de Fudic">
+  <meta property="og:description" content="Las cabeceras de seguridad viven en page.headers: míralas en la respuesta, añade una y deja que el editor la compruebe.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/security-headers">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render securityNav("security-headers")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app</a></li>
+        <li><a href="#response">2. Las cabeceras en la respuesta</a></li>
+        <li><a href="#add">3. Añade una cabecera</a></li>
+        <li><a href="#editor">4. Un valor que no vale</a></li>
+        <li><a href="#https">5. Por HTTPS</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Seguridad</span></p>
+
+<h1>Cabeceras de seguridad</h1>
+
+<p class="lede">Miras las cabeceras de seguridad que trae una app nueva, añades una y ves cómo el editor y el build comprueban lo que escribes.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber dónde están las cabeceras de seguridad de cada página y verlas en la respuesta.</li>
+    <li>Añadir una cabecera nueva sin tocar código.</li>
+    <li>Entender por qué <code>Strict-Transport-Security</code> solo sale por HTTPS.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>.</p>
+</section>
+
+<h2 id="create">1. Crea la app</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app</code></pre>
+</ui-code>
+
+<p>En la raíz de la app hay un fichero <code>page.headers</code>. Son las cabeceras que lleva cada página, escritas como texto:</p>
+
+<pre class="output"><code># The headers of every page: what the server sends and what the Service Worker paints.
+# The 103 Early Hints carry only the Content-Security-Policy and the Referrer-Policy.
+# &#123;nonce&#125; is the nonce of each response: fudic writes it on its own scripts and styles.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'nonce-&#123;nonce&#125;' 'strict-dynamic' 'unsafe-inline' https:
+  style-src 'self' 'unsafe-inline'
+  img-src 'self' data:
+  object-src 'none'
+  base-uri 'none'
+  frame-ancestors 'none'
+  require-trusted-types-for 'script'
+  trusted-types fudic
+Referrer-Policy: strict-origin-when-cross-origin
+Cross-Origin-Opener-Policy: same-origin
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></pre>
+
+<p>Cada cabecera es una línea <code>Name: value</code>, y una línea sangrada continúa la de arriba. La Content Security Policy tiene su propio tutorial. Este va de las otras tres: <code>Referrer-Policy</code> no cuenta a otras webs de qué página viene el usuario, <code>Cross-Origin-Opener-Policy</code> impide que una ventana de otra web toque la tuya, y <code>Strict-Transport-Security</code> obliga al navegador a entrar siempre por HTTPS.</p>
+
+<h2 id="response">2. Las cabeceras en la respuesta</h2>
+
+<ui-code>
+<pre><code>npx fudic dev</code></pre>
+</ui-code>
+
+<p>En otra terminal, pide solo las cabeceras de la portada:</p>
+
+<ui-code>
+<pre><code>curl -sI http://localhost:5173/</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+vary: Origin
+content-type: text/html; charset=utf-8
+cross-origin-opener-policy: same-origin
+link: &lt;/@@fudic/sheet/guide-GoKaxRJH.css&gt;; rel=preload; as=style, &lt;/fudic-main.js&gt;; rel=modulepreload
+referrer-policy: strict-origin-when-cross-origin
+date: Thu, 26 Nov 2026 13:31:28 GMT
+connection: keep-alive
+keep-alive: timeout=5</code></pre>
+
+<p>Están <code>referrer-policy</code> y <code>cross-origin-opener-policy</code>, tal como las escribe <code>page.headers</code>. Faltan dos. La CSP no sale en <code>fudic dev</code>, porque el cliente de Vite que recarga la página no lleva nonce. <code>Strict-Transport-Security</code> solo sale en las respuestas por HTTPS, y lo verás en el paso 5.</p>
+
+<h2 id="add">3. Añade una cabecera</h2>
+
+<p>Una cabecera nueva es una línea más. <code>Permissions-Policy</code> apaga la cámara y la ubicación para la página y para todo lo que cargue. Añádela al final, con <code>fudic dev</code> en marcha:</p>
+
+<ui-code .path="page.headers">
+<pre><code>Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+Permissions-Policy: camera=(), geolocation=()</code></pre>
+</ui-code>
+
+<p>Guarda y repite el <code>curl</code>. La respuesta lleva ya la cabecera nueva, sin reiniciar nada:</p>
+
+<pre class="output"><code>permissions-policy: camera=(), geolocation=()</code></pre>
+
+<h2 id="editor">4. Un valor que no vale</h2>
+
+<p>La forma antigua de esta cabecera, <code>Feature-Policy</code>, escribía los valores como la CSP. Es un error fácil. Escribe la cámara así:</p>
+
+<ui-code .path="page.headers">
+<pre><code>Permissions-Policy: camera 'none', geolocation=()</code></pre>
+</ui-code>
+
+<p>Guarda. La terminal de <code>fudic dev</code> lo dice:</p>
+
+<pre class="output"><code>my-app   page.headers:18:21 - error FUD1543: Permissions-Policy does not accept "camera 'none'": expected feature=(allowlist), such as camera=() or geolocation=(self)
+my-app     https://fudic.dev/docs/reference/diagnostics/FUD1543</code></pre>
+
+<p>El editor subraya <code>camera 'none'</code> con el mismo error, y la bombilla ofrece «Explain FUD1543». <code>pnpm build</code> también se para en él, así que un valor que no vale nunca llega a producción. Vuelve a escribir <code>camera=()</code> y guarda.</p>
+
+<p>El editor conoce las cabeceras de seguridad más habituales y comprueba su valor. De una cabecera que no conoce solo comprueba el nombre.</p>
+
+<h2 id="https">5. Por HTTPS</h2>
+
+<p>Para <code>fudic dev</code> con Ctrl+C. Para ver <code>Strict-Transport-Security</code> hace falta HTTPS, y en tu máquina basta un certificado de desarrollo, que genera un plugin de Vite:</p>
+
+<ui-code>
+<pre><code>pnpm add -D -E @@vitejs/plugin-basic-ssl</code></pre>
+</ui-code>
+
+<ui-code .path="vite.config.ts">
+<pre><code>import &#123; defineConfig &#125; from 'vite';
+import basicSsl from '@@vitejs/plugin-basic-ssl';
+import &#123; fudic &#125; from '@@fudic/vite';
+
+// Pages are the .fud files under src/routes/; fudic() needs nothing else to serve and build them.
+// basicSsl() serves them over HTTPS with a development certificate.
+export default defineConfig(&#123;
+  plugins: [fudic(), basicSsl()],
+&#125;);</code></pre>
+</ui-code>
+
+<p>Construye la app y sírvela con <code>pnpm preview</code>, la preview de Vite, que con el plugin habla HTTPS:</p>
+
+<ui-code>
+<pre><code>pnpm build
+pnpm preview</code></pre>
+</ui-code>
+
+<p>Pide otra vez las cabeceras. <code>-k</code> acepta el certificado de desarrollo:</p>
+
+<ui-code>
+<pre><code>curl -skI https://localhost:4173/</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/2 200
+vary: Origin
+content-security-policy: default-src 'self'; script-src 'nonce-k0RMsFAVYE5K9FVanASlFQ' 'strict-dynamic' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types fudic
+content-type: text/html; charset=utf-8
+cross-origin-opener-policy: same-origin
+link: &lt;/assets/guide-GoKaxRJH.css&gt;; rel=preload; as=style, &lt;/fudic-boot-321ca934.js&gt;; rel=modulepreload
+permissions-policy: camera=(), geolocation=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+date: Thu, 26 Nov 2026 13:32:21 GMT</code></pre>
+
+<p>Ahora salen todas. <code>strict-transport-security</code> le dice al navegador que, durante dos años, entre solo por HTTPS, también en los subdominios. Por HTTP no tendría sentido, porque cualquiera en medio podría quitarla, así que Fudic solo la manda por HTTPS. La CSP también sale, porque esto es el build. Qué hace cada cabecera, y las que pone Fudic por su cuenta, está en <a href="/docs/security/headers">Las cabeceras</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/security-headers" target="_blank" rel="noopener">la solución de Cabeceras de seguridad, en GitHub</a>. Compara tu <code>page.headers</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/isomorphic", prevTitle: "Render isomórfico: el mismo HTML en tres sitios", next: "/tutorials/", nextTitle: "Todas las categorías")

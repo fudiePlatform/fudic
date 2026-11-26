@@ -1460,3 +1460,49 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Un mensaje propio para `window`, `document`, `navigator` y el resto de
   globales del navegador: «``window`` exists only in the browser: give the signal a fixed value and
   set it in afterHydrate or an effect», y una línea más en la ficha.
+
+## 95. La plantilla no trae `X-Content-Type-Options`, y HTTP Observatory la echa en falta
+
+- **Qué pasó.** A petición de Pedro, con el tutorial `security-headers` (2026-11-26), se midió una
+  app recién creada con `fudic new` con el escáner de
+  [HTTP Observatory](https://developer.mozilla.org/en-US/observatory) (`@mdn/mdn-http-observatory`
+  1.4.8). Su CLI no admite puertos, así que se llamó a sus tests desde un script, sobre la preview
+  de Vite en HTTPS y HTTP/2 con un certificado de una CA local en la que Node confía, y un
+  redirector de HTTP a HTTPS delante, como haría el hosting. Con `page.headers` tal cual:
+  **105, A+**, con 9 de 10 tests. El que falla es
+  `x-content-type-options-not-implemented` (−5). Con `X-Content-Type-Options: nosniff` añadido a
+  `page.headers`: **110, A+**, 10 de 10.
+- **Lo demás que dio**, sin restar:
+  - CSP: `csp-implemented-with-unsafe-inline-in-style-src-only` (0). Sin el `'unsafe-inline'` de
+    `style-src` sumaría +5, pero los componentes usan estilos en línea (lo dice «La CSP»).
+  - HSTS: `hsts-implemented-max-age-at-least-six-months` (0). El +5 de `hsts-preloaded` solo llega
+    con el dominio dado de alta en la lista de precarga.
+  - `referrer-policy-private` (+5), `x-frame-options-implemented-via-csp` (+5, por
+    `frame-ancestors`), `corp-not-implemented` (0), sin cookies ni CORS.
+  - La redirección de HTTP a HTTPS (−20 sin ella) y HSTS (−20 por HTTP) son del hosting: ni
+    `fudic preview` ni el servidor de Node redirigen, y `fudic preview` no sirve HTTPS (nº 27 de la
+    CLI). Por HTTP, la misma app da 55, C.
+- **El editor tampoco la conoce.** `X-Content-Type-Options` no está en `KNOWN` de
+  `packages/config/src/headers/known.ts`: de ella solo se comprueba el nombre, y no se completa
+  `nosniff`.
+- **Qué debería hacer.** Que la plantilla de `page.headers` traiga `X-Content-Type-Options:
+  nosniff`, y también `assets.headers` en `/**`: el navegador solo aplica `nosniff` a scripts y
+  hojas de estilo, que no son páginas. Y una línea en `KNOWN` con su único valor.
+- **De paso.** Un `page.headers` con un error de valor (`FUD1543`) para `pnpm build` con el
+  mensaje bueno, seguido de una docena de líneas de pila de `@fudic/vite`, Rolldown y Vite, igual
+  que el `FUD1027` del nº 30 de la CLI.
+
+## 96. `Permissions-Policy` solo se comprueba por su sintaxis
+
+- **Qué pasó.** En el mismo tutorial, `Permissions-Policy: camera=none, geolocation=()` no da
+  ningún aviso ni en el editor ni en `fudic dev`, que la manda tal cual. La sintaxis es un
+  diccionario estructurado válido, pero el estándar solo admite en la lista `*`, `self`, `src` o
+  orígenes entre comillas, así que `none` no apaga la cámara. No se comprobó qué hace el navegador
+  con ella. `camera 'none'` (la forma antigua de `Feature-Policy`) sí da `FUD1543`.
+- **Por qué.** `permissionsPolicy` en `packages/config/src/headers/checks.ts` solo pasa cada
+  miembro por una expresión regular de RFC 8941.
+- **Cómo se resolvió en el tutorial.** El paso del error usa `camera 'none'`.
+- **Qué debería hacer.** Comprobar también los valores de la lista, y proponer `camera=()` para
+  `none`, que es lo que quiere decir quien lo escribe.
+- **De paso.** Con un `FUD1543` en `page.headers`, `fudic dev` escribe el error pero sigue mandando
+  el valor que no vale; `pnpm build` sí se para.
