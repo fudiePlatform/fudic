@@ -190,4 +190,4 @@ Largest Contentful Paint    2.9 s</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/lighthouse" target="_blank" rel="noopener">la solución de Un 100 en Lighthouse, en GitHub</a>. Compara tu <code>src/routes/index.fud</code> y tu <code>src/guide/tokens.css</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/caching", prevTitle: "Caché HTTP de páginas y assets", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/caching", prevTitle: "Caché HTTP de páginas y assets", next: "/tutorials/unit-tests", nextTitle: "Probar un componente")

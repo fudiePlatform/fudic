@@ -181,6 +181,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   frágil y los títulos «Baseline» y «Workspace», corregidos a mano: los dos de la categoría.
 - **Y otra vez** con el tutorial de Agentes (`mcp`), el 2026-11-26: el `href` frágil y el título
   «Mcp», corregidos a mano.
+- **Y otra vez** con los tutoriales de Tests, el 2026-11-26: el `href` frágil y el título de cada
+  página, corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

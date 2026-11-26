@@ -196,6 +196,20 @@
   </ol>
 }
 
+@snippet testsNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Tests</p>
+  <details class="toggle"><summary>Tutoriales de Tests</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("unit-tests", "Probar un componente", "beginner", @current)
+    @render tutorial("page-tests", "Probar una página, su layout y un snippet", "beginner", @current, false)
+    @render tutorial("load-tests", "Probar el load de una página", "intermediate", @current, false)
+    @render tutorial("function-tests", "Probar funciones de servidor y middlewares", "intermediate", @current, false)
+    @render tutorial("form-tests", "Probar un formulario y sus reglas", "intermediate", @current, false)
+    @render tutorial("custom-terms", "Tu primer paso propio en un .fudspec", "intermediate", @current, false)
+  </ol>
+}
+
 @snippet agentsNav(current: string) {
   <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
   <p class="nav-category">Agentes</p>

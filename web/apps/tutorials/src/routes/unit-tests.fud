@@ -1,0 +1,168 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Probar un componente · Tutoriales de Fudic</title>
+  <meta name="description" content="Monta un componente en un test de Vitest con mount, búscalo por su rol, pulsa su botón y comprueba lo que pinta. Ejecútalo con fudic test y lee un fallo.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/unit-tests">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Probar un componente · Tutoriales de Fudic">
+  <meta property="og:description" content="Un contador, dos tests y un fallo leído en la terminal.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/unit-tests">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("unit-tests")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#generate">1. Crea el componente y su test</a></li>
+        <li><a href="#component">2. Escribe un contador</a></li>
+        <li><a href="#test">3. Prueba lo que pinta y un clic</a></li>
+        <li><a href="#failing">4. Rómpelo y lee el fallo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Tests</span></p>
+
+<h1>Probar un componente</h1>
+
+<p class="lede">Montas un contador en un test, pulsas su botón y compruebas el número que pinta.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Montar un componente en un test con <code>mount</code>, con y sin props.</li>
+    <li>Buscar sus elementos por su rol y pulsar un botón.</li>
+    <li>Ejecutar los tests con <code>fudic test</code> y leer un fallo.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="generate">1. Crea el componente y su test</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-counter&gt; in src/components/myapp-counter/
+
+  myapp-counter.fud         the component
+  myapp-counter.test.ts     unit test               pnpm test
+  myapp-counter.fudspec     acceptance criteria     pnpm spec
+  myapp-counter.fixture.ts  the props the criteria mount it with</code></pre>
+
+<p>Junto al componente, la CLI deja un test unitario. Un test unitario es un fichero de <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a> que se ejecuta en Node, sin abrir un navegador. El que deja la CLI comprueba que el componente se monta:</p>
+
+<pre class="output"><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; mount &#125; from '@@fudic/testing';
+import * as MyappCounter from './myapp-counter.fud';
+
+test('renders', async () =&gt; &#123;
+  const t = await mount(MyappCounter);
+  expect(t.host).toBeInTheDocument();
+&#125;);</code></pre>
+
+<p><code>mount</code> pasa el componente por el servidor, como en una página de verdad, y lo pone en un DOM simulado. <code>t.host</code> es el elemento <code>&lt;myapp-counter&gt;</code>.</p>
+
+<h2 id="component">2. Escribe un contador</h2>
+
+<p>Un botón que suma uno y un <code>&lt;output&gt;</code> con la cuenta, que empieza en la prop <code>start</code>:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output"&gt;
+    &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<h2 id="test">3. Prueba lo que pinta y un clic</h2>
+
+<p>Cambia el test por estos dos:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; mount &#125; from '@@fudic/testing';
+import * as MyappCounter from './myapp-counter.fud';
+
+test('starts at 0', async () =&gt; &#123;
+  const t = await mount(MyappCounter);
+  expect(t.getByRole('status')).toHaveTextContent('0');
+&#125;);
+
+test('adds one on each click', async () =&gt; &#123;
+  const t = await mount(MyappCounter, &#123; props: &#123; start: 2 &#125; &#125;);
+  await t.click(t.getByRole('button', &#123; name: '+1' &#125;));
+  expect(t.getByRole('status')).toHaveTextContent('3');
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><code>getByRole</code> busca como lo hace un lector de pantalla, por el rol del elemento y su nombre, y entra en el shadow DOM. Un <code>&lt;output&gt;</code> tiene el rol <code>status</code>.</li>
+  <li><code>props</code> le da al componente lo que le daría la página.</li>
+  <li><code>t.click</code> pulsa el botón y espera a que el componente termine de responder. Después ya se puede comprobar el resultado.</li>
+</ul>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> Test Files  3 passed (3)
+      Tests  4 passed (4)
+
+fudic test · 1 project · passed · 4.6 s</code></pre>
+
+<p>Son cuatro tests porque <code>fudic new</code> dejó uno para la portada y otro para el layout.</p>
+
+<h2 id="failing">4. Rómpelo y lee el fallo</h2>
+
+<p>Un test sirve cuando falla. Cambia <code>count() + 1</code> por <code>count() + 2</code> en el componente y vuelve a ejecutar <code>npx fudic test</code>:</p>
+
+<pre class="output"><code> FAIL  src/components/myapp-counter/myapp-counter.test.ts &gt; adds one on each click
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  3
+Received:
+  4
+ ❯ src/components/myapp-counter/myapp-counter.test.ts:13:33
+     11|   const t = await mount(MyappCounter, &#123; props: &#123; start: 2 &#125; &#125;);
+     12|   await t.click(t.getByRole('button', &#123; name: '+1' &#125;));
+     13|   expect(t.getByRole('status')).toHaveTextContent('3');
+       |                                 ^
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 3 passed (4)</code></pre>
+
+<p>El fallo dice qué test es, qué esperaba (<code>3</code>), qué encontró (<code>4</code>) y en qué línea. El otro test, <code>starts at 0</code>, sigue pasando, porque no pulsa. Deja el <code>+ 1</code> como estaba. Todo lo que puede hacer <code>mount</code> está en <a href="/docs/testing/unit">Tests unitarios</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/unit-tests" target="_blank" rel="noopener">la solución de Probar un componente, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/lighthouse", prevTitle: "Un 100 en Lighthouse", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
