@@ -1,0 +1,5 @@
+# Who is calling. The server half reads the session cookie and leaves the user in ctx.
+middleware auth
+  server
+  adds
+    user  str

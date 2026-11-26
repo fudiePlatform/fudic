@@ -204,7 +204,7 @@
     @render tutorial("unit-tests", "Probar un componente", "beginner", @current)
     @render tutorial("page-tests", "Probar una página, su layout y un pipe", "beginner", @current)
     @render tutorial("load-tests", "Probar el load de una página", "intermediate", @current)
-    @render tutorial("function-tests", "Probar funciones de servidor y middlewares", "intermediate", @current, false)
+    @render tutorial("function-tests", "Probar funciones de servidor y middlewares", "intermediate", @current)
     @render tutorial("form-tests", "Probar un formulario y sus reglas", "intermediate", @current, false)
     @render tutorial("custom-terms", "Tu primer paso propio en un .fudspec", "intermediate", @current, false)
   </ol>

@@ -183,4 +183,4 @@ fudic test · 1 project · passed · 5.1 s</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/load-tests" target="_blank" rel="noopener">la solución de Probar el load de una página, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/page-tests", prevTitle: "Probar una página, su layout y un pipe", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/page-tests", prevTitle: "Probar una página, su layout y un pipe", next: "/tutorials/function-tests", nextTitle: "Probar funciones de servidor y middlewares")
