@@ -242,4 +242,4 @@ fudic test · 1 project · passed · 5.1 s</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/form-tests" target="_blank" rel="noopener">la solución de Probar un formulario y sus reglas, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/function-tests", prevTitle: "Probar funciones de servidor y middlewares", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/function-tests", prevTitle: "Probar funciones de servidor y middlewares", next: "/tutorials/custom-terms", nextTitle: "Tu primer paso propio en un .fudspec")

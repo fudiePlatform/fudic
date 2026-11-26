@@ -1,0 +1,17 @@
+component myapp-counter
+
+criterion adds-three
+  given
+    props base
+  when
+    adds 3
+  then
+    shows 3
+
+criterion adds-ten
+  given
+    props base
+  when
+    adds 10
+  then
+    shows 10

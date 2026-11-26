@@ -1,0 +1,234 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu primer paso propio en un .fudspec · Tutoriales de Fudic</title>
+  <meta name="description" content="Un criterio con tres clics y un texto se convierte en adds 3 y shows 3: dos pasos propios creados con fudic g term, de diez líneas cada uno, que se reutilizan en el siguiente criterio.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/custom-terms">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu primer paso propio en un .fudspec · Tutoriales de Fudic">
+  <meta property="og:description" content="Escribe el criterio como lo dirías, y crea los pasos que faltan.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/custom-terms">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("custom-terms")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#criterion">1. Un contador y su criterio</a></li>
+        <li><a href="#say-it">2. Escríbelo como lo dirías</a></li>
+        <li><a href="#when">3. Crea el paso que actúa</a></li>
+        <li><a href="#then">4. Crea el paso que comprueba</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Tests</span></p>
+
+<h1>Tu primer paso propio en un .fudspec</h1>
+
+<p class="lede">Escribes un criterio como lo diría una persona, <code>adds 3</code> y <code>shows 3</code>, y creas los dos pasos que le faltan a Fudic para entenderlo.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Escribir un criterio de <code>.fudspec</code> con los pasos de Fudic y ejecutarlo con <code>fudic spec</code>.</li>
+    <li>Crear un paso propio que actúa y otro que comprueba, con <code>fudic g term</code>.</li>
+    <li>Leer lo que dice <code>fudic spec</code> cuando tu paso no se cumple.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="criterion">1. Un contador y su criterio</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component counter</code></pre>
+</ui-code>
+
+<p>Escribe un contador con un botón que suma uno:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output"&gt;
+    &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Un criterio dice qué tiene que pasar, y Fudic lo comprueba en un navegador de verdad. La CLI dejó uno al lado del componente. Cámbialo por este, que pulsa tres veces y mira el número:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fudspec">
+<pre><code>component myapp-counter
+
+criterion adds-three
+  given
+    props base
+  when
+    click role:button/"+1"
+    click role:button/"+1"
+    click role:button/"+1"
+  then
+    text output "3"</code></pre>
+</ui-code>
+
+<p><code>given</code> prepara el componente, con las props de <code>base</code>. <code>when</code> dice lo que hace el usuario y <code>then</code>, lo que debe verse. Cada línea es un paso, y <code>click</code> y <code>text</code> son dos de los que trae Fudic.</p>
+
+<ui-code>
+<pre><code>npx fudic spec</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter
+  ✓ adds-three  1318 ms
+1 criteria · 1 pass · 0 fail · 0 error · 2.5 s · chrome</code></pre>
+
+<p>Hoy, en un proyecto recién creado, la primera ejecución puede acabar en <code>!</code> con «Failed to fetch dynamically imported module». Vuelve a ejecutarlo y pasará.</p>
+
+<h2 id="say-it">2. Escríbelo como lo dirías</h2>
+
+<p>El criterio funciona, pero dice cómo está hecha la pantalla: tres clics en un botón y el texto de un <code>&lt;output&gt;</code>. Quien pidió el contador diría «suma 3 y enseña 3». Escríbelo así:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fudspec">
+<pre><code>component myapp-counter
+
+criterion adds-three
+  given
+    props base
+  when
+    adds 3
+  then
+    shows 3</code></pre>
+</ui-code>
+
+<p><code>fudic spec</code> no los conoce todavía:</p>
+
+<pre class="output"><code>myapp-counter
+  error FUD0940 unknown `when` term `adds`; `when` terms: [back, check, click, …]
+  error FUD0940 unknown `then` term `shows`; `then` terms: [attribute, called, checked, …]</code></pre>
+
+<p>El editor los subraya con el mismo error, y su bombilla ofrece crear cada uno. Aquí se crean con la CLI, que deja escoger el nombre y el tipo de cada argumento.</p>
+
+<h2 id="when">3. Crea el paso que actúa</h2>
+
+<ui-code>
+<pre><code>npx fudic g term when adds --param times:number</code></pre>
+</ui-code>
+
+<p>La CLI crea <code>fudic/terms/when/adds.js</code>. Un paso propio es eso, un fichero de JavaScript: <code>meta</code> dice cómo se escribe y <code>run</code>, qué hace. Rellénalo así:</p>
+
+<ui-code .path="fudic/terms/when/adds.js">
+<pre><code>export const meta = &#123;
+  name: 'adds',
+  block: 'when',
+  params: [
+    &#123; name: 'times', type: 'number' &#125;,
+  ],
+  describe: (&#123; times &#125;) =&gt; `the user adds $&#123;times&#125;`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term&lt;string&gt;['run']&#125; */
+export async function run(ctx, &#123; times &#125;) &#123;
+  const button = ctx.locate('role:button/"+1"');
+  for (let i = 0; i &lt; times; i++) &#123;
+    await ctx.act(button, () =&gt; button.click());
+  &#125;
+  return &#123; pass: true, evidence: `clicked +1 $&#123;times&#125; times` &#125;;
+&#125;
+
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<ul>
+  <li><code>times</code> llega como número, porque su tipo es <code>number</code>.</li>
+  <li><code>ctx.locate</code> busca el botón con la misma referencia que usaba el criterio.</li>
+  <li><code>ctx.act</code> pulsa y espera a que el contador termine de responder antes del clic siguiente.</li>
+  <li><code>describe</code> es la frase que sale en los informes, y <code>evidence</code>, lo que hizo el paso.</li>
+</ul>
+
+<h2 id="then">4. Crea el paso que comprueba</h2>
+
+<ui-code>
+<pre><code>npx fudic g term then shows --param count:number</code></pre>
+</ui-code>
+
+<p>Un paso de <code>then</code> mira la página y devuelve <code>pass</code>, si se cumple, y <code>evidence</code>, lo que esperaba frente a lo que encontró:</p>
+
+<ui-code .path="fudic/terms/then/shows.js">
+<pre><code>export const meta = &#123;
+  name: 'shows',
+  block: 'then',
+  params: [
+    &#123; name: 'count', type: 'number' &#125;,
+  ],
+  describe: (&#123; count &#125;) =&gt; `the counter shows $&#123;count&#125;`,
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term&lt;string&gt;['run']&#125; */
+export async function run(ctx, &#123; count &#125;) &#123;
+  const actual = await ctx.text(ctx.locate('output'));
+  return &#123; pass: actual === String(count), evidence: &#123; expected: String(count), actual &#125; &#125;;
+&#125;
+
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<p>Ejecuta <code>npx fudic spec</code> y el criterio vuelve a pasar:</p>
+
+<pre class="output"><code>myapp-counter
+  ✓ adds-three  1219 ms</code></pre>
+
+<p>Para ver qué pasa cuando no se cumple, cambia <code>count() + 1</code> por <code>count() + 2</code> en el componente y ejecútalo otra vez:</p>
+
+<pre class="output"><code>myapp-counter
+  ✗ adds-three  6259 ms
+      then the counter shows 3
+        expected  3
+        actual    6</code></pre>
+
+<p>El fallo se lee con la frase de <code>describe</code> y con la <code>evidence</code> de tu paso. Deja el <code>+ 1</code> como estaba. Desde ahora, cada criterio nuevo del contador se escribe con tus dos pasos:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fudspec">
+<pre><code>criterion adds-ten
+  given
+    props base
+  when
+    adds 10
+  then
+    shows 10</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter
+  ✓ adds-three  1464 ms
+  ✓ adds-ten    1954 ms
+2 criteria · 2 pass · 0 fail · 0 error · 3.1 s · chrome</code></pre>
+
+<p>Si mañana el botón cambia de texto, se arregla <code>adds.js</code> y no cada criterio. Cuándo merece la pena un paso propio, y uno que prepara antes de abrir la página, está en <a href="/docs/terms">Tus propios pasos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/custom-terms" target="_blank" rel="noopener">la solución de Tu primer paso propio en un .fudspec, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/form-tests", prevTitle: "Probar un formulario y sus reglas", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")

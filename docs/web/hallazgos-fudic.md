@@ -1656,3 +1656,20 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que `$validate({ server: true })` en un test pregunte al servidor en memoria,
   como hace el navegador, o que una regla remota que no se puede ejecutar lo diga en vez de pasar.
 
+## 105. El primer `fudic spec` de un proyecto nuevo acaba en error
+
+- **Qué pasó.** Escribiendo el tutorial `custom-terms` (2026-11-26): `fudic new`, `fudic g component
+  counter` y un criterio con tres `click role:button/"+1"`. El primer `fudic spec` da:
+  ```
+    ! adds-three  6073 ms
+        when the user clicks role:button/"+1"
+          error: page.waitForFunction: Timeout 5000ms exceeded.
+        page error: Failed to fetch dynamically imported module: http://127.0.0.1:61374/@fudic/h/myapp-counter.js
+  ```
+  El segundo, sin tocar nada, pasa. Borrando `node_modules/.vite` vuelve a fallar la primera vez,
+  tres de tres: parece Vite optimizando dependencias a mitad de la ejecución.
+- **Cómo se resolvió en el tutorial.** Una frase avisa de que la primera ejecución puede acabar así y
+  de que basta con repetirla.
+- **Qué debería hacer.** Que `fudic spec` optimice las dependencias antes de abrir el navegador, o
+  que reintente el criterio cuando lo que falla es la carga de un módulo.
+
