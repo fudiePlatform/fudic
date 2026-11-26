@@ -1,0 +1,7 @@
+component myapp-notice
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-notice

@@ -1,0 +1,20 @@
+@code {
+  import { signal } from "@fudic/core";
+  import { trustedHtml } from "@fudic/dom";
+
+  const message = trustedHtml("Saved <b>3</b> changes");
+  const saved = signal(false);
+
+  function show() {
+    saved.set(true);
+  }
+}
+
+<myapp-notice>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <button type="button" @click=@show>Save</button>
+    @if (saved()) {
+      <p>@raw(message)</p>
+    }
+  </template>
+</myapp-notice>

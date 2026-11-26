@@ -1534,3 +1534,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **De paso.** Sin `'nonce-{nonce}'`, el build da un solo `FUD1545` (el del `<script>` del
   `<head>`) y el editor dos (también el del registro del service worker). La Documentación dice que
   nombra lo que dejaría de cargar «como el runtime»; el mensaje no nombra el runtime.
+
+## 99. `FUD1555` no ofrece explicarse ni arreglarse
+
+- **Qué pasó.** Escribiendo el tutorial `trusted-types` (2026-11-26): `box.innerHTML = message` en
+  el `@code` de un componente da `FUD1555` en el editor y en `pnpm build`, y en `fudic preview`
+  Chrome lo bloquea («This document requires 'TrustedHTML' assignment»). La bombilla solo ofrece
+  «Turn FUD1555 off in the project», «Silence FUD1555 in this file» y «Silence FUD1555 on this
+  line»: ni «Explain FUD1555», que traen los demás códigos del tutorial (`FUD1543`, `FUD1545`,
+  `FUD1547`, `FUD1140`), aunque `FUD1555.md` existe, ni una acción que cambie `innerHTML` por
+  `textContent`, que es la salida más habitual según «HTML seguro».
+- **Qué debería hacer.** Ofrecer «Explain FUD1555» como los demás, y «Use textContent» la
+  primera, antes de las de silenciar.
+- **De paso.** `signal(trustedHtml(""))` en un componente da `FUD1140` («`trustedHtml(…)` does not
+  port»), mientras `const message = trustedHtml("…")` compila. El tutorial usa la constante y un
+  signal booleano.

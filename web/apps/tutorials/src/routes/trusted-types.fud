@@ -1,0 +1,164 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Trusted Types · Tutoriales de Fudic</title>
+  <meta name="description" content="Trusted Types en una app de Fudic: el aviso del editor ante un innerHTML con texto, el navegador que lo bloquea, y las dos salidas, textContent para el texto y &#64;raw con trustedHtml para el HTML de tu app.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/trusted-types">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Trusted Types · Tutoriales de Fudic">
+  <meta property="og:description" content="Un innerHTML con texto lo bloquea el navegador. Mira el aviso, el bloqueo y las dos formas de hacerlo bien.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/trusted-types">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render securityNav("trusted-types")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Un aviso con innerHTML</a></li>
+        <li><a href="#blocked">2. El navegador lo bloquea</a></li>
+        <li><a href="#text">3. Si es texto</a></li>
+        <li><a href="#html">4. Si es HTML</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Seguridad</span></p>
+
+<h1>Trusted Types</h1>
+
+<p class="lede">Escribes un componente que pinta un mensaje con <code>innerHTML</code>, ves cómo el editor avisa y el navegador lo bloquea, y lo arreglas de las dos formas que valen.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Entender qué bloquean los Trusted Types estándar y por qué.</li>
+    <li>Reconocer el aviso del editor antes de que falle en el navegador.</li>
+    <li>Elegir entre <code>textContent</code> y <code>@@raw</code> con <code>trustedHtml</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Un aviso con innerHTML</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component notice --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>El componente tiene un botón que escribe un mensaje en un párrafo, con <code>innerHTML</code>:</p>
+
+<ui-code .path="src/components/myapp-notice/myapp-notice.fud">
+<pre><code>@@code &#123;
+  let box: HTMLParagraphElement | null = null;
+
+  function show() &#123;
+    const message = "Saved &lt;b&gt;3&lt;/b&gt; changes";
+    if (box) box.innerHTML = message;
+  &#125;
+&#125;
+
+&lt;myapp-notice&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;button type="button" @@click=@@show&gt;Save&lt;/button&gt;
+    &lt;p ref="@@box"&gt;&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-notice&gt;</code></pre>
+</ui-code>
+
+<p>Ponlo en la página, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-notice&gt;&lt;/myapp-notice&gt;</code></pre>
+</ui-code>
+
+<p>El editor subraya <code>box.innerHTML = message</code> con un aviso:</p>
+
+<pre class="output"><code>FUD1555: the page requires Trusted Types: innerHTML with a string is blocked in the browser</code></pre>
+
+<p>La CSP de <code>page.headers</code> trae dos líneas que activan los Trusted Types:</p>
+
+<pre class="output"><code>  require-trusted-types-for 'script'
+  trusted-types fudic</code></pre>
+
+<p>Con ellas, el navegador no acepta un texto en <code>innerHTML</code>, ni en ningún otro sitio donde un texto se convierte en HTML o en código. Solo acepta un objeto creado por una política con nombre, y la única que vale es <code>fudic</code>.</p>
+
+<h2 id="blocked">2. El navegador lo bloquea</h2>
+
+<p>La CSP no sale en <code>fudic dev</code>, así que se prueba con el build:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>El build repite el aviso:</p>
+
+<pre class="output"><code>src/components/myapp-notice/myapp-notice.fud:6:14 - warning FUD1555: the page requires Trusted Types: innerHTML with a string is blocked in the browser
+  https://fudic.dev/docs/reference/diagnostics/FUD1555</code></pre>
+
+<p>Abre <code>http://localhost:4173/</code> con la consola de las herramientas de desarrollo abierta y pulsa Save. El párrafo se queda vacío, y la consola dice por qué:</p>
+
+<pre class="output"><code>This document requires 'TrustedHTML' assignment. The action has been blocked.
+Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment.</code></pre>
+
+<p>Si <code>message</code> viniera de un usuario, con un <code>&lt;img onerror=…&gt;</code> dentro, este bloqueo es lo que impediría que su código se ejecute en tu página.</p>
+
+<h2 id="text">3. Si es texto</h2>
+
+<p>Casi siempre, lo que se quiere escribir es texto. Para eso está <code>textContent</code>, que no interpreta nada:</p>
+
+<ui-code .path="src/components/myapp-notice/myapp-notice.fud">
+<pre><code>    if (box) box.textContent = message;</code></pre>
+</ui-code>
+
+<p>El aviso desaparece del editor. Para la preview, construye y sirve otra vez, y pulsa Save. El párrafo dice <code>Saved &lt;b&gt;3&lt;/b&gt; changes</code>, con las etiquetas a la vista: es texto, no HTML.</p>
+
+<h2 id="html">4. Si es HTML</h2>
+
+<p>Si el mensaje es HTML de tu app y quieres la negrita, no lo escribas a mano en el DOM: márcalo con <code>trustedHtml</code> y píntalo con <code>@@raw</code> en la plantilla. Un signal decide cuándo se ve:</p>
+
+<ui-code .path="src/components/myapp-notice/myapp-notice.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; trustedHtml &#125; from "@@fudic/dom";
+
+  const message = trustedHtml("Saved &lt;b&gt;3&lt;/b&gt; changes");
+  const saved = signal(false);
+
+  function show() &#123;
+    saved.set(true);
+  &#125;
+&#125;
+
+&lt;myapp-notice&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;button type="button" @@click=@@show&gt;Save&lt;/button&gt;
+    @@if (saved()) &#123;
+      &lt;p&gt;@@raw(message)&lt;/p&gt;
+    &#125;
+  &lt;/template&gt;
+&lt;/myapp-notice&gt;</code></pre>
+</ui-code>
+
+<p>Construye, sirve y pulsa Save. El párrafo dice «Saved <b>3</b> changes» con el 3 en negrita, y la consola no dice nada. <code>@@raw</code> pasa el HTML por la política <code>fudic</code>, así que el navegador lo acepta. Fudic no limpia ese HTML: si viene de tus usuarios, límpialo antes de marcarlo. Cuándo usar <code>@@raw</code> está en <a href="/tutorials/raw">HTML sin escapar con @@raw</a>.</p>
+
+<p>Si una librería pinta HTML con su propia política, añade su nombre a <code>trusted-types</code>, detrás de <code>fudic</code>. Todo esto, y dónde busca Fudic el aviso, está en <a href="/docs/security/trusted-types">HTML seguro</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/trusted-types" target="_blank" rel="noopener">la solución de Trusted Types, en GitHub</a>. Compara tu componente con el suyo.</p>
+
+@render pager(prev: "/tutorials/csp", prevTitle: "Content Security Policy", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -172,4 +172,4 @@ Error: page.headers:7:3 - error FUD1545: script-src blocks a &lt;script src&gt; 
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/csp" target="_blank" rel="noopener">la solución de Content Security Policy, en GitHub</a>. Compara tu página con la suya.</p>
 
-@render pager(prev: "/tutorials/security-headers", prevTitle: "Cabeceras de seguridad", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/security-headers", prevTitle: "Cabeceras de seguridad", next: "/tutorials/trusted-types", nextTitle: "Trusted Types")
