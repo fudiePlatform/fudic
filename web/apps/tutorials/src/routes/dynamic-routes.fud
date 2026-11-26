@@ -28,6 +28,7 @@
         <li><a href="#param">2. Lee el parámetro</a></li>
         <li><a href="#not-found">3. Lo que no existe</a></li>
         <li><a href="#fixed">4. Un segmento fijo gana</a></li>
+        <li><a href="#paths">5. Una página por artículo, en el build</a></li>
         <li><a href="#solution">Solución</a></li>
       </ul>
   </ui-toc>
@@ -37,7 +38,7 @@
 
 <h1>Rutas con parámetro</h1>
 
-<p class="lede">Escribes una sola página para todos los artículos de un blog, <code>/blog/hello</code>, <code>/blog/routing</code> y los que vengan, y respondes 404 a los que no existen.</p>
+<p class="lede">Escribes una sola página para todos los artículos de un blog, <code>/blog/hello</code>, <code>/blog/routing</code> y los que vengan, respondes 404 a los que no existen y haces que el build escriba una página por artículo.</p>
 
 <section class="objectives" aria-labelledby="objectives">
   <h2 id="objectives">Objetivos</h2>
@@ -45,6 +46,7 @@
     <li>Crear una página con un parámetro en la URL, <code>blog/[slug].fud</code>.</li>
     <li>Leer el parámetro en el servidor, ya tipado.</li>
     <li>Responder 404 cuando el valor no existe, y saber qué ruta gana si dos encajan.</li>
+    <li>Decirle al build qué valores tiene el parámetro, con <code>paths</code>.</li>
   </ul>
   <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
 </section>
@@ -153,7 +155,42 @@ test('answers 404 for a post that does not exist', async () =&gt; &#123;
 
 <p>Abre <code>http://localhost:5173/blog/new</code>: dice «New», no responde 404. Cuando dos rutas encajan, gana la que tiene un segmento fijo, y <code>new</code> nunca llega a <code>[slug]</code>. <code>/blog/hello</code> sigue en su página.</p>
 
-<p>Cómo sale cada URL de su fichero está en <a href="/docs/routing">Rutas por carpetas</a>, y todo lo que el servidor le puede dar a una página, en <a href="/docs/routing/data">Los datos de la página</a>. El comando, en <a href="/docs/cli/generate/page">fudic generate page</a>.</p>
+<h2 id="paths">5. Una página por artículo, en el build</h2>
+
+<p>Construye la app con <code>pnpm build</code> y mira qué páginas escribe en <code>dist</code>:</p>
+
+<pre class="output"><code>dist/blog/new/index.html
+dist/index.html</code></pre>
+
+<p>Ningún artículo. El build no sabe qué valores puede tener <code>[slug]</code>, así que <code>/blog/hello</code> se pinta cuando alguien la pide. Si los artículos solo cambian cuando publicas, el build puede escribirlos todos de antemano. Para eso, la página dice sus valores con <code>paths</code>, en el contrato:</p>
+
+<ui-code .path="src/routes/blog/[slug].fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/blog/[slug].ts.
+load
+  title  str
+
+# The slugs the build writes a page for.
+paths</code></pre>
+</ui-code>
+
+<p>Su handler devuelve la lista de slugs. Añádelo al final del fichero del servidor, e impórtalo junto a <code>load</code>:</p>
+
+<ui-code .path="src/server/routes/blog/[slug].ts">
+<pre><code>import &#123; load, paths &#125; from 'fudic:routes/blog/[slug]';
+…
+paths.handle(() =&gt; Object.keys(posts));</code></pre>
+</ui-code>
+
+<p>Vuelve a construir:</p>
+
+<pre class="output"><code>dist/blog/hello/index.html
+dist/blog/new/index.html
+dist/blog/routing/index.html
+dist/index.html</code></pre>
+
+<p>El build ha ejecutado <code>load</code> una vez por slug y ha guardado cada página ya pintada: <code>dist/blog/hello/index.html</code> trae dentro su <code>&lt;h1&gt;Hello, world&lt;/h1&gt;</code>. Con <code>paths</code>, la página pasa a pintarse en el build, sin declarar nada más. Sírvela con <code>npx fudic preview</code>: <code>/blog/hello</code> y <code>/blog/routing</code> salen de su fichero, y <code>/blog/nope</code> sigue respondiendo 404.</p>
+
+<p>Cómo sale cada URL de su fichero está en <a href="/docs/routing">Rutas por carpetas</a>, y todo lo que el servidor le puede dar a una página, <code>paths</code> incluido, en <a href="/docs/routing/data">Los datos de la página</a>. Cuándo se pinta cada página, en <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>. El comando, en <a href="/docs/cli/generate/page">fudic generate page</a>.</p>
 
 <h2 id="solution">Solución</h2>
 

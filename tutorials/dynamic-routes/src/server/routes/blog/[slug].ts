@@ -1,5 +1,5 @@
 import { notFound } from '@fudic/http';
-import { load } from 'fudic:routes/blog/[slug]';
+import { load, paths } from 'fudic:routes/blog/[slug]';
 
 const posts: Record<string, string> = {
   hello: 'Hello, world',
@@ -11,3 +11,5 @@ load.handle((ctx) => {
   if (title === undefined) throw notFound();
   return { title };
 });
+
+paths.handle(() => Object.keys(posts));

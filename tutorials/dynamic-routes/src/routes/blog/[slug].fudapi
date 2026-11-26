@@ -1,3 +1,6 @@
 # The data of the page, read on the server: its handler is in src/server/routes/blog/[slug].ts.
 load
   title  str
+
+# The slugs the build writes a page for.
+paths
