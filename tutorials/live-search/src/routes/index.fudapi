@@ -1,0 +1,12 @@
+# The whole catalog, painted before the first search.
+load ssr
+  products  Product[]
+
+# Searches the catalog by name. Slow on purpose: half a second.
+get search
+  q  str
+  -> Product[]
+
+type Product
+  id    i32
+  name  str

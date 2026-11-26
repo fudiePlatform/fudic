@@ -184,7 +184,7 @@ my-app   saved One
 my-app   saving Two…
 my-app   saved Two</code></pre>
 
-<p>Las llamadas van en fila: «Two» no sale hasta que «One» ha respondido, y acaba en «Current name: Two». Una tarea pone en fila las llamadas a un <code>post</code>, <code>put</code>, <code>patch</code> o <code>delete</code>, porque son cambios: si se adelantaran unas a otras, la base de datos y la pantalla acabarían diciendo cosas distintas. A un <code>get</code> le hace lo contrario: la llamada nueva cancela la anterior, porque solo interesa la última respuesta. Lo verás en el tutorial de una búsqueda, más adelante en esta categoría.</p>
+<p>Las llamadas van en fila: «Two» no sale hasta que «One» ha respondido, y acaba en «Current name: Two». Una tarea pone en fila las llamadas a un <code>post</code>, <code>put</code>, <code>patch</code> o <code>delete</code>, porque son cambios: si se adelantaran unas a otras, la base de datos y la pantalla acabarían diciendo cosas distintas. A un <code>get</code> le hace lo contrario: la llamada nueva cancela la anterior, porque solo interesa la última respuesta. Lo verás en <a href="/tutorials/live-search">Una búsqueda que sigue a un signal</a>.</p>
 
 <p>Vuelve a poner el <code>disabled</code>: en fila nada se pierde, pero el usuario tampoco tiene por qué guardar dos veces.</p>
 

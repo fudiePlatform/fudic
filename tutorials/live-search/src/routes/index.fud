@@ -1,0 +1,23 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  import { signal, task } from "@fudic/core";
+
+  const query = signal("");
+  const found = task(search, () => ({ q: query() }), { initial: data.products });
+}
+
+<head>
+  <title>Shop</title>
+</head>
+
+<h1>Shop</h1>
+<p>@data.products.length products in the shop.</p>
+<input type="search" aria-label="Search" @input=@query.set($value)>
+<p aria-live="polite">@(found.pending() ? "Searching…" : "")</p>
+<ul>
+  @foreach (const product of found.value()) key (product.id) {
+    <li>@product.name</li>
+  }
+</ul>

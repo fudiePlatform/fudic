@@ -1,0 +1,179 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Una búsqueda que sigue a un signal · Tutoriales de Fudic</title>
+  <meta name="description" content="Una búsqueda de Fudic que llama al servidor sola cada vez que cambia un signal, con task y una fuente: cada tecla cancela la búsqueda anterior, también en el servidor, y siempre gana la última.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/live-search">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Una búsqueda que sigue a un signal · Tutoriales de Fudic">
+  <meta property="og:description" content="task con una fuente: busca a cada tecla y cancela la búsqueda anterior.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/live-search">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("live-search")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#search">2. Una búsqueda lenta</a></li>
+        <li><a href="#source">3. Una tarea con fuente</a></li>
+        <li><a href="#latest">4. Gana la última</a></li>
+        <li><a href="#server">5. También en el servidor</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Servidor</span></p>
+
+<h1>Una búsqueda que sigue a un signal</h1>
+
+<p class="lede">Haces una búsqueda que pregunta al servidor a cada tecla, sin escribir ningún manejador que la lance: la tarea mira un signal y llama sola cuando cambia, cancelando la pregunta anterior.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Dar a <code>task</code> una fuente: la función que dice con qué argumentos llamar.</li>
+    <li>Pintar lo que había antes de la primera búsqueda, con <code>initial</code>.</li>
+    <li>Ver cómo cada búsqueda nueva cancela la anterior, en el navegador y en el servidor.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Sigue a <a href="/tutorials/task">El estado de una llamada con task</a>, que cuenta <code>run</code>, <code>pending()</code> y <code>value()</code>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<h2 id="search">2. Una búsqueda lenta</h2>
+
+<p>La página trae el catálogo entero con <code>load</code>, y una función busca en él por nombre:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The whole catalog, painted before the first search.
+load ssr
+  products  Product[]
+
+# Searches the catalog by name. Slow on purpose: half a second.
+get search
+  q  str
+  -&gt; Product[]
+
+type Product
+  id    i32
+  name  str</code></pre>
+</ui-code>
+
+<p>La búsqueda tarda medio segundo, para que dé tiempo a escribir antes de que responda. Escribe en la terminal cada búsqueda que empieza y cada una que se cancela: <code>ctx.signal</code> es un <code>AbortSignal</code> estándar, que se aborta si el navegador deja de esperar la respuesta.</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load, search &#125; from 'fudic:routes/index';
+
+const catalog = [
+  &#123; id: 1, name: 'Green tea' &#125;,
+  &#123; id: 2, name: 'Black tea' &#125;,
+  &#123; id: 3, name: 'Coffee' &#125;,
+  &#123; id: 4, name: 'Mate' &#125;,
+];
+
+load.handle(() =&gt; (&#123; products: catalog &#125;));
+
+search.handle(async (ctx) =&gt; &#123;
+  const q = ctx.args.q.toLowerCase();
+  console.log(`searching "$&#123;q&#125;"`);
+  ctx.signal.addEventListener('abort', () =&gt; console.log(`cancelled "$&#123;q&#125;"`));
+  await new Promise((resolve) =&gt; setTimeout(resolve, 500));
+  return catalog.filter((p) =&gt; p.name.toLowerCase().includes(q));
+&#125;);</code></pre>
+</ui-code>
+
+<h2 id="source">3. Una tarea con fuente</h2>
+
+<p>En <a href="/tutorials/task">el tutorial de <code>task</code></a>, la tarea llamaba cuando tú le decías, con <code>run</code>. Aquí recibe un segundo argumento, su <strong>fuente</strong>: una función que devuelve los argumentos de la llamada. La tarea llama sola cada vez que cambia un signal que lee esa función:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; signal, task &#125; from "@@fudic/core";
+
+  const query = signal("");
+  const found = task(search, () =&gt; (&#123; q: query() &#125;), &#123; initial: data.products &#125;);
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Shop&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Shop&lt;/h1&gt;
+&lt;p&gt;@@data.products.length products in the shop.&lt;/p&gt;
+&lt;input type="search" aria-label="Search" @@input=@@query.set($value)&gt;
+&lt;p aria-live="polite"&gt;@@(found.pending() ? "Searching…" : "")&lt;/p&gt;
+&lt;ul&gt;
+  @@foreach (const product of found.value()) key (product.id) &#123;
+    &lt;li&gt;@@product.name&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>() =&gt; (&#123; q: query() &#125;)</code></strong> lee <code>query</code>. Cada vez que el campo cambia el signal, la tarea busca con el texto nuevo.</li>
+  <li><strong><code>initial</code></strong> es lo que devuelve <code>value()</code> antes de la primera respuesta: el catálogo entero que trajo <code>load</code>. Así la página sale pintada del servidor con los cuatro productos, sin esperar a ninguna búsqueda.</li>
+  <li><strong><code>aria-live="polite"</code></strong> hace que un lector de pantalla anuncie «Searching…» sin interrumpir.</li>
+</ul>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>: los cuatro productos. Escribe «tea» y quedan Green tea y Black tea.</p>
+
+<h2 id="latest">4. Gana la última</h2>
+
+<p>Abre la pestaña Red de las herramientas del navegador, borra el campo y escribe «tea» deprisa. Salen tres peticiones a <code>search</code>, una por tecla: <code>?q=t</code>, <code>?q=te</code> y <code>?q=tea</code>. Las dos primeras aparecen canceladas, y solo la última responde.</p>
+
+<p>Es lo que hace una tarea con un <code>get</code>: una llamada nueva cancela la que está en marcha, porque solo interesa la respuesta a lo último que se escribió. Sin eso, una respuesta lenta a «t» podría llegar después de la de «tea» y pintar la lista equivocada. Mientras tanto, <code>value()</code> conserva la lista anterior, así que no parpadea.</p>
+
+<p>Con un <code>post</code>, un <code>put</code>, un <code>patch</code> o un <code>delete</code> haría lo contrario: las llamadas esperan en fila, como viste con <code>rename</code> en el tutorial de <code>task</code>.</p>
+
+<h2 id="server">5. También en el servidor</h2>
+
+<p>La cancelación no se queda en el navegador: el servidor deja de trabajar en una búsqueda que ya nadie espera. Para verlo, construye la app y sírvela con la preview de Vite:</p>
+
+<ui-code>
+<pre><code>pnpm build
+pnpm preview</code></pre>
+</ui-code>
+
+<p>Abre la dirección que te da (<code>http://localhost:4173/</code>) y escribe «tea» deprisa. La terminal de la preview lo cuenta:</p>
+
+<pre class="output"><code>searching "t"
+searching "te"
+cancelled "t"
+searching "tea"
+cancelled "te"</code></pre>
+
+<p>Cada búsqueda nueva aborta el <code>ctx.signal</code> de la anterior. Pásaselo a lo que tarda, como un <code>fetch</code> a otro servicio o una consulta a la base de datos que lo acepte, y también dejará de trabajar. <code>found.cancel()</code> cancela la búsqueda en marcha a mano, por ejemplo con un botón «Stop».</p>
+
+<p>Todo lo que admite una tarea está en <a href="/docs/server/task">task</a>, y la cancelación de una llamada, en <a href="/docs/server/functions">Funciones de servidor</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/live-search" target="_blank" rel="noopener">la solución de Una búsqueda que sigue a un signal, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/session", prevTitle: "Sesión con una cookie", next: "/tutorials/", nextTitle: "Todas las categorías")

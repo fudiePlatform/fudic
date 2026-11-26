@@ -1203,3 +1203,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   cambian con cada petición.
 - **Qué debería hacer.** Guardar los datos por URL completa, con su query string, o avisar en el
   build (como `FUD1300` con la sesión) de que un `load` `sw` lee `ctx.url.searchParams`.
+
+## 82. Los datos de la página no llegan al navegador si solo los lee el `@code`
+
+- **Qué pasó.** Escribiendo el tutorial `live-search` (2026-11-26), una página con `load ssr` y
+  `const found = task(search, () => ({ q: query() }), { initial: data.products })`, cuya vista
+  pinta `found.value()` pero nunca `data`. El HTML del servidor sale bien (los cuatro productos),
+  pero no trae el bloque `fud-data`, y al hidratar (con la primera tecla) el navegador da
+  «found.value is not a function or its return value is not iterable»: `data.products` es
+  `undefined` en el navegador. Con un `<p>@data.products.length products</p>` en la vista sale
+  `fud-data` y todo funciona; un `console.log(JSON.stringify(data))` en el `@code` también lo
+  arregla. Es el ejemplo de la Documentación de `task` (`{ initial: data.users }`, «Una búsqueda
+  que sigue a un signal»).
+- **Cómo se resolvió en el tutorial.** La página pinta «4 products in the shop.» con `data`.
+- **Qué debería hacer.** Mandar `fud-data` cuando el `@code` lee `data`, no solo cuando la lee la
+  vista.

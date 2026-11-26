@@ -155,9 +155,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   «Route-data», «Alternate-layouts», «Slow-pages», «Page-maps» y
   «Early-hints», corregidos a mano: los ocho de la categoría.
 - **Y otra vez** con los tutoriales de Servidor (`server-functions`, `task`, `json-api`,
-  `server-types`, `middlewares`, `pipes`, `session`), el 2026-11-26: el `href` frágil y los
-  títulos «Server-functions», «Task», «Json-api», «Server-types», «Middlewares», «Pipes» y
-  «Session», corregidos a mano.
+  `server-types`, `middlewares`, `pipes`, `session`, `live-search`), el 2026-11-26: el `href`
+  frágil y los títulos «Server-functions», «Task», «Json-api», «Server-types», «Middlewares»,
+  «Pipes», «Session» y «Live-search», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -421,3 +421,17 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Que `fudic preview` (y `fudic dev`) acepten HTTPS y sirvan HTTP/2 en su
   puerto, con `--https` o leyendo `preview.https` de Vite; o, como mínimo, que detecte un backend en
   HTTPS y lo diga en vez de quedarse esperando.
+
+## 28. `fudic dev` y `fudic preview` no pasan al servidor que el navegador canceló una llamada
+
+- **Qué pasó.** Escribiendo el tutorial `live-search` (2026-11-26). Una tarea con fuente cancela la
+  búsqueda anterior a cada tecla: el navegador aborta la petición (`net::ERR_ABORTED`). Un handler
+  que escucha `ctx.signal.addEventListener('abort', …)` lo ve con `pnpm preview` (la preview de
+  Vite: «cancelled "t"», «cancelled "te"»), pero no con `fudic dev` ni con `fudic preview`: el
+  handler sigue hasta el final. `@fudic/server` aborta el signal cuando se cierra la respuesta
+  (`toRequest` en `node/index.ts`); el proxy del puerto único (`packages/cli/src/serve/proxy.ts`)
+  no cierra la petición de dentro cuando se va el navegador.
+- **Cómo se resolvió en el tutorial.** El paso de la cancelación en el servidor usa `pnpm build` y
+  `pnpm preview`.
+- **Qué debería hacer.** Que el proxy aborte la petición al backend cuando el cliente cierra la
+  suya, para que `ctx.signal` funcione igual que en producción.

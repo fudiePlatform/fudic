@@ -210,4 +210,4 @@ post logout
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/session" target="_blank" rel="noopener">la solución de Sesión con una cookie, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/pipes", prevTitle: "Los pipes de Fudic, y uno propio", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/pipes", prevTitle: "Los pipes de Fudic, y uno propio", next: "/tutorials/live-search", nextTitle: "Una búsqueda que sigue a un signal")
