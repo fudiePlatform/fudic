@@ -1059,6 +1059,11 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `--my-app-accent` en `src/guide/tokens.css` da `page reload src/guide/tokens.css`, pero
   `/@fudic/sheet/guide-….css` sigue sirviendo el color del arranque. El tutorial pide parar y
   arrancar `fudic dev` en cada paso que toca la guía.
+- **Vuelto a comprobar (tutorial `baseline`), el 2026-11-26.** Lo mismo con `baseline`: añadir
+  `"allow": ["starting-style"]` a `fudic.json` con `fudic dev` en marcha no hace nada en la
+  terminal, y quitarlo tampoco: el `FUD1524` de `@starting-style` solo vuelve a salir, o deja de
+  salir, al guardar el componente. El editor sí lo ve al momento. El tutorial comprueba el
+  `allow` con `pnpm build`.
 - **Qué debería hacer.** Vigilar `fudic.json`, la guía y las hojas de `globalStyles` y `styles`, y
   recargar las páginas y los componentes que las usan, como hace con su `<style>`.
 
@@ -1567,3 +1572,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **De paso.** `signal(trustedHtml(""))` en un componente da `FUD1140` («`trustedHtml(…)` does not
   port»), mientras `const message = trustedHtml("…")` compila. El tutorial usa la constante y un
   signal booleano.
+
+## 100. Un `baseline` mal escrito trae además un `FUD0726` falso
+
+- **Qué pasó.** Escribiendo el tutorial `baseline` (2026-11-26): con
+  `"baseline": { "target": "2024", "allow": ["starting-style"] }` (el año entre comillas),
+  `pnpm build` da el `FUD0725` que toca («"target": "2024" is not "widely", "newly" or a year from
+  2015 to 2026»), pero también `FUD0726`: «sw.json is present, so fudic.json must declare an
+  "id"». El `id` está en la primera línea de `fudic.json`. Un campo inválido invalida el fichero
+  entero, y la comprobación de `sw.json` lo lee como si no tuviera `id`. Antes de fallar, el build
+  pinta además un `FUD1524` con «Baseline (widely available)», el nivel por defecto.
+- **Cómo se resolvió en el tutorial.** El tutorial pide escribir el año como número, sin comillas.
+- **Qué debería hacer.** Con `fudic.json` inválido, dar solo el error de lo que falla y no seguir
+  con comprobaciones que dependen de él. Y aceptar `"2024"` como año, o decir en `FUD0725` que va
+  sin comillas.
+

@@ -39,6 +39,6 @@
   @render category("security", "Seguridad", "Cabeceras de seguridad, HTTP Observatory, Content Security Policy y Trusted Types.", 4, false, true, true, "/tutorials/security-headers")
   @render category("performance", "Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true, "/tutorials/caching")
   @render category("tests", "Tests", "Tests unitarios, criterios en .fudspec, flujos e historial.", 6, true, true, true)
-  @render category("project", "Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true)
+  @render category("project", "Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true, "/tutorials/baseline")
   @render category("agents", "Agentes", "Construye con tu agente y el MCP de Fudic.", 1, false, true, false)
 </ol>

@@ -1,0 +1,7 @@
+component myapp-note
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-note

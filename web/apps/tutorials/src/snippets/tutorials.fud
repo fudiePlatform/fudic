@@ -185,3 +185,13 @@
     @render tutorial("lighthouse", "Un 100 en Lighthouse", "advanced", @current)
   </ol>
 }
+
+@snippet projectNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Proyecto y build</p>
+  <details class="toggle"><summary>Tutoriales de Proyecto y build</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("baseline", "Baseline: qué navegadores soportas", "intermediate", @current)
+    @render tutorial("workspace", "Dos apps y una librería", "advanced", @current, false)
+  </ol>
+}

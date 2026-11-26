@@ -1,0 +1,27 @@
+<head>
+  <style>
+    :host {
+      display: block;
+      transition: opacity 0.5s;
+    }
+
+    @starting-style {
+      :host { opacity: 0; }
+    }
+
+    textarea {
+      min-block-size: 3lh;
+    }
+
+    @supports (field-sizing: content) {
+      textarea { field-sizing: content; }
+    }
+  </style>
+</head>
+
+<myapp-note>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="label textarea">
+    <label for="text">Note</label>
+    <textarea id="text"></textarea>
+  </template>
+</myapp-note>

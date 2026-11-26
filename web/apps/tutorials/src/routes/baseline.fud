@@ -1,0 +1,203 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Baseline: qué navegadores soportas · Tutoriales de Fudic</title>
+  <meta name="description" content="Decide a qué navegadores llega tu app de Fudic con baseline en fudic.json: el aviso FUD1524 de una función CSS demasiado nueva, protegerla con &#64;supports, permitirla en allow y el mínimo que pide Fudic.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/baseline">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Baseline: qué navegadores soportas · Tutoriales de Fudic">
+  <meta property="og:description" content="Usa CSS nuevo sin dejar fuera a nadie: Fudic avisa de lo que no llega a tus navegadores y te da tres salidas.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/baseline">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render projectNav("baseline")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una nota</a></li>
+        <li><a href="#warning">2. Una función que no llega</a></li>
+        <li><a href="#supports">3. Protégela con @@supports</a></li>
+        <li><a href="#allow">4. Permite otra en allow</a></li>
+        <li><a href="#minimum">5. Lo que necesita Fudic</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Proyecto y build</span></p>
+
+<h1>Baseline: qué navegadores soportas</h1>
+
+<p class="lede">Usas en un componente CSS más nuevo que los navegadores de tus usuarios, ves el aviso de Fudic y lo resuelves de las dos formas que tienes a mano.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber qué navegadores pide tu app, con <code>baseline</code> en <code>fudic.json</code>.</li>
+    <li>Proteger con <code>@@supports</code> una función que no llega a todos, o permitirla en <code>allow</code>.</li>
+    <li>Conocer el mínimo de navegadores que necesita una app de Fudic.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y un editor con la extensión de Fudic.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una nota</h2>
+
+<p>Crea una app y añade a su portada un componente:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component note --in src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created &lt;myapp-note&gt; in src/components/myapp-note/
+
+  myapp-note.fud          the component
+  myapp-note.test.ts      unit test               pnpm test
+  myapp-note.fudspec      acceptance criteria     pnpm spec
+  myapp-note.fixture.ts   the props the criteria mount it with
+  linked from src/routes/index.fud</code></pre>
+
+<p>Haz de él una nota para escribir, con espacio para tres líneas:</p>
+
+<ui-code .path="src/components/myapp-note/myapp-note.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    textarea &#123;
+      min-block-size: 3lh;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;myapp-note&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="label textarea"&gt;
+    &lt;label for="text"&gt;Note&lt;/label&gt;
+    &lt;textarea id="text"&gt;&lt;/textarea&gt;
+  &lt;/template&gt;
+&lt;/myapp-note&gt;</code></pre>
+</ui-code>
+
+<p>Ponlo en la portada, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-note&gt;&lt;/myapp-note&gt;</code></pre>
+</ui-code>
+
+<p>Arranca la app con <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>. Abre también <code>fudic.json</code>, en la raíz:</p>
+
+<pre class="output"><code>  "baseline": "widely",</code></pre>
+
+<p><a href="https://web.dev/baseline" target="_blank" rel="noopener">Baseline</a> dice desde cuándo una función de la plataforma funciona en Chrome, Edge, Firefox y Safari, en escritorio y en móvil. <code>"widely"</code> pide lo que funciona en todos ellos desde hace al menos 30 meses: llega a casi todos tus usuarios.</p>
+
+<h2 id="warning">2. Una función que no llega</h2>
+
+<p>Escribir en una caja de tres líneas se queda corto. <code>field-sizing: content</code> hace que la caja crezca con el texto. Añádelo a la regla:</p>
+
+<ui-code .path="src/components/myapp-note/myapp-note.fud">
+<pre><code>    textarea &#123;
+      min-block-size: 3lh;
+      field-sizing: content;
+    &#125;</code></pre>
+</ui-code>
+
+<p>Guarda. La terminal de <code>fudic dev</code> avisa dos veces, una por la propiedad y otra por su valor:</p>
+
+<pre class="output"><code>my-app   src/components/myapp-note/myapp-note.fud:5:7 - warning FUD1524: `field-sizing` (css.properties.field-sizing) is newer than this project's Baseline (widely available): newly available on 2026-06-16, widely available on 2028-12-16. Chrome 123, Edge 123, Firefox 152, Safari 26.2
+my-app     5        field-sizing: content;
+my-app              ────────────
+my-app     https://fudic.dev/docs/reference/diagnostics/FUD1524
+my-app   src/components/myapp-note/myapp-note.fud:5:21 - warning FUD1524: `field-sizing: content` (css.properties.field-sizing.content) is newer than this project's Baseline (widely available): newly available on 2026-06-16, widely available on 2028-12-16. Chrome 123, Edge 123, Firefox 152, Safari 26.2</code></pre>
+
+<p>Safari y Firefox lo tienen desde 2026, así que no estará en <code>"widely"</code> hasta finales de 2028. En un navegador anterior, la línea se ignora y la caja no crece. El editor subraya las dos palabras, y su bombilla ofrece, entre otras, estas dos salidas:</p>
+
+<pre class="output"><code>Move to @@supports (field-sizing: content)
+Allow field-sizing in the project</code></pre>
+
+<h2 id="supports">3. Protégela con <code>@@supports</code></h2>
+
+<p>Elige «Move to @@supports (field-sizing: content)». El editor saca la línea de la regla y la pone en un bloque aparte:</p>
+
+<pre class="output"><code>    textarea &#123;
+      min-block-size: 3lh;
+    &#125;
+
+    @@supports (field-sizing: content) &#123;
+      textarea &#123; field-sizing: content; &#125;
+    &#125;</code></pre>
+
+<p>Guarda. Los avisos desaparecen del editor, y la terminal solo dice:</p>
+
+<pre class="output"><code>my-app   fudic: the typecheck is clean again</code></pre>
+
+<p><code>@@supports</code> aplica el bloque solo en el navegador que entiende <code>field-sizing: content</code>. Escribe cinco líneas en la nota: en Chrome la caja pasa de 77 a 146 píxeles de alto. En un navegador sin la función, la nota se queda en tres líneas con barra de desplazamiento, y se sigue pudiendo escribir. Lo protegido no avisa, porque no rompe nada.</p>
+
+<h2 id="allow">4. Permite otra en <code>allow</code></h2>
+
+<p>Haz que la nota aparezca con un fundido. <code>@@starting-style</code> da el estilo de partida de una transición. Añade estas dos reglas al principio del <code>&lt;style&gt;</code>:</p>
+
+<ui-code .path="src/components/myapp-note/myapp-note.fud">
+<pre><code>    :host &#123;
+      display: block;
+      transition: opacity 0.5s;
+    &#125;
+
+    @@starting-style &#123;
+      :host &#123; opacity: 0; &#125;
+    &#125;</code></pre>
+</ui-code>
+
+<p>Guarda, y la terminal avisa otra vez:</p>
+
+<pre class="output"><code>my-app   src/components/myapp-note/myapp-note.fud:8:5 - warning FUD1524: `@@starting-style` (css.at-rules.starting-style) is newer than this project's Baseline (widely available): newly available on 2024-08-06, widely available on 2027-02-06. Chrome 117, Edge 117, Firefox 129, Safari 17.5</code></pre>
+
+<p>Aquí no hay nada que proteger: en un navegador sin <code>@@starting-style</code>, la nota sale sin fundido, y eso te vale. En la bombilla, elige «Allow starting-style in the project». El editor cambia <code>baseline</code> en <code>fudic.json</code>:</p>
+
+<pre class="output"><code>  "baseline": &#123; "target": "widely", "allow": ["starting-style"] &#125;,</code></pre>
+
+<p><code>target</code> sigue siendo el nivel, y <code>allow</code>, la lista de funciones que usas a sabiendas por encima de él. Cada una lleva su id de <a href="https://webstatus.dev" target="_blank" rel="noopener">webstatus.dev</a>. Para <code>fudic dev</code> con Ctrl+C y construye la app:</p>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<p>El build termina sin ningún aviso <code>FUD1524</code>. Arranca otra vez <code>npx fudic dev</code> y recarga la página: la nota aparece de opacidad 0 a 1 en medio segundo.</p>
+
+<h2 id="minimum">5. Lo que necesita Fudic</h2>
+
+<p>El nivel también puede ser <code>"newly"</code>, lo que ya funciona en todos aunque sea desde la última versión, o un año. Prueba con 2023, escrito como número, sin comillas:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "baseline": &#123; "target": 2023, "allow": ["starting-style"] &#125;,</code></pre>
+</ui-code>
+
+<p>Construye con <code>pnpm build</code>. Avisa dos veces:</p>
+
+<pre class="output"><code>[plugin fudic] fudic.json:7:17 - warning FUD1525: fudic needs browsers from 2024-03-05 on (declarative-shadow-dom, promise-withresolvers); Baseline 2023 asks for 2023-12-31
+[plugin fudic] src/guide/p.css:3:3 - warning FUD1524: `text-wrap` (css.properties.text-wrap) is newer than this project's Baseline (Baseline 2023): newly available on 2024-03-05, widely available on 2026-09-05. Chrome 114, Edge 114, Firefox 121, Safari 17.4</code></pre>
+
+<p>El primero es el mínimo de Fudic: cada página lleva su Declarative Shadow DOM, que ningún navegador tenía en todas partes antes de marzo de 2024, y ninguna página de Fudic funciona sin él. El segundo enseña que la comprobación llega también a la guía de estilos de tu app. En <code>fudic.json</code>, el editor subraya <code>2023</code> y su bombilla ofrece «Raise to 2024».</p>
+
+<p>Vuelve a <code>"widely"</code>, que ya está por encima de ese mínimo:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "baseline": &#123; "target": "widely", "allow": ["starting-style"] &#125;,</code></pre>
+</ui-code>
+
+<p>Cómo decide el nivel el JavaScript que sale del build y qué pasa con las librerías está en <a href="/docs/configuration/baseline">Baseline</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/baseline" target="_blank" rel="noopener">la solución de Baseline: qué navegadores soportas, en GitHub</a>. Compara tu nota y tu <code>fudic.json</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/lighthouse", prevTitle: "Un 100 en Lighthouse", next: "/tutorials/", nextTitle: "Todas las categorías")
