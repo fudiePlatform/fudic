@@ -1406,3 +1406,38 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   con las de su Custom Elements Manifest, si lo trae), sin pintarlo en el servidor y cargando su
   módulo en el navegador. Es el argumento más fuerte ante quien ya usa componentes web, y el
   estándar se lo promete: un custom element funciona en cualquier página.
+
+## 92. El id del build no cambia con la línea `load` ni con `sw.headers`, y el navegador se queda con el service worker viejo
+
+- **Qué pasó.** Escribiendo el tutorial `offline` (2026-11-26), con Chrome sin cabeza sobre
+  `fudic preview`. Una página con `load sw ttl 10s cache-first`, visitada; luego el `.fudapi`
+  pasa a `load sw network-first` y se hace `pnpm build`. El build sale con el mismo id
+  (`7eb33ad7`), `fudic-sw.js` es idéntico byte a byte y solo cambia `fudic-routes.json`
+  (`"dataPolicy":{"policy":"network-first","ttl":null}`). El navegador no ve un service worker
+  nuevo, sigue con el `fudic-routes.json` de su caché `shell-…` y la página sigue en
+  `cache-first` tras cinco recargas.
+- **Lo mismo con `sw.headers`.** Sin `'unsafe-eval'`, construido y visitado, el service worker no
+  pinta (`FUD1548`). Al volver a ponerlo y reconstruir, el id y `fudic-sw.js` no cambian, el
+  navegador se queda con el service worker que recibió con la CSP sin `'unsafe-eval'`, y todas
+  las páginas siguen yendo al servidor. Quien despliega una vez sin el permiso se queda así en
+  cada navegador que la visitó, hasta el siguiente cambio de código.
+- **Por qué.** `packages/vite/src/plugin.ts` calcula el id con los nombres de los ficheros del
+  bundle y el código del service worker. `fudic-routes.json` tiene un nombre fijo y no entra, y
+  las cabeceras del service worker tampoco.
+- **Dónde lo dice la web.** «Un despliegue nuevo» (`/docs/service-worker#updates`): «Cada build
+  escribe un Service Worker nuevo».
+- **Cómo se resolvió en el tutorial.** Las dos políticas van en dos páginas del mismo build, y el
+  paso de `'unsafe-eval'` solo enseña el aviso del build, sin abrir el navegador.
+- **Qué debería hacer.** Que el id incluya el contenido de `fudic-routes.json` y el de
+  `sw.headers` (o cualquier cosa que cambie lo que el service worker hace).
+
+## 93. `FUD1548` dice que la app sale sin service worker, pero se instala
+
+- **Qué pasó.** En el mismo tutorial: con `script-src 'self'` en `sw.headers`, el build avisa
+  «the app is served without its Service Worker», y el comentario de `sw.headers` que escribe
+  `fudic new` dice lo mismo («without it the app is served without it»). En el navegador,
+  `fudic-sw.js` se registra, se instala y atiende cada navegación pasándola al servidor.
+- **Dónde lo dice la web.** «Las cabeceras del Service Worker» (`/docs/service-worker/headers`)
+  dice lo que pasa de verdad: «el Service Worker se instala pero no pinta ninguna página».
+- **Qué debería hacer.** Que el mensaje y el comentario digan lo mismo que la Documentación: que
+  el service worker no podrá pintar ninguna página y todas irán al servidor.

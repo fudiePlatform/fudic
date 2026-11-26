@@ -1,0 +1,167 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Funcionar sin red: estrategias de caché · Tutoriales de Fudic</title>
+  <meta name="description" content="Dos páginas de Fudic con datos, una con cache-first y ttl y otra con network-first: mira cuándo pide cada una sus datos al servidor y cómo siguen viéndose con el servidor parado.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/offline">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Funcionar sin red: estrategias de caché · Tutoriales de Fudic">
+  <meta property="og:description" content="cache-first, network-first y un ttl: de dónde salen los datos de cada página, con red y sin ella.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/offline">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serviceWorkerNav("offline")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y dos páginas con datos</a></li>
+        <li><a href="#policies">2. Una política para cada una</a></li>
+        <li><a href="#compare">3. Compáralas en el build</a></li>
+        <li><a href="#offline">4. Para el servidor</a></li>
+        <li><a href="#headers">5. Las cabeceras del service worker</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Service worker</span></p>
+
+<h1>Funcionar sin red: estrategias de caché</h1>
+
+<p class="lede">Haces dos páginas que enseñan la hora a la que el servidor calculó sus datos, una con <code>cache-first</code> y otra con <code>network-first</code>. Ves cuándo pide cada una datos nuevos y que las dos se siguen viendo con el servidor parado.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Decir en el <code>.fudapi</code> cuánto valen los datos de una página y de dónde salen.</li>
+    <li>Distinguir <code>cache-first</code> con <code>ttl</code> de <code>network-first</code>.</li>
+    <li>Comprobar que una página ya visitada se pinta sin servidor.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Chrome o Edge.</p>
+</section>
+
+<h2 id="create">1. Crea la app y dos páginas con datos</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page news --server
+npx fudic g page live --server</code></pre>
+</ui-code>
+
+<p>Con <code>--server</code>, cada página tiene además su contrato (<code>.fudapi</code>) y el código del servidor que calcula sus datos. Cómo encajan los tres ficheros lo cuenta <a href="/tutorials/route-data">Datos del servidor para la página</a>.</p>
+
+<p>Las dos páginas devuelven lo mismo: un título y la hora del servidor. Así verás en cada visita si los datos son nuevos o guardados.</p>
+
+<ui-code .path="src/server/routes/news.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/news';
+
+load.handle(() =&gt; (&#123;
+  title: 'News',
+  time: new Date().toISOString().slice(11, 19),
+&#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/news.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./news.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;@@data.title&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;p&gt;Data from the server at @@data.time&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Haz lo mismo en <code>src/server/routes/live.ts</code> y <code>src/routes/live.fud</code>, cambiando <code>news</code> por <code>live</code> y el título por <code>'Live'</code>.</p>
+
+<h2 id="policies">2. Una política para cada una</h2>
+
+<p>El service worker guarda los datos de cada página, no su HTML, y la vuelve a pintar con ellos. La línea <code>load</code> del contrato dice cuánto valen y de dónde salen. Las noticias valen 10 segundos y salen de la caché mientras valen:</p>
+
+<ui-code .path="src/routes/news.fudapi">
+<pre><code>load sw ttl 10s cache-first
+  title  str
+  time   str</code></pre>
+</ui-code>
+
+<p>La página en directo pide siempre datos nuevos, y usa los guardados solo si la red falla:</p>
+
+<ui-code .path="src/routes/live.fudapi">
+<pre><code>load sw network-first
+  title  str
+  time   str</code></pre>
+</ui-code>
+
+<p><code>sw</code> es el modo: la página la pinta el service worker. Las cuatro políticas, y cuándo usar cada una, están en <a href="/docs/service-worker/caching#policies">Las políticas</a>.</p>
+
+<h2 id="compare">3. Compáralas en el build</h2>
+
+<p><code>fudic dev</code> no registra el service worker, así que construye y sirve el build:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:4173/news</code> con la pestaña Red (Network) de las herramientas de Chrome abierta, y recarga varias veces:</p>
+
+<ol>
+  <li><strong>La primera visita</strong> la pinta el servidor. El service worker se guarda el código de la página.</li>
+  <li><strong>En la segunda</strong> la pinta él, y para ello pide los datos al servidor en <code>/_fudic/data/news</code>. La hora avanza.</li>
+  <li><strong>En las siguientes</strong> no hay petición de datos y la hora no cambia: el service worker usa los guardados.</li>
+  <li><strong>Pasados 10 segundos</strong>, vuelve a pedir <code>/_fudic/data/news</code> y sale una hora nueva, que se queda otros 10 segundos.</li>
+</ol>
+
+<p>Haz lo mismo en <code>http://localhost:4173/live</code>. Desde la segunda visita, cada recarga pide <code>/_fudic/data/live</code> y la hora cambia siempre.</p>
+
+<h2 id="offline">4. Para el servidor</h2>
+
+<p>Para <code>fudic preview</code> con Ctrl+C y recarga las dos páginas, también pasados más de 10 segundos:</p>
+
+<ul>
+  <li><strong>News</strong> sale con su última hora. Sus datos han caducado, la red no responde, y <code>cache-first</code> sirve los guardados aunque hayan caducado.</li>
+  <li><strong>Live</strong> también sale, con la hora de su última recarga. En Red, <code>/_fudic/data/live</code> sale fallida: <code>network-first</code> lo ha intentado y ha usado lo guardado.</li>
+  <li><strong>Home</strong>, en <code>/</code>, sale igual. No tiene datos, y su código ya estaba guardado.</li>
+</ul>
+
+<p>Sin conexión se pinta toda página cuyo código y datos tiene guardados el service worker. Lo cuenta <a href="/docs/service-worker#visits">La primera visita y las siguientes</a>.</p>
+
+<h2 id="headers">5. Las cabeceras del service worker</h2>
+
+<p>Para pintar una página, el service worker carga su código cuando se visita, y eso necesita <code>'unsafe-eval'</code> en su Content Security Policy. Está en <code>sw.headers</code>, en la raíz:</p>
+
+<pre class="output"><code># The headers of /fudic-sw.js. A Service Worker does not inherit the page's policy.
+# 'unsafe-eval' is what lets it link the route chunks: without it the app is served without it.
+
+Content-Security-Policy:
+  default-src 'self'
+  script-src 'self' 'unsafe-eval'</code></pre>
+
+<p>Quita <code>'unsafe-eval'</code> de la última línea y construye otra vez, sin abrir el navegador:</p>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<pre class="output"><code>[plugin fudic] sw.headers:6:3 - warning FUD1548: script-src blocks the Service Worker linker, which needs 'unsafe-eval': the app is served without its Service Worker
+
+  https://fudic.dev/docs/reference/diagnostics/FUD1548</code></pre>
+
+<p>Con esa cabecera, el service worker se instala pero no pinta ninguna página: todas van al servidor. Vuelve a poner <code>'unsafe-eval'</code>. El permiso vale solo dentro del service worker, y la página sigue sin él. Por qué hace falta está en <a href="/docs/service-worker/headers">Las cabeceras del Service Worker</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/offline" target="_blank" rel="noopener">la solución de Funcionar sin red, en GitHub</a>. Compara tus dos <code>.fudapi</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/service-worker", prevTitle: "Arrancar el service worker", next: "/tutorials/", nextTitle: "Todas las categorías")

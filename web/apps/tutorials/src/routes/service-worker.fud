@@ -146,4 +146,4 @@ data-my-app-ecdb25be</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/service-worker" target="_blank" rel="noopener">la solución de Arrancar el service worker, en GitHub</a>. Compara tu <code>src/routes/about.fud</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/plurals-and-formats", prevTitle: "Plurales, moneda y t()", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/plurals-and-formats", prevTitle: "Plurales, moneda y t()", next: "/tutorials/offline", nextTitle: "Funcionar sin red: estrategias de caché")
