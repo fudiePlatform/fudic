@@ -159,6 +159,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   2026-11-26: el `href` frágil y los títulos «Server-functions», «Task», «Json-api»,
   «Server-types», «Middlewares», «Pipes», «Session», «Live-search» y «Production-server»,
   corregidos a mano: los nueve de la categoría.
+- **Y otra vez** con los tutoriales de Inyección de dependencias (`services`), el 2026-11-26:
+  el `href` frágil y el título «Services», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

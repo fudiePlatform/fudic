@@ -130,3 +130,14 @@
     @render tutorial("production-server", "Arrancarlo en Node", "advanced", @current)
   </ol>
 }
+
+@snippet diNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Inyección de dependencias</p>
+  <details class="toggle"><summary>Tutoriales de Inyección de dependencias</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("services", "Un servicio inyectado", "intermediate", @current)
+    @render tutorial("providers", "Un servicio compartido por quien no se ve", "intermediate", @current, false)
+    @render tutorial("server-di", "Proveedores en el servidor, por petición", "advanced", @current, false)
+  </ol>
+}

@@ -185,4 +185,4 @@ Cache-Control: public, max-age=31536000, immutable</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/production-server" target="_blank" rel="noopener">la solución de Arrancarlo en Node, en GitHub</a>. Compara tu <code>server.mjs</code> y tu <code>package.json</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/live-search", prevTitle: "Una búsqueda que sigue a un signal", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/live-search", prevTitle: "Una búsqueda que sigue a un signal", next: "/tutorials/services", nextTitle: "Un servicio inyectado")

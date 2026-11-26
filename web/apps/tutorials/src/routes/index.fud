@@ -33,7 +33,7 @@
   @render category("routes", "Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true, "/tutorials/pages-and-layout")
   @render category("forms", "Formularios", "Binding, validación, envío, ficheros y controles propios.", 7, true, true, true, "/tutorials/first-form")
   @render category("server", "Servidor", "Funciones de servidor y task, una API, middlewares, pipes y sesión.", 9, false, true, true, "/tutorials/server-functions")
-  @render category("dependency-injection", "Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true)
+  @render category("dependency-injection", "Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true, "/tutorials/services")
   @render category("i18n", "Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false)
   @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true)
   @render category("security", "Seguridad", "Cabeceras de seguridad, Content Security Policy y Trusted Types.", 3, false, true, true)

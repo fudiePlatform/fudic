@@ -1254,3 +1254,37 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   versión y la huella, así que su contenido no cambia nunca, haya una versión en el dominio o
   diez.
 
+## 84. Un signal dentro de un servicio inyectado no repinta la plantilla
+
+- **Qué pasó.** Escribiendo el tutorial `services` (2026-11-26), un `Cart` con `Service(Cart)` y
+  `readonly items = signal<string[]>([])`, y un componente con `const cart = inject(Cart)` que pinta
+  `@cart.items().length` y llama a `cart.add()` desde un `@click`. El clic hidrata el componente y
+  el signal cambia (un `console.log` lo confirma), pero la plantilla sigue en 0, también en el
+  componente que se ha pulsado. Lo mismo con `const items = cart.items` y `@items()`, y con un
+  `computed(() => cart.items().length)` local.
+- **Por qué.** El emit del cliente solo se suscribe a los `signal` que declara el propio `@code` y,
+  con `$subIf`, a los nombres importados (`packages/compiler/src/emit/client.ts`, «A `computed` is
+  NOT subscribed»). Un signal que llega a través de la instancia que devuelve `inject` no está en
+  ninguna de las dos listas. Es peor que el nº 68: allí, una vez hidratado, el componente sí sigue
+  al store.
+- **Cómo se resolvió en el tutorial.** El servicio es una clase sin signals: `add` devuelve cuántos
+  hay y cada producto lo pinta en un signal propio. `examples/basic` hace lo mismo en `di-panel`.
+- **Qué debería hacer.** Que la plantilla siga a los signals que lee a través de un servicio, por
+  ejemplo envolviendo `$a` en un `effect` que registre lo que lee, o suscribiéndose a los signals
+  de la instancia inyectada. Un servicio con estado reactivo es el motivo habitual para tener uno.
+
+## 85. `FUD0680` no sale en el editor, y en la terminal señala otro sitio
+
+- **Qué pasó.** En el mismo tutorial, sin `Service(Cart)` en el módulo del servicio:
+  - El language server no da nada, ni en el componente que inyecta ni en la página. La página
+    «Servicios» decía que `FUD0680` sale en el editor: lo calcula `injectionDiagnostics`
+    (`packages/compiler/src/emit/di-diagnostics.ts`), que solo llama el emit.
+  - `fudic dev` solo lo dice al pedir la página: un 500, y `Error when evaluating SSR module
+    fudic-wrapper:/: src/routes/index.fud:9:37 - error FUD0680: …` seguido de la pila de
+    `@fudic/vite` y Vite (como el nº 72). `pnpm build` falla con el mismo error.
+  - El span cae en la página, en `></m` de `<myapp-product .name="Coffee beans"></myapp-product>`:
+    ni en el tag entero ni en el `inject(Cart)` del componente, que es lo que hay que arreglar.
+- **Cómo se resolvió en la web.** La página «Servicios» dice que sale al compilar la página, en
+  `fudic dev` y en el build. El tutorial enseña la línea del error sin la pila.
+- **Qué debería hacer.** Dar `FUD0680` en el editor y en el typecheck de `fudic dev`, sin pila, con
+  el span en el `inject(Cart)` del componente.

@@ -1,0 +1,170 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un servicio inyectado · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea con fudic g service un carrito de Fudic, pídelo con inject() desde dos productos y comprueba que los dos comparten la misma instancia, y qué pasa si nadie lo registra.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/services">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un servicio inyectado · Tutoriales de Fudic">
+  <meta property="og:description" content="Un carrito que dos componentes comparten sin pasárselo de prop en prop.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/services">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render diNav("services")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y el servicio</a></li>
+        <li><a href="#service">2. Escribe el carrito</a></li>
+        <li><a href="#inject">3. Pídelo desde un componente</a></li>
+        <li><a href="#register">4. Si nadie lo registra</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Inyección de dependencias</span></p>
+
+<h1>Un servicio inyectado</h1>
+
+<p class="lede">Haces un carrito que dos productos comparten sin pasárselo de prop en prop: cada uno lo pide con <code>inject()</code> y los dos reciben el mismo.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un servicio con <code>fudic g service</code>.</li>
+    <li>Pedirlo desde un componente con <code>inject()</code>.</li>
+    <li>Saber qué lo registra para toda la página, y qué pasa si falta.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Usa <code>props</code> y <code>signal</code>, que cuentan <a href="/tutorials/props">Pasar datos a un hijo</a> y <a href="/tutorials/signals">Un contador con signals</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y el servicio</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g service cart</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created service Cart in src/services/
+  cart.service.ts         class Cart, registered in the root: inject(Cart) anywhere
+  cart.service.test.ts    unit test
+
+  Added @@fudic/di 0.0.1 to my-app (it was not there)</code></pre>
+
+<p>La inyección de dependencias de Fudic está en <code>@@fudic/di</code>, un paquete aparte. La CLI lo añade al proyecto la primera vez que creas un servicio, y lo instala.</p>
+
+<h2 id="service">2. Escribe el carrito</h2>
+
+<p>Un servicio es una clase normal de TypeScript. La que ha generado la CLI está vacía. Dale una lista y un método que añade y devuelve cuántos hay:</p>
+
+<ui-code .path="src/services/cart.service.ts">
+<pre><code>import &#123; Service &#125; from '@@fudic/di';
+
+// One for the whole app: inject(Cart) gives every component the same instance.
+export class Cart &#123;
+  readonly items: string[] = [];
+
+  add(name: string): number &#123;
+    this.items.push(name);
+    return this.items.length;
+  &#125;
+&#125;
+Service(Cart);</code></pre>
+</ui-code>
+
+<p>La última línea es la que importa: <code>Service(Cart)</code> registra la clase en la raíz, así que toda la página comparte una sola instancia. Es un decorador estándar de JavaScript que hoy se llama como una función, debajo de la clase. Cuando las herramientas de build los transformen, se podrá escribir <code>@@Service</code> encima.</p>
+
+<h2 id="inject">3. Pídelo desde un componente</h2>
+
+<p>Genera el producto y arranca el servidor:</p>
+
+<ui-code>
+<pre><code>npx fudic g component product --in src/routes/index.fud
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>El producto recibe su nombre por prop y pide el carrito con <code>inject(Cart)</code>. Al pulsar el botón, añade y escribe cuántos hay:</p>
+
+<ui-code .path="src/components/myapp-product/myapp-product.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; inject &#125; from "@@fudic/di";
+  import &#123; Cart &#125; from "../../services/cart.service";
+
+  const &#123; name = "" &#125; = props&lt;&#123; name?: string &#125;&gt;();
+  const cart = inject(Cart);
+  const message = signal("");
+
+  function buy() &#123;
+    const count = cart.add(name);
+    message.set(`Added. Items in your cart: $&#123;count&#125;`);
+  &#125;
+&#125;
+
+&lt;myapp-product&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;@@name&lt;/p&gt;
+    &lt;button type="button" @@click=@@buy&gt;Add to cart&lt;/button&gt;
+    &lt;p&gt;@@message()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p>Pon dos productos en la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-product/myapp-product.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-product .name="Coffee beans"&gt;&lt;/myapp-product&gt;
+&lt;myapp-product .name="Green tea"&gt;&lt;/myapp-product&gt;</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code> y pulsa <strong>Add to cart</strong> en Coffee beans, luego en Green tea y otra vez en Coffee beans:</p>
+
+<pre class="output"><code>Coffee beans
+Added. Items in your cart: 3
+Green tea
+Added. Items in your cart: 2</code></pre>
+
+<p>Green tea dijo 2, no 1: el carrito ya tenía el café. Los dos productos recibieron el mismo <code>Cart</code>, aunque ninguno se lo pasó al otro.</p>
+
+<ul>
+  <li><strong>Se pide lo que se usa, donde se usa.</strong> Nadie escribe un constructor con parámetros ni mantiene su orden.</li>
+  <li><strong>Inyectar hace que el componente se hidrate</strong>, porque usa un objeto que vive en el navegador. Una página sin <code>inject</code> no descarga nada de <code>@@fudic/di</code>.</li>
+  <li><strong>El carrito vive lo que vive la página.</strong> Recarga y empieza vacío. En el servidor, cada petición tiene el suyo, así que un visitante nunca ve el de otro.</li>
+</ul>
+
+<h2 id="register">4. Si nadie lo registra</h2>
+
+<p>Borra la línea <code>Service(Cart);</code> del servicio y recarga. La página responde <code>500</code>, y la terminal de <code>fudic dev</code> dice por qué, seguido de la pila de Vite:</p>
+
+<pre class="output"><code>  my-app   11:43:05 [vite] (ssr) Error when evaluating SSR module fudic-wrapper:/: src/routes/index.fud:9:37 - error FUD0680: Nothing registers `Cart`: its module neither calls `Service(Cart)` nor `provide(Cart, …)`, and no component provides it
+  my-app     https://fudic.dev/docs/reference/diagnostics/FUD0680</code></pre>
+
+<p><code>pnpm build</code> falla con el mismo error. Para darle un <code>Cart</code> al producto, alguien tiene que registrarlo: su módulo con <code>Service</code> o con <code>provide</code>, o un componente por encima. Vuelve a poner la línea y la página responde otra vez.</p>
+
+<p>Lo que no es una clase, como una URL o una configuración, se registra con un token. Los tokens, y cómo un servicio pide otro, están en <a href="/docs/di">Servicios</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/services" target="_blank" rel="noopener">la solución de Un servicio inyectado, en GitHub</a>. Compara tu <code>cart.service.ts</code> y tu <code>myapp-product.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/production-server", prevTitle: "Arrancarlo en Node", next: "/tutorials/", nextTitle: "Todas las categorías")

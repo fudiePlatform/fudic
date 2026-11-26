@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-product/myapp-product.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-product .name="Coffee beans"></myapp-product>
+<myapp-product .name="Green tea"></myapp-product>
