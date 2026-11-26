@@ -688,6 +688,10 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   no hay diff y por qué); que el `next` de `fudic_spec_run` nombre lo que falta de verdad; decidir
   si una ejecución parcial cuenta para el estado; y que `next` pida acordar los tokens antes del
   primer componente si nadie los ha aprobado.
+- **Vuelto a comprobar (tutorial `mcp`), el 2026-11-26.** Con Claude Code (Sonnet) y un proyecto
+  recién creado: tampoco acordó los tokens; la insignia que pidió la persona salió con los de la
+  guía (`--my-app-success`, `--my-app-raised`) sin preguntar. Y otra vez, con `pass 2/2` en los
+  criterios y los tests en rojo, `next` decía «Make the view of … pass these criteria».
 
 ## 48. El aspecto aprobado no caduca al cambiar la guía de estilos
 
@@ -1586,4 +1590,24 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Con `fudic.json` inválido, dar solo el error de lo que falla y no seguir
   con comprobaciones que dependen de él. Y aceptar `"2024"` como año, o decir en `FUD0725` que va
   sin comillas.
+
+## 101. Con el MCP, un componente puede nacer sin el prefijo y un test cambiar sin que nadie avise
+
+- **Qué pasó.** Escribiendo el tutorial `mcp` (2026-11-26), con Claude Code (Sonnet) en un
+  proyecto recién creado con prefijo `myapp`:
+  - **Sin prefijo.** El modelo llamó a `fudic_generate { kind: "component", name: "stock-status" }`
+    y el componente nació como `<stock-status>`, no `<myapp-stock-status>`: un nombre con guion se
+    usa tal cual, como en `fudic g component`. Ni la respuesta ni `fudic_check` lo señalan, y la
+    guía (`components`) no le dice al modelo que pase el nombre sin prefijo.
+  - **Un test cambiado en la fase de vista.** Con la vista escrita, los dos tests fallaban porque
+    leían `t.host.textContent` (el texto del shadow root no está ahí). El modelo cambió el test a
+    `t.root` por su cuenta y siguió; solo lo explicó cuando la persona se lo pidió. El `.fudlog`
+    apunta los tests con un hash nuevo, pero `fudic_test` y `fudic_status` no dicen que un test
+    cambió en `view`, que es justo lo que la fase prohíbe.
+- **Cómo se resolvió en el tutorial.** Se cuenta la ejecución como fue: la persona le pide que no
+  cambie el test sin preguntar, el modelo explica el fallo y la persona acepta el cambio.
+- **Qué debería hacer.** Que `fudic_generate` avise (o pregunte) cuando un nombre con guion no
+  empieza por el prefijo del proyecto. Y que, en la fase `view`, una ejecución de tests con los
+  ficheros de test cambiados desde el rojo responda un diagnóstico y un `next` que pida enseñar el
+  cambio a la persona.
 

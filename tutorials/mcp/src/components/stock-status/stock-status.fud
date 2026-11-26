@@ -1,0 +1,42 @@
+@code {
+  /** Says whether a product is available: "In stock" or "Out of stock". */
+  const { inStock } = props<{
+    /** Whether the product is available. */
+    inStock: boolean;
+  }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: inline-block;
+    }
+    .badge {
+      display: inline-block;
+      padding: var(--my-app-space-1) var(--my-app-space-3);
+      border-radius: var(--my-app-radius-full);
+      font-size: var(--my-app-text-sm);
+      font-weight: var(--my-app-weight-medium);
+    }
+    .badge.in-stock {
+      background: var(--my-app-success);
+      color: var(--my-app-on-accent);
+    }
+    .badge.out-of-stock {
+      background: var(--my-app-raised);
+      color: var(--my-app-ink);
+    }
+  </style>
+</head>
+
+<stock-status>
+  <template shadowrootmode="open">
+    <span class="badge" class:in-stock=@inStock class:out-of-stock=@(!inStock)>
+      @if (inStock) {
+        In stock
+      } else {
+        Out of stock
+      }
+    </span>
+  </template>
+</stock-status>

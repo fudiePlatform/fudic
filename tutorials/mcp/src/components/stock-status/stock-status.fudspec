@@ -1,0 +1,13 @@
+component stock-status
+
+criterion shows-in-stock
+  given
+    props inStock
+  then
+    text stock-status "In stock"
+
+criterion shows-out-of-stock
+  given
+    props outOfStock
+  then
+    text stock-status "Out of stock"

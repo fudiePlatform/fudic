@@ -195,3 +195,12 @@
     @render tutorial("workspace", "Dos apps y una librería", "advanced", @current)
   </ol>
 }
+
+@snippet agentsNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Agentes</p>
+  <details class="toggle"><summary>Tutoriales de Agentes</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("mcp", "Construir con tu agente usando el MCP de Fudic", "intermediate", @current)
+  </ol>
+}

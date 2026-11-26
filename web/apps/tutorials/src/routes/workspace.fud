@@ -222,4 +222,4 @@ Next
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/workspace" target="_blank" rel="noopener">la solución de Dos apps y una librería, en GitHub</a>. Compara tus dos portadas y tu insignia con las suyas.</p>
 
-@render pager(prev: "/tutorials/baseline", prevTitle: "Baseline: qué navegadores soportas", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/baseline", prevTitle: "Baseline: qué navegadores soportas", next: "/tutorials/mcp", nextTitle: "Construir con tu agente usando el MCP de Fudic")

@@ -1,0 +1,191 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Construir con tu agente usando el MCP de Fudic · Tutoriales de Fudic</title>
+  <meta name="description" content="Conecta tu agente al MCP de Fudic, comprueba la conexión con fudic_status y lleva un componente de la petición a terminado: apruebas sus criterios y su aspecto, y el modelo hace el resto.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/mcp">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Construir con tu agente usando el MCP de Fudic · Tutoriales de Fudic">
+  <meta property="og:description" content="Pide un componente con tus palabras, aprueba lo que es tuyo y deja que el modelo escriba las pruebas y el código.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/mcp">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render agentsNav("mcp")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y abre tu agente</a></li>
+        <li><a href="#status">2. Comprueba que está conectado</a></li>
+        <li><a href="#criteria">3. Pide una pieza y aprueba sus criterios</a></li>
+        <li><a href="#work">4. Deja que trabaje, y vigílalo</a></li>
+        <li><a href="#look">5. Aprueba cómo se ve</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Agentes</span></p>
+
+<h1>Construir con tu agente usando el MCP de Fudic</h1>
+
+<p class="lede">Pides un componente a tu agente con tus palabras, apruebas sus criterios y su aspecto, y el modelo escribe las pruebas y el código hasta dejarlo terminado.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Conectar tu agente al MCP de Fudic y comprobar que lo usa.</li>
+    <li>Llevar un componente de la petición a terminado, decidiendo solo lo que es tuyo.</li>
+    <li>Devolver al modelo al camino cuando se salta una regla, y leer el historial de la pieza.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm, git y un agente, como <a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Claude Code</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y abre tu agente</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app</code></pre>
+</ui-code>
+
+<p>La CLI deja el MCP instalado y configurado. Un MCP es un servidor que da herramientas a un modelo, y el de Fudic le enseña Fudic y comprueba cada paso que da. <code>.mcp.json</code> le dice a Claude Code cómo arrancarlo:</p>
+
+<pre class="output"><code>&#123; "mcpServers": &#123; "fudic": &#123; "command": "pnpm", "args": ["exec", "fudic-mcp"] &#125; &#125; &#125;</code></pre>
+
+<p>Y <code>AGENTS.md</code>, el fichero que lee un agente al abrir el proyecto, le dice que lo use:</p>
+
+<pre class="output"><code>This is a fudic project. fudic is a framework you have no prior knowledge of.
+Use the fudic MCP server (it is configured in .mcp.json): call fudic_status first.</code></pre>
+
+<p>Abre tu agente en la carpeta <code>my-app</code>. Con Claude Code, ejecuta <code>claude</code> y aprueba el servidor <code>fudic</code> cuando te lo pida. Copilot, Cursor, Codex y los demás necesitan su propio fichero, y lo tienes en <a href="/mcp/connect">Desde un agente</a>.</p>
+
+<h2 id="status">2. Comprueba que está conectado</h2>
+
+<p>Escribe en el agente:</p>
+
+<ui-code>
+<pre><code>Llama a fudic_status</code></pre>
+</ui-code>
+
+<p><code>fudic_status</code> es la herramienta que dice dónde está el proyecto y qué toca ahora. Si el agente la encuentra, responde con el nombre de tu proyecto. Esto es lo que recibió en una ejecución real:</p>
+
+<pre class="output"><code>&#123;
+  "phase": "criteria",
+  "project": &#123; "name": "my-app", "kind": "app", "prefix": "myapp", … &#125;,
+  "units": [
+    &#123; "piece": "src/routes/index.fud", "kind": "route", "name": "/", "phase": "criteria", "approval": "none", … &#125;
+  ],
+  "next": "Ask the user for what the page shows and does of /. Propose them, wait for their approval, …"
+&#125;</code></pre>
+
+<p>Cada componente y cada página es una pieza, y cada pieza pasa por unas fases en orden. La portada está en la primera, <code>criteria</code>, y <code>next</code> le dice al modelo el siguiente paso: preguntarte qué tiene que hacer. El agente te lo pregunta con sus palabras.</p>
+
+<h2 id="criteria">3. Pide una pieza y aprueba sus criterios</h2>
+
+<p>Deja la portada para luego y empieza por un componente pequeño. Pídelo como se lo pedirías a una persona:</p>
+
+<ui-code>
+<pre><code>Quiero un componente que diga si un producto está disponible: «In stock» o «Out of stock». Empieza por él, la página después.</code></pre>
+</ui-code>
+
+<p>El modelo lee la guía de Fudic que trae el MCP, crea el componente y te propone sus props y sus criterios, lo que tiene que cumplir. En la ejecución real, con Claude Code:</p>
+
+<pre class="output"><code>Prop
+- inStock: boolean (obligatoria): si es true el componente muestra «In stock»; si es false, «Out of stock».
+
+Criterios (stock-status.fudspec)
+1. Con inStock = true, se muestra el texto «In stock».
+2. Con inStock = false, se muestra el texto «Out of stock».
+
+¿Te parece bien así, o quieres cambiar el nombre de la prop, añadir algo (por ejemplo un estado "low stock") o algún matiz de estilo/accesibilidad?</code></pre>
+
+<p>Tu agente usará otras palabras y quizá otros nombres. Lee los criterios como lo comprobarías tú, mirando o tocando la pieza, y pide lo que falte. Cuando estén bien, apruébalos:</p>
+
+<ui-code>
+<pre><code>Me parece bien así. Apruebo la prop y los criterios.</code></pre>
+</ui-code>
+
+<p>El modelo los escribe en el <code>.fudspec</code> del componente, que comprueba cada criterio en un navegador:</p>
+
+<pre class="output"><code>criterion shows-in-stock
+  given
+    props inStock
+  then
+    text stock-status "In stock"</code></pre>
+
+<p>Y apunta tu aprobación en su historial, el <code>.fudlog</code>, con tu nombre de git. Esa decisión es solo tuya: el modelo no puede aprobar por ti.</p>
+
+<h2 id="work">4. Deja que trabaje, y vigílalo</h2>
+
+<p>Ahora trabaja el modelo, sin preguntarte. Escribe los tests unitarios y comprueba que fallan, porque el componente aún no hace nada. Después escribe el <code>.fud</code> hasta que pasan los tests y los criterios. En esa fase, los tests son el juez: el modelo cambia el componente, no las pruebas.</p>
+
+<p>En la ejecución real, los criterios pasaron pero los dos tests no, y el modelo cambió un test por su cuenta. Si ves que lo hace, páralo:</p>
+
+<ui-code>
+<pre><code>Espera: has cambiado un test por tu cuenta. No cambies el test sin preguntarme, explícame qué falla.</code></pre>
+</ui-code>
+
+<pre class="output"><code>Tienes razón, lo cambié sin preguntar. Te explico qué pasó:
+
+Qué fallaba: el test comprobaba t.host.textContent, es decir, el texto del propio elemento &lt;stock-status&gt;. Pero el contenido está dentro de su shadow root (&lt;template shadowrootmode="open"&gt;), y el shadow DOM está encapsulado: textContent del host nunca incluye lo que hay dentro del shadow root, sin importar lo que renderice el componente. …
+
+¿Quieres que lo deje así, o prefieres revisarlo tú o que lo revierta y lo dejemos en rojo mientras lo discutimos?</code></pre>
+
+<p>Esta vez el test estaba mal y el arreglo es bueno. Díselo, y pide ver el resultado:</p>
+
+<ui-code>
+<pre><code>Déjalo así, el test está bien corregido. Sigue y enséñame cómo se ve.</code></pre>
+</ui-code>
+
+<p>Hay más frases como esta para cuando el modelo se salta un paso, y están en <a href="/mcp/">Trabajar con el MCP</a>.</p>
+
+<h2 id="look">5. Aprueba cómo se ve</h2>
+
+<p>El modelo pinta cada caso del componente en un navegador, guarda una captura de cada uno y te los enseña. En la ejecución real, las dos capturas eran texto sin estilo, y no es lo que se quería:</p>
+
+<ui-code>
+<pre><code>Así no. Ponlo como una insignia: fondo verde con «In stock» y gris con «Out of stock». Enséñamelo otra vez.</code></pre>
+</ui-code>
+
+<p>El modelo cambia el CSS con los colores de la guía de estilos, vuelve a pasar los tests y los criterios, y repite las capturas: una insignia verde, con el texto en blanco, y otra gris clara. Ver no es aprobar. Cuando te guste, dilo:</p>
+
+<ui-code>
+<pre><code>Sí, apruebo cómo se ve. Ciérralo; la página la dejamos para otro día.</code></pre>
+</ui-code>
+
+<p>El modelo apunta el aspecto, documenta el componente y lo marca como terminado. Compruébalo tú en la terminal, sin el agente:</p>
+
+<ui-code>
+<pre><code>npx fudic history src/components/stock-status/stock-status.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>stock-status  approved by Pedro-Hurtado (valid) · tests pass 2/2 · spec pass 2/2 · look (valid) · done</code></pre>
+
+<p>El historial guarda todo el recorrido, con tus dos decisiones en medio:</p>
+
+<pre class="output"><code>2026-11-26T16:52Z 354ce21 started     by agent  "Muestra si un producto está disponible: \"In stock\" o \"Out of stock\"."
+2026-11-26T16:58Z 354ce21 approved    by Pedro-Hurtado  spec 2 hash 9f9a6e8ed78e
+2026-11-26T17:01Z 354ce21 tests       broken 0/2  hash 40b46911b5ba
+…
+2026-11-26T17:24Z 354ce21 tests       pass 2/2  hash 45e99a543799
+2026-11-26T17:24Z 354ce21 spec_run    pass 2/2  hash 45e99a543799
+2026-11-26T17:28Z 354ce21 look        by Pedro-Hurtado  hash b0965c9e6d0c
+2026-11-26T17:30Z 354ce21 documented  1/1
+2026-11-26T17:30Z 354ce21 done</code></pre>
+
+<p>Si mañana cambia el <code>.fudspec</code> o el aspecto del componente, la aprobación caduca y el modelo te vuelve a preguntar. Qué hace cada fase está en <a href="/mcp/phases">Las fases de una pieza</a>, y cuándo caduca lo que apruebas, en <a href="/mcp/approval">Aprobar, caducar y reabrir</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/mcp" target="_blank" rel="noopener">la solución de Construir con tu agente usando el MCP de Fudic, en GitHub</a>, con el historial de la pieza en su <code>.fudlog</code>. Tu componente será distinto, porque lo escribe tu agente, pero pasará por las mismas fases.</p>
+
+@render pager(prev: "/tutorials/workspace", prevTitle: "Dos apps y una librería", next: "/tutorials/", nextTitle: "Todas las categorías")
