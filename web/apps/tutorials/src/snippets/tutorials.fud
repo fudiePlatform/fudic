@@ -141,3 +141,14 @@
     @render tutorial("server-di", "Proveedores en el servidor, por petición", "advanced", @current)
   </ol>
 }
+
+@snippet i18nNav(current: string) {
+  <p class="nav-back"><a href="/tutorials/">Todas las categorías</a></p>
+  <p class="nav-category">Internacionalización</p>
+  <details class="toggle"><summary>Tutoriales de Internacionalización</summary></details>
+  <ol class="tutorial-list">
+    @render tutorial("two-languages", "Tu app en dos idiomas", "beginner", @current)
+    @render tutorial("localized-urls", "URLs con idioma y un selector", "intermediate", @current, false)
+    @render tutorial("plurals-and-formats", "Plurales, moneda y fechas", "intermediate", @current, false)
+  </ol>
+}

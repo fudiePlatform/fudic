@@ -1,0 +1,31 @@
+{
+  "routes/index.fud": {
+    "3c9be967": {
+      "source": "Home",
+      "translation": "Home",
+      "where": "src/routes/index.fud",
+      "at": 0
+    },
+    "4138857b": {
+      "source": "Welcome to the shop",
+      "translation": "Welcome to the shop",
+      "where": "src/routes/index.fud",
+      "at": 1
+    },
+    "38d19776": {
+      "source": "Hello <0>{name}</0>, today we have fresh coffee.",
+      "translation": "Hello <0>{name}</0>, today we have fresh coffee.",
+      "holes": {
+        "name": "name"
+      },
+      "where": "src/routes/index.fud",
+      "at": 2
+    },
+    "aa649dae": {
+      "source": "Search the shop",
+      "translation": "Search the shop",
+      "where": "src/routes/index.fud",
+      "at": 3
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  const name = "Ana";
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Welcome to the shop</h1>
+<p>Hello <b>@name</b>, today we have fresh coffee.</p>
+<input type="search" placeholder="Search the shop">

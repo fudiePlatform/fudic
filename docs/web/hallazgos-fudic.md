@@ -1338,3 +1338,18 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   (`const NOTHING = token<number>("nothing"); provide(NOTHING, () => 0);`) compila limpio, pero el
   módulo IoC del componente no lleva la declaración, y el navegador da `NOTHING is not defined` al
   instalar la página. Con el token en un módulo `.ts` importado, funciona.
+
+## 88. En una app con varios idiomas, `visit('/')` dice que no hay ruta
+
+- **Qué pasó.** Escribiendo el tutorial `two-languages` (2026-11-26): `fudic new` y después
+  `fudic add i18n --locales en,es`. El test que generó `fudic new` (`visit('/')` y
+  `expect(page.status).toBe(200)`) falla con `visit('/'): no route matches /`. En `fudic dev`, `/`
+  responde `302` hacia `/es/` o `/en/` según `Accept-Language`, así que la ruta existe; lo que pasa
+  es que `visit` busca la ruta sin prefijo (`matchRouteBuild` en `packages/testing/src/visit.ts:72`)
+  y no sabe nada de los idiomas. `visit('/en/')` y `visit('/es/')` funcionan, cada una en su idioma.
+- **Cómo se resolvió en el tutorial.** El último paso cambia el test por dos, uno por idioma, y lo
+  explica.
+- **Qué debería hacer.** Que `visit('/')` en una app con varios idiomas diga lo mismo que con
+  cualquier otra redirección («redirected … to /en/ — visit that URL instead»), o que acepte el
+  idioma del navegador como opción. Y que `fudic add i18n` reescriba los tests de las rutas que ya
+  existen, o avise de que dejan de pasar.

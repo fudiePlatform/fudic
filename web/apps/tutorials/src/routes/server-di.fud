@@ -233,4 +233,4 @@ Ana waved from the browser.</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-di" target="_blank" rel="noopener">la solución de Proveedores en el servidor, por petición, en GitHub</a>. Compara tu <code>session.service.ts</code> y tu <code>src/server/routes/index.ts</code> con los suyos. Su <code>session.service.test.ts</code> prueba la sesión con un contenedor sembrado, como lo siembra el servidor.</p>
 
-@render pager(prev: "/tutorials/providers", prevTitle: "Un servicio compartido por quien no se ve", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/providers", prevTitle: "Un servicio compartido por quien no se ve", next: "/tutorials/two-languages", nextTitle: "Tu app en dos idiomas")

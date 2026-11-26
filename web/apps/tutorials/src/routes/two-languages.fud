@@ -1,0 +1,263 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tu app en dos idiomas · Tutoriales de Fudic</title>
+  <meta name="description" content="Añade un segundo idioma a una app de Fudic con fudic add i18n, extrae sus textos con fudic translate, tradúcelos en su catálogo y sirve cada idioma en su URL.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/two-languages">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tu app en dos idiomas · Tutoriales de Fudic">
+  <meta property="og:description" content="Una página en inglés y en español, sin marcar un solo texto.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/two-languages">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render i18nNav("two-languages")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app con dos idiomas</a></li>
+        <li><a href="#page">2. Escribe la página</a></li>
+        <li><a href="#translate">3. Extrae los textos y tradúcelos</a></li>
+        <li><a href="#lang">4. El idioma de la página</a></li>
+        <li><a href="#build">5. Constrúyela y pruébala</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Internacionalización</span></p>
+
+<h1>Tu app en dos idiomas</h1>
+
+<p class="lede">Traduces una página al español sin marcar un solo texto: Fudic saca los mensajes, tú escribes la traducción y cada idioma sale en su propia URL.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar los idiomas de la app con <code>fudic add i18n</code>.</li>
+    <li>Extraer los textos con <code>fudic translate</code> y traducirlos en su catálogo.</li>
+    <li>Ver cada idioma en su URL, con su <code>lang</code>, y construir la app.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea la app con dos idiomas</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic add i18n --locales en,es</code></pre>
+</ui-code>
+
+<pre class="output"><code>Added @@fudic/i18n 0.0.1 to my-app
+  Installed dependencies (pnpm)
+  locales en, es in fudic.json: fudic translate writes their catalogs</code></pre>
+
+<p>El comando instala <code>@@fudic/i18n</code> y escribe <code>"locales": ["en", "es"]</code> en <code>fudic.json</code>. El orden importa. El primero es el idioma en que escribes el código, así que los textos de tus <code>.fud</code> van en inglés, y el español es su traducción.</p>
+
+<h2 id="page">2. Escribe la página</h2>
+
+<p>Escribe la portada como siempre, en inglés, sin marcar nada:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  const name = "Ana";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Welcome to the shop&lt;/h1&gt;
+&lt;p&gt;Hello &lt;b&gt;@@name&lt;/b&gt;, today we have fresh coffee.&lt;/p&gt;
+&lt;input type="search" placeholder="Search the shop"&gt;</code></pre>
+</ui-code>
+
+<p>Arranca el servidor:</p>
+
+<ui-code>
+<pre><code>npx fudic dev</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:5173/</code>. El navegador acaba en <code>/en/</code> o en <code>/es/</code>, según el idioma que tenga configurado. Con dos idiomas, cada página existe una vez por idioma, bajo su prefijo, y la dirección sin prefijo redirige a la que mejor encaja. Cambia a mano a <code>/es/</code>: la página sigue en inglés, porque aún no hay nada traducido.</p>
+
+<h2 id="translate">3. Extrae los textos y tradúcelos</h2>
+
+<p>Con el servidor en marcha, abre otra terminal y ejecuta:</p>
+
+<ui-code>
+<pre><code>npx fudic translate</code></pre>
+</ui-code>
+
+<p>Primero avisa con un <code>FUD1022</code> por cada mensaje que aún no tiene traducción al español. Después escribe los catálogos y hace el recuento:</p>
+
+<pre class="output"><code>  create  src/locales/en/routes/index.json
+  create  src/locales/es/routes/index.json
+  en  4 messages · 4 new · 0 to review · 0 untranslated
+  es  4 messages · 4 new · 0 to review · 4 untranslated</code></pre>
+
+<p>Ha encontrado cuatro mensajes: el título, el encabezado, la frase y el <code>placeholder</code>. Todo lo que la página pinta como texto se traduce solo, y también los atributos que lee una persona. El catálogo de inglés ya viene relleno, porque es el idioma del código. El de español trae cada mensaje sin traducir. Así llega la frase:</p>
+
+<pre class="output"><code>"38d19776": &#123;
+  "source": "Hello &lt;0&gt;&#123;name&#125;&lt;/0&gt;, today we have fresh coffee.",
+  "holes": &#123;
+    "name": "name"
+  &#125;,
+  "where": "src/routes/index.fud",
+  "at": 2
+&#125;</code></pre>
+
+<p>Es una sola frase, con el <code>&lt;b&gt;</code> convertido en <code>&lt;0&gt;…&lt;/0&gt;</code> y la expresión en el hueco <code>&#123;name&#125;</code>, para que la traducción pueda moverlos de sitio. Añade a cada mensaje un campo <code>translation</code>, lo único que se edita:</p>
+
+<ui-code .path="src/locales/es/routes/index.json">
+<pre><code>&#123;
+  "routes/index.fud": &#123;
+    "3c9be967": &#123;
+      "source": "Home",
+      "translation": "Inicio",
+      "where": "src/routes/index.fud",
+      "at": 0
+    &#125;,
+    "4138857b": &#123;
+      "source": "Welcome to the shop",
+      "translation": "Te damos la bienvenida a la tienda",
+      "where": "src/routes/index.fud",
+      "at": 1
+    &#125;,
+    "38d19776": &#123;
+      "source": "Hello &lt;0&gt;&#123;name&#125;&lt;/0&gt;, today we have fresh coffee.",
+      "translation": "Hola, &lt;0&gt;&#123;name&#125;&lt;/0&gt;. Hoy tenemos café recién hecho.",
+      "holes": &#123;
+        "name": "name"
+      &#125;,
+      "where": "src/routes/index.fud",
+      "at": 2
+    &#125;,
+    "aa649dae": &#123;
+      "source": "Search the shop",
+      "translation": "Busca en la tienda",
+      "where": "src/routes/index.fud",
+      "at": 3
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Al guardar, <code>fudic dev</code> recarga <code>/es/</code>, ya en español:</p>
+
+<pre class="output"><code>Te damos la bienvenida a la tienda
+Hola, Ana. Hoy tenemos café recién hecho.</code></pre>
+
+<p>El cuadro de búsqueda dice «Busca en la tienda». Si vuelves a ejecutar <code>npx fudic translate</code>, el recuento confirma que no falta nada:</p>
+
+<pre class="output"><code>  en  4 messages · 0 new · 0 to review · 0 untranslated
+  es  4 messages · 0 new · 0 to review · 0 untranslated</code></pre>
+
+<p>El formato del catálogo, y qué pasa cuando un texto cambia, están en <a href="/docs/i18n/catalogs">Los catálogos</a>.</p>
+
+<h2 id="lang">4. El idioma de la página</h2>
+
+<p>Mira el código fuente de <code>/es/</code>. El texto está en español, pero la primera línea dice otra cosa:</p>
+
+<pre class="output"><code>&lt;!DOCTYPE html&gt;&lt;html lang="en"&gt;&lt;head&gt;</code></pre>
+
+<p>El layout que escribió <code>fudic new</code> lleva <code>lang="en"</code>, y lo que escribe el layout manda. Quítalo, para que Fudic ponga el de cada página:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p>Ahora <code>/es/</code> sale con <code>lang="es"</code> y <code>/en/</code> con <code>lang="en"</code>. Con él, el lector de pantalla pronuncia bien cada idioma. En el <code>&lt;head&gt;</code> de cada versión, Fudic ha añadido también un enlace a sí misma y uno a cada una de las otras:</p>
+
+<pre class="output"><code>&lt;html lang="es"&gt;
+&lt;link rel="canonical" href="http://localhost:5173/es/"&gt;
+&lt;link rel="alternate" hreflang="en" href="http://localhost:5173/en/"&gt;
+&lt;link rel="alternate" hreflang="es" href="http://localhost:5173/es/"&gt;
+&lt;link rel="alternate" hreflang="x-default" href="http://localhost:5173/"&gt;</code></pre>
+
+<p>Así un buscador enseña a cada persona la versión de su idioma. Los prefijos, los enlaces y el selector de idioma están en <a href="/docs/i18n/urls">Idiomas y URLs</a>.</p>
+
+<h2 id="build">5. Constrúyela y pruébala</h2>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<p>El build se para, seguido de la pila de Vite:</p>
+
+<pre class="output"><code>✗ Build failed in 4.25s
+error during build:
+Build failed with 1 error:
+
+[plugin fudic]
+Error: error FUD1027: this app has two or more "locales" and no "site" in fudic.json: its canonical and hreflang links must be absolute URLs, and a prerendered page has no request to take the origin from. Add "site": "https://example.com", the origin the app is published at.</code></pre>
+
+<p>En <code>fudic dev</code>, los enlaces del paso anterior salían del origen de cada petición. Una página que se genera al construir no tiene petición, así que el build necesita saber dónde se publicará la app. Añade <code>site</code> al final de <code>fudic.json</code>:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "locales": [
+    "en",
+    "es"
+  ],
+  "site": "https://example.com"
+&#125;</code></pre>
+</ui-code>
+
+<p>Vuelve a ejecutar <code>pnpm build</code>. Entre lo que escribe en <code>dist/</code> están las dos versiones de la página, y una tercera sin prefijo:</p>
+
+<pre class="output"><code>dist/index.html                                    0.35 kB │ gzip: 0.19 kB
+dist/en/index.html                                 0.76 kB │ gzip: 0.42 kB
+dist/es/index.html                                 0.79 kB │ gzip: 0.45 kB</code></pre>
+
+<p>En una página estática no hay servidor que mire el idioma del navegador, así que <code>dist/index.html</code> lleva siempre al primero de la lista, <code>/en/</code>.</p>
+
+<p>Falta el test. El que generó <code>fudic new</code> visita <code>/</code>, y <code>pnpm test</code> falla con <code>visit('/'): no route matches /</code>: esa dirección ya no es una página, solo una redirección. Cámbialo por uno que visite cada idioma:</p>
+
+<ui-code .path="src/routes/index.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import &#123; visit &#125; from '@@fudic/testing';
+
+test('answers /en/ in English', async () =&gt; &#123;
+  const page = await visit('/en/');
+  expect(page.status).toBe(200);
+  expect(page.getByRole('heading', &#123; level: 1 &#125;)).toHaveTextContent('Welcome to the shop');
+&#125;);
+
+test('answers /es/ in Spanish', async () =&gt; &#123;
+  const page = await visit('/es/');
+  expect(page.status).toBe(200);
+  expect(page.getByRole('heading', &#123; level: 1 &#125;)).toHaveTextContent('Te damos la bienvenida a la tienda');
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>pnpm test</code> pasa. Por qué Fudic traduce al compilar, y no mientras pinta como React, Vue o Angular, está en <a href="/docs/i18n">Traducir una app</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/two-languages" target="_blank" rel="noopener">la solución de Tu app en dos idiomas, en GitHub</a>. Compara tu catálogo de español y tu <code>fudic.json</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/server-di", prevTitle: "Proveedores en el servidor, por petición", next: "/tutorials/", nextTitle: "Todas las categorías")

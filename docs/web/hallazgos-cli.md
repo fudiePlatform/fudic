@@ -162,6 +162,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Inyección de dependencias (`services`, `providers`,
   `server-di`), el 2026-11-26: el `href` frágil y los títulos «Services», «Providers» y
   «Server-di», corregidos a mano: los tres de la categoría.
+- **Y otra vez** con los tutoriales de Internacionalización (`two-languages`), el 2026-11-26: el
+  `href` frágil y el título «Two-languages», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -439,3 +441,29 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `pnpm preview`.
 - **Qué debería hacer.** Que el proxy aborte la petición al backend cuando el cliente cierra la
   suya, para que `ctx.signal` funcione igual que en producción.
+
+## 29. `fudic add i18n` deja el `lang="en"` del layout
+
+- **Qué pasó.** Escribiendo el tutorial `two-languages` (2026-11-26): `fudic new my-app` escribe
+  `<html lang="en">` en `src/layouts/_layout.fud`, y `fudic add i18n --locales en,es` no lo toca.
+  Como lo que escribe el layout manda («Idiomas y URLs», `/docs/i18n/urls#lang`), `/es/` sale con
+  el texto en español y `<html lang="en">`: el lector de pantalla lo lee con la voz inglesa.
+- **Cómo se resolvió en el tutorial.** Un paso quita el `lang` del layout y enseña el antes y el
+  después.
+- **Qué debería hacer.** Que `fudic add i18n` quite el `lang` del layout de la app (o avise de que
+  lo hay), igual que añade los idiomas a `fudic.json`.
+
+## 30. `fudic add i18n` no escribe `site`, y el build falla después
+
+- **Qué pasó.** Mismo tutorial. `fudic add i18n --locales en,es` escribe `"locales"` en
+  `fudic.json`, pero no `"site"`, ni lo pide ni avisa de que falta. `fudic dev` funciona (toma el
+  origen de cada petición), y el primer `pnpm build` se para con `FUD1027`, seguido de unas veinte
+  líneas de pila de Vite y Rolldown que no aportan nada al mensaje.
+- **Cómo se resolvió en el tutorial.** El último paso enseña el error y añade
+  `"site": "https://example.com"` a mano.
+- **Qué debería hacer.** Que `fudic add i18n` acepte `--site <url>`, o escriba
+  `"site": "https://example.com"` y lo diga en su salida, para que la app construya desde el
+  primer momento.
+- **De paso.** `fudic add i18n` reescribe todo `fudic.json` con su propio formato: los objetos que
+  `fudic new` deja en una línea (`"globalStyles": { "base": … }`, `"guide"`) pasan a ocupar cuatro.
+
