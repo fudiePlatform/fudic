@@ -1,0 +1,197 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>El estado de una llamada con task · Tutoriales de Fudic</title>
+  <meta name="description" content="Envuelve una función de servidor de Fudic con task y pinta, sin try ni variables de estado, si la llamada está en marcha, su último valor y su error, con los cambios en fila.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/task">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="El estado de una llamada con task · Tutoriales de Fudic">
+  <meta property="og:description" content="En marcha, valor y error de una función de servidor, como signals.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/task">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("task")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#slow">2. Una función que tarda</a></li>
+        <li><a href="#task">3. Llámala con task</a></li>
+        <li><a href="#errors">4. El error, sin try</a></li>
+        <li><a href="#queue">5. Dos clics seguidos</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>El estado de una llamada con <code>task</code></h1>
+
+<p class="lede">Llamas desde un botón a una función de servidor que tarda un segundo, y la página enseña sola que está guardando, el último valor y el error, sin un <code>try</code> ni una variable de estado escrita a mano.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Envolver una función de servidor con <code>task</code> y llamarla con <code>run</code>.</li>
+    <li>Pintar si la llamada está en marcha, su último valor y su error: <code>pending()</code>, <code>value()</code> y <code>message()</code>.</li>
+    <li>Saber qué hace una tarea con dos llamadas seguidas.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Cómo se declara y se llama una función de servidor está en <a href="/tutorials/server-functions">Funciones de servidor</a>, y los signals, en <a href="/tutorials/signals">Un contador con signals</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<p>La página de inicio tiene ya su contrato y su código de servidor, y el proyecto, <code>@@fudic/http</code> instalado.</p>
+
+<h2 id="slow">2. Una función que tarda</h2>
+
+<p>Una función que cambia el nombre de la tienda. Como cambia datos, es un <code>put</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Renames the shop. Takes a second, like a slow database.
+put rename
+  name  str
+  -&gt; str</code></pre>
+</ui-code>
+
+<p>Su handler espera un segundo, como una base de datos lenta, y escribe en la terminal cuándo empieza y cuándo acaba cada llamada:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; rename &#125; from 'fudic:routes/index';
+
+rename.handle(async (ctx) =&gt; &#123;
+  console.log(`saving $&#123;ctx.args.name&#125;…`);
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+  console.log(`saved $&#123;ctx.args.name&#125;`);
+  return ctx.args.name;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Con un <code>await rename(…)</code>, como en el tutorial anterior, tendrías la respuesta. Pero durante ese segundo la página no sabe que hay una llamada en marcha, y para enseñarlo harían falta un signal más, un <code>try</code> y un <code>finally</code> en cada llamada.</p>
+
+<h2 id="task">3. Llámala con <code>task</code></h2>
+
+<p><code>task</code>, de <code>@@fudic/core</code>, envuelve la función y lleva su estado como signals. Recibe la función, sin llamarla, y la llamas cuando quieras con <code>run</code> y sus argumentos:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; signal, task &#125; from "@@fudic/core";
+
+  const name = signal("");
+  const saving = task(rename);
+
+  function save() &#123;
+    void saving.run(&#123; name: name() &#125;);
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;input aria-label="Shop name" @@input=@@name.set($value)&gt;
+&lt;button type="button" @@click=@@save disabled=@@saving.pending()&gt;Save&lt;/button&gt;
+@@if (saving.pending()) &#123;
+  &lt;p&gt;Saving…&lt;/p&gt;
+&#125;
+&lt;p&gt;Current name: @@(saving.value() ?? "none")&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code>, escribe «Corner Shop» y pulsa <strong>Save</strong>. Durante un segundo el botón está desactivado y sale «Saving…»; después, «Current name: Corner Shop». La terminal lo cuenta desde el servidor:</p>
+
+<pre class="output"><code>my-app   saving Corner Shop…
+my-app   saved Corner Shop</code></pre>
+
+<p>La vista no ha cambiado nada a mano: lee la tarea, y la tarea avisa cuando cambia. Lo que se lee de una tarea:</p>
+
+<ul>
+  <li><strong><code>pending()</code></strong>: si hay una llamada en marcha. Desactiva el botón y enseña «Saving…».</li>
+  <li><strong><code>value()</code></strong>: la última respuesta. Antes de la primera es <code>undefined</code>, de ahí el <code>?? "none"</code>. Mientras llega la siguiente, se queda la anterior, así que nada parpadea.</li>
+  <li><strong><code>message()</code></strong>: el texto del último error, o <code>""</code>. Lo usa el paso siguiente.</li>
+</ul>
+
+<p><code>run</code> devuelve una promesa, pero aquí nadie la espera: el <code>void</code> lo dice. La página no necesita la respuesta porque la lee de <code>value()</code>. En el servidor la tarea nunca llama: la página sale pintada con «Current name: none», y la llamada sale del navegador.</p>
+
+<h2 id="errors">4. El error, sin <code>try</code></h2>
+
+<p>Haz que el servidor rechace un nombre. Declara el error en la función con <code>fails</code>: su código, su status y el texto que verá el usuario:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Renames the shop. Takes a second, like a slow database.
+put rename
+  fails taken 409 "That name is taken."
+  name  str
+  -&gt; str</code></pre>
+</ui-code>
+
+<p>El contrato genera <code>RenameFails</code>, con una función por código. Lánzala en el handler cuando el nombre sea «Admin»:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; rename, RenameFails &#125; from 'fudic:routes/index';
+
+rename.handle(async (ctx) =&gt; &#123;
+  console.log(`saving $&#123;ctx.args.name&#125;…`);
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+  if (ctx.args.name === 'Admin') throw RenameFails.taken();
+  console.log(`saved $&#123;ctx.args.name&#125;`);
+  return ctx.args.name;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Y pinta <code>message()</code> al final de la página, en un <code>role="alert"</code> para que un lector de pantalla lo anuncie:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;p&gt;Current name: @@(saving.value() ?? "none")&lt;/p&gt;
+&lt;p role="alert"&gt;@@saving.message()&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Guarda «Corner Shop» y después «Admin». La petición responde <code>409</code> y sale «That name is taken.», mientras «Current name» sigue en «Corner Shop». Guarda «Corner Shop» otra vez: el mensaje desaparece.</p>
+
+<p>No hay ningún <code>try</code>, porque <code>run</code> nunca lanza: el error queda en la tarea. El servidor solo manda el status y el código, <code>taken</code>. El texto lo pone el navegador desde el contrato, así que se traduce con la página y el servidor no escribe ningún mensaje.</p>
+
+<h2 id="queue">5. Dos clics seguidos</h2>
+
+<p>¿Qué pasa si el usuario guarda dos veces antes de que responda la primera? Para verlo, quita del botón <code>disabled=@@saving.pending()</code>. Escribe «One», pulsa <strong>Save</strong>, cambia a «Two» enseguida y pulsa otra vez:</p>
+
+<pre class="output"><code>my-app   saving One…
+my-app   saved One
+my-app   saving Two…
+my-app   saved Two</code></pre>
+
+<p>Las llamadas van en fila: «Two» no sale hasta que «One» ha respondido, y acaba en «Current name: Two». Una tarea pone en fila las llamadas a un <code>post</code>, <code>put</code>, <code>patch</code> o <code>delete</code>, porque son cambios: si se adelantaran unas a otras, la base de datos y la pantalla acabarían diciendo cosas distintas. A un <code>get</code> le hace lo contrario: la llamada nueva cancela la anterior, porque solo interesa la última respuesta. Lo verás en el tutorial de una búsqueda, más adelante en esta categoría.</p>
+
+<p>Vuelve a poner el <code>disabled</code>: en fila nada se pierde, pero el usuario tampoco tiene por qué guardar dos veces.</p>
+
+<p>Una tarea hace algo más. <code>saving.cancel()</code> aborta la llamada en marcha, también en el servidor. Y si esperas a <code>run</code>, te dice cómo acabó esa llamada, con <code>ok</code>, sin lanzar nunca: así se escribe un cambio optimista, el que se pinta antes de que responda el servidor y se deshace si falla. Todo está en <a href="/docs/server/task">task</a>, y los errores con <code>fails</code>, en <a href="/docs/server/functions">Funciones de servidor</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/task" target="_blank" rel="noopener">la solución de El estado de una llamada con task, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/server-functions", prevTitle: "Funciones de servidor", next: "/tutorials/", nextTitle: "Todas las categorías")

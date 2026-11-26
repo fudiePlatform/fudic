@@ -1,0 +1,26 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  import { signal, task } from "@fudic/core";
+
+  const name = signal("");
+  const saving = task(rename);
+
+  function save() {
+    void saving.run({ name: name() });
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<input aria-label="Shop name" @input=@name.set($value)>
+<button type="button" @click=@save disabled=@saving.pending()>Save</button>
+@if (saving.pending()) {
+  <p>Saving…</p>
+}
+<p>Current name: @(saving.value() ?? "none")</p>
+<p role="alert">@saving.message()</p>

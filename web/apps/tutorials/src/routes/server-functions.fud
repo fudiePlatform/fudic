@@ -54,8 +54,7 @@
 <ui-code>
 <pre><code>npx @@fudic/cli new my-app
 cd my-app
-npx fudic g api src/routes/index.fud
-pnpm install</code></pre>
+npx fudic g api src/routes/index.fud</code></pre>
 </ui-code>
 
 <pre class="output"><code>  create  src/routes/index.fudapi
@@ -63,7 +62,7 @@ pnpm install</code></pre>
   modify  src/routes/index.fud
   modify  package.json</code></pre>
 
-<p><code>fudic g api</code> le da a la página de inicio su servidor: el contrato (<code>index.fudapi</code>), el código que lo cumple (<code>src/server/routes/index.ts</code>) y el <code>&lt;link rel="server"&gt;</code> que los enlaza desde la página. Añade además <code>@@fudic/http</code> al <code>package.json</code>, y <code>pnpm install</code> lo instala.</p>
+<p><code>fudic g api</code> le da a la página de inicio su servidor: el contrato (<code>index.fudapi</code>), el código que lo cumple (<code>src/server/routes/index.ts</code>) y el <code>&lt;link rel="server"&gt;</code> que los enlaza desde la página. Añade además <code>@@fudic/http</code> al proyecto y lo instala.</p>
 
 <h2 id="declare">2. Declara e implementa la función</h2>
 
@@ -170,10 +169,10 @@ greet.handle((ctx) =&gt; &#123;
 
 <p>Pulsa otra vez con el campo vacío: sale «400: Write a name.». Con «Ana», «Hello, Ana!». Funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>. Un error cualquiera, que no sea de <code>@@fudic/http</code>, llega como un <code>500</code>, y su mensaje solo en desarrollo.</p>
 
-<p>Un <code>try</code> por llamada se hace largo en cuanto la página quiere enseñar también que la llamada está en marcha. Eso lo resuelve <code>task</code>, en el siguiente tutorial. Todo lo que admite una función (el <code>ctx</code>, otros verbos, cómo viaja) está en <a href="/docs/server/functions">Funciones de servidor</a>, y el contrato entero, en <a href="/docs/server">El contrato .fudapi</a>.</p>
+<p>Un <code>try</code> por llamada se hace largo en cuanto la página quiere enseñar también que la llamada está en marcha. Eso lo resuelve <code>task</code>, en <a href="/tutorials/task">El estado de una llamada con task</a>. Todo lo que admite una función (el <code>ctx</code>, otros verbos, cómo viaja) está en <a href="/docs/server/functions">Funciones de servidor</a>, y el contrato entero, en <a href="/docs/server">El contrato .fudapi</a>.</p>
 
 <h2 id="solution">Solución</h2>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-functions" target="_blank" rel="noopener">la solución de Funciones de servidor, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/custom-rules", prevTitle: "Reglas y patrones propios", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/custom-rules", prevTitle: "Reglas y patrones propios", next: "/tutorials/task", nextTitle: "El estado de una llamada con task")

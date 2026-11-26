@@ -1,0 +1,5 @@
+# Renames the shop. Takes a second, like a slow database.
+put rename
+  fails taken 409 "That name is taken."
+  name  str
+  -> str

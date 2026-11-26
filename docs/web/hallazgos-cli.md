@@ -154,8 +154,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   2026-11-26: el `href` frágil y los títulos «Pages-and-layout», «Dynamic-routes», «Error-page»,
   «Route-data», «Alternate-layouts», «Slow-pages», «Page-maps» y
   «Early-hints», corregidos a mano: los ocho de la categoría.
-- **Y otra vez** con los tutoriales de Servidor (`server-functions`), el 2026-11-26: el `href`
-  frágil y el título «Server-functions», corregidos a mano.
+- **Y otra vez** con los tutoriales de Servidor (`server-functions`, `task`), el 2026-11-26: el
+  `href` frágil y los títulos «Server-functions» y «Task», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -358,7 +358,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   y sin la cursiva, o directamente la fuente del sistema, y que el recorte con fontTools que
   documenta `web/libs/guide/README.md` sea parte de la CLI.
 
-## 24. `fudic g api` añade una dependencia y no dice que hay que instalarla
+## 24. `fudic g api` instala una dependencia sin decirlo
 
 - **Qué pasó.** Escribiendo el tutorial `await` (2026-11-25), en una app recién creada,
   `fudic g api src/routes/index.fud` escribe `modify  package.json` (añade `"@fudic/http":
@@ -373,6 +373,14 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   dice. La página de la Documentación (`/docs/cli/generate/page`) enseña la línea
   `run     pnpm install (in .)`, que la CLI no escribe. El tutorial no pide `pnpm install`.
   Queda por comprobar si `g api` también instala en silencio.
+- **Comprobado (tutoriales de Servidor), el 2026-11-26: `g api` también instala en silencio.**
+  En una app recién creada, tras `fudic g api src/routes/index.fud`, `@fudic/http` ya está en
+  `node_modules` (antes no). Es el comando `installFor` de `plans/api.ts`, que corre sin imprimir
+  nada. Lo de arriba de este hallazgo («no dice que falta `pnpm install`») era una lectura
+  equivocada: sí instala, solo que no lo dice. El tutorial `await` (`await.fud:70` y `:78`) pide
+  un `pnpm install` que sobra, y dice que lo instala él; `server-functions` ya no lo pide.
+  **Qué debería hacer:** escribir la línea `run     pnpm install (in .)` que enseña la
+  Documentación.
 
 ## 25. `fudic g style` deja la hoja en la raíz del proyecto
 
