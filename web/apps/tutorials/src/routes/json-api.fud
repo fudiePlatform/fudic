@@ -1,0 +1,179 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Una API con su .fudapi · Tutoriales de Fudic</title>
+  <meta name="description" content="Publica funciones de servidor de Fudic en JSON con use json, llámalas con curl como lo haría cualquier cliente y mira cómo el contrato rechaza lo que no cumple sus tipos.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/json-api">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Una API con su .fudapi · Tutoriales de Fudic">
+  <meta property="og:description" content="Funciones en JSON para cualquier cliente, con sus tipos comprobados.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/json-api">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("json-api")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#search">2. Una búsqueda en JSON</a></li>
+        <li><a href="#checked">3. El contrato se comprueba</a></li>
+        <li><a href="#create-product">4. Una función que crea</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>Una API con su <code>.fudapi</code></h1>
+
+<p class="lede">Publicas la búsqueda y el alta de un catálogo en JSON, para que los llame cualquier cliente, otra app o un script, y lo pruebas con <code>curl</code>.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Publicar una función de servidor en JSON con <code>use json</code>.</li>
+    <li>Saber en qué URL vive cada función y cómo le llegan los argumentos.</li>
+    <li>Ver cómo el servidor rechaza, antes de tu código, lo que no cumple el contrato.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>. Las funciones de servidor llamadas desde una página están en <a href="/tutorials/server-functions">Funciones de servidor</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<p>Las funciones viven en el <code>.fudapi</code> de una página o de un componente. Aquí, en el de la página de inicio.</p>
+
+<h2 id="search">2. Una búsqueda en JSON</h2>
+
+<p>Declara una búsqueda que devuelve productos, con <code>use json</code> debajo, y el tipo <code>Product</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Searches the catalog by name, for any client: JSON in and out.
+get products
+  use json
+  q  str
+  -&gt; Product[]
+
+type Product
+  id     i32
+  name   str
+  price  f64</code></pre>
+</ui-code>
+
+<p><code>i32</code> es un entero, y <code>f64</code>, un número con decimales. Impleméntala con un catálogo en memoria:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; products &#125; from 'fudic:routes/index';
+
+const catalog = [
+  &#123; id: 1, name: 'Green tea', price: 4.5 &#125;,
+  &#123; id: 2, name: 'Black tea', price: 3.9 &#125;,
+  &#123; id: 3, name: 'Coffee', price: 6.2 &#125;,
+];
+
+products.handle((ctx) =&gt; catalog.filter((p) =&gt; p.name.toLowerCase().includes(ctx.args.q.toLowerCase())));</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y, en otra terminal, llámala:</p>
+
+<ui-code>
+<pre><code>curl -i "http://localhost:5173/_fudic/fn/routes/index/products?q=tea"</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+content-type: application/json
+
+[&#123;"id":1,"name":"Green tea","price":4.5&#125;,&#123;"id":2,"name":"Black tea","price":3.9&#125;]</code></pre>
+
+<p>La URL de una función es <code>/_fudic/fn/</code>, la ruta de su <code>.fudapi</code> dentro de <code>src/</code> y su nombre. Como es un <code>get</code>, los argumentos van en la query string.</p>
+
+<p>Sin <code>use json</code>, la función viaja en <code>fud-bin</code>, el formato binario que usan las páginas de Fudic, y cada llamada lleva la firma del contrato en una cabecera, <code>fud-sig</code>. <code>curl</code> no la manda, así que recibiría un <code>412</code> en binario: «the page is older than the server». <code>use json</code> es lo que abre la función a cualquier cliente.</p>
+
+<h2 id="checked">3. El contrato se comprueba</h2>
+
+<p>Llama a la búsqueda sin <code>q</code>:</p>
+
+<ui-code>
+<pre><code>curl -i "http://localhost:5173/_fudic/fn/routes/index/products"</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 400 Bad Request
+content-type: application/problem+json
+
+&#123;"status":400,"title":"Bad Request","detail":"argument q is missing"&#125;</code></pre>
+
+<p>El handler no llega a ejecutarse: el servidor comprueba cada argumento contra el contrato y responde <code>400</code> si no cumple. El error sale en <code>application/problem+json</code>, el formato estándar de errores de una API HTTP. Por eso tu handler puede usar <code>ctx.args.q</code> sin comprobar que existe.</p>
+
+<h2 id="create-product">4. Una función que crea</h2>
+
+<p>Añade al contrato una función que da de alta un producto. Como crea, es un <code>post</code>. Su nombre es un identificador, como en TypeScript: <code>addProduct</code>, no <code>add-product</code>.</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Adds a product to the catalog.
+post addProduct
+  use json
+  name   str
+  price  f64
+  -&gt; Product</code></pre>
+</ui-code>
+
+<p>Impórtala junto a <code>products</code> y añade su handler al final del fichero:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; addProduct, products &#125; from 'fudic:routes/index';
+…
+addProduct.handle((ctx) =&gt; &#123;
+  const product = &#123; id: catalog.length + 1, ...ctx.args &#125;;
+  catalog.push(product);
+  return product;
+&#125;);</code></pre>
+</ui-code>
+
+<p>En un <code>post</code>, los argumentos van en el cuerpo, como un objeto JSON:</p>
+
+<ui-code>
+<pre><code>curl -i -X POST -H "content-type: application/json" -d '&#123;"name":"Mate","price":5&#125;' http://localhost:5173/_fudic/fn/routes/index/addProduct</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+content-type: application/json
+
+&#123;"id":4,"name":"Mate","price":5&#125;</code></pre>
+
+<p>Busca <code>?q=ma</code> y sale el mate. Ahora manda un precio que no es un número, <code>"price":"cheap"</code>:</p>
+
+<pre class="output"><code>HTTP/1.1 400 Bad Request
+content-type: application/problem+json
+
+&#123;"status":400,"title":"Bad Request","detail":"argument price is not a valid f64"&#125;</code></pre>
+
+<p>El tipo <code>f64</code> del contrato ya valida. Y un <code>GET</code> a <code>addProduct</code> responde <code>405 Method Not Allowed</code>: cada función solo acepta su verbo. Todo funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>. El catálogo está en memoria, así que el mate desaparece al reiniciar el servidor.</p>
+
+<p>Cómo viaja cada llamada, en binario o en JSON, está en <a href="/docs/server/functions">Funciones de servidor</a>, y los tipos que admite un contrato, en <a href="/docs/server/types">Tipos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/json-api" target="_blank" rel="noopener">la solución de Una API con su .fudapi, en GitHub</a>. Compara tu <code>index.fudapi</code> y tu <code>src/server/routes/index.ts</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/task", prevTitle: "El estado de una llamada con task", next: "/tutorials/", nextTitle: "Todas las categorías")

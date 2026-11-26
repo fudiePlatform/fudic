@@ -1133,6 +1133,11 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en el tutorial.** `fudic add forms` justo después de `fudic g api`.
 - **Qué debería hacer.** Que `FUD1080`, ante una regla de serie con `@fudic/forms` sin instalar,
   diga que falta el paquete y proponga `fudic add forms`.
+- **Y otra vez** con un argumento, en el tutorial `json-api` (2026-11-26): un `get products` con
+  `q  str` y `max-length 20` debajo da «error FUD1080: unknown rule `max-length`» en `fudic dev`,
+  y la llamada con 25 caracteres pasa sin comprobar. La Documentación (Tipos, «Un argumento puede
+  llevar además reglas de validación») no dice que haga falta `@fudic/forms`. El tutorial no usa
+  reglas: comprueba con los tipos (`argument price is not a valid f64`).
 
 ## 78. Una excepción en el handler de una función no sale en la terminal
 

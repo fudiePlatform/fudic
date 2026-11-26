@@ -1,0 +1,17 @@
+# Searches the catalog by name, for any client: JSON in and out.
+get products
+  use json
+  q  str
+  -> Product[]
+
+# Adds a product to the catalog.
+post addProduct
+  use json
+  name   str
+  price  f64
+  -> Product
+
+type Product
+  id     i32
+  name   str
+  price  f64

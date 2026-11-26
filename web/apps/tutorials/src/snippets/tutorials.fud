@@ -152,7 +152,7 @@
   <ol class="tutorial-list">
     @render tutorial("server-functions", "Funciones de servidor", "intermediate", @current)
     @render tutorial("task", "El estado de una llamada con task", "intermediate", @current)
-    @render tutorial("json-api", "Una API con su .fudapi", "intermediate", @current, false)
+    @render tutorial("json-api", "Una API con su .fudapi", "intermediate", @current)
     @render tutorial("server-types", "Tipos compartidos", "intermediate", @current, false)
     @render tutorial("middlewares", "Un middleware de login", "intermediate", @current, false)
     @render tutorial("pipes", "Los pipes de Fudic, y uno propio", "intermediate", @current, false)

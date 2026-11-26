@@ -155,7 +155,7 @@ search.handle((ctx) =&gt; db.users.find(ctx.args.q));</code></pre>
 <ul>
   <li>Una declaración por línea, y lo que le pertenece, debajo, con dos espacios de sangría.</li>
   <li><code>#</code> empieza un comentario. El que va justo encima de una declaración es su documentación, y el editor la enseña.</li>
-  <li>Los nombres van en kebab-case (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>).</li>
+  <li>Los nombres de las funciones son identificadores, como en TypeScript (<code>searchJson</code>). Los de las reglas y los middlewares van en kebab-case (<code>alias-taken</code>), y los de tipo, en PascalCase (<code>Person</code>).</li>
 </ul>
 
 <p id="cli">La CLI crea los ficheros: <code>fudic g api src/routes/users.fud</code> le añade un contrato a una ruta o un componente, <code>fudic g form person</code> crea un formulario y <code>fudic add http</code> crea la cadena global.</p>
