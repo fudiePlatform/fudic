@@ -1,0 +1,213 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Caché HTTP de páginas y assets · Tutoriales de Fudic</title>
+  <meta name="description" content="La caché HTTP de una app de Fudic, medida con curl: los ficheros con hash guardados un año, la página que se pide siempre, la revalidación con 304 y el aviso FUD1552 sobre un fichero sin hash.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/caching">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Caché HTTP de páginas y assets · Tutoriales de Fudic">
+  <meta property="og:description" content="Qué guarda el navegador de tu app, cuánto tiempo, y cómo se lo dices en assets.headers.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/caching">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render performanceNav("caching")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y constrúyela</a></li>
+        <li><a href="#headers">2. Lo que dice cada respuesta</a></li>
+        <li><a href="#revalidate">3. Guardar y preguntar: el 304</a></li>
+        <li><a href="#boot">4. El arranque, un año</a></li>
+        <li><a href="#no-hash">5. Un fichero sin hash</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Rendimiento</span></p>
+
+<h1>Caché HTTP de páginas y assets</h1>
+
+<p class="lede">Mides con <code>curl</code> qué guarda el navegador de cada fichero de tu app, y lo cambias en <code>assets.headers</code>.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Leer la cabecera <code>Cache-Control</code> de una página y de sus ficheros.</li>
+    <li>Dar un año de caché a lo que lleva hash en el nombre, y saber por qué es seguro.</li>
+    <li>Reconocer el aviso <code>FUD1552</code> sobre un fichero que cambia sin cambiar de nombre.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y constrúyela</h2>
+
+<p>La caché se mide sobre el build, que es lo que se despliega:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+pnpm build</code></pre>
+</ui-code>
+
+<p>El build escribe en <code>dist/</code> cada fichero con un trozo de su contenido en el nombre, el <em>hash</em>:</p>
+
+<pre class="output"><code>dist/assets/logo-APNkgbql.svg                      0.17 kB │ gzip: 0.16 kB
+dist/index.html                                    0.39 kB │ gzip: 0.29 kB
+dist/_fudic/0.0.1-9f3ea82f/dom/trusted.js          0.53 kB
+dist/fudic-routes.json                             0.91 kB │ gzip: 0.49 kB
+dist/sw/c/index-321ca934.js                        1.89 kB
+dist/_fudic/0.0.1-a4ff4b6e/ssr/index.js           13.23 kB
+dist/fudic-sw.js                                  23.96 kB
+dist/assets/InterVariable-aTt31PMu.woff2         352.24 kB
+dist/assets/InterVariable-Italic-5WT2UpFt.woff2  387.97 kB
+dist/assets/guide-GoKaxRJH.css                     1.33 kB │ gzip: 0.56 kB
+dist/fudic-boot-321ca934.js                        0.90 kB │ gzip: 0.48 kB</code></pre>
+
+<p>Si el contenido cambia, cambia el nombre. Por eso un fichero con hash se puede guardar para siempre: la versión nueva llegará con otra URL. Tus nombres pueden ser otros si tu versión de Fudic no es la misma.</p>
+
+<h2 id="headers">2. Lo que dice cada respuesta</h2>
+
+<p>Sirve el build:</p>
+
+<ui-code>
+<pre><code>npx fudic preview</code></pre>
+</ui-code>
+
+<p>En otra terminal, pide las cabeceras de la hoja de estilos de la guía, con el nombre que te haya dado tu build:</p>
+
+<ui-code>
+<pre><code>curl -sI http://localhost:4173/assets/guide-GoKaxRJH.css</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+vary: Origin
+cache-control: public, max-age=31536000, immutable
+content-length: 1335
+content-type: text/css
+last-modified: Thu, 26 Nov 2026 14:38:29 GMT
+etag: W/"1335-1795703909023"</code></pre>
+
+<p><code>max-age=31536000</code> es un año en segundos, e <code>immutable</code> le dice al navegador que no pregunte ni al recargar. Ahora el arranque de la página, que también lleva hash:</p>
+
+<ui-code>
+<pre><code>curl -sI http://localhost:4173/fudic-boot-321ca934.js</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+vary: Origin
+cache-control: no-cache
+content-length: 909
+content-type: text/javascript
+last-modified: Thu, 26 Nov 2026 14:38:29 GMT
+etag: W/"909-1795703909017"</code></pre>
+
+<p><code>no-cache</code>. Abre <code>assets.headers</code>, en la raíz de la app, para ver de dónde sale cada valor:</p>
+
+<pre class="output"><code>/**
+  Cache-Control: no-cache
+
+/assets/**
+  Cache-Control: public, max-age=31536000, immutable</code></pre>
+
+<p>La hoja está bajo <code>/assets/</code>, y el arranque, en la raíz, así que le toca la regla de <code>/**</code>. La página no es un fichero estático y no pasa por <code>assets.headers</code>: con <code>curl -sI http://localhost:4173/</code> verás que no trae <code>Cache-Control</code> ni <code>etag</code>, así que el navegador la pide entera en cada visita, cada vez con un nonce nuevo en su <code>content-security-policy</code>.</p>
+
+<h2 id="revalidate">3. Guardar y preguntar: el 304</h2>
+
+<p><code>no-cache</code> no quiere decir «no guardar». El navegador guarda el fichero, pero antes de usarlo pregunta al servidor si ha cambiado, con el <code>etag</code> que recibió. Haz tú esa pregunta, con el <code>etag</code> de tu respuesta anterior:</p>
+
+<ui-code>
+<pre><code>curl -sI -H 'If-None-Match: W/"909-1795703909017"' http://localhost:4173/fudic-boot-321ca934.js</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 304 Not Modified
+vary: Origin
+cache-control: no-cache</code></pre>
+
+<p>Un <code>304</code>, sin cuerpo: «el que tienes sigue valiendo». Es barato, pero sigue siendo un viaje al servidor antes de poder ejecutar el arranque, y en una red móvil se nota. Con un <code>etag</code> que no es el actual, la respuesta es un <code>200</code> con el fichero entero.</p>
+
+<h2 id="boot">4. El arranque, un año</h2>
+
+<p>El arranque cambia de nombre con cada build que cambia la app, así que puede llevar la misma caché que <code>/assets/</code>. Añade su regla al final de <code>assets.headers</code>:</p>
+
+<ui-code .path="assets.headers">
+<pre><code>/fudic-boot-*.js
+  Cache-Control: public, max-age=31536000, immutable</code></pre>
+</ui-code>
+
+<p><code>*</code> vale cualquier trozo del nombre, sin cruzar una <code>/</code>. Las cabeceras viajan dentro del build, y la preview las lee al arrancar: para la preview con Ctrl+C, construye y sírvela otra vez.</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Repite el <code>curl -sI</code> del arranque:</p>
+
+<pre class="output"><code>cache-control: public, max-age=31536000, immutable</code></pre>
+
+<p>Comprueba ahora que guardarlo un año es seguro. Añade un párrafo a la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;Fresh coffee every morning.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Para la preview y construye otra vez:</p>
+
+<pre class="output"><code>dist/assets/logo-APNkgbql.svg                      0.17 kB │ gzip: 0.16 kB
+…
+dist/assets/InterVariable-aTt31PMu.woff2         352.24 kB
+dist/assets/InterVariable-Italic-5WT2UpFt.woff2  387.97 kB
+dist/assets/guide-gwelUCjq.css                     1.39 kB │ gzip: 0.57 kB
+dist/fudic-boot-c854ce96.js                        0.90 kB │ gzip: 0.48 kB</code></pre>
+
+<p>El arranque y la hoja tienen nombre nuevo: la página ha cambiado y ahora usa un <code>&lt;p&gt;</code>, cuya hoja la guía añade a la suya. El logo y las fuentes no han cambiado, y conservan su nombre: el navegador que ya los tenía no los vuelve a descargar.</p>
+
+<h2 id="no-hash">5. Un fichero sin hash</h2>
+
+<p>Lo que pones en <code>public/</code> se copia tal cual, sin hash. Crea una lista de precios:</p>
+
+<ui-code .path="public/prices.json">
+<pre><code>&#123; "coffee": 1.2, "tea": 0.9 &#125;</code></pre>
+</ui-code>
+
+<p>Y dale un día de caché, al final de <code>assets.headers</code>:</p>
+
+<ui-code .path="assets.headers">
+<pre><code>/prices.json
+  Cache-Control: public, max-age=86400</code></pre>
+</ui-code>
+
+<p>Construye. El build avisa:</p>
+
+<pre class="output"><code>[plugin fudic] assets.headers:13:1 - warning FUD1552: max-age=86400 on /prices.json keeps the old /prices.json in the browser: its name has no hash</code></pre>
+
+<p>Si mañana cambias un precio, quien ya tenía el fichero seguirá viendo el viejo hasta que pase el día, porque la URL es la misma. Para un fichero sin hash, una caché corta:</p>
+
+<ui-code .path="assets.headers">
+<pre><code>/prices.json
+  Cache-Control: public, max-age=300</code></pre>
+</ui-code>
+
+<p>Cinco minutos, y el build ya no avisa. Sirve la preview y comprueba la cabecera con <code>curl -sI http://localhost:4173/prices.json</code>:</p>
+
+<pre class="output"><code>cache-control: public, max-age=300</code></pre>
+
+<p>El aviso sale a partir de un día, o con <code>immutable</code>. Qué es cada caché del navegador, también la del Service Worker y la de ida y vuelta, está en <a href="/docs/performance/caching">Las cachés del navegador</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/caching" target="_blank" rel="noopener">la solución de Caché HTTP de páginas y assets, en GitHub</a>. Compara tu <code>assets.headers</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/trusted-types", prevTitle: "Trusted Types", next: "/tutorials/", nextTitle: "Todas las categorías")

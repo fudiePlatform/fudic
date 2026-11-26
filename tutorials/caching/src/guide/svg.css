@@ -1,0 +1,11 @@
+/* An icon takes the colour of the text around it. */
+:where(svg) {
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+:where(svg:not([width])) {
+  width: 1em;
+  height: 1em;
+}

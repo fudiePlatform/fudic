@@ -70,24 +70,24 @@
   <li><strong>Por defecto, <code>no-cache</code></strong>: lo que no tiene hash se comprueba siempre.</li>
   <li><strong><code>/assets/**</code></strong> es lo que emite el build con hash.</li>
   <li><strong><code>/_fudic/**</code></strong> es el runtime de Fudic, que lleva la versión en la URL.</li>
-  <li><strong><code>/fudic-main-*.js</code></strong> es el arranque de cada página, también con hash.</li>
+  <li><strong><code>/fudic-main-*.js</code></strong> es el arranque de cada página, también con hash. Con Service Worker, la app tiene además <code>/fudic-boot-*.js</code>, que necesita su propio bloque.</li>
 </ul>
 
 <p>Si varios patrones casan con un fichero, cada cabecera sale del patrón más concreto que la define. El mismo <code>assets.headers</code> vale en <code>fudic dev</code>, en la preview y en el servidor de Fudic.</p>
 
 <h2 id="runtime">El runtime de Fudic</h2>
 
-<p>El código de Fudic se publica en piezas, cada una en una URL con la versión dentro:</p>
+<p>El código de Fudic se publica en piezas, cada una en una URL con la versión y un hash de su paquete dentro:</p>
 
 <ui-code>
-<pre><code>/_fudic/0.0.1/core/signal.js
-/_fudic/0.0.1/core/hydrate.js
-/_fudic/0.0.1/forms/bind-form.js</code></pre>
+<pre><code>/_fudic/0.0.1-689426ec/core/signal.js
+/_fudic/0.0.1-689426ec/core/hydrate.js
+/_fudic/0.0.1-5b9fd610/forms/bind-form.js</code></pre>
 </ui-code>
 
 <ul>
   <li><strong>Cada página pide solo sus piezas</strong>. Si no hay Service Worker, las anuncia con <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/modulepreload" target="_blank" rel="noopener"><code>modulepreload</code></a> para que se descarguen en paralelo.</li>
-  <li><strong>No cambian nunca</strong>: una versión nueva de Fudic es una URL nueva.</li>
+  <li><strong>No cambian nunca</strong>: una versión nueva de Fudic, o un paquete que cambia, es una URL nueva.</li>
   <li><strong>Se comparten entre apps.</strong> Dos apps del mismo origen con la misma versión piden la misma URL, y el navegador la descarga una vez. Con versiones distintas, cada una tiene la suya y no se estorban.</li>
 </ul>
 

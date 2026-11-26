@@ -175,6 +175,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Seguridad (`security-headers`, `observatory`, `csp`,
   `trusted-types`), el 2026-11-26: el `href` frágil y los títulos «Security-headers»,
   «Observatory», «Csp» y «Trusted-types», corregidos a mano: los cuatro de la categoría.
+- **Y otra vez** con los tutoriales de Rendimiento (`caching`), el 2026-11-26: el `href` frágil y
+  el título «Caching», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -215,6 +217,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Cómo se resolvió.** Tres bloques a mano en `web/apps/site/assets.headers`.
 - **Qué debería hacer.** Que la app nazca con esos tres patrones en la plantilla, o que Fudic se
   encargue de la caché de sus propios ficheros y la plantilla no tenga que nombrarlos.
+- **Vuelto a comprobar (tutorial `caching`), el 2026-11-26.** Sigue igual en una app recién
+  creada: con `curl -sI` sobre `fudic preview`, `/assets/guide-…css` sale con `immutable` y
+  `/fudic-boot-321ca934.js`, con hash, con `no-cache`. El tutorial añade a mano el bloque de
+  `/fudic-boot-*.js`, y deja fuera `/_fudic/**` por el falso `FUD1552`.
 
 ## 10. No hay generador para una hoja que los componentes eligen (`styles`)
 

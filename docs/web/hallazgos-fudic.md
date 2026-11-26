@@ -119,6 +119,11 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   sigue saliendo en cada `pnpm build` de `web/apps/site` (worktree `web-publica`). Pedro no lo ve
   con build y preview en su copia: falta reproducirlo allí para saber qué lo dispara aquí. Se
   apuntó por error como nº 28.
+- **Vuelto a comprobar (tutorial `caching`), el 2026-11-26, en una app recién creada fuera del
+  repo.** Con `/_fudic/**` en `assets.headers`, `pnpm build` avisa «immutable on /_fudic/** keeps
+  the old /_fudic/0.0.1-9f3ea82f/dom/trusted.js in the browser: its name has no hash». Se
+  reproduce, pues, fuera de este worktree. La página «Las cachés del navegador» enseñaba el runtime
+  en `/_fudic/0.0.1/…`, sin el hash del paquete, y no nombraba `/fudic-boot-*.js`; corregida.
 
 ## 6. No hay forma de escribir un estilo en línea que cambie
 
