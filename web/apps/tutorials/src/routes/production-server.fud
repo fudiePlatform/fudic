@@ -1,0 +1,188 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Arrancarlo en Node · Tutoriales de Fudic</title>
+  <meta name="description" content="Sirve una app de Fudic ya construida con node:http y &#64;fudic/server: la app, los ficheros del build y la página de error, en ese orden, con un script start.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/production-server">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Arrancarlo en Node · Tutoriales de Fudic">
+  <meta property="og:description" content="La app construida, servida con node:http y &#64;fudic/server.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/production-server">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("production-server")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Una app con algo que servir</a></li>
+        <li><a href="#build">2. Construye</a></li>
+        <li><a href="#server">3. El servidor</a></li>
+        <li><a href="#check">4. Pruébalo</a></li>
+        <li><a href="#start">5. Un script start</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Servidor</span></p>
+
+<h1>Arrancarlo en Node</h1>
+
+<p class="lede">Sacas tu app de <code>fudic dev</code> y la sirves tú, con un fichero corto sobre el <code>node:http</code> de Node, como en producción.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Saber qué deja el build para el servidor.</li>
+    <li>Montar la app sobre <code>node:http</code> con <code>@@fudic/server</code>: la app, los ficheros del build y la página de error, en ese orden.</li>
+    <li>Arrancarla con <code>pnpm start</code>, en el puerto que diga el entorno.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>. Los datos de una página están en <a href="/tutorials/route-data">Datos del servidor para la página</a>.</p>
+</section>
+
+<h2 id="create">1. Una app con algo que servir</h2>
+
+<p>Para ver cada tipo de respuesta, la app tiene una página que se pinta en cada petición y otra estática:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+npx fudic g page about</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The time on the server, read on every request.
+load ssr
+  time  str</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/index';
+
+load.handle(() =&gt; (&#123; time: new Date().toISOString() &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;Rendered by the server at @@data.time.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<h2 id="build">2. Construye</h2>
+
+<ui-code>
+<pre><code>pnpm build</code></pre>
+</ui-code>
+
+<p>El build deja dos carpetas:</p>
+
+<ul>
+  <li><strong><code>dist/</code></strong>: lo que se sirve tal cual. Las páginas que ya pintó, como <code>dist/about/index.html</code>, el CSS y el JavaScript en <code>dist/assets/</code>, el runtime de Fudic en <code>dist/_fudic/</code> y el Service Worker.</li>
+  <li><strong><code>.fudic/edge/</code></strong>: la app para el servidor. <code>server.mjs</code> lleva sus rutas, sus contratos y sus handlers, y exporta <code>createApp</code> y <code>config</code>.</li>
+</ul>
+
+<h2 id="server">3. El servidor</h2>
+
+<p>El servidor de Fudic está en un paquete aparte, que la app aún no tiene:</p>
+
+<ui-code>
+<pre><code>pnpm add @@fudic/server@@0.0.1</code></pre>
+</ui-code>
+
+<p>Escribe el servidor en la raíz del proyecto:</p>
+
+<ui-code .path="server.mjs">
+<pre><code>import &#123; createServer as listen &#125; from 'node:http';
+import &#123; fileURLToPath &#125; from 'node:url';
+import &#123; createServer &#125; from '@@fudic/server';
+import &#123; nodeMiddleware, staticFiles, staticPages &#125; from '@@fudic/server/node';
+import &#123; config, createApp &#125; from './.fudic/edge/server.mjs';
+
+const dist = fileURLToPath(new URL('./dist', import.meta.url));
+const app = createServer(createApp(&#123; prerendered: staticPages(dist) &#125;), config);
+
+const pages = nodeMiddleware(app);
+const files = staticFiles(dist);
+const notFound = nodeMiddleware(app, &#123; notFound: true &#125;);
+
+const server = listen((req, res) =&gt; &#123;
+  pages(req, res, () =&gt; files(req, res, () =&gt; notFound(req, res, () =&gt; res.writeHead(404).end())));
+&#125;);
+
+server.listen(Number(process.env.PORT ?? 3000), () =&gt; console.log(`listening on $&#123;server.address().port&#125;`));</code></pre>
+</ui-code>
+
+<ul>
+  <li><strong><code>createServer</code></strong> convierte la app en una función que recibe un <code>Request</code> estándar y devuelve una <code>Response</code>, o <code>null</code> si la petición no es suya. <code>staticPages(dist)</code> le dice dónde están las páginas que ya pintó el build.</li>
+  <li><strong><code>nodeMiddleware</code></strong> la adapta a <code>node:http</code>: si la app no responde, pasa a la siguiente pieza.</li>
+  <li><strong>El orden importa</strong>: primero la app (páginas, datos y funciones), después los ficheros de <code>dist/</code> y, al final, con <code>notFound: true</code>, la página de error para lo que nadie ha respondido.</li>
+</ul>
+
+<p>Arráncalo:</p>
+
+<ui-code>
+<pre><code>node server.mjs</code></pre>
+</ui-code>
+
+<pre class="output"><code>listening on 3000</code></pre>
+
+<p>Si no has construido antes, Node no arranca: <code>Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…/.fudic/edge/server.mjs'</code>.</p>
+
+<h2 id="check">4. Pruébalo</h2>
+
+<p>Abre <code>http://localhost:3000/</code>: «Rendered by the server at …», con una hora nueva cada vez que recargas, porque es <code>ssr</code>. <code>/about</code> sale del HTML que ya pintó el build. Desde otra terminal, mira el resto:</p>
+
+<ui-code>
+<pre><code>curl -s -o /dev/null -w "%&#123;http_code&#125;\n" -H "Accept: text/html" http://localhost:3000/nope</code></pre>
+</ui-code>
+
+<pre class="output"><code>404</code></pre>
+
+<p>Una URL que no existe responde la página de error de Fudic, con <code>&lt;title&gt;404 Not Found&lt;/title&gt;</code>: la ha pintado la última pieza. Y un fichero del build sale con la caché que dice <code>assets.headers</code>:</p>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+Cache-Control: public, max-age=31536000, immutable</code></pre>
+
+<p>Es la cabecera de un CSS de <code>/assets/</code>, cuyo nombre lleva un hash y puede guardarse para siempre.</p>
+
+<h2 id="start">5. Un script <code>start</code></h2>
+
+<p>Para arrancarlo como cualquier app de Node, añade un script <code>start</code> al <code>package.json</code>:</p>
+
+<ui-code .path="package.json">
+<pre><code>  "scripts": &#123;
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.mjs",
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
+  &#125;,</code></pre>
+</ui-code>
+
+<p><code>pnpm start</code> lo arranca en el 3000, y <code>PORT=8080 pnpm start</code>, en el 8080: el puerto viene del entorno, como espera cualquier plataforma que aloje apps de Node. En producción, el despliegue es <code>pnpm build</code> una vez y <code>pnpm start</code> en el servidor.</p>
+
+<p>Los límites de las subidas, el proxy de confianza y las piezas para guardar ficheros en disco están en <a href="/docs/server/running">El servidor</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/production-server" target="_blank" rel="noopener">la solución de Arrancarlo en Node, en GitHub</a>. Compara tu <code>server.mjs</code> y tu <code>package.json</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/live-search", prevTitle: "Una búsqueda que sigue a un signal", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -1,0 +1,3 @@
+# The time on the server, read on every request.
+load ssr
+  time  str

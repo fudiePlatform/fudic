@@ -127,6 +127,6 @@
     @render tutorial("pipes", "Los pipes de Fudic, y uno propio", "intermediate", @current)
     @render tutorial("session", "Sesión con una cookie", "advanced", @current)
     @render tutorial("live-search", "Una búsqueda que sigue a un signal", "advanced", @current)
-    @render tutorial("production-server", "Arrancarlo en Node", "advanced", @current, false)
+    @render tutorial("production-server", "Arrancarlo en Node", "advanced", @current)
   </ol>
 }

@@ -155,9 +155,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   «Route-data», «Alternate-layouts», «Slow-pages», «Page-maps» y
   «Early-hints», corregidos a mano: los ocho de la categoría.
 - **Y otra vez** con los tutoriales de Servidor (`server-functions`, `task`, `json-api`,
-  `server-types`, `middlewares`, `pipes`, `session`, `live-search`), el 2026-11-26: el `href`
-  frágil y los títulos «Server-functions», «Task», «Json-api», «Server-types», «Middlewares»,
-  «Pipes», «Session» y «Live-search», corregidos a mano.
+  `server-types`, `middlewares`, `pipes`, `session`, `live-search`, `production-server`), el
+  2026-11-26: el `href` frágil y los títulos «Server-functions», «Task», «Json-api»,
+  «Server-types», «Middlewares», «Pipes», «Session», «Live-search» y «Production-server»,
+  corregidos a mano: los nueve de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

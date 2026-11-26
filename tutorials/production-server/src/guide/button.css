@@ -1,0 +1,36 @@
+:where(button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--my-app-space-2);
+  margin: 0;
+  padding: var(--my-app-space-2) var(--my-app-space-4);
+  font: inherit;
+  font-weight: var(--my-app-weight-medium);
+  line-height: var(--my-app-leading-tight);
+  color: var(--my-app-on-accent);
+  background: var(--my-app-accent);
+  border: 1px solid transparent;
+  border-radius: var(--my-app-radius-md);
+  cursor: pointer;
+  transition: filter var(--my-app-duration-fast) var(--my-app-easing);
+}
+
+:where(button):hover {
+  filter: brightness(1.08);
+}
+
+:where(button):active {
+  filter: brightness(0.95);
+}
+
+:where(button):focus-visible {
+  outline: var(--my-app-focus-width) solid var(--my-app-focus);
+  outline-offset: 2px;
+}
+
+:where(button):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
+}
