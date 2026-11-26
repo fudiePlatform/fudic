@@ -1,4 +1,4 @@
-import { load } from 'fudic:routes/blog';
+import { layout, load } from 'fudic:routes/blog';
 
 const posts = [
   { slug: 'hello', title: 'Hello, world', tag: 'news' },
@@ -13,3 +13,5 @@ load.handle((ctx) => {
     posts: tag === null ? posts : posts.filter((post) => post.tag === tag),
   };
 });
+
+layout.handle((ctx, data) => ({ area: data.title }));

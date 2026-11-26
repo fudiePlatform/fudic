@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    @code {
+      const { area = "Home" } = props<{ area?: string }>();
+    }
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @* Keep this line: fudic puts its scripts here. *@
@@ -8,7 +11,7 @@
     @RenderHead()
   </head>
   <body>
-
+    <header><a href="/">My app</a> › @area</header>
     <main>@RenderBody()</main>
   </body>
 </html>

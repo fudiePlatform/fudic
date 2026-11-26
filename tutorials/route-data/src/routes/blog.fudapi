@@ -7,3 +7,6 @@ type Post
   slug   str
   title  str
   tag    str
+
+# The props of the layout, from what load brought.
+layout

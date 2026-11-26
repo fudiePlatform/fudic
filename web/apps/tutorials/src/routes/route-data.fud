@@ -28,6 +28,7 @@
         <li><a href="#declare">2. Declara los datos</a></li>
         <li><a href="#render">3. Píntalos</a></li>
         <li><a href="#query">4. Datos que dependen de la URL</a></li>
+        <li><a href="#layout">5. Datos para el layout</a></li>
         <li><a href="#solution">Solución</a></li>
       </ul>
   </ui-toc>
@@ -37,7 +38,7 @@
 
 <h1>Datos del servidor para la página</h1>
 
-<p class="lede">Pintas la lista de artículos de un blog con datos que calcula el servidor, tipados de punta a punta, y la filtras por una etiqueta que llega en la URL.</p>
+<p class="lede">Pintas la lista de artículos de un blog con datos que calcula el servidor, tipados de punta a punta, la filtras por una etiqueta que llega en la URL y llevas el título hasta la cabecera del layout.</p>
 
 <section class="objectives" aria-labelledby="objectives">
   <h2 id="objectives">Objetivos</h2>
@@ -45,6 +46,7 @@
     <li>Declarar los datos de una página, con sus tipos, en su <code>.fudapi</code>.</li>
     <li>Calcularlos en el servidor con <code>load</code> y pintarlos con <code>data</code>.</li>
     <li>Leer la query string de la petición con <code>ctx.url</code>.</li>
+    <li>Dar datos al layout desde la página, con <code>layout</code>.</li>
   </ul>
   <p>Necesitas Node.js 22.12 o posterior y pnpm. Una página con parámetro en la URL está en <a href="/tutorials/dynamic-routes">Rutas con parámetro</a>.</p>
 </section>
@@ -159,10 +161,55 @@ my-app   the typecheck failed: 1 error in 1 file</code></pre>
 
 <p>Pulsa <strong>guides</strong>: la página dice «Blog: guides», con dos artículos. Prueba <code>/blog?tag=nothing</code>, y sale «No posts with that tag.».</p>
 
-<p>Además de <code>url</code>, <code>ctx</code> trae <code>params</code>, <code>cookies</code> y <code>headers</code>, y el resto de lo que admite un <code>load</code> está en <a href="/docs/routing/data">Los datos de la página</a>. Qué es <code>ssr</code> y los otros modos, en <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>.</p>
+<h2 id="layout">5. Datos para el layout</h2>
+
+<p>El layout también puede pintar datos de la página, como el nombre de la sección en su cabecera. Primero los declara, con <code>props</code> en un <code>@@code</code> dentro de su <code>&lt;head&gt;</code>:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    @@code &#123;
+      const &#123; area = "Home" &#125; = props&lt;&#123; area?: string &#125;&gt;();
+    &#125;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    @@* Keep this line: fudic puts its scripts here. *@@
+    &lt;script type="module" src="fudic:runtime"&gt;&lt;/script&gt;
+    @@RenderHead()
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;header&gt;&lt;a href="/"&gt;My app&lt;/a&gt; › @@area&lt;/header&gt;
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</ui-code>
+
+<p>Guarda: todas las páginas dicen «My app › Home», el valor por defecto. La página del blog le da otro desde su contrato, con <code>layout</code>, al final de <code>blog.fudapi</code>:</p>
+
+<ui-code .path="src/routes/blog.fudapi">
+<pre><code># The props of the layout, from what load brought.
+layout</code></pre>
+</ui-code>
+
+<p><code>layout</code> no lista campos: sus tipos son las props que declara el layout. Su handler se ejecuta después de <code>load</code> y recibe sus datos. Añádelo al final del fichero del servidor, e impórtalo junto a <code>load</code>:</p>
+
+<ui-code .path="src/server/routes/blog.ts">
+<pre><code>import &#123; layout, load &#125; from 'fudic:routes/blog';
+…
+layout.handle((ctx, data) =&gt; (&#123; area: data.title &#125;));</code></pre>
+</ui-code>
+
+<p>La cabecera de <code>/blog</code> dice «My app › Blog», y la de <code>/blog?tag=guides</code>, «My app › Blog: guides». La de <code>/</code> sigue en «Home». El handler está tipado con las props del layout: devuelve <code>areaa</code> y guarda.</p>
+
+<pre class="output"><code>my-app   src/server/routes/blog.ts:17:30 - error TS2322: Type '&#123; areaa: string; &#125;' is not assignable to type '&#123; area?: string; &#125; | Promise&lt;&#123; area?: string; &#125;&gt;'.</code></pre>
+
+<p>Vuelve a escribir <code>area</code>. No llames a la prop <code>section</code>: en el markup, <code>@@section</code> no pinta su valor, sino que abre una sección, y el layout da <code>FUD0427</code>.</p>
+
+<p>Además de <code>url</code>, <code>ctx</code> trae <code>params</code>, <code>cookies</code> y <code>headers</code>, y el resto de lo que admite un <code>load</code>, también <code>layout</code>, está en <a href="/docs/routing/data">Los datos de la página</a>. Las props de un layout, en <a href="/docs/template-syntax/routes-and-layouts">Rutas y layouts</a>. Qué es <code>ssr</code> y los otros modos, en <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>.</p>
 
 <h2 id="solution">Solución</h2>
 
-<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-data" target="_blank" rel="noopener">la solución de Datos del servidor para la página, en GitHub</a>. Compara tu <code>blog.fudapi</code> y tu <code>src/server/routes/blog.ts</code> con los suyos.</p>
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-data" target="_blank" rel="noopener">la solución de Datos del servidor para la página, en GitHub</a>. Compara tu <code>blog.fudapi</code>, tu <code>src/server/routes/blog.ts</code> y tu <code>_layout.fud</code> con los suyos.</p>
 
 @render pager(prev: "/tutorials/error-page", prevTitle: "Tu página de error", next: "/tutorials/alternate-layouts", nextTitle: "Varios layouts")
