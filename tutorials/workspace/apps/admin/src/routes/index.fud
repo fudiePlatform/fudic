@@ -1,0 +1,9 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="@shop/ui/ui-badge.fud">
+
+<head>
+  <title>Admin</title>
+</head>
+
+<h1>Admin</h1>
+<p>Orders <ui-badge>3</ui-badge></p>

@@ -1,0 +1,225 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Dos apps y una librería · Tutoriales de Fudic</title>
+  <meta name="description" content="Crea un workspace de Fudic con fudic new --workspace, una librería con un componente, dos apps que lo usan con fudic add y fudic g app --uses, y sírvelas juntas en un solo puerto.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/workspace">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Dos apps y una librería · Tutoriales de Fudic">
+  <meta property="og:description" content="Un repo con dos apps que comparten un componente: cámbialo una vez y cambia en las dos.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/workspace">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render projectNav("workspace")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea el workspace</a></li>
+        <li><a href="#lib">2. Una librería con un componente</a></li>
+        <li><a href="#add">3. La app usa la librería</a></li>
+        <li><a href="#second-app">4. Una segunda app</a></li>
+        <li><a href="#serve">5. Las dos en un puerto</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Proyecto y build</span></p>
+
+<h1>Dos apps y una librería</h1>
+
+<p class="lede">Montas en un solo repo una tienda y su panel de administración, que comparten un componente de una librería, y los sirves juntos.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un workspace con varias apps y librerías.</li>
+    <li>Escribir un componente en una librería y usarlo desde dos apps.</li>
+    <li>Arrancar, construir y probar todo el workspace con un comando.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="create">1. Crea el workspace</h2>
+
+<p>Un workspace es un repo con varios proyectos: las apps en <code>apps/</code> y las librerías en <code>libs/</code>. Créalo con su primera app, la tienda:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new shop --workspace --app web
+cd shop</code></pre>
+</ui-code>
+
+<p>La CLI dice qué ha creado:</p>
+
+<pre class="output"><code>Created workspace shop
+
+  shop/
+    README.md          what apps/ and libs/ are, and the commands below
+    apps/web/          app web, served at /
+    libs/guide/        the style guide, used by every app and library</code></pre>
+
+<p>La guía de estilos ya no está dentro de la app: es la librería <code>libs/guide</code>, para que todas las apps se vean igual. Cada proyecto es un paquete de pnpm con su nombre, <code>@@shop/web</code> o <code>@@shop/guide</code>, y <code>pnpm-workspace.yaml</code> los reúne. Las opciones de <code>--workspace</code> están en <a href="/docs/cli/new"><code>fudic new</code></a>.</p>
+
+<h2 id="lib">2. Una librería con un componente</h2>
+
+<p>Crea una librería para los componentes que compartirán las apps, y en ella una insignia:</p>
+
+<ui-code>
+<pre><code>npx fudic g lib ui
+npx fudic g component badge --project ui</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created library ui in libs/ui
+  tag prefix   ui-      fudic g component button --project ui  →  &lt;ui-button&gt;
+  test         pnpm --filter ui test
+  spec         pnpm --filter ui spec
+  Installed dependencies (pnpm)
+Use it from an app
+  fudic add ui --project web          an app you already have
+  fudic g app admin --uses ui         a new app
+
+Created &lt;ui-badge&gt; in libs/ui/src/components/ui-badge/
+
+  ui-badge.fud            the component
+  ui-badge.test.ts        unit test               pnpm --filter ui test
+  ui-badge.fudspec        acceptance criteria     pnpm --filter ui spec
+  ui-badge.fixture.ts     the props the criteria mount it with
+
+Use it in an app
+  &lt;link rel="component" href="@@shop/ui/ui-badge.fud"&gt;</code></pre>
+
+<p>El prefijo de la librería es su nombre, así que el componente es <code>&lt;ui-badge&gt;</code>. Haz de él una insignia azul que muestra lo que le pongas dentro, con un slot:</p>
+
+<ui-code .path="libs/ui/src/components/ui-badge/ui-badge.fud">
+<pre><code>&lt;head&gt;
+  &lt;style&gt;
+    :host &#123;
+      display: inline-block;
+      padding: 0 0.5em;
+      border-radius: 1em;
+      background: #0b57d0;
+      color: white;
+      font-size: 0.875em;
+    &#125;
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;ui-badge&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;slot&gt;&lt;/slot&gt;
+  &lt;/template&gt;
+&lt;/ui-badge&gt;</code></pre>
+</ui-code>
+
+<p>Una librería no se sirve: no tiene páginas ni URL. Sus componentes se prueban con sus propios tests, que puedes pasar con <code>pnpm --filter ui test</code>.</p>
+
+<h2 id="add">3. La app usa la librería</h2>
+
+<p>La tienda aún no conoce la librería. Añádesela:</p>
+
+<ui-code>
+<pre><code>npx fudic add ui --project web</code></pre>
+</ui-code>
+
+<pre class="output"><code>web now uses ui
+  Installed dependencies (pnpm)
+  &lt;link rel="component" href="@@shop/ui/ui-badge.fud"&gt;</code></pre>
+
+<p>La CLI añade <code>"@@shop/ui": "workspace:*"</code> a las dependencias de <code>apps/web/package.json</code>, y te da el enlace de cada componente de la librería. Úsalo en la portada de la tienda:</p>
+
+<ui-code .path="apps/web/src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="@@shop/ui/ui-badge.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;p&gt;Green tea &lt;ui-badge&gt;New&lt;/ui-badge&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>El <code>href</code> empieza por el nombre del paquete, no por una ruta: la app pide el componente a la librería como pediría cualquier paquete instalado.</p>
+
+<h2 id="second-app">4. Una segunda app</h2>
+
+<p>Crea el panel de administración, que ya nace usando la librería:</p>
+
+<ui-code>
+<pre><code>npx fudic g app admin --uses ui</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created app admin in apps/admin
+  base URL   /admin/     web is at /. Change it with --base
+  uses       ui, guide
+  Installed dependencies (pnpm)
+Next
+  pnpm dev                    every app:  http://localhost:5173/  ·  /admin/
+  pnpm --filter admin dev     only admin: http://localhost:5174/admin/</code></pre>
+
+<p>La tienda se sirve en <code>/</code>, así que el panel va en <code>/admin/</code>. Pon la insignia en su portada:</p>
+
+<ui-code .path="apps/admin/src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="@@shop/ui/ui-badge.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Admin&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Admin&lt;/h1&gt;
+&lt;p&gt;Orders &lt;ui-badge&gt;3&lt;/ui-badge&gt;&lt;/p&gt;</code></pre>
+</ui-code>
+
+<h2 id="serve">5. Las dos en un puerto</h2>
+
+<p>Desde la raíz del workspace, arranca todo:</p>
+
+<ui-code>
+<pre><code>pnpm dev</code></pre>
+</ui-code>
+
+<pre class="output"><code>fudic dev — 2 apps on one port
+
+  admin   starting
+  web     starting
+  web     started in 1.9 s
+  admin   started in 1.9 s
+
+  web     http://localhost:5173/
+  admin   http://localhost:5173/admin/
+
+  ready in 1.9 s · Ctrl+C stops it · fudic dev --port &lt;n&gt; serves on another port</code></pre>
+
+<p>Abre <code>http://localhost:5173/</code> y <code>http://localhost:5173/admin/</code>: cada una con su insignia azul. Ahora cambia el color en la librería, de azul a verde:</p>
+
+<ui-code .path="libs/ui/src/components/ui-badge/ui-badge.fud">
+<pre><code>      background: #146c2e;</code></pre>
+</ui-code>
+
+<p>Guarda. Las dos apps recargan la página, porque las dos usan el componente:</p>
+
+<pre class="output"><code>  admin   17:05:01 [vite] (ssr) page reload …/libs/ui/src/components/ui-badge/ui-badge.fud
+  web     17:05:01 [vite] (ssr) page reload …/libs/ui/src/components/ui-badge/ui-badge.fud</code></pre>
+
+<p>Las dos insignias son verdes. Para con Ctrl+C. Los demás comandos de la raíz también recorren el workspace entero. <code>pnpm test</code> pasa los tests de los tres proyectos en una sola ejecución:</p>
+
+<pre class="output"><code>fudic test · 3 projects · passed · 6.6 s</code></pre>
+
+<p><code>pnpm build</code> construye cada app en su <code>dist/</code>, <code>apps/web/dist</code> y <code>apps/admin/dist</code>, y <code>pnpm preview</code> las sirve juntas en <code>http://localhost:4173/</code>, como <code>fudic dev</code>. Cómo comparte el puerto <code>fudic dev</code> está en <a href="/docs/cli/dev"><code>fudic dev</code></a>, y las opciones de cada comando, en <a href="/docs/cli/generate/app"><code>fudic generate app</code></a>, <a href="/docs/cli/generate/lib"><code>fudic generate lib</code></a> y <a href="/docs/cli/add"><code>fudic add</code></a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/workspace" target="_blank" rel="noopener">la solución de Dos apps y una librería, en GitHub</a>. Compara tus dos portadas y tu insignia con las suyas.</p>
+
+@render pager(prev: "/tutorials/baseline", prevTitle: "Baseline: qué navegadores soportas", next: "/tutorials/", nextTitle: "Todas las categorías")

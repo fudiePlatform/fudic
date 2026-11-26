@@ -177,8 +177,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   «Observatory», «Csp» y «Trusted-types», corregidos a mano: los cuatro de la categoría.
 - **Y otra vez** con los tutoriales de Rendimiento (`caching`, `lighthouse`), el 2026-11-26: el
   `href` frágil y los títulos «Caching» y «Lighthouse», corregidos a mano: los dos de la categoría.
-- **Y otra vez** con los tutoriales de Proyecto y build (`baseline`), el 2026-11-26: el `href`
-  frágil y el título «Baseline», corregidos a mano.
+- **Y otra vez** con los tutoriales de Proyecto y build (`baseline`, `workspace`), el 2026-11-26: el `href`
+  frágil y los títulos «Baseline» y «Workspace», corregidos a mano: los dos de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -491,3 +491,14 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **De paso.** `fudic add i18n` reescribe todo `fudic.json` con su propio formato: los objetos que
   `fudic new` deja en una línea (`"globalStyles": { "base": … }`, `"guide"`) pasan a ocupar cuatro.
 
+
+## 31. `fudic preview` anuncia un puerto que otro proceso ya tiene en IPv6
+
+- **Qué pasó.** Escribiendo el tutorial `workspace` (2026-11-26), con una `vite preview` de otro
+  proyecto escuchando en `[::1]:4173`: `fudic preview` arranca sin quejarse, escucha en `:::4173`
+  y anuncia `http://localhost:4173/`. `localhost` resuelve antes a `::1`, así que `curl` y el
+  navegador reciben la otra app. Por `127.0.0.1:4173` sí responde el workspace.
+- **Cómo se resolvió en el tutorial.** Nada que cambiar: se comprobó por `127.0.0.1` y la otra
+  preview no se tocó.
+- **Qué debería hacer.** Comprobar el puerto en `localhost` como lo resolverá el navegador (IPv4 e
+  IPv6), y pasar al siguiente libre o fallar con un mensaje, como hace Vite con `strictPort`.

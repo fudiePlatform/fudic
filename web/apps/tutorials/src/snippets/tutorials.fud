@@ -192,6 +192,6 @@
   <details class="toggle"><summary>Tutoriales de Proyecto y build</summary></details>
   <ol class="tutorial-list">
     @render tutorial("baseline", "Baseline: qué navegadores soportas", "intermediate", @current)
-    @render tutorial("workspace", "Dos apps y una librería", "advanced", @current, false)
+    @render tutorial("workspace", "Dos apps y una librería", "advanced", @current)
   </ol>
 }

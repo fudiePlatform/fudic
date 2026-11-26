@@ -1,0 +1,18 @@
+<head>
+  <style>
+    :host {
+      display: inline-block;
+      padding: 0 0.5em;
+      border-radius: 1em;
+      background: #146c2e;
+      color: white;
+      font-size: 0.875em;
+    }
+  </style>
+</head>
+
+<ui-badge>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</ui-badge>

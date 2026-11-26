@@ -1,0 +1,7 @@
+component ui-badge
+
+criterion renders
+  given
+    props base
+  then
+    present ui-badge
