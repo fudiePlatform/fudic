@@ -1,0 +1,17 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const { start = 0 } = props<{ start?: number }>();
+  const count = signal(start);
+
+  function more() {
+    count.set(count() + 1);
+  }
+}
+
+<myapp-counter>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button output">
+    <button type="button" @click=@more>+1</button>
+    <output>@count()</output>
+  </template>
+</myapp-counter>

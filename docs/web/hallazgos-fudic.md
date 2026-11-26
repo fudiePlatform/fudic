@@ -467,6 +467,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   servidor MCP.
 - **Qué debería hacer.** Que `fudic spec` y `fudic test` (y quizá el workbench, al ejecutar todos)
   apunten su ejecución, o decir en el README quién la apunta.
+- **Vuelto a comprobar** con el tutorial `history` (2026-11-26): tras `fudic approve` y dos
+  `fudic spec` en verde, `fudic history` sigue diciendo `spec not run`.
 
 ## 31. El workbench se queda con un `.fudspec` a medio escribir
 
@@ -1670,6 +1672,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   tres de tres: parece Vite optimizando dependencias a mitad de la ejecución.
 - **Cómo se resolvió en el tutorial.** Una frase avisa de que la primera ejecución puede acabar así y
   de que basta con repetirla.
+- **Vuelto a comprobar** con el tutorial `history` (2026-11-26): los dos criterios del contador
+  acaban en `!` la primera vez y pasan la segunda.
 - **Qué debería hacer.** Que `fudic spec` optimice las dependencias antes de abrir el navegador, o
   que reintente el criterio cuando lo que falla es la carga de un módulo.
 

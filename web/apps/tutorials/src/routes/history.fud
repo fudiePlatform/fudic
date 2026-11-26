@@ -1,0 +1,180 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Aprobar y aceptar: el historial de una pieza · Tutoriales de Fudic</title>
+  <meta name="description" content="Aprueba los criterios de un componente con fudic approve, mira cómo caduca la aprobación al cambiarlos, apunta la aceptación del cliente con fudic accept y léelo todo con fudic history.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/history">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Aprobar y aceptar: el historial de una pieza · Tutoriales de Fudic">
+  <meta property="og:description" content="Quién aprobó los criterios, si siguen valiendo y qué versión aceptó el cliente.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/history">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("history")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#criteria">1. Un componente con sus criterios</a></li>
+        <li><a href="#approve">2. Aprueba los criterios</a></li>
+        <li><a href="#expired">3. Cambia un criterio</a></li>
+        <li><a href="#accept">4. Apunta la aceptación del cliente</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Tests</span></p>
+
+<h1>Aprobar y aceptar: el historial de una pieza</h1>
+
+<p class="lede">Apruebas los criterios de un contador, ves cómo la aprobación caduca cuando alguien los cambia y dejas apuntado qué versión aceptó el cliente.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Aprobar los criterios de una pieza con <code>fudic approve</code>.</li>
+    <li>Saber con <code>fudic history</code> si una aprobación sigue valiendo.</li>
+    <li>Apuntar la aceptación del cliente con <code>fudic accept</code>, con su etiqueta de git.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y git.</p>
+</section>
+
+<h2 id="criteria">1. Un componente con sus criterios</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component counter</code></pre>
+</ui-code>
+
+<p><code>fudic new</code> deja el proyecto en un repositorio de git con su primer commit. Escribe un contador:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button output"&gt;
+    &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Y su criterio, lo que el contador tiene que hacer:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fudspec">
+<pre><code>component myapp-counter
+
+criterion adds-one
+  given
+    props base
+  when
+    click role:button/"+1"
+  then
+    text output "1"</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>git add -A
+git commit -m "the counter"
+npx fudic history src/components/myapp-counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter  not approved · tests not run · spec not run</code></pre>
+
+<p><code>fudic history</code> resume en una línea el estado de la pieza: si sus criterios están aprobados, cómo salieron sus tests y sus criterios, y si el cliente la aceptó.</p>
+
+<h2 id="approve">2. Aprueba los criterios</h2>
+
+<p>Los criterios son el acuerdo de lo que la pieza tiene que hacer. Quien los revisa, los aprueba:</p>
+
+<ui-code>
+<pre><code>npx fudic approve src/components/myapp-counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/components/myapp-counter/myapp-counter.fudlog</code></pre>
+
+<p>El <code>.fudlog</code> es el historial de la pieza, un fichero de texto junto a ella que solo crece. La primera línea dice quién aprobó y cuándo:</p>
+
+<pre class="output"><code>2026-11-26T20:21Z 57d4ae2 approved    by ana  spec 1 hash 4ed06138ceb0</code></pre>
+
+<p>Lleva la hora, el commit, tu nombre de git (aquí, <code>ana</code>), cuántos criterios aprobaste y un <code>hash</code>, una huella del <code>.fudspec</code> y su fixture en ese momento.</p>
+
+<pre class="output"><code>myapp-counter  approved by ana (valid) · tests not run · spec not run</code></pre>
+
+<h2 id="expired">3. Cambia un criterio</h2>
+
+<p>Añade un criterio:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fudspec">
+<pre><code>criterion adds-two
+  given
+    props base
+  when
+    click role:button/"+1"
+    click role:button/"+1"
+  then
+    text output "2"</code></pre>
+</ui-code>
+
+<ui-code>
+<pre><code>npx fudic history src/components/myapp-counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter  approved by ana (expired) · tests not run · spec not run</code></pre>
+
+<p>La huella del <code>.fudspec</code> ya no es la que se aprobó, así que la aprobación caduca. Un criterio nuevo, o uno que alguien relaja para que pase, vuelve a necesitar el visto bueno. Revísalo y apruébalo otra vez:</p>
+
+<ui-code>
+<pre><code>npx fudic approve src/components/myapp-counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter  approved by ana (valid) · tests not run · spec not run</code></pre>
+
+<p>Si ejecutas <code>npx fudic spec</code>, los criterios pasan, pero la línea sigue diciendo <code>spec not run</code>. Hoy las ejecuciones solo las apunta el MCP de Fudic, cuando un agente ejecuta los criterios. Lo enseña <a href="/tutorials/mcp">Construir con tu agente usando el MCP de Fudic</a>.</p>
+
+<h2 id="accept">4. Apunta la aceptación del cliente</h2>
+
+<p>Cuando el cliente da por buena la pieza, se apunta lo que dijo y la versión exacta que vio. Guarda primero los cambios en un commit:</p>
+
+<ui-code>
+<pre><code>git add -A
+git commit -m "the counter adds two"
+npx fudic accept src/components/myapp-counter "Approved in the demo"
+npx fudic history src/components/myapp-counter</code></pre>
+</ui-code>
+
+<pre class="output"><code>myapp-counter  approved by ana (valid) · tests not run · spec not run · accepted accepted/myapp-counter/2026-11-26</code></pre>
+
+<p><code>accept</code> pone en el commit actual la etiqueta de git <code>accepted/myapp-counter/2026-11-26</code>. Meses después, esa etiqueta dice qué versión exacta se aceptó. El <code>.fudlog</code> tiene ya las tres líneas:</p>
+
+<pre class="output"><code>2026-11-26T20:21Z 57d4ae2 approved    by ana  spec 1 hash 4ed06138ceb0
+2026-11-26T20:22Z 57d4ae2 approved    by ana  spec 2 hash 6f0d3b12f8a4
+2026-11-26T20:22Z 8420852 accepted    by ana  "Approved in the demo"  tag accepted/myapp-counter/2026-11-26</code></pre>
+
+<p>El <code>.fudlog</code> se guarda en git como cualquier otro fichero, así que haz un último commit con él. En un pull request, quien revisa ve quién aprobó qué. Lo cuenta <a href="/docs/testing/history">Historial y aprobación</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/history" target="_blank" rel="noopener">la solución de Aprobar y aceptar: el historial de una pieza, en GitHub</a>, con su <code>.fudlog</code>.</p>
+
+@render pager(prev: "/tutorials/user-flows", prevTitle: "Un flujo entre páginas", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")

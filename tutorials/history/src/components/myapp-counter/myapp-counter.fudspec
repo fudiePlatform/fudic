@@ -1,0 +1,18 @@
+component myapp-counter
+
+criterion adds-one
+  given
+    props base
+  when
+    click role:button/"+1"
+  then
+    text output "1"
+
+criterion adds-two
+  given
+    props base
+  when
+    click role:button/"+1"
+    click role:button/"+1"
+  then
+    text output "2"

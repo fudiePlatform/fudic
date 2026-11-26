@@ -209,7 +209,7 @@
     @render tutorial("custom-terms", "Tu primer paso propio en un .fudspec", "intermediate", @current)
     @render tutorial("showcase", "Un showcase de cada componente", "intermediate", @current)
     @render tutorial("user-flows", "Un flujo entre páginas", "advanced", @current)
-    @render tutorial("history", "Aprobar y aceptar: el historial de una pieza", "advanced", @current, false)
+    @render tutorial("history", "Aprobar y aceptar: el historial de una pieza", "advanced", @current)
   </ol>
 }
 
