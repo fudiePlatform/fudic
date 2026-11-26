@@ -1218,3 +1218,30 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en el tutorial.** La página pinta «4 products in the shop.» con `data`.
 - **Qué debería hacer.** Mandar `fud-data` cuando el `@code` lee `data`, no solo cuando la lee la
   vista.
+
+## 83. En una app con `base`, la preview sirve el runtime sin las cabeceras de `assets.headers`
+
+- **Qué pasó.** Lo vio Pedro (2026-11-26) en `web/apps/tutorials` (`base: '/tutorials/'`): tras
+  `pnpm build` y `pnpm preview`, los ficheros de `/_fudic/…` llegan sin `Cache-Control`, aunque
+  `assets.headers` dice `/_fudic/**` con `public, max-age=31536000, immutable`. Medido con `curl`:
+  - El HTML los pide en la raíz del origen, sin el `base`: `<link rel="modulepreload"
+    href="/_fudic/0.0.1-689426ec/core/hydrate.js">`. Es a propósito: el runtime es del origen y lo
+    comparten todas las apps (SDD-45 §4.2, comentario en `plugin.ts:1261`).
+  - `/_fudic/0.0.1-689426ec/core/effect.js` responde `200` sin `Cache-Control`. La misma ruta con
+    el `base`, `/tutorials/_fudic/…`, sale con `immutable`, pero nadie la pide.
+  - `/tutorials/assets/…` y `/tutorials/fudic-main-….js` salen con `immutable`, como dice el
+    fichero.
+  - Igual con `fudic preview --project tutorials`. En `site` (`base: '/'`) no pasa: es el caso que
+    se midió en el nº 5.
+- **Por qué.** Con un `base` distinto de `/`, la preview monta `originRuntime(outDir)`
+  (`packages/vite/src/plugin.ts`, al final del fichero) para responder `/_fudic/…` en la raíz desde
+  `dist/_fudic/`. Esa función solo escribe `content-type` y el fichero: no pasa por las cabeceras
+  de `assets.headers`, que se aplican por ruta sin el `base`.
+- **A qué afecta.** A la preview de toda app con `base` (`tutorials`, `mcp`). Lighthouse de esas
+  apps se midió con el runtime sin caché. En producción depende de quién sirva `/_fudic/` en la raíz
+  del dominio: en `fudic.dev`, la app `site`, cuyo `assets.headers` sí lo cubre.
+- **Qué debería hacer.** Que `originRuntime` aplique a cada pieza las cabeceras que
+  `assets.headers` da a `/_fudic/**`, como hace con el resto de ficheros estáticos
+  (`server.staticHeaders`). O, mejor (lo que ya pide el nº 5), que el runtime sea de Fudic y salga
+  siempre con `immutable` sin depender del fichero.
+
