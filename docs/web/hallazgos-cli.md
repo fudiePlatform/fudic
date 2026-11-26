@@ -152,8 +152,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   «Form-control» y «Custom-rules», corregidos a mano: los siete de la categoría.
 - **Y otra vez** con los tutoriales de Rutas y layouts (`pages-and-layout`, `dynamic-routes`), el
   2026-11-26: el `href` frágil y los títulos «Pages-and-layout», «Dynamic-routes», «Error-page»,
-  «Route-data», «Alternate-layouts», «Slow-pages» y «Page-maps»,
-  corregidos a mano.
+  «Route-data», «Alternate-layouts», «Slow-pages», «Page-maps» y
+  «Early-hints», corregidos a mano: los ocho de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -396,3 +396,16 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   cadena que el tutorial no necesita.
 - **Qué debería hacer.** Que `g form` y `add forms` añadan también `@fudic/http`, o que
   `@fudic/forms` la declare como dependencia.
+
+## 27. `fudic preview` no puede enseñar las early hints, y se cuelga si la app sirve HTTPS
+
+- **Qué pasó.** Escribiendo el tutorial `early-hints` (2026-11-26). El `103` solo sale por HTTP/2
+  (`wantsEarlyHints` de `@fudic/server`), y el puerto único de `fudic preview` es un proxy de
+  `node:http` (`packages/cli/src/serve/proxy.ts`), HTTP/1.1. Con `@vitejs/plugin-basic-ssl` en
+  `vite.config.ts`, la preview de Vite que hay detrás arranca en HTTPS (en un puerto como 61488) y
+  `fudic preview` se queda en «my-app   starting» sin abrir el 4173 ni decir nada, hasta Ctrl+C.
+- **Cómo se resolvió en el tutorial.** `pnpm preview` (`vite preview`, que con HTTPS sirve HTTP/2)
+  para el paso del `103`; `fudic preview` solo para la cabecera `Link`.
+- **Qué debería hacer.** Que `fudic preview` (y `fudic dev`) acepten HTTPS y sirvan HTTP/2 en su
+  puerto, con `--https` o leyendo `preview.https` de Vite; o, como mínimo, que detecte un backend en
+  HTTPS y lo diga en vez de quedarse esperando.

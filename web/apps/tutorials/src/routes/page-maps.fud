@@ -190,4 +190,4 @@ npx fudic preview</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/page-maps" target="_blank" rel="noopener">la solución de Lo que la página le cuenta al runtime, en GitHub</a>. Compara tu <code>myapp-panel.fud</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/slow-pages", prevTitle: "Páginas lentas", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")
+@render pager(prev: "/tutorials/slow-pages", prevTitle: "Páginas lentas", next: "/tutorials/early-hints", nextTitle: "Early hints")

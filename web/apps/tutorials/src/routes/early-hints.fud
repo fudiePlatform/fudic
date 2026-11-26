@@ -1,0 +1,187 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Early hints · Tutoriales de Fudic</title>
+  <meta name="description" content="Las pistas que una página de Fudic envía antes de estar pintada: la cabecera Link en cada respuesta y el 103 Early Hints por HTTP/2, medidos con curl.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/early-hints">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Early hints · Tutoriales de Fudic">
+  <meta property="og:description" content="Un 103 con el CSS y el JavaScript de la página, dos segundos antes que la página.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/early-hints">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("early-hints")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una página lenta</a></li>
+        <li><a href="#link">2. Las pistas de la página</a></li>
+        <li><a href="#http2">3. El 103, por HTTP/2</a></li>
+        <li><a href="#off">4. Apagarlo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Early hints</h1>
+
+<p class="lede">Mientras el servidor espera los datos de una página lenta, le dice al navegador qué CSS y qué JavaScript va a necesitar. Ves esas pistas en la respuesta y el <code>103 Early Hints</code> que llega antes que ella.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Encontrar las pistas de una página en su cabecera <code>Link</code>.</li>
+    <li>Servir la app por HTTP/2 y ver el <code>103</code> que llega antes que la página.</li>
+    <li>Apagarlas desde <code>fudic.json</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>. Una página lenta en <code>ssr</code> está en <a href="/tutorials/slow-pages">Páginas lentas</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una página lenta</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page report --server</code></pre>
+</ui-code>
+
+<p>La página se pinta en cada petición, y su dato tarda dos segundos:</p>
+
+<ui-code .path="src/routes/report.fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/report.ts.
+load ssr
+  title  str
+  sales  i32</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/report.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/report';
+
+/** A slow query: the total arrives after two seconds. */
+function totalSales(): Promise&lt;number&gt; &#123;
+  return new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(1234), 2000));
+&#125;
+
+load.handle(async () =&gt; (&#123; title: 'Report', sales: await totalSales() &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/report.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./report.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;@@data.title&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;p&gt;@@data.sales sales this month.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<h2 id="link">2. Las pistas de la página</h2>
+
+<p>Las pistas se calculan en el build, así que se ven en la app construida:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>En otra terminal, pide las cabeceras de la página:</p>
+
+<ui-code>
+<pre><code>curl -sI http://localhost:4173/report</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/1.1 200 OK
+…
+link: &lt;/assets/guide-gwelUCjq.css&gt;; rel=preload; as=style, &lt;/fudic-boot-5c47d4b7.js&gt;; rel=modulepreload
+…</code></pre>
+
+<p>La cabecera <code>Link</code> lista lo que la página necesita para arrancar: su hoja de estilos, para precargar (<code>preload</code>), y el módulo de arranque de Fudic (<code>modulepreload</code>). El build lo sabe sin pintar la página, por eso el servidor la tiene antes que los datos.</p>
+
+<p>Pero aquí llega con la respuesta, a los dos segundos, cuando el navegador ya tiene el HTML y la misma lista dentro. Para que sirva de algo tiene que llegar antes, en un <code>103</code>. Fudic solo lo envía por HTTP/2 o superior, porque los clientes y los proxies de HTTP/1.1 no saben qué hacer con él. Para <code>fudic preview</code> con Ctrl+C.</p>
+
+<h2 id="http2">3. El 103, por HTTP/2</h2>
+
+<p>Los navegadores solo hablan HTTP/2 con HTTPS. Para probarlo en tu máquina basta un certificado de desarrollo, que genera un plugin de Vite:</p>
+
+<ui-code>
+<pre><code>pnpm add -D -E @@vitejs/plugin-basic-ssl</code></pre>
+</ui-code>
+
+<ui-code .path="vite.config.ts">
+<pre><code>import &#123; defineConfig &#125; from 'vite';
+import basicSsl from '@@vitejs/plugin-basic-ssl';
+import &#123; fudic &#125; from '@@fudic/vite';
+
+// Pages are the .fud files under src/routes/; fudic() needs nothing else to serve and build them.
+// basicSsl() serves them over HTTPS with a development certificate, and so over HTTP/2.
+export default defineConfig(&#123;
+  plugins: [fudic(), basicSsl()],
+&#125;);</code></pre>
+</ui-code>
+
+<p>Construye y sirve la app con <code>pnpm preview</code>, que arranca la preview de Vite directamente, en HTTPS. <code>fudic preview</code> no sirve aquí: delante de la app pone su propio servidor, que habla HTTP/1.1.</p>
+
+<ui-code>
+<pre><code>pnpm build
+pnpm preview</code></pre>
+</ui-code>
+
+<p>Pide la página como lo haría un navegador al navegar, por HTTP/2. <code>-k</code> acepta el certificado de desarrollo, y <code>sec-fetch-mode: navigate</code> es la cabecera de una navegación:</p>
+
+<ui-code>
+<pre><code>curl -sk --http2 -o /dev/null -D - -H "sec-fetch-mode: navigate" https://localhost:4173/report</code></pre>
+</ui-code>
+
+<pre class="output"><code>HTTP/2 103
+content-security-policy: default-src 'self'; script-src 'nonce-D5CZE3IvXRcWd26aTtRjfw' …
+referrer-policy: strict-origin-when-cross-origin
+link: &lt;/assets/guide-gwelUCjq.css&gt;; rel=preload; as=style, &lt;/fudic-boot-5c47d4b7.js&gt;; rel=modulepreload
+
+HTTP/2 200
+…
+link: &lt;/assets/guide-gwelUCjq.css&gt;; rel=preload; as=style, &lt;/fudic-boot-5c47d4b7.js&gt;; rel=modulepreload
+…</code></pre>
+
+<ul>
+  <li><strong>Dos respuestas a una petición.</strong> El <code>103</code> sale al momento, y el <code>200</code>, con la página, dos segundos después: mientras tanto, el navegador puede ir descargando el CSS y el módulo de arranque.</li>
+  <li><strong>El <code>103</code> lleva también la seguridad de la página:</strong> su <code>Content-Security-Policy</code> y su <code>Referrer-Policy</code>, para que lo que se descarga antes cumpla las mismas reglas.</li>
+</ul>
+
+<p>Sin <code>sec-fetch-mode: navigate</code> no hay <code>103</code>: un <code>fetch</code> de una página no lo necesita.</p>
+
+<h2 id="off">4. Apagarlo</h2>
+
+<p>Las early hints vienen activadas, porque no le cuestan nada a la página. Se apagan en <code>fudic.json</code>:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "baseline": "widely",
+  "earlyHints": false,</code></pre>
+</ui-code>
+
+<p>Para <code>pnpm preview</code>, vuelve a construir y a servir, y repite el <code>curl</code>:</p>
+
+<pre class="output"><code>HTTP/2 200
+…</code></pre>
+
+<p>Ni <code>103</code> ni cabecera <code>Link</code>. Quita esa línea de <code>fudic.json</code> para dejarlas como estaban.</p>
+
+<p>Qué pistas lleva cada página, también la de error, y cuándo se envía el <code>103</code> está en <a href="/docs/routing/early-hints">Early hints</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/early-hints" target="_blank" rel="noopener">la solución de Early hints, en GitHub</a>, con las early hints activadas. Compara tu <code>vite.config.ts</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/page-maps", prevTitle: "Lo que la página le cuenta al runtime", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")
