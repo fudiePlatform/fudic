@@ -1,0 +1,4 @@
+# Greets someone by name.
+get greet
+  name  str
+  -> str

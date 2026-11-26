@@ -154,6 +154,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   2026-11-26: el `href` frágil y los títulos «Pages-and-layout», «Dynamic-routes», «Error-page»,
   «Route-data», «Alternate-layouts», «Slow-pages», «Page-maps» y
   «Early-hints», corregidos a mano: los ocho de la categoría.
+- **Y otra vez** con los tutoriales de Servidor (`server-functions`), el 2026-11-26: el `href`
+  frágil y el título «Server-functions», corregidos a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

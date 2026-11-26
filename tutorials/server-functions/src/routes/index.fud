@@ -1,0 +1,27 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+  import { HttpError } from "@fudic/http";
+
+  const name = signal("");
+  const answer = signal("");
+
+  async function sayHello() {
+    try {
+      answer.set(await greet({ name: name() }));
+    } catch (error) {
+      answer.set(error instanceof HttpError ? `${error.status}: ${error.message}` : "Something failed.");
+    }
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<input aria-label="Name" @input=@name.set($value)>
+<button type="button" @click=@sayHello>Greet</button>
+<p>@answer()</p>

@@ -32,7 +32,7 @@
   @render category("Estilos", "El CSS de un componente, el tema global y tu guía de estilos.", 3, true, true, false, "/tutorials/scoped-styles")
   @render category("Rutas y layouts", "Páginas, rutas con parámetro, layouts y la página de error.", 8, true, true, true, "/tutorials/pages-and-layout")
   @render category("Formularios", "Binding, validación, envío, ficheros y controles propios.", 7, true, true, true, "/tutorials/first-form")
-  @render category("Servidor", "Funciones de servidor, una API, middlewares, pipes y sesión.", 8, false, true, true)
+  @render category("Servidor", "Funciones de servidor y task, una API, middlewares, pipes y sesión.", 9, false, true, true, "/tutorials/server-functions")
   @render category("Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true)
   @render category("Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false)
   @render category("Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true)

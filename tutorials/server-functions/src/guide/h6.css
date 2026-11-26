@@ -1,0 +1,9 @@
+:where(h6) {
+  margin: var(--my-app-space-4) 0 var(--my-app-space-1);
+  font-size: var(--my-app-text-sm);
+  font-weight: var(--my-app-weight-bold);
+  line-height: var(--my-app-leading-tight);
+  color: var(--my-app-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

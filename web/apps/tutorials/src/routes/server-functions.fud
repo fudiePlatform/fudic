@@ -1,0 +1,179 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Funciones de servidor · Tutoriales de Fudic</title>
+  <meta name="description" content="Declara una función de servidor de Fudic en el .fudapi, impleméntala con handle, llámala desde un clic como una función más y recoge su error con su status.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/server-functions">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Funciones de servidor · Tutoriales de Fudic">
+  <meta property="og:description" content="Declarar, implementar y llamar a una función de servidor desde el navegador.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/server-functions">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("server-functions")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#declare">2. Declara e implementa la función</a></li>
+        <li><a href="#call">3. Llámala desde un clic</a></li>
+        <li><a href="#errors">4. Cuando falla</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>Funciones de servidor</h1>
+
+<p class="lede">Escribes una función que se ejecuta en el servidor y la llamas desde un botón de la página como si fuera tuya, sin escribir ningún <code>fetch</code>.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar una función de servidor en el <code>.fudapi</code>, con sus argumentos y lo que devuelve.</li>
+    <li>Implementarla en <code>src/server</code> con <code>handle</code>.</li>
+    <li>Llamarla desde el navegador con <code>await</code>, y recoger su error con su status.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Usa un signal para pintar la respuesta: si no los conoces, empieza por <a href="/tutorials/signals">Un contador con signals</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+pnpm install</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<p><code>fudic g api</code> le da a la página de inicio su servidor: el contrato (<code>index.fudapi</code>), el código que lo cumple (<code>src/server/routes/index.ts</code>) y el <code>&lt;link rel="server"&gt;</code> que los enlaza desde la página. Añade además <code>@@fudic/http</code> al <code>package.json</code>, y <code>pnpm install</code> lo instala.</p>
+
+<h2 id="declare">2. Declara e implementa la función</h2>
+
+<p>El contrato dice qué funciones tiene la página: su verbo HTTP, su nombre, sus argumentos con su tipo y, tras <code>-&gt;</code>, lo que devuelve. Cambia todo el fichero por una función que saluda:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Greets someone by name.
+get greet
+  name  str
+  -&gt; str</code></pre>
+</ui-code>
+
+<p><code>get</code> porque solo lee, como en HTTP. Impleméntala en el servidor con <code>handle</code>, que recibe un <code>ctx</code> con los argumentos en <code>ctx.args</code>, ya con su tipo:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; greet &#125; from 'fudic:routes/index';
+
+greet.handle((ctx) =&gt; `Hello, $&#123;ctx.args.name&#125;!`);</code></pre>
+</ui-code>
+
+<p><code>fudic:routes/index</code> es el contrato convertido en módulo: exporta una pieza por cada declaración. Este fichero solo se ejecuta en el servidor y nunca llega al navegador, así que aquí irían la base de datos o los secretos.</p>
+
+<h2 id="call">3. Llámala desde un clic</h2>
+
+<p>La página llama a <code>greet</code> por su nombre, sin importarla: la trae el <code>&lt;link rel="server"&gt;</code>. Recibe un objeto con los argumentos y devuelve una promesa con la respuesta:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const name = signal("");
+  const answer = signal("");
+
+  async function sayHello() &#123;
+    answer.set(await greet(&#123; name: name() &#125;));
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;input aria-label="Name" @@input=@@name.set($value)&gt;
+&lt;button type="button" @@click=@@sayHello&gt;Greet&lt;/button&gt;
+&lt;p&gt;@@answer()&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code>, escribe «Ana» y pulsa <strong>Greet</strong>: debajo sale «Hello, Ana!». En la pestaña Red de las herramientas del navegador verás la petición que ha hecho Fudic por ti:</p>
+
+<pre class="output"><code>GET /_fudic/fn/routes/index/greet?name=Ana    200    application/fud+bin</code></pre>
+
+<p>Como es un <code>get</code>, el argumento viaja en la URL. La respuesta llega en <code>fud-bin</code>, el formato binario de Fudic: solo los valores, sin los nombres de los campos, porque el navegador y el servidor ya conocen el contrato.</p>
+
+<p>La llamada está tipada por ese contrato. Escribe <code>user</code> en vez de <code>name</code> y guarda:</p>
+
+<pre class="output"><code>my-app   src/routes/index.fud:11:30 - error TS2353: Object literal may only specify known properties, and 'user' does not exist in type '&#123; readonly name: string; &#125;'.
+my-app     11      answer.set(await greet(&#123; user: name() &#125;));
+my-app                                      ────
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>El editor lo subraya igual. Vuelve a escribir <code>name</code>.</p>
+
+<h2 id="errors">4. Cuando falla</h2>
+
+<p>Un handler falla lanzando un error de <code>@@fudic/http</code>, con el status que le corresponde. Rechaza un nombre vacío con <code>badRequest</code>, un <code>400</code>:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; badRequest &#125; from '@@fudic/http';
+import &#123; greet &#125; from 'fudic:routes/index';
+
+greet.handle((ctx) =&gt; &#123;
+  if (ctx.args.name.trim() === '') throw badRequest('Write a name.');
+  return `Hello, $&#123;ctx.args.name&#125;!`;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Recarga y pulsa <strong>Greet</strong> con el campo vacío. La petición responde <code>400</code> y la página no cambia: el <code>await</code> lanza el error, nadie lo recoge y solo lo ves en la terminal:</p>
+
+<pre class="output"><code>my-app   9:32:24 [vite] (client) [Unhandled rejection] HttpError: Write a name.</code></pre>
+
+<p>En el navegador, el <code>await</code> lanza el mismo error que el handler: un <code>HttpError</code>, con su <code>status</code> y su mensaje. Recógelo con un <code>try</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; HttpError &#125; from "@@fudic/http";
+
+  const name = signal("");
+  const answer = signal("");
+
+  async function sayHello() &#123;
+    try &#123;
+      answer.set(await greet(&#123; name: name() &#125;));
+    &#125; catch (error) &#123;
+      answer.set(error instanceof HttpError ? `$&#123;error.status&#125;: $&#123;error.message&#125;` : "Something failed.");
+    &#125;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Pulsa otra vez con el campo vacío: sale «400: Write a name.». Con «Ana», «Hello, Ana!». Funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>. Un error cualquiera, que no sea de <code>@@fudic/http</code>, llega como un <code>500</code>, y su mensaje solo en desarrollo.</p>
+
+<p>Un <code>try</code> por llamada se hace largo en cuanto la página quiere enseñar también que la llamada está en marcha. Eso lo resuelve <code>task</code>, en el siguiente tutorial. Todo lo que admite una función (el <code>ctx</code>, otros verbos, cómo viaja) está en <a href="/docs/server/functions">Funciones de servidor</a>, y el contrato entero, en <a href="/docs/server">El contrato .fudapi</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-functions" target="_blank" rel="noopener">la solución de Funciones de servidor, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/custom-rules", prevTitle: "Reglas y patrones propios", next: "/tutorials/", nextTitle: "Todas las categorías")

@@ -173,4 +173,4 @@ aliasTaken.check(async (value) =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/custom-rules" target="_blank" rel="noopener">la solución de Reglas y patrones propios, en GitHub</a>. Compara tu <code>aliases.fudapi</code> y tu <code>src/server/rules.ts</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/form-control", prevTitle: "Un control form-associated", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/form-control", prevTitle: "Un control form-associated", next: "/tutorials/server-functions", nextTitle: "Funciones de servidor")
