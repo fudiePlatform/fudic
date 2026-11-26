@@ -169,4 +169,4 @@ npx fudic preview</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/error-page" target="_blank" rel="noopener">la solución de Tu página de error, en GitHub</a>. Compara tu <code>_error.fud</code> y tu <code>src/server/routes/admin.ts</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/dynamic-routes", prevTitle: "Rutas con parámetro", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")
+@render pager(prev: "/tutorials/dynamic-routes", prevTitle: "Rutas con parámetro", next: "/tutorials/route-data", nextTitle: "Datos del servidor para la página")

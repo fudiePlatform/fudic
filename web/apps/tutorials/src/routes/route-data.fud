@@ -1,0 +1,168 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Datos del servidor para la página · Tutoriales de Fudic</title>
+  <meta name="description" content="Declara los datos de una página de Fudic con sus tipos, calcúlalos en el servidor con load, píntalos con data y fíltralos por la query string.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/route-data">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Datos del servidor para la página · Tutoriales de Fudic">
+  <meta property="og:description" content="Un contrato con tipos, un load en el servidor y data en la página.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/route-data">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("route-data")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y la página</a></li>
+        <li><a href="#declare">2. Declara los datos</a></li>
+        <li><a href="#render">3. Píntalos</a></li>
+        <li><a href="#query">4. Datos que dependen de la URL</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Datos del servidor para la página</h1>
+
+<p class="lede">Pintas la lista de artículos de un blog con datos que calcula el servidor, tipados de punta a punta, y la filtras por una etiqueta que llega en la URL.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar los datos de una página, con sus tipos, en su <code>.fudapi</code>.</li>
+    <li>Calcularlos en el servidor con <code>load</code> y pintarlos con <code>data</code>.</li>
+    <li>Leer la query string de la petición con <code>ctx.url</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Una página con parámetro en la URL está en <a href="/tutorials/dynamic-routes">Rutas con parámetro</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y la página</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page blog --server</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/blog.fud
+  create  src/routes/blog.fudapi
+  create  src/server/routes/blog.ts
+  create  src/routes/blog.test.ts
+  modify  package.json</code></pre>
+
+<p>Una página con datos son tres ficheros: la página (<code>blog.fud</code>), el contrato que dice qué datos tiene (<code>blog.fudapi</code>) y el código del servidor que los calcula (<code>src/server/routes/blog.ts</code>). La CLI añade además <code>@@fudic/http</code> al proyecto y lo instala.</p>
+
+<h2 id="declare">2. Declara los datos</h2>
+
+<p>En el contrato, <code>load</code> lista los datos de la página con su tipo. Un tipo propio, como un artículo, se declara con <code>type</code>:</p>
+
+<ui-code .path="src/routes/blog.fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/blog.ts.
+load
+  title  str
+  posts  Post[]
+
+type Post
+  slug   str
+  title  str
+  tag    str</code></pre>
+</ui-code>
+
+<p><code>str</code> es un texto, y <code>Post[]</code>, una lista de artículos. Calcúlalos en el servidor. Aquí la lista está escrita a mano; en una app de verdad saldría de una base de datos:</p>
+
+<ui-code .path="src/server/routes/blog.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/blog';
+
+const posts = [
+  &#123; slug: 'hello', title: 'Hello, world', tag: 'news' &#125;,
+  &#123; slug: 'layouts', title: 'One layout for every page', tag: 'guides' &#125;,
+  &#123; slug: 'errors', title: 'Your own error page', tag: 'guides' &#125;,
+];
+
+load.handle(() =&gt; (&#123; title: 'Blog', posts &#125;));</code></pre>
+</ui-code>
+
+<p><code>load.handle</code> recibe la función que devuelve los datos, y su tipo sale del contrato: si a un artículo le falta <code>tag</code>, el typecheck falla aquí mismo. Este código solo se ejecuta en el servidor.</p>
+
+<h2 id="render">3. Píntalos</h2>
+
+<p>La página lee los datos como <code>data</code>, sin importarlos:</p>
+
+<ui-code .path="src/routes/blog.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./blog.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;@@data.title&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;ul&gt;
+  @@foreach (const post of data.posts) key (post.slug) &#123;
+    &lt;li&gt;@@post.title &lt;small&gt;@@post.tag&lt;/small&gt;&lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/blog</code>: el título y los tres artículos, cada uno con su etiqueta. <code>&lt;link rel="server"&gt;</code> enlaza el contrato, y con él <code>data</code> está tipado. Cambia <code>@@post.tag</code> por <code>@@post.author</code> y guarda:</p>
+
+<pre class="output"><code>my-app   src/routes/blog.fud:10:34 - error TS2339: Property 'author' does not exist on type 'Post'.
+my-app     10      &lt;li&gt;@@post.title &lt;small&gt;@@post.author&lt;/small&gt;&lt;/li&gt;
+my-app                                          ──────
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>El editor lo subraya igual. Vuelve a escribir <code>@@post.tag</code>.</p>
+
+<h2 id="query">4. Datos que dependen de la URL</h2>
+
+<p>Filtra por etiqueta con la query string: <code>/blog?tag=guides</code>. El servidor recibe la URL de la petición en <code>ctx.url</code>, y <code>searchParams</code> la lee:</p>
+
+<ui-code .path="src/server/routes/blog.ts">
+<pre><code>load.handle((ctx) =&gt; &#123;
+  const tag = ctx.url.searchParams.get('tag');
+  return &#123;
+    title: tag === null ? 'Blog' : `Blog: $&#123;tag&#125;`,
+    posts: tag === null ? posts : posts.filter((post) =&gt; post.tag === tag),
+  &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Como los datos cambian con cada petición, dilo en el contrato con <code>ssr</code>: el servidor pinta la página cada vez que alguien la pide.</p>
+
+<ui-code .path="src/routes/blog.fudapi">
+<pre><code>load ssr
+  title  str
+  posts  Post[]</code></pre>
+</ui-code>
+
+<p>Convierte cada etiqueta en un enlace a su filtro, y añade un <code>@@empty</code> para cuando no hay ninguno:</p>
+
+<ui-code .path="src/routes/blog.fud">
+<pre><code>  @@foreach (const post of data.posts) key (post.slug) &#123;
+    &lt;li&gt;@@post.title &lt;a href=@@("/blog?tag=" + post.tag)&gt;@@post.tag&lt;/a&gt;&lt;/li&gt;
+  &#125; @@empty &#123;
+    &lt;li&gt;No posts with that tag.&lt;/li&gt;
+  &#125;</code></pre>
+</ui-code>
+
+<p>Pulsa <strong>guides</strong>: la página dice «Blog: guides», con dos artículos. Prueba <code>/blog?tag=nothing</code>, y sale «No posts with that tag.».</p>
+
+<p>Además de <code>url</code>, <code>ctx</code> trae <code>params</code>, <code>cookies</code> y <code>headers</code>, y el resto de lo que admite un <code>load</code> está en <a href="/docs/routing/data">Los datos de la página</a>. Qué es <code>ssr</code> y los otros modos, en <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/route-data" target="_blank" rel="noopener">la solución de Datos del servidor para la página, en GitHub</a>. Compara tu <code>blog.fudapi</code> y tu <code>src/server/routes/blog.ts</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/error-page", prevTitle: "Tu página de error", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

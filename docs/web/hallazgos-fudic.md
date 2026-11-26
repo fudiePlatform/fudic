@@ -1166,3 +1166,17 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en el tutorial.** No afecta: el tutorial se sigue en el navegador.
 - **Qué debería hacer.** Responder la página de error de la app, o un problema JSON si se pide
   JSON, pero no la página por defecto de Connect, que además dice qué servidor hay detrás.
+
+## 81. Una página `sw` pinta cualquier query string con los datos de la primera
+
+- **Qué pasó.** Escribiendo el tutorial `route-data` (2026-11-26), una página `blog` con `load` sin
+  modo (y por tanto `sw`, en una app con Service Worker) filtra por `ctx.url.searchParams.get('tag')`.
+  En `pnpm build` y `fudic preview`, con Chrome sin cabeza: se visita `/blog`, el Service Worker
+  toma el control, y luego `/blog?tag=guides` y `/blog?tag=news` salen del Service Worker con el
+  título «Blog» y los tres artículos, sin ninguna petición a `/_fudic/data`. Los datos se guardan
+  por ruta y no por URL. En `fudic dev` (sin Service Worker) y con `load ssr`, cada query string da
+  su lista.
+- **Cómo se resolvió en el tutorial.** `load ssr`, que es además lo que corresponde a datos que
+  cambian con cada petición.
+- **Qué debería hacer.** Guardar los datos por URL completa, con su query string, o avisar en el
+  build (como `FUD1300` con la sesión) de que un `load` `sw` lee `ctx.url.searchParams`.
