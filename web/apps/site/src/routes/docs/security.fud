@@ -65,7 +65,7 @@
 
 <h2 id="proxy">Detrás de un proxy</h2>
 
-<p>Detrás de un proxy, la URL pública viaja en la cabecera <code>Forwarded</code>, que cualquier cliente puede inventarse. Con esa URL decide <code>csrf</code> si una llamada viene de otro sitio. Fudic no lee la cabecera salvo que actives <code>serve.trustProxy</code>, y solo debes activarlo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</p>
+<p>Detrás de un proxy, la URL pública viaja en la cabecera <code>Forwarded</code>, que cualquier cliente puede inventarse. Con esa URL decide <code>csrf</code> si una llamada viene de otro sitio, y por ella sabe Fudic si la petición llegó por HTTPS, lo que decide si manda <code>Strict-Transport-Security</code>. Fudic no lee la cabecera salvo que actives <code>serve.trustProxy</code>, y solo debes activarlo detrás de un proxy en el que confíes (<a href="/docs/server/running#serve">El servidor</a>).</p>
 
 <h2 id="uploads">Subidas</h2>
 

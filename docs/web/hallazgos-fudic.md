@@ -1488,6 +1488,19 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que la plantilla de `page.headers` traiga `X-Content-Type-Options:
   nosniff`, y también `assets.headers` en `/**`: el navegador solo aplica `nosniff` a scripts y
   hojas de estilo, que no son páginas. Y una línea en `KNOWN` con su único valor.
+- **Medido también en la web de Observatory** (algoritmo 6, más tests que el paquete), con el
+  tutorial `observatory`: `fudic preview` detrás de un túnel rápido de Cloudflare, que pone el
+  certificado y la redirección de HTTP a HTTPS. Sin tocar nada, **75, B**: falta HSTS. Con
+  `serve.trustProxy`, **115, A+**, 11 de 12 (`coop-implemented-with-same-origin` suma +10). Con
+  `nosniff`, **120, A+**, 12 de 12.
+- **HSTS detrás de un proxy.** Cloudflare habla HTTP con el origen, y Fudic solo manda
+  `Strict-Transport-Security` si la petición le llega por HTTPS (`packages/server/src/server.ts`,
+  `protocol === 'https:'`). Detrás de cualquier proxy que termine el TLS (Cloudflare, un PaaS, un
+  nginx) la cabecera no sale hasta activar `serve.trustProxy`, y nada lo avisa. «Las cabeceras»
+  (`/docs/security/headers#hsts`) dice «Fudic solo la manda en las respuestas por HTTPS», y «Detrás
+  de un proxy» (`/docs/security#proxy`) solo hablaba de `csrf`. Corregidas las dos el
+  2026-11-26. Queda por decidir si Fudic debería avisar, por ejemplo en `fudic preview` o al
+  arrancar el servidor, cuando llegan cabeceras de un proxy y `trustProxy` está apagado.
 - **De paso.** Un `page.headers` con un error de valor (`FUD1543`) para `pnpm build` con el
   mensaje bueno, seguido de una docena de líneas de pila de `@fudic/vite`, Rolldown y Vite, igual
   que el `FUD1027` del nº 30 de la CLI.

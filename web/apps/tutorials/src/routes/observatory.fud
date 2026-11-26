@@ -1,0 +1,156 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Medir con HTTP Observatory · Tutoriales de Fudic</title>
+  <meta name="description" content="Mide las cabeceras de seguridad de una app de Fudic con HTTP Observatory de MDN: un túnel de Cloudflare hasta la preview, la nota que da, por qué falta HSTS detrás de un proxy y cómo llegar a un A+ con todos los tests.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/observatory">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Medir con HTTP Observatory · Tutoriales de Fudic">
+  <meta property="og:description" content="Un túnel hasta tu preview, la nota de HTTP Observatory y lo que falta para pasar todos sus tests.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/observatory">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render securityNav("observatory")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y sírvela</a></li>
+        <li><a href="#tunnel">2. Un túnel con HTTPS</a></li>
+        <li><a href="#scan">3. La primera nota</a></li>
+        <li><a href="#proxy">4. Detrás de un proxy</a></li>
+        <li><a href="#nosniff">5. La cabecera que falta</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Seguridad</span></p>
+
+<h1>Medir con HTTP Observatory</h1>
+
+<p class="lede">Abres un túnel hasta la preview de tu app, la mides con HTTP Observatory y corriges lo que le falta hasta pasar todos sus tests.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Medir las cabeceras de seguridad de tu app antes de desplegarla.</li>
+    <li>Entender por qué una app detrás de un proxy necesita <code>serve.trustProxy</code>.</li>
+    <li>Llegar a un A+ con todos los tests pasados.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm, <code>curl</code> y <a href="https://github.com/cloudflare/cloudflared/releases" target="_blank" rel="noopener"><code>cloudflared</code></a>, el cliente de los túneles de Cloudflare. No hace falta cuenta.</p>
+</section>
+
+<h2 id="create">1. Crea la app y sírvela</h2>
+
+<p><a href="https://developer.mozilla.org/en-US/observatory" target="_blank" rel="noopener">HTTP Observatory</a> es la herramienta de MDN que puntúa las cabeceras de seguridad de una web. Mide lo que se despliega, así que sirve el build:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<h2 id="tunnel">2. Un túnel con HTTPS</h2>
+
+<p>Observatory analiza tu web desde internet, por HTTPS y con un certificado de verdad, y no puede llegar a <code>localhost</code>. Un túnel rápido de Cloudflare le da a tu preview una dirección pública con HTTPS. En otra terminal:</p>
+
+<ui-code>
+<pre><code>cloudflared tunnel --url http://localhost:4173</code></pre>
+</ui-code>
+
+<p>Entre sus mensajes, <code>cloudflared</code> escribe la dirección del túnel, una distinta cada vez:</p>
+
+<pre class="output"><code>INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+INF |  https://satisfaction-supreme-pad-politicians.trycloudflare.com                            |</code></pre>
+
+<p>Ábrela en el navegador. En vez de tu app sale un aviso de Vite:</p>
+
+<pre class="output"><code>Blocked request. This host ("satisfaction-supreme-pad-politicians.trycloudflare.com") is not allowed.
+To allow this host, add "satisfaction-supreme-pad-politicians.trycloudflare.com" to `preview.allowedHosts` in vite.config.js.</code></pre>
+
+<p>La preview solo responde a los nombres que conoce, para que otra web no la use a tus espaldas. Permite los de los túneles:</p>
+
+<ui-code .path="vite.config.ts">
+<pre><code>import &#123; defineConfig &#125; from 'vite';
+import &#123; fudic &#125; from '@@fudic/vite';
+
+// Pages are the .fud files under src/routes/; fudic() needs nothing else to serve and build them.
+// allowedHosts lets the preview answer through a Cloudflare tunnel.
+export default defineConfig(&#123;
+  plugins: [fudic()],
+  preview: &#123; allowedHosts: ['.trycloudflare.com'] &#125;,
+&#125;);</code></pre>
+</ui-code>
+
+<p>Para la preview con Ctrl+C y vuelve a arrancarla con <code>npx fudic preview</code>. El túnel sigue abierto, y ahora la dirección enseña tu app.</p>
+
+<h2 id="scan">3. La primera nota</h2>
+
+<p>Abre <a href="https://developer.mozilla.org/en-US/observatory" target="_blank" rel="noopener">HTTP Observatory</a>, escribe el nombre del túnel (sin <code>https://</code>) y analízalo. La misma prueba se puede lanzar desde la terminal, con su API:</p>
+
+<ui-code>
+<pre><code>curl -s -X POST "https://observatory-api.mdn.mozilla.net/api/v2/scan?host=satisfaction-supreme-pad-politicians.trycloudflare.com"</code></pre>
+</ui-code>
+
+<pre class="output"><code>&#123;"id":137590695, … ,"grade":"B","score":75,"status_code":200,"tests_failed":2,"tests_passed":10,"tests_quantity":12&#125;</code></pre>
+
+<p>Una B. La web dice qué tests fallan, y el que más resta es <code>Strict-Transport-Security</code>: no llega. Compruébalo:</p>
+
+<ui-code>
+<pre><code>curl -sI https://satisfaction-supreme-pad-politicians.trycloudflare.com/</code></pre>
+</ui-code>
+
+<p>La respuesta trae la CSP, <code>referrer-policy</code> y <code>cross-origin-opener-policy</code>, pero no <code>strict-transport-security</code>. Cloudflare habla HTTPS con el navegador y HTTP con tu preview, y Fudic solo manda HSTS por HTTPS. Por HTTP no tendría sentido, porque cualquiera en medio podría quitarla.</p>
+
+<h2 id="proxy">4. Detrás de un proxy</h2>
+
+<p>Cloudflare, como cualquier proxy, cuenta en sus propias cabeceras cómo le llegó la petición, también que fue por HTTPS. Fudic no las lee salvo que se lo pidas, porque cualquier cliente puede inventárselas:</p>
+
+<ui-code .path="fudic.json">
+<pre><code>  "guide": &#123; "sheet": "src/guide/guide.css", "icon": "src/guide/logo.svg" &#125;,
+  "serve": &#123; "trustProxy": true &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>Actívalo solo cuando la app esté detrás de un proxy en el que confíes, como aquí. Para la preview, constrúyela y sírvela otra vez, y repite el análisis:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<pre class="output"><code>&#123;"id":137590358, … ,"grade":"A+","score":115,"status_code":200,"tests_failed":1,"tests_passed":11,"tests_quantity":12&#125;</code></pre>
+
+<p>Un A+, con 115 puntos: Observatory suma por encima de 100 lo que va más allá del mínimo, como el <code>Cross-Origin-Opener-Policy</code> que trae la plantilla. Aun así falla un test.</p>
+
+<h2 id="nosniff">5. La cabecera que falta</h2>
+
+<p>El test que falla es <code>X-Content-Type-Options</code>. Con <code>nosniff</code>, el navegador no adivina el tipo de un fichero por su contenido: un texto que alguien suba no se ejecuta como script. Añádela al final de <code>page.headers</code>:</p>
+
+<ui-code .path="page.headers">
+<pre><code>Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-Content-Type-Options: nosniff</code></pre>
+</ui-code>
+
+<p>Construye, sirve y analiza otra vez:</p>
+
+<pre class="output"><code>&#123;"id":137591206, … ,"grade":"A+","score":120,"status_code":200,"tests_failed":0,"tests_passed":12,"tests_quantity":12&#125;</code></pre>
+
+<p>Los doce tests, pasados. Al acabar, cierra el túnel con Ctrl+C, porque mientras está abierto cualquiera puede ver tu preview. En producción, la redirección de HTTP a HTTPS y el certificado los pone tu hosting, como aquí los ha puesto Cloudflare. Qué hace cada cabecera está en <a href="/docs/security/headers">Las cabeceras</a>, y <code>serve.trustProxy</code>, en <a href="/docs/server/running#serve">El servidor</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/observatory" target="_blank" rel="noopener">la solución de Medir con HTTP Observatory, en GitHub</a>. Compara tu <code>fudic.json</code> y tu <code>page.headers</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/security-headers", prevTitle: "Cabeceras de seguridad", next: "/tutorials/csp", nextTitle: "Content Security Policy")

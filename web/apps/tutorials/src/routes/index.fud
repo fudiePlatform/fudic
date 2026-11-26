@@ -36,7 +36,7 @@
   @render category("dependency-injection", "Inyección de dependencias", "Servicios inyectados, en el navegador y en el servidor.", 3, false, true, true, "/tutorials/services")
   @render category("i18n", "Internacionalización", "Tu app en varios idiomas, con sus URLs, plurales y formatos.", 3, true, true, false, "/tutorials/two-languages")
   @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true, "/tutorials/service-worker")
-  @render category("security", "Seguridad", "Cabeceras de seguridad, Content Security Policy y Trusted Types.", 3, false, true, true, "/tutorials/security-headers")
+  @render category("security", "Seguridad", "Cabeceras de seguridad, HTTP Observatory, Content Security Policy y Trusted Types.", 4, false, true, true, "/tutorials/security-headers")
   @render category("performance", "Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true)
   @render category("tests", "Tests", "Tests unitarios, criterios en .fudspec, flujos e historial.", 6, true, true, true)
   @render category("project", "Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true)

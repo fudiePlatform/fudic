@@ -172,9 +172,9 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   `docs/coming-from/react`, `angular`, `vue` y `web-components`), el 2026-11-26: sin `--layout`
   revienta con el mismo `ENOENT`; con la ruta relativa, el `href` frágil y títulos como
   «Web-components», corregidos a mano.
-- **Y otra vez** con los tutoriales de Seguridad (`security-headers`, `csp`, `trusted-types`), el
-  2026-11-26: el `href` frágil y los títulos «Security-headers», «Csp» y «Trusted-types»,
-  corregidos a mano: los tres de la categoría.
+- **Y otra vez** con los tutoriales de Seguridad (`security-headers`, `observatory`, `csp`,
+  `trusted-types`), el 2026-11-26: el `href` frágil y los títulos «Security-headers»,
+  «Observatory», «Csp» y «Trusted-types», corregidos a mano: los cuatro de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 

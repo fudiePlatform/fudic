@@ -183,4 +183,4 @@ date: Thu, 26 Nov 2026 13:32:21 GMT</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/security-headers" target="_blank" rel="noopener">la solución de Cabeceras de seguridad, en GitHub</a>. Compara tu <code>page.headers</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/isomorphic", prevTitle: "Render isomórfico: el mismo HTML en tres sitios", next: "/tutorials/csp", nextTitle: "Content Security Policy")
+@render pager(prev: "/tutorials/isomorphic", prevTitle: "Render isomórfico: el mismo HTML en tres sitios", next: "/tutorials/observatory", nextTitle: "Medir con HTTP Observatory")

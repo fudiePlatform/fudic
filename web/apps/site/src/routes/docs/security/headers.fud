@@ -82,7 +82,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></
 <ul>
   <li><strong><code>Referrer-Policy</code></strong>: con ella, el navegador solo le dice a otra web de qué origen viene el usuario, no de qué página. Dentro de tu web sí manda la ruta, y Fudic la usa para saber a dónde vuelve <code>back</code> en la <a href="/docs/routing/error-page#data">página de error</a>.</li>
   <li><strong><code>Cross-Origin-Opener-Policy</code></strong>: una ventana de otra web que abras desde la tuya, o que abra la tuya, no puede tocar tu página por <code>window.opener</code>.</li>
-  <li id="hsts"><strong><code>Strict-Transport-Security</code></strong>: durante dos años, el navegador solo entra por HTTPS, también en los subdominios. Con <code>preload</code>, puedes apuntar el dominio en la <a href="https://hstspreload.org/" target="_blank" rel="noopener">lista de precarga</a> que traen los navegadores, y así ni la primera visita va por HTTP. Fudic solo la manda en las respuestas por HTTPS.</li>
+  <li id="hsts"><strong><code>Strict-Transport-Security</code></strong>: durante dos años, el navegador solo entra por HTTPS, también en los subdominios. Con <code>preload</code>, puedes apuntar el dominio en la <a href="https://hstspreload.org/" target="_blank" rel="noopener">lista de precarga</a> que traen los navegadores, y así ni la primera visita va por HTTP. Fudic solo la manda en las respuestas por HTTPS. Detrás de un proxy que habla HTTPS con el navegador y HTTP con tu app, como Cloudflare, Fudic solo sabe que la petición llegó por HTTPS si activas <code>serve.trustProxy</code> (<a href="/docs/server/running#serve">El servidor</a>).</li>
 </ul>
 
 <h2 id="add">Añadir una cabecera</h2>
