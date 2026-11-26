@@ -1233,6 +1233,13 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
     fichero.
   - Igual con `fudic preview --project tutorials`. En `site` (`base: '/'`) no pasa: es el caso que
     se midió en el nº 5.
+- **Las versiones no son el problema.** Que el runtime viva en la raíz del dominio, fuera de
+  `/tutorials/`, es lo que pide SDD-45 §4.7 («Dos versiones conviven, y la ruta es el registro»):
+  cada versión tiene su carpeta (`/_fudic/0.0.1-689426ec/`), así que una app en la 1 y otra en la 2
+  piden carpetas distintas, y dos apps en la misma versión comparten carpeta y caché (§4.9). Eso
+  se cumple. Lo que no se decidió es **quién pone las cabeceras de `/_fudic/`**: esa carpeta es del
+  dominio y no de una app, y `assets.headers` es de una app y, con `base`, no llega a la raíz.
+  Ninguna app puede darle caché.
 - **Por qué.** Con un `base` distinto de `/`, la preview monta `originRuntime(outDir)`
   (`packages/vite/src/plugin.ts`, al final del fichero) para responder `/_fudic/…` en la raíz desde
   `dist/_fudic/`. Esa función solo escribe `content-type` y el fichero: no pasa por las cabeceras
@@ -1243,5 +1250,7 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que `originRuntime` aplique a cada pieza las cabeceras que
   `assets.headers` da a `/_fudic/**`, como hace con el resto de ficheros estáticos
   (`server.staticHeaders`). O, mejor (lo que ya pide el nº 5), que el runtime sea de Fudic y salga
-  siempre con `immutable` sin depender del fichero.
+  siempre con `immutable` sin depender del fichero. Es seguro: cada ruta de `/_fudic/` lleva la
+  versión y la huella, así que su contenido no cambia nunca, haya una versión en el dominio o
+  diez.
 
