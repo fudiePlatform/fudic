@@ -1,15 +1,15 @@
-# Vienes de React, Angular o Vue
+# Vienes de React, Angular, Vue o Web Components
 
-Plan para una parte de la web dirigida a quien llega desde los tres frameworks dominantes.
+Plan para una parte de la web dirigida a quien llega desde los tres frameworks dominantes o
+desde los Web Components.
 **Pendiente**: se aborda cuando Docs, MCP y Tutoriales estén cerrados.
 
 ## 1. Alcance
 
-- **Solo React, Angular y Vue**, por adopción. Svelte, Solid, Qwik y el resto se quedan fuera:
-  con poca adopción no compensa, y la lista no tendría fin.
-- **Posible excepción: Lit / Web Components a pelo.** No por adopción, sino porque es el público
-  más cercano a Fudic (ya creen en el estándar) y va a preguntar «¿qué me da Fudic que no me dé
-  Lit?». Si se hace, una página corta. Se decide cuando estén las tres principales.
+- **React, Angular y Vue**, por adopción. Svelte, Solid, Qwik y el resto se quedan fuera: con
+  poca adopción no compensa, y la lista no tendría fin.
+- **Web Components (nativos y Lit)**, no por adopción, sino porque es el público más cercano a
+  Fudic: ya creen en el estándar. Es un gancho distinto al de los otros tres (§4.4).
 
 ## 2. Dónde va: en Docs
 
@@ -27,7 +27,7 @@ Un grupo dentro de la Documentación, junto a *Primeros pasos*. Ni cuarta secci�
 ### URLs y accesos
 
 - `/docs/coming-from` (portada que reparte), `/docs/coming-from/react`,
-  `/docs/coming-from/angular`, `/docs/coming-from/vue`. Cada una tiene peso SEO propio: «React to
+  `/docs/coming-from/angular`, `/docs/coming-from/vue`, `/docs/coming-from/web-components`. Cada una tiene peso SEO propio: «React to
   X» es lo que busca quien está evaluando un framework.
 - Una línea en la home: «¿Vienes de React, Angular o Vue?».
 - Otra al final de *Primeros pasos*, que es justo cuando el lector se pregunta «¿y esto cómo se
@@ -97,12 +97,37 @@ Mapa hecho de memoria: **cada fila se comprueba contra el capítulo real** al es
 | Nuxt | *server* + *routing* |
 | Vite | El mismo Vite (*vite*): punto de partida común |
 
+### Web Components: nativos y Lit
+
+Una sola página con dos columnas, porque Lit es una capa fina sobre lo nativo. El gancho cambia:
+con React, Angular y Vue se traducen conceptos; aquí **no hay nada que traducir, porque la salida
+de Fudic es el mismo estándar que ya usas**. El mensaje es «lo que hoy escribes a mano, Fudic lo
+escribe por ti». La sección «Lo que hay que desaprender» se convierte en «Lo que dejas de
+escribir».
+
+| Nativo | Lit | Fudic |
+|---|---|---|
+| `customElements.define` + clase | `LitElement` + `@customElement` | `.fud` con su tag (decisión 75) |
+| `attachShadow` / `<template shadowrootmode>` a mano | `render()` en cliente | DSD generado, HTML pintado sin JS (nivel 1) |
+| `innerHTML` / clonar `<template>` | `` html`…` `` (tagged templates) | Sintaxis `@` (*template-syntax*) |
+| `observedAttributes` + `attributeChangedCallback` | `@property` / `@state` | *reactivity* |
+| `adoptedStyleSheets` / `<style>` en el shadow root | `static styles` + `css` | *styles* (un `<style>` con scope) |
+| Eventos del DOM | `@lit/context` | *di* |
+| `ElementInternals` | Igual, a mano | *forms/form-associated* |
+| Promesas a mano | `@lit/task` | `@await` |
+| Sin SSR | `@lit-labs/ssr` | *server*, con DSD de serie |
+| — | `@lit/localize` | *i18n* |
+
+Por comprobar al escribirla: el estado actual de `@lit-labs/ssr` (sin opinar sobre él) y si los
+componentes de Fudic conviven en la misma página con componentes Lit o nativos. Si conviven, es
+un argumento fuerte: se adopta Fudic poco a poco, sin reescribir nada.
+
 ## 5. Orden
 
 1. **Angular primero**: tiene las equivalencias más limpias (control flow y DI) y sirve de
-   plantilla para las otras dos.
-2. React y Vue.
-3. Decidir Lit (§1).
+   plantilla para el resto.
+2. **Web Components**: es corta y es el gancho más alineado con la idea de Fudic.
+3. React y Vue.
 
 ## 6. Complemento en Tutoriales (más adelante)
 

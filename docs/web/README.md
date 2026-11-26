@@ -26,7 +26,7 @@ Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 | **Documentación** | La guía completa del framework (§5). La escribimos entre los dos. | **Ahora.** |
 | **Tutoriales** | 74 tutoriales en 16 categorías, en su propia app (`/tutorials`), cada uno con su solución en `tutorials/<slug>/`: [tutorial/README.md](tutorial/README.md). | **En pausa**: portada y primer tutorial hechos; falta decidir cómo se prueba su código (tutorial/README.md §6.1). |
 | **MCP** | Toda la documentación del MCP, en su propia app: [mcp/README.md](mcp/README.md). | **Ahora**: plan en revisión. |
-| **Vienes de…** | Un grupo dentro de Docs (`/docs/coming-from`) para quien llega de React, Angular o Vue: [vienes-de.md](vienes-de.md). | **Pendiente**: cuando Docs, MCP y Tutoriales estén cerrados. |
+| **Vienes de…** | Un grupo dentro de Docs (`/docs/coming-from`) para quien llega de React, Angular, Vue o Web Components (nativos y Lit): [vienes-de.md](vienes-de.md). | **Pendiente**: cuando Docs, MCP y Tutoriales estén cerrados. |
 
 ### Diseño de la Documentación
 
