@@ -1,0 +1,178 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Páginas lentas · Tutoriales de Fudic</title>
+  <meta name="description" content="Una página de Fudic con un dato que tarda dos segundos: lo que espera el usuario en ssr, con el dato en streaming y con la página pintada en el build.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/slow-pages">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Páginas lentas · Tutoriales de Fudic">
+  <meta property="og:description" content="El mismo dato lento, de dos segundos de espera a nueve milisegundos.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/slow-pages">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("slow-pages")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y una página lenta</a></li>
+        <li><a href="#measure">2. Mide la espera</a></li>
+        <li><a href="#stream">3. Lo lento, después</a></li>
+        <li><a href="#ssg">4. Lo que es igual para todos, en el build</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Páginas lentas</h1>
+
+<p class="lede">Una página necesita un dato que tarda dos segundos. Mides cuánto espera el usuario y la bajas de dos segundos a unos milisegundos, primero enviando lo lento después y luego pintándola en el build.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Medir cuándo llega el primer byte de una página.</li>
+    <li>Sacar un dato lento del camino con <code>later</code> y <code>@@await</code>, en streaming.</li>
+    <li>Elegir entre pintar en cada petición (<code>ssr</code>) o una vez en el build (<code>ssg</code>).</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code>. Los datos de una página están en <a href="/tutorials/route-data">Datos del servidor para la página</a>, y <code>@@await</code>, en <a href="/tutorials/await">Esperar datos con @@await</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y una página lenta</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g page report --server</code></pre>
+</ui-code>
+
+<p>La página pinta las ventas del mes, y su <code>load</code> se ejecuta en cada petición, <code>ssr</code>:</p>
+
+<ui-code .path="src/routes/report.fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/report.ts.
+load ssr
+  title  str
+  sales  i32</code></pre>
+</ui-code>
+
+<p>La consulta tarda dos segundos, como una base de datos lenta:</p>
+
+<ui-code .path="src/server/routes/report.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/report';
+
+/** A slow query: the total arrives after two seconds. */
+function totalSales(): Promise&lt;number&gt; &#123;
+  return new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(1234), 2000));
+&#125;
+
+load.handle(async () =&gt; (&#123; title: 'Report', sales: await totalSales() &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/report.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./report.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;@@data.title&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;p&gt;@@data.sales sales this month.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<h2 id="measure">2. Mide la espera</h2>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/report</code>: la pestaña se queda en blanco dos segundos, y luego sale todo de golpe. En otra terminal, pregunta a <code>curl</code> cuándo llega el primer byte y cuándo el último:</p>
+
+<ui-code>
+<pre><code>curl -s -o /dev/null -w "first byte %&#123;time_starttransfer&#125;s  total %&#123;time_total&#125;s\n" http://localhost:5173/report</code></pre>
+</ui-code>
+
+<pre class="output"><code>first byte 2,061406s  total 2,061575s</code></pre>
+
+<p>El servidor no envía nada hasta tener el dato, ni siquiera el <code>&lt;head&gt;</code>. Durante esos dos segundos el navegador no puede ni empezar a descargar el CSS. La primera petición tras guardar tarda algo más, porque <code>fudic dev</code> compila la página: mide la segunda.</p>
+
+<h2 id="stream">3. Lo lento, después</h2>
+
+<p>Marca el dato lento con <code>later</code>. Ya no retiene la página:</p>
+
+<ui-code .path="src/routes/report.fudapi">
+<pre><code>load ssr
+  title  str
+  sales  i32  later</code></pre>
+</ui-code>
+
+<p>El servidor lo devuelve como una promesa, sin esperarla:</p>
+
+<ui-code .path="src/server/routes/report.ts">
+<pre><code>load.handle(() =&gt; (&#123; title: 'Report', sales: totalSales() &#125;));</code></pre>
+</ui-code>
+
+<p>Y la página lo pinta con <code>@@await</code>, cuando llega:</p>
+
+<ui-code .path="src/routes/report.fud">
+<pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
+@@await data.sales &#123;
+  &lt;p&gt;@@data.sales sales this month.&lt;/p&gt;
+&#125;</code></pre>
+</ui-code>
+
+<p>Recarga: «Report» sale al momento, y el total dos segundos después. Vuelve a medir:</p>
+
+<pre class="output"><code>first byte 0,056635s  total 2,058221s</code></pre>
+
+<p>La respuesta tarda lo mismo en terminar, pero empieza en milisegundos: es la misma respuesta HTTP, enviada en streaming. El <code>&lt;head&gt;</code> y el título llegan primero, y el navegador descarga el CSS mientras el servidor espera.</p>
+
+<h2 id="ssg">4. Lo que es igual para todos, en el build</h2>
+
+<p>Si el total es el mismo para todos y solo cambia cuando publicas, no hace falta calcularlo en cada petición. Con <code>ssg</code>, el build ejecuta <code>load</code> una vez y guarda la página ya pintada. Deja el contrato, el servidor y la página como en el paso 1, con <code>ssg</code>:</p>
+
+<ui-code .path="src/routes/report.fudapi">
+<pre><code>load ssg
+  title  str
+  sales  i32</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/report.ts">
+<pre><code>load.handle(async () =&gt; (&#123; title: 'Report', sales: await totalSales() &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/report.fud">
+<pre><code>&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;p&gt;@@data.sales sales this month.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>En <code>fudic dev</code> la página sigue tardando dos segundos, porque en desarrollo todo se pinta al pedirlo. Para <code>fudic dev</code> con Ctrl+C, construye la app y sírvela como en producción:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>El build escribe <code>dist/report/index.html</code>, con «1234 sales this month.» ya dentro. Mide en el puerto de la preview:</p>
+
+<ui-code>
+<pre><code>curl -s -o /dev/null -w "first byte %&#123;time_starttransfer&#125;s\n" http://localhost:4173/report</code></pre>
+</ui-code>
+
+<pre class="output"><code>first byte 0,009088s</code></pre>
+
+<p>Nueve milisegundos: el servidor envía un fichero, sin ejecutar nada. El precio es que el dato es el del momento del build. Para un dato que cambia con cada usuario, como su cuenta, se queda <code>ssr</code>, con lo lento en <code>later</code>.</p>
+
+<p>Los tres modos, el tercero (<code>sw</code>, que pinta el Service Worker en el navegador) y cuál elegir para cada página están en <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/slow-pages" target="_blank" rel="noopener">la solución de Páginas lentas, en GitHub</a>, con la página en <code>ssg</code>. Compara tu <code>report.fudapi</code> con el suyo.</p>
+
+@render pager(prev: "/tutorials/alternate-layouts", prevTitle: "Varios layouts", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

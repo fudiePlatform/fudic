@@ -124,7 +124,7 @@
     @render tutorial("error-page", "Tu página de error", "beginner", @current)
     @render tutorial("route-data", "Datos del servidor para la página", "intermediate", @current)
     @render tutorial("alternate-layouts", "Varios layouts", "intermediate", @current)
-    @render tutorial("slow-pages", "Páginas lentas", "advanced", @current, false)
+    @render tutorial("slow-pages", "Páginas lentas", "advanced", @current)
     @render tutorial("page-maps", "Lo que la página le cuenta al runtime", "advanced", @current, false)
     @render tutorial("early-hints", "Early hints", "advanced", @current, false)
   </ol>

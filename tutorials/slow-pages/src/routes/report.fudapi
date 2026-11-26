@@ -1,0 +1,4 @@
+# The data of the page, read on the server: its handler is in src/server/routes/report.ts.
+load ssg
+  title  str
+  sales  i32

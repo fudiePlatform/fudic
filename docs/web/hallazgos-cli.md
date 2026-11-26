@@ -152,7 +152,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   «Form-control» y «Custom-rules», corregidos a mano: los siete de la categoría.
 - **Y otra vez** con los tutoriales de Rutas y layouts (`pages-and-layout`, `dynamic-routes`), el
   2026-11-26: el `href` frágil y los títulos «Pages-and-layout», «Dynamic-routes», «Error-page»,
-  «Route-data» y «Alternate-layouts», corregidos a mano.
+  «Route-data», «Alternate-layouts» y «Slow-pages», corregidos
+  a mano.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
