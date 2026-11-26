@@ -1,0 +1,21 @@
+<link rel="component" href="../myapp-counter/myapp-counter.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const { label, start } = props<{ label: string; start: number }>();
+  const open = signal(true);
+
+  function toggle() {
+    open.set(!open());
+  }
+}
+
+<myapp-panel>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>@label <button type="button" @click=@toggle>@(open() ? "Hide" : "Show")</button></p>
+    <div hidden=@(!open())>
+      <myapp-counter .start=@start></myapp-counter>
+    </div>
+  </template>
+</myapp-panel>

@@ -1,0 +1,193 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Lo que la página le cuenta al runtime · Tutoriales de Fudic</title>
+  <meta name="description" content="Los bloques JSON que el servidor de Fudic escribe al final de la página, fud-state y fud-tree, y lo que el runtime hace con ellos al primer clic.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/page-maps">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Lo que la página le cuenta al runtime · Tutoriales de Fudic">
+  <meta property="og:description" content="Quién se hidrata, con qué valores y en qué orden, leído en el código fuente.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/page-maps">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render routesNav("page-maps")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y un contador</a></li>
+        <li><a href="#state">2. Los valores de cada instancia</a></li>
+        <li><a href="#tree">3. Un componente dentro de otro</a></li>
+        <li><a href="#runtime">4. Lo que hace el runtime con ellos</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Rutas y layouts</span></p>
+
+<h1>Lo que la página le cuenta al runtime</h1>
+
+<p class="lede">Lees en el código fuente los bloques que el servidor escribe al final de la página para que el runtime sepa qué hidratar, con qué valores y en qué orden, y compruebas qué hace con ellos al primer clic.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Leer <code>fud-state</code>: los valores con los que se pintó cada componente.</li>
+    <li>Leer <code>fud-tree</code>: qué componente monta a cuál.</li>
+    <li>Ver en la pestaña Red qué código descarga la página, y cuándo.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Qué es hidratar está en <a href="/tutorials/hydration">Hidratación guiada por el gesto</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y un contador</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g component counter</code></pre>
+</ui-code>
+
+<p>Un contador que arranca en el valor que le pasan:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; start &#125; = props&lt;&#123; start: number &#125;&gt;();
+  const count = signal(start);
+
+  function more() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button"&gt;
+    &lt;button type="button" @@click=@@more&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<p>Ponlo dos veces en la página, cada uno con su valor:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="component" href="../components/myapp-counter/myapp-counter.fud"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;myapp-counter .start=@@(1)&gt;&lt;/myapp-counter&gt;
+&lt;myapp-counter .start=@@(10)&gt;&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<h2 id="state">2. Los valores de cada instancia</h2>
+
+<p>Arranca <code>npx fudic dev</code>, abre <code>http://localhost:5173/</code> y mira el código fuente con Ctrl+U. Cada contador llega pintado, con su número, y al final del <code>&lt;body&gt;</code> hay un bloque JSON:</p>
+
+<pre class="output"><code>&lt;myapp-counter data-fud-id="0" …&gt; … &lt;output&gt;1&lt;/output&gt; … &lt;/myapp-counter&gt;
+&lt;myapp-counter data-fud-id="1" …&gt; … &lt;output&gt;10&lt;/output&gt; … &lt;/myapp-counter&gt;
+&lt;script type="application/json" id="fud-state"&gt;[[0,1,2],[1,10]]&lt;/script&gt;</code></pre>
+
+<p>Para engancharse al HTML sin volver a pintarlo, cada contador necesita el valor con el que lo pintó el servidor. Eso es <code>fud-state</code>, dos listas:</p>
+
+<ul>
+  <li><strong>La segunda son los valores</strong>, las props de todos los componentes en orden: <code>1</code> y <code>10</code>.</li>
+  <li><strong>La primera dice dónde empieza cada uno.</strong> El <code>data-fud-id</code> de cada host es su posición: el contador <code>0</code> lee de la posición 0 a la 1, y el <code>1</code>, de la 1 a la 2. Por eso tiene un número más que contadores.</li>
+</ul>
+
+<p>No hay nombres de props ni objetos: solo lo justo para que cada instancia arranque con su valor.</p>
+
+<h2 id="tree">3. Un componente dentro de otro</h2>
+
+<p>Crea un panel que monta su propio contador y lo puede ocultar:</p>
+
+<ui-code>
+<pre><code>npx fudic g component panel</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/myapp-panel/myapp-panel.fud">
+<pre><code>&lt;link rel="component" href="../myapp-counter/myapp-counter.fud"&gt;
+
+@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+
+  const &#123; label, start &#125; = props&lt;&#123; label: string; start: number &#125;&gt;();
+  const open = signal(true);
+
+  function toggle() &#123;
+    open.set(!open());
+  &#125;
+&#125;
+
+&lt;myapp-panel&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;@@label &lt;button type="button" @@click=@@toggle&gt;@@(open() ? "Hide" : "Show")&lt;/button&gt;&lt;/p&gt;
+    &lt;div hidden=@@(!open())&gt;
+      &lt;myapp-counter .start=@@start&gt;&lt;/myapp-counter&gt;
+    &lt;/div&gt;
+  &lt;/template&gt;
+&lt;/myapp-panel&gt;</code></pre>
+</ui-code>
+
+<p>Añádelo a la página, después de los dos contadores, con su <code>&lt;link rel="component"&gt;</code> arriba:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="component" href="../components/myapp-panel/myapp-panel.fud"&gt;
+…
+&lt;myapp-panel .label="Visits today" .start=@@(100)&gt;&lt;/myapp-panel&gt;</code></pre>
+</ui-code>
+
+<p>Guarda y vuelve a mirar el final del código fuente:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-state"&gt;[[0,1,2,4,5],[1,10,"Visits today",100,100]]&lt;/script&gt;
+&lt;script type="application/json" id="fud-tree"&gt;&#123;"myapp-panel":["myapp-counter"]&#125;&lt;/script&gt;</code></pre>
+
+<ul>
+  <li><strong><code>fud-state</code> crece:</strong> el panel, que es el host <code>2</code>, ocupa dos posiciones (su texto y su <code>100</code>), y el contador que monta, el <code>3</code>, una.</li>
+  <li><strong><code>fud-tree</code> dice quién monta a quién:</strong> <code>myapp-panel</code> pinta <code>myapp-counter</code> en su shadow root. Va por tag, no por instancia, y lo calcula el compilador: con doscientos paneles sería igual de corto.</li>
+</ul>
+
+<p><code>fud-tree</code> solo lista componentes que se hidratan. Si el panel no tuviera su botón, no tendría nada que hacer en el navegador, y el bloque no saldría.</p>
+
+<h2 id="runtime">4. Lo que hace el runtime con ellos</h2>
+
+<p>Construye la app y sírvela como en producción, para ver las descargas de verdad:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Abre <code>http://localhost:4173/</code> con la pestaña Red abierta y filtra por JS. Al cargar baja el runtime, pero ningún componente: los tres hosts siguen sin definir, y aun así se ven pintados, porque su HTML llegó completo. Pulsa Hide en el panel:</p>
+
+<pre class="output"><code>/assets/h/myapp-counter-ccb3d9d9.js
+…
+/assets/h/myapp-panel-ccb3d9d9.js</code></pre>
+
+<ul>
+  <li><strong>El hijo baja antes que el padre.</strong> El runtime lee en <code>fud-tree</code> que el panel monta un contador, y lo prepara primero. Cuando el panel se engancha, su hijo ya responde.</li>
+  <li><strong>El código va por tag.</strong> Con <code>myapp-counter</code> definido, los tres contadores quedan listos, también los dos de la página, sin descargar nada más.</li>
+  <li><strong>Cada uno arranca donde estaba.</strong> Pulsa +1 en el primer contador: pasa a 2, porque leyó su <code>1</code> de <code>fud-state</code>.</li>
+</ul>
+
+<p>Hay más bloques. Un componente que emite a otro por un bus añade <code>fud-bus</code>, que sale en <a href="/tutorials/event-bus">Un bus entre componentes</a>, y uno que se hidrata al cargar, <code>fud-eager</code>, que sale en <a href="/tutorials/lifecycle">El ciclo de vida</a>. Cuándo se hidrata cada componente está en <a href="/docs/reactivity/hydration">Hidratación</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/page-maps" target="_blank" rel="noopener">la solución de Lo que la página le cuenta al runtime, en GitHub</a>. Compara tu <code>myapp-panel.fud</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/slow-pages", prevTitle: "Páginas lentas", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")

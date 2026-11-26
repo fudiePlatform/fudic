@@ -111,7 +111,7 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 | 32 | `route-data` | Datos del servidor para la página | I | — | routing/data | `/blog`, `src/server/blog.ts` | En revisión |
 | 33 | `alternate-layouts` | Varios layouts, y uno con marco | I | `g layout` | template-syntax/routes-and-layouts | `/marco`, `/marco-sin-lateral` | En revisión |
 | 34 | `slow-pages` | Páginas lentas: renderizado en streaming | A | — | routing/rendering | `/lento` | En revisión |
-| 35 | `page-maps` | Lo que la página le cuenta al runtime | A | — | performance (por confirmar) | `/mapas` | Propuesto |
+| 35 | `page-maps` | Lo que la página le cuenta al runtime | A | — | reactivity/hydration | `/mapas` | En revisión |
 | 36 | `early-hints` | Early hints | A | — | routing/early-hints | — | Propuesto |
 
 ### 3.7 Formularios
@@ -209,8 +209,11 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 - La configuración de diagnósticos (`"diagnostics": { "warnings": "error" }`) y la Vite build
   (`vite/build`): si dan para un tutorial propio o van dentro de `editor` (3), `baseline` (72) y
   `lighthouse` (65).
-- La página de la Documentación de `page-maps` (35): no hay una que lo cuente con ese nombre
-  (`client-components`, 25, enlaza a Ciclo de vida, que cuenta `afterCreate`). Si falta, se apunta como hueco de la Documentación.
+- ~~La página de la Documentación de `page-maps` (35)~~. Comprobado el 2026-11-26: es un **hueco de
+  la Documentación**. Hidratación (`/docs/reactivity/hydration`) cuenta `fud-state`, pero
+  `fud-tree`, `fud-bus`, `fud-around` y `fud-eager` no salen en ninguna página. El tutorial enlaza a
+  Hidratación y a los tutoriales que enseñan `fud-bus` (`event-bus`) y `fud-eager` (`lifecycle`).
+  (`client-components`, 25, enlaza a Ciclo de vida, que cuenta `afterCreate`.)
 - Que cada tutorial cabe en cinco minutos: se cronometra al escribirlo; si no cabe, se parte.
 
 ## 4. La app
@@ -341,3 +344,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-26 | `route-data`, con su solución en `tutorials/route-data/`: `fudic g page blog --server`, un `load` con `title` y `posts  Post[]`, su handler, la lista pintada con `data` y el `TS2339` de un campo que no existe, y un filtro por `ctx.url.searchParams` con `load ssr`, enlaces a cada etiqueta y `@empty`. Probado también en `pnpm build` y `fudic preview` con Chrome sin cabeza: sin modo (`sw`), el service worker pinta `/blog?tag=guides` con los datos de `/blog` (hallazgo 81 del framework); con `ssr`, bien. Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-26 | `alternate-layouts`, con su solución en `tutorials/alternate-layouts/`: `fudic g layout docs --sections nav`, `fudic g page guide --layout src/layouts/docs.fud`, la rejilla en `<myapp-frame>` (`fudic g component frame --slot`) con `@RenderSection(nav, slot: "nav")` y `@RenderBody(slot: "content")`, el `slot` que pone el layout en el código fuente y la rejilla medida en Chrome sin cabeza, y `required: true` con el `FUD0890` y la acción «Add the layout's required sections (nav)» del language server; el test generado del layout, rehecho con `sections`. El 72 del framework, ampliado a `FUD0890`. Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-26 | `slow-pages`, con su solución en `tutorials/slow-pages/`: una página `report` cuyo `load ssr` tarda 2 s, medida con `curl` (primer byte a los 2,06 s), el dato en `later` con `@await` (primer byte a los 0,06 s, último a los 2,06) y `load ssg` en `pnpm build` y `fudic preview` (primer byte a los 0,009 s, con el total ya en `dist/report/index.html`). Para no repetir `await`, el tutorial va de cuánto espera el usuario, no de la sintaxis. Lighthouse: 99–100 / 100 / 100 / 100. |
+| 2026-11-26 | `page-maps`, con su solución en `tutorials/page-maps/`: un contador con una prop, puesto dos veces (`fud-state` `[[0,1,2],[1,10]]`), y un panel interactivo que monta otro en su shadow (`fud-tree` `{"myapp-panel":["myapp-counter"]}`; sin el botón del panel, el bloque no sale). En `pnpm build` y `fudic preview` con Chrome sin cabeza: al cargar no baja ningún componente y los tres hosts siguen sin definir; al pulsar Hide baja `myapp-counter` antes que `myapp-panel`, y el primer contador pasa de 1 a 2. La Documentación no tiene página para estos bloques (§3.17): enlaza a Hidratación. Lighthouse: 99–100 / 100 / 100 / 100. |

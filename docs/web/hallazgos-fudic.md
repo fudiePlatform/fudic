@@ -983,7 +983,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   pueden escribir por partes.
 - **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher.
 - **Vuelto a comprobar** con el tutorial `error-page` (2026-11-26): `fudic g page about` seguido de
-  `cat > src/routes/about.fud` dio el mismo `FUD0156` a una página, hasta un `touch`.
+  `cat > src/routes/about.fud` dio el mismo `FUD0156` a una página, hasta un `touch`. Y en
+  `page-maps`, con un componente reescrito entero: además de `FUD0156`, `FUD0949` («no component
+  <myapp-panel> in the workspace»), `FUD0953` (sin fixture, que sí estaba) y `FUD0191` en la página.
 
 ## 68. Un componente que solo lee un store no se actualiza nunca
 

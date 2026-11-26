@@ -1,0 +1,12 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-counter/myapp-counter.fud">
+<link rel="component" href="../components/myapp-panel/myapp-panel.fud">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-counter .start=@(1)></myapp-counter>
+<myapp-counter .start=@(10)></myapp-counter>
+<myapp-panel .label="Visits today" .start=@(100)></myapp-panel>

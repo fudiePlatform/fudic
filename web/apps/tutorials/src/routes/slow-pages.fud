@@ -175,4 +175,4 @@ npx fudic preview</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/slow-pages" target="_blank" rel="noopener">la solución de Páginas lentas, en GitHub</a>, con la página en <code>ssg</code>. Compara tu <code>report.fudapi</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/alternate-layouts", prevTitle: "Varios layouts", next: "/tutorials/first-form", nextTitle: "Un formulario con binding")
+@render pager(prev: "/tutorials/alternate-layouts", prevTitle: "Varios layouts", next: "/tutorials/page-maps", nextTitle: "Lo que la página le cuenta al runtime")

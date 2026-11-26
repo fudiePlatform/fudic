@@ -177,4 +177,4 @@ test('asks for the name and a valid email', async () =&gt; &#123;
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/first-form" target="_blank" rel="noopener">la solución de Un formulario con binding, en GitHub</a>. Compara tu <code>contact.fudapi</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/slow-pages", prevTitle: "Páginas lentas", next: "/tutorials/validation", nextTitle: "Validación y mensajes de error")
+@render pager(prev: "/tutorials/page-maps", prevTitle: "Lo que la página le cuenta al runtime", next: "/tutorials/validation", nextTitle: "Validación y mensajes de error")
