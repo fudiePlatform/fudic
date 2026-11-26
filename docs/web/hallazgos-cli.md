@@ -442,6 +442,10 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   cadena que el tutorial no necesita.
 - **Qué debería hacer.** Que `g form` y `add forms` añadan también `@fudic/http`, o que
   `@fudic/forms` la declare como dependencia.
+- **Y otra vez** con el tutorial `form-tests`, el 2026-11-26, y peor: nada más ejecutar
+  `fudic g form signup`, sin ninguna página que lo use, `fudic test` falla en todos los ficheros del
+  proyecto con «Cannot find package '@fudic/http/contract' imported from fudic-root.server.js». El
+  tutorial pide `pnpm add @fudic/http@0.0.1` justo después, como `first-form`.
 
 ## 27. `fudic preview` no puede enseñar las early hints, y se cuelga si la app sirve HTTPS
 

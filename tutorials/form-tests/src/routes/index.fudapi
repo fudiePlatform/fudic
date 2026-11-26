@@ -1,0 +1,4 @@
+# Sends the form to the server, which checks it again before the handler sees it.
+post signup
+  use json
+  form signupForm

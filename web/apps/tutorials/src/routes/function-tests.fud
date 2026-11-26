@@ -203,4 +203,4 @@ fudic test · 1 project · passed · 5.1 s</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/function-tests" target="_blank" rel="noopener">la solución de Probar funciones de servidor y middlewares, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/load-tests", prevTitle: "Probar el load de una página", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/load-tests", prevTitle: "Probar el load de una página", next: "/tutorials/form-tests", nextTitle: "Probar un formulario y sus reglas")

@@ -1,0 +1,245 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Probar un formulario y sus reglas · Tutoriales de Fudic</title>
+  <meta name="description" content="Prueba las reglas de un formulario sin página, con $validate y message. Después envíalo a una función de servidor y prueba lo que solo sabe el servidor: un alias ocupado, y que el usuario se guarda.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/form-tests">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Probar un formulario y sus reglas · Tutoriales de Fudic">
+  <meta property="og:description" content="Las reglas del navegador, sin página; las del servidor, enviando el formulario.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/form-tests">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("form-tests")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#form">1. Crea el formulario y sus reglas</a></li>
+        <li><a href="#rules">2. Prueba las reglas sin página</a></li>
+        <li><a href="#send">3. Envíalo al servidor</a></li>
+        <li><a href="#submit">4. Prueba el envío</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Tests</span></p>
+
+<h1>Probar un formulario y sus reglas</h1>
+
+<p class="lede">Pruebas un alta con un alias: las reglas que comprueba el navegador, sin página, y la que solo puede comprobar el servidor, enviando el formulario.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Probar las reglas de un formulario sin página, con <code>$validate</code> y <code>message</code>.</li>
+    <li>Probar una regla que pregunta al servidor, enviando el formulario con <code>page.submit</code>.</li>
+    <li>Comprobar que el handler guarda lo que llega, simulando el módulo de datos.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="form">1. Crea el formulario y sus reglas</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g form signup
+pnpm add @@fudic/http@@0.0.1</code></pre>
+</ui-code>
+
+<p>Hoy <code>g form</code> no instala <code>@@fudic/http</code>, que el formulario necesita, y sin él no pasa ningún test. Por eso va la última línea. El campo <code>alias</code> tiene tres reglas, que se comprueban en orden:</p>
+
+<ui-code .path="src/forms/signup.fudapi">
+<pre><code># Every field says its type, its rules and their texts; both ends take it from here.
+form signupForm
+  alias  str = ""
+    required       "Choose an alias."
+    pattern alias  "Only lowercase letters, digits and hyphens."
+    alias-taken    "That alias is already taken."</code></pre>
+</ui-code>
+
+<p><code>pattern alias</code> y <code>alias-taken</code> son tuyas. <code>runs remote</code> dice que <code>alias-taken</code> se comprueba en el servidor, donde está la lista de alias:</p>
+
+<ui-code .path="src/rules/aliases.fudapi">
+<pre><code># Lowercase letters, digits and hyphens, nothing else.
+pattern alias  [a-z0-9-]+
+
+# The alias belongs to somebody else. The list stays on the server.
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/users.ts">
+<pre><code>// The users of the app. Today a list; tomorrow, a database.
+const aliases = ['admin', 'ada', 'grace'];
+
+export async function aliasTaken(alias: string) &#123;
+  return aliases.includes(alias);
+&#125;
+
+export async function addUser(alias: string) &#123;
+  aliases.push(alias);
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/rules.ts">
+<pre><code>import &#123; aliasTaken &#125; from 'fudic:rules/aliases';
+import &#123; aliasTaken as taken &#125; from './users';
+
+aliasTaken.check(async (value) =&gt; !(await taken(value)));</code></pre>
+</ui-code>
+
+<h2 id="rules">2. Prueba las reglas sin página</h2>
+
+<p>Un formulario se importa de <code>fudic:forms/signup</code> y se valida sin pintarlo. Cambia el test que dejó la CLI por este:</p>
+
+<ui-code .path="src/forms/signup.test.ts">
+<pre><code>import &#123; beforeEach, expect, test &#125; from 'vitest';
+import &#123; signupForm &#125; from 'fudic:forms/signup';
+
+beforeEach(() =&gt; &#123;
+  signupForm.$reset();
+&#125;);
+
+test('asks for an alias', async () =&gt; &#123;
+  expect(await signupForm.$validate()).toBe(false);
+  expect(signupForm.alias.message()).toBe('Choose an alias.');
+&#125;);
+
+test('refuses capitals and spaces', async () =&gt; &#123;
+  signupForm.alias.set('Ada Lovelace');
+  expect(await signupForm.$validate()).toBe(false);
+  expect(signupForm.alias.message()).toBe('Only lowercase letters, digits and hyphens.');
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><code>$validate</code> ejecuta las reglas del navegador y dice si el formulario es válido.</li>
+  <li><code>message</code> es el texto del error del campo, el mismo que verá el usuario.</li>
+  <li><code>$reset</code> deja el formulario como recién creado. Hace falta porque el formulario es uno solo para todos los tests del fichero.</li>
+</ul>
+
+<p><code>alias-taken</code> no se puede probar así: es del servidor, y un formulario suelto no tiene servidor al que preguntar.</p>
+
+<h2 id="send">3. Envíalo al servidor</h2>
+
+<ui-code>
+<pre><code>npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<p>La portada tendrá una función <code>signup</code> que recibe el formulario. Antes de llegar al handler, el servidor comprueba otra vez todas sus reglas, también <code>alias-taken</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Sends the form to the server, which checks it again before the handler sees it.
+post signup
+  use json
+  form signupForm</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; signup &#125; from 'fudic:routes/index';
+import &#123; addUser &#125; from '../users';
+
+signup.handle(async (ctx) =&gt; &#123;
+  await addUser(ctx.form.$value().alias);
+&#125;);</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+&lt;link rel="server" href="../forms/signup.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Sign up&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Sign up&lt;/h1&gt;
+
+&lt;form control=@@signupForm form:=@@signup&gt;
+  &lt;label for="alias"&gt;Alias&lt;/label&gt;
+  &lt;input id="alias" type="text" control=@@signupForm.alias&gt;
+  &lt;small error=@@signupForm.alias&gt;&lt;/small&gt;
+  &lt;button type="submit"&gt;Sign up&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+</ui-code>
+
+<p><code>form:=@@signup</code> hace que enviar el formulario llame a <code>signup</code>.</p>
+
+<h2 id="submit">4. Prueba el envío</h2>
+
+<p>Cambia el test de la portada por este. Simula <code>addUser</code> para saber si el handler guardó al usuario, y deja <code>aliasTaken</code> de verdad:</p>
+
+<ui-code .path="src/routes/index.test.ts">
+<pre><code>import &#123; beforeEach, expect, test, vi &#125; from 'vitest';
+import &#123; visit &#125; from '@@fudic/testing';
+import &#123; signupForm &#125; from 'fudic:forms/signup';
+import &#123; addUser &#125; from '../server/users';
+
+vi.mock('../server/users', async (importOriginal) =&gt; &#123;
+  const real = await importOriginal&lt;typeof import('../server/users')&gt;();
+  return &#123; ...real, addUser: vi.fn() &#125;;
+&#125;);
+
+beforeEach(() =&gt; &#123;
+  signupForm.$reset();
+  vi.mocked(addUser).mockClear();
+&#125;);
+
+test('answers /', async () =&gt; &#123;
+  const page = await visit('/');
+  expect(page.status).toBe(200);
+&#125;);
+
+test('an alias someone has: the server says so under the field', async () =&gt; &#123;
+  const page = await visit('/');
+  await page.type(page.getByLabelText('Alias'), 'ada');
+  await page.submit();
+  expect(page.errorOf('Alias')).toBe('That alias is already taken.');
+  expect(addUser).not.toHaveBeenCalled();
+&#125;);
+
+test('a free alias is saved', async () =&gt; &#123;
+  const page = await visit('/');
+  await page.type(page.getByLabelText('Alias'), 'ada-l');
+  await page.submit();
+  expect(page.errorOf('Alias')).toBeNull();
+  expect(addUser).toHaveBeenCalledWith('ada-l');
+&#125;);</code></pre>
+</ui-code>
+
+<ul>
+  <li><code>page.type</code> escribe en el campo como lo haría el usuario, y <code>page.submit</code> envía el formulario.</li>
+  <li><code>page.errorOf('Alias')</code> lee el error que se pinta en el campo con esa etiqueta, o <code>null</code> si no hay.</li>
+  <li>Con <code>ada</code>, el servidor rechaza el envío con el texto de <code>alias-taken</code>, y el handler no llega a ejecutarse.</li>
+</ul>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> Test Files  3 passed (3)
+      Tests  6 passed (6)
+
+fudic test · 1 project · passed · 5.1 s</code></pre>
+
+<p>Las reglas y sus textos están en <a href="/docs/forms">El formulario</a>, y cómo se prueba un componente de formulario, en <a href="/docs/testing/unit">Tests unitarios</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/form-tests" target="_blank" rel="noopener">la solución de Probar un formulario y sus reglas, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/function-tests", prevTitle: "Probar funciones de servidor y middlewares", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")

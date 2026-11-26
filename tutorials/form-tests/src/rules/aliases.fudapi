@@ -1,0 +1,8 @@
+# Lowercase letters, digits and hyphens, nothing else.
+pattern alias  [a-z0-9-]+
+
+# The alias belongs to somebody else. The list stays on the server.
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken

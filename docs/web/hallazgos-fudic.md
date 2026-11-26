@@ -1638,3 +1638,21 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Añadir `getAllByRole` (y su `queryAll`), y tipar `data` con el `load` de la
   ruta, como ya se tipan los fixtures.
 
+## 104. Una regla `runs remote` no se puede probar con el formulario solo
+
+- **Qué pasó.** Escribiendo el tutorial `form-tests` (2026-11-26), con un formulario de
+  `src/forms/signup.fudapi` que usa una regla `alias-taken` declarada `runs remote`:
+  - `await signupForm.$validate()` en un test devuelve `true` con un alias ocupado: la regla no se
+    ejecuta y no avisa.
+  - `await signupForm.$validate({ server: true })` lanza «alias-taken of rules/aliases has
+    middlewares and nothing runs them: it runs on the server, through @fudic/http»
+    (`packages/forms/src/contract/rule.ts:155`).
+  - En una página con `visit`, escribir el alias, salir del campo y enviar el formulario sin función
+    de servidor tampoco la ejecuta: el error se queda vacío. En el navegador sí pregunta mientras se
+    escribe (comprobado en `custom-rules`).
+- **Cómo se resolvió en el tutorial.** El formulario se envía a una función `post signup` con
+  `form signupForm`. Al enviarlo con `page.submit()`, el servidor ejecuta la regla y el test lee su
+  texto con `page.errorOf('Alias')`.
+- **Qué debería hacer.** Que `$validate({ server: true })` en un test pregunte al servidor en memoria,
+  como hace el navegador, o que una regla remota que no se puede ejecutar lo diga en vez de pasar.
+
