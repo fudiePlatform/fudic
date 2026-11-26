@@ -150,4 +150,4 @@
   <li><a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>: con lo que el editor completa y valida <code>fudic.json</code>.</li>
 </ul>
 
-@render pager(prev: "/docs/terms/sharing", prevTitle: "Sustituir y compartir", next: "/docs/configuration/fields", nextTitle: "Estilos, idiomas y servidor")
+@render pager(prev: "/docs/terms/anatomy", prevTitle: "Referencia de un término", next: "/docs/configuration/fields", nextTitle: "Estilos, idiomas y servidor")

@@ -4,12 +4,12 @@
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
-  <title>Cómo funciona un término · Fudic</title>
-  <meta name="description" content="Las partes de un término del .fudspec: meta, que el editor lee sin ejecutar; run, que recibe el ctx y devuelve si pasa y la evidencia; y lo que hace Fudic con given, when y then.">
+  <title>Referencia de un término · Fudic</title>
+  <meta name="description" content="Todo lo que puede llevar un término del .fudspec: cada campo de meta, lo que recibe y devuelve run, el ctx entero, cómo ejecuta Fudic cada bloque y sus códigos.">
   <link rel="canonical" href="https://fudic.dev/docs/terms/anatomy">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Cómo funciona un término · Fudic">
-  <meta property="og:description" content="meta, run, el ctx y cómo se ejecuta cada bloque.">
+  <meta property="og:title" content="Referencia de un término · Fudic">
+  <meta property="og:description" content="meta, run, el ctx entero y cómo se ejecuta cada bloque.">
   <meta property="og:url" content="https://fudic.dev/docs/terms/anatomy">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -22,7 +22,6 @@
   <ui-toc>
     <details class="toggle"><summary>En esta página</summary></details>
       <ul>
-        <li><a href="#file">El fichero</a></li>
         <li><a href="#meta"><code>meta</code></a></li>
         <li><a href="#run"><code>run</code></a></li>
         <li><a href="#self-test"><code>selfTest</code></a></li>
@@ -34,32 +33,9 @@
   </ui-toc>
 }
 
-<h1>Cómo funciona un término</h1>
+<h1>Referencia de un término</h1>
 
-<p>Un término tiene dos partes. <code>meta</code> dice cómo se escribe el paso, y el editor la lee sin ejecutar nada. <code>run</code> hace el trabajo en el navegador y devuelve si se cumple y por qué. Lo demás lo pone Fudic: abrir la página, esperar a que termine y reintentar.</p>
-
-<h2 id="file">El fichero</h2>
-
-<p>Esto es lo que escribe <code>fudic g term then cart-has --param count:number</code>:</p>
-
-<ui-code>
-<pre><code>export const meta = &#123;
-  name: 'cart-has',
-  block: 'then',
-  params: [
-    &#123; name: 'count', type: 'number' &#125;,
-  ],
-&#125;;
-
-/** @@type &#123;import('@@fudic/terms').Term&lt;string&gt;['run']&#125; */
-export async function run(ctx, &#123; count &#125;) &#123;
-  return &#123; pass: false, evidence: 'not implemented' &#125;;
-&#125;
-
-export const selfTest = [];</code></pre>
-</ui-code>
-
-<p>La carpeta es el bloque, y el nombre del fichero, el del término. Recién creado devuelve <code>pass: false</code>, para que un término nunca pase por accidente.</p>
+<p>Todo lo que puede llevar un término, campo a campo. Para escribir el primero no hace falta nada de esto: basta con <a href="/docs/terms">Tus propios pasos</a>. Un término vive en <code>fudic/terms/&lt;block&gt;/&lt;name&gt;.js</code> y exporta <code>meta</code>, <code>run</code> y <code>selfTest</code>.</p>
 
 <h2 id="meta"><code>meta</code></h2>
 
@@ -67,7 +43,7 @@ export const selfTest = [];</code></pre>
   <li><strong><code>name</code></strong> y <strong><code>block</code></strong>: los de su fichero y su carpeta (<a href="/docs/reference/diagnostics/FUD0942"><code>FUD0942</code></a>, <a href="/docs/reference/diagnostics/FUD0943"><code>FUD0943</code></a>).</li>
   <li><strong><code>params</code></strong>: los argumentos, en el orden en que se escriben en la línea. El tipo dice qué acepta: <code>number</code>, un número; <code>string</code>, una palabra o un texto entre comillas; <code>token</code>, una palabra; <code>element</code>, una referencia como <code>role:button/"Save"</code> o un tag.</li>
   <li><strong><code>describe</code></strong>: una función que recibe los argumentos y devuelve la frase que sale en el workbench, <code>the cart has 3 items</code>. Sin ella, sale la línea tal cual.</li>
-  <li><strong><code>negative</code></strong>: <code>true</code> en un <code>then</code> que comprueba que algo no está, o una función que lo decide según los argumentos. Ver <a href="#blocks">abajo</a>.</li>
+  <li><strong><code>negative</code></strong>: <code>true</code> en un <code>then</code> que comprueba que algo no está, o una función que lo decide según los argumentos. Lo explica <a href="#blocks">Cómo se ejecuta cada bloque</a>.</li>
 </ul>
 
 <p><code>meta</code> tiene que ser un objeto escrito ahí mismo, con textos literales: el editor la lee sin ejecutar el módulo. Por eso marca un <code>cart-has</code> sin número, o con una palabra, mientras escribes el <code>.fudspec</code> (<a href="/docs/reference/diagnostics/FUD0947"><code>FUD0947</code></a>, <a href="/docs/reference/diagnostics/FUD0948"><code>FUD0948</code></a>).</p>
@@ -88,7 +64,7 @@ export const selfTest = [];</code></pre>
 
 <h2 id="self-test"><code>selfTest</code></h2>
 
-<p>Un término del proyecto tiene que exportar <code>selfTest</code> (<a href="/docs/reference/diagnostics/FUD0946"><code>FUD0946</code></a>). La forma acordada es una lista de casos, <code>[&#123; args: &#123; count: 1 &#125;, expect: "pass" &#125;]</code>. Hoy Fudic solo comprueba que exista: no lo ejecuta. Los de serie no lo llevan, porque se prueban en el propio paquete.</p>
+<p>Un término del proyecto tiene que exportar <code>selfTest</code>, aunque sea vacío (<a href="/docs/reference/diagnostics/FUD0946"><code>FUD0946</code></a>). <code>fudic g term</code> lo escribe así, y se deja como está.</p>
 
 <h2 id="ctx">El <code>ctx</code></h2>
 
@@ -138,4 +114,4 @@ export const selfTest = [];</code></pre>
   <li><strong>Los tiempos</strong> (5 segundos, cada 50 ms) son fijos.</li>
 </ul>
 
-@render pager(prev: "/docs/terms", prevTitle: "Por qué ampliar el lenguaje", next: "/docs/terms/step-by-step", nextTitle: "Uno de cada bloque")
+@render pager(prev: "/docs/terms/sharing", prevTitle: "Sustituir y compartir", next: "/docs/configuration", nextTitle: "fudic.json")

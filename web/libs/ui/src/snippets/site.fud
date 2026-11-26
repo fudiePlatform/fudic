@@ -212,11 +212,11 @@
         <details class="chapter" open=@(current === "terms" || current === "terms-anatomy" || current === "terms-step-by-step" || current === "terms-bench" || current === "terms-sharing")>
           <summary>Términos propios</summary>
           <ol>
-            <li><a href="/docs/terms" aria-current=@(current === "terms" ? "page" : false)>Por qué ampliar el lenguaje</a></li>
-            <li><a href="/docs/terms/anatomy" aria-current=@(current === "terms-anatomy" ? "page" : false)>Cómo funciona un término</a></li>
-            <li><a href="/docs/terms/step-by-step" aria-current=@(current === "terms-step-by-step" ? "page" : false)>Uno de cada bloque</a></li>
-            <li><a href="/docs/terms/bench" aria-current=@(current === "terms-bench" ? "page" : false)>Ampliar el <code>ctx</code></a></li>
+            <li><a href="/docs/terms" aria-current=@(current === "terms" ? "page" : false)>Tus propios pasos</a></li>
+            <li><a href="/docs/terms/step-by-step" aria-current=@(current === "terms-step-by-step" ? "page" : false)>Preparar y actuar</a></li>
+            <li><a href="/docs/terms/bench" aria-current=@(current === "terms-bench" ? "page" : false)>Lo que comparten tus términos</a></li>
             <li><a href="/docs/terms/sharing" aria-current=@(current === "terms-sharing" ? "page" : false)>Sustituir y compartir</a></li>
+            <li><a href="/docs/terms/anatomy" aria-current=@(current === "terms-anatomy" ? "page" : false)>Referencia de un término</a></li>
         </ol>
         </details>
       </li>

@@ -4,12 +4,12 @@
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
-  <title>Ampliar el ctx · Fudic</title>
-  <meta name="description" content="fudic/bench.js añade al ctx de todos los términos de un proyecto lo que comparten, como entrar como un usuario, y prepara cada navegador antes de abrir la página.">
+  <title>Lo que comparten tus términos · Fudic</title>
+  <meta name="description" content="Lo que necesitan varios términos se escribe una vez en fudic/bench.js y aparece en el ctx de todos. Con setup, además, cada navegador sale preparado antes de abrir la página.">
   <link rel="canonical" href="https://fudic.dev/docs/terms/bench">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Ampliar el ctx · Fudic">
-  <meta property="og:description" content="fudic/bench.js: lo que comparten todos los términos de un proyecto.">
+  <meta property="og:title" content="Lo que comparten tus términos · Fudic">
+  <meta property="og:description" content="fudic/bench.js: lo común de tus términos, en el ctx de todos.">
   <meta property="og:url" content="https://fudic.dev/docs/terms/bench">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -24,29 +24,24 @@
       <ul>
         <li><a href="#extension"><code>fudic/bench.js</code></a></li>
         <li><a href="#use">Usarlo en un término</a></li>
-        <li><a href="#setup"><code>setup</code></a></li>
+        <li><a href="#setup">Preparar cada navegador</a></li>
         <li><a href="#details">Detalles</a></li>
       </ul>
   </ui-toc>
 }
 
-<h1>Ampliar el <code>ctx</code></h1>
+<h1>Lo que comparten tus términos</h1>
 
-<p>Cuando varios términos necesitan lo mismo, como entrar como un usuario o encontrar el carrito, se escribe una vez en <code>fudic/bench.js</code>. Desde ahí aparece en el <code>ctx</code> de todos los términos del proyecto.</p>
+<p>Cuando varios términos buscan lo mismo, como el carrito de la tienda, ese código se escribe una vez en <code>fudic/bench.js</code>. Desde ahí aparece en el <code>ctx</code> de todos los términos del proyecto.</p>
 
 <h2 id="extension"><code>fudic/bench.js</code></h2>
 
-<ui-code>
+<ui-code .path="fudic/bench.js">
 <pre><code>import &#123; defineExtension &#125; from '@@fudic/terms';
 
 export default defineExtension(&#123;
   context: (ctx) =&gt; (&#123;
     ...ctx,
-    async signIn(user) &#123;
-      await ctx.page.context().addCookies([
-        &#123; name: 'session', value: user, url: new URL('/', ctx.url).href &#125;,
-      ]);
-    &#125;,
     cart() &#123;
       return ctx.locate('role:region/"Cart"');
     &#125;,
@@ -54,30 +49,51 @@ export default defineExtension(&#123;
 &#125;);</code></pre>
 </ui-code>
 
-<ul>
-  <li><strong><code>context(ctx)</code></strong> recibe el <code>ctx</code> que trae Fudic y devuelve el que verán los términos. Se copia con <code>...ctx</code> y se añade lo propio.</li>
-  <li><strong>Se crea uno por persona</strong> del criterio: con <code>as luis</code>, Luis tiene su propio <code>ctx</code>, con su navegador.</li>
-</ul>
+<p><code>context</code> recibe el <code>ctx</code> que trae Fudic y devuelve el que verán tus términos: una copia con <code>...ctx</code> y lo tuyo añadido. Aquí, <code>cart()</code> devuelve la región del carrito.</p>
 
 <h2 id="use">Usarlo en un término</h2>
 
-<p>Si <code>fudic/bench.js</code> existe, <code>fudic g term</code> escribe el tipo del <code>ctx</code> con lo que añade <code>bench.js</code>, y el editor completa <code>ctx.signIn</code> y <code>ctx.cart</code>:</p>
+<p>Un carrito vacío, como paso propio:</p>
 
 <ui-code>
-<pre><code>/** @@type &#123;import('@@fudic/terms').Term&lt;string, import('@@fudic/terms').ContextOf&lt;typeof import('../../bench.js').default&gt;&gt;['run']&#125; */
-export async function run(ctx, &#123; user &#125;) &#123;
-  await ctx.signIn(String(user));
-  return &#123; pass: true, evidence: `session cookie for $&#123;user&#125;` &#125;;
-&#125;</code></pre>
+<pre><code>fudic g term then cart-is-empty</code></pre>
 </ui-code>
 
-<p><code>ContextOf</code> saca el tipo del <code>ctx</code> que devuelve tu extensión.</p>
+<p>Si <code>fudic/bench.js</code> existe, la CLI escribe en el término una línea de tipo más larga, que incluye lo que añade <code>bench.js</code>. Con ella, el editor completa <code>ctx.cart()</code>:</p>
 
-<h2 id="setup"><code>setup</code></h2>
+<ui-code .path="fudic/terms/then/cart-is-empty.js">
+<pre><code>export const meta = &#123;
+  name: 'cart-is-empty',
+  block: 'then',
+  params: [],
+  describe: () =&gt; 'the cart is empty',
+  negative: true,
+&#125;;
 
-<p><code>setup</code> prepara cada navegador antes de abrir la página, en todos los criterios:</p>
+/** @@type &#123;import('@@fudic/terms').Term&lt;string, import('@@fudic/terms').ContextOf&lt;typeof import('../../bench.js').default&gt;&gt;['run']&#125; */
+export async function run(ctx) &#123;
+  const actual = await ctx.cart().getByRole('listitem').count();
+  return &#123; pass: actual === 0, evidence: &#123; expected: '0', actual: String(actual) &#125; &#125;;
+&#125;
 
-<ui-code>
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<p><code>negative: true</code> dice que el término comprueba que algo no está. Fudic lo lee una sola vez, porque esperar 5 segundos no cambia que un carrito vacío esté vacío.</p>
+
+<ui-code .path="src/routes/shop.fudspec">
+<pre><code>criterion nothing-added
+  then
+    cart-is-empty</code></pre>
+</ui-code>
+
+<p>Un término creado antes que <code>bench.js</code> conserva su línea de tipo corta. Funciona igual al ejecutarse, pero el editor no conoce <code>ctx.cart()</code> en ese término hasta que se copia la línea larga.</p>
+
+<h2 id="setup">Preparar cada navegador</h2>
+
+<p><code>setup</code> recibe la página de Playwright antes de que se abra, en todos los criterios del proyecto. Por ejemplo, para probarlo todo con el tema oscuro:</p>
+
+<ui-code .path="fudic/bench.js">
 <pre><code>export default defineExtension(&#123;
   async setup(page) &#123;
     await page.emulateMedia(&#123; colorScheme: 'dark' &#125;);
@@ -86,14 +102,15 @@ export async function run(ctx, &#123; user &#125;) &#123;
 &#125;);</code></pre>
 </ui-code>
 
-<p>Se ejecuta antes que los <code>given</code>, una vez por persona.</p>
+<p><code>setup</code> se ejecuta antes que los <code>given</code>.</p>
 
 <h2 id="details">Detalles</h2>
 
 <ul>
+  <li><strong>Uno por persona.</strong> Un criterio con <code>as luis</code> le da a Luis su propio navegador, y <code>setup</code> y <code>context</code> se ejecutan también para él.</li>
   <li><strong>Si <code>bench.js</code> lanza</strong> al cargarse, en <code>setup</code> o en <code>context</code>, cada criterio se detiene con <a href="/docs/reference/diagnostics/FUD1206"><code>FUD1206</code></a>.</li>
-  <li><strong>Al guardarlo</strong>, el workbench lo lee en la siguiente recarga, no en el momento.</li>
-  <li><strong>El <code>ctx</code> de serie</strong> está en <a href="/docs/terms/anatomy#ctx">Cómo funciona un término</a>.</li>
+  <li><strong>Al guardar <code>bench.js</code></strong>, el workbench lo lee en la siguiente recarga, no en el momento.</li>
+  <li><strong>El <code>ctx</code> que trae Fudic</strong>, miembro a miembro, está en <a href="/docs/terms/anatomy#ctx">Referencia de un término</a>.</li>
 </ul>
 
-@render pager(prev: "/docs/terms/step-by-step", prevTitle: "Uno de cada bloque", next: "/docs/terms/sharing", nextTitle: "Sustituir y compartir")
+@render pager(prev: "/docs/terms/step-by-step", prevTitle: "Preparar y actuar", next: "/docs/terms/sharing", nextTitle: "Sustituir y compartir")

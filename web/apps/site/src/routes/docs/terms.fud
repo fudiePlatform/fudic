@@ -4,12 +4,12 @@
 <link rel="component" href="@web/ui/ui-toc.fud">
 
 <head>
-  <title>Por qué ampliar el lenguaje · Fudic</title>
-  <meta name="description" content="Los términos de serie del .fudspec hablan de HTML y ARIA. Un término propio hace que un criterio hable del producto: cuándo merece la pena escribir uno y qué se gana.">
+  <title>Tus propios pasos · Fudic</title>
+  <meta name="description" content="Un paso propio del .fudspec habla de tu producto, no de la pantalla: cart-has 1 en vez de contar elementos de una lista. Se crea con fudic g term y se escribe en dos líneas.">
   <link rel="canonical" href="https://fudic.dev/docs/terms">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Por qué ampliar el lenguaje · Fudic">
-  <meta property="og:description" content="Cuándo escribir un término propio para tus criterios, y qué se gana.">
+  <meta property="og:title" content="Tus propios pasos · Fudic">
+  <meta property="og:description" content="Un paso propio para tus criterios, de la CLI al criterio en verde.">
   <meta property="og:url" content="https://fudic.dev/docs/terms">
   <meta property="og:site_name" content="Fudic">
 </head>
@@ -22,74 +22,125 @@
   <ui-toc>
     <details class="toggle"><summary>En esta página</summary></details>
       <ul>
-        <li><a href="#two-languages">Dos formas de decir lo mismo</a></li>
+        <li><a href="#two-ways">El mismo criterio, dos veces</a></li>
+        <li><a href="#create">1. Crearlo</a></li>
+        <li><a href="#write">2. Escribir lo que comprueba</a></li>
+        <li><a href="#run">3. Ejecutarlo</a></li>
+        <li><a href="#editor">En el editor</a></li>
         <li><a href="#when">Cuándo escribir uno</a></li>
-        <li><a href="#what-it-is">Qué es un término</a></li>
-        <li><a href="#chapter">En este capítulo</a></li>
       </ul>
   </ui-toc>
 }
 
-<h1>Por qué ampliar el lenguaje</h1>
+<h1>Tus propios pasos</h1>
 
-<p>Los términos que trae Fudic hablan de HTML y ARIA: un botón, un texto, cuántos elementos hay. Un término propio hace que el criterio hable de tu producto: un carrito, un usuario, un pedido. El criterio se lee como lo diría quien lo pidió, y cuando la pantalla cambia se arregla un fichero, no cada criterio.</p>
+<p>Un criterio se escribe con pasos como <code>click</code>, <code>text</code> o <code>count</code>. Fudic trae unos cincuenta, y todos hablan de la pantalla: un botón, un texto, cuántos elementos hay. Un paso propio habla de tu producto, como «el carrito tiene un libro». Fudic lo llama <strong>término</strong>, y es un fichero de JavaScript de diez líneas.</p>
 
-<h2 id="two-languages">Dos formas de decir lo mismo</h2>
+<h2 id="two-ways">El mismo criterio, dos veces</h2>
 
-<p>El mismo criterio, con los términos de serie:</p>
+<p>Una tienda con un botón «Add to cart» en cada libro y un carrito. Con los pasos de Fudic, el criterio cuenta los elementos de la lista del carrito:</p>
 
-<ui-code>
-<pre><code>criterion adding-a-book
-  given
-    cookie session ana
+<ui-code .path="src/routes/shop.fudspec">
+<pre><code>page /shop
+
+criterion adding-a-book
   when
-    click role:article/~"The Hobbit"&gt;role:button/"Add to cart"
+    click role:article/"The Hobbit"&gt;role:button/"Add to cart"
   then
-    count role:region/"Cart"&gt;role:listitem 1
-    text role:status/"Cart" "1 item"</code></pre>
+    count role:region/"Cart"&gt;role:listitem 1</code></pre>
 </ui-code>
 
-<p>Y con tres términos propios:</p>
+<p>Con un término propio, <code>cart-has</code>, el <code>then</code> dice lo que tiene que pasar:</p>
 
-<ui-code>
-<pre><code>criterion adding-a-book
-  given
-    signed-in-as ana
-  when
-    add-to-cart "The Hobbit"
-  then
+<ui-code .path="src/routes/shop.fudspec">
+<pre><code>  then
     cart-has 1</code></pre>
 </ui-code>
 
-<p>El primero dice cómo está hecha la pantalla; el segundo, qué tiene que pasar. Si mañana el carrito deja de ser una lista, el primero hay que arreglarlo en cada criterio que cuenta sus elementos; el segundo, solo en <code>cart-has.js</code>.</p>
+<p>El primer criterio dice cómo está hecha la pantalla, y el segundo dice qué espera quien pidió la tienda. Si mañana el carrito deja de ser una lista, se cambia <code>cart-has.js</code> y no cada criterio que cuenta libros.</p>
 
-<h2 id="when">Cuándo escribir uno</h2>
-
-<ul>
-  <li><strong>Cuando una secuencia se repite.</strong> Si varios criterios empiezan con los mismos tres pasos para entrar, eso es un <code>given signed-in-as</code>.</li>
-  <li><strong>Cuando el criterio no se entiende.</strong> Una referencia de tres niveles dice dónde está algo, no qué es. Un término le pone nombre.</li>
-  <li><strong>Cuando los de serie no llegan.</strong> El <code>localStorage</code>, un <code>&lt;canvas&gt;</code>, un widget de terceros, arrastrar y soltar: un término tiene a mano la página entera de <a href="https://playwright.dev/docs/api/class-page" target="_blank" rel="noopener">Playwright</a>.</li>
-</ul>
-
-<p>Y cuándo no: si un término solo le pone otro nombre a uno de serie (<code>click-button</code> en vez de <code>click role:button</code>), no aporta nada. Un término propio dice algo del dominio.</p>
-
-<h2 id="what-it-is">Qué es un término</h2>
-
-<p>Un término es un módulo de JavaScript en <code>fudic/terms/&lt;block&gt;/&lt;name&gt;.js</code>, con dos partes: <code>meta</code> dice cómo se escribe el paso y <code>run</code> dice qué hace en el navegador. Se crea con la CLI:</p>
+<h2 id="create">1. Crearlo</h2>
 
 <ui-code>
 <pre><code>fudic g term then cart-has --param count:number</code></pre>
 </ui-code>
 
-<p>Desde el momento en que existe, el editor lo ofrece al escribir un <code>.fudspec</code>, marca sus argumentos y lo enlaza con su fichero, igual que uno de serie.</p>
+<p><code>then</code> es el bloque donde se usa el paso, <code>cart-has</code> es su nombre y <code>--param count:number</code> le da un argumento, un número. La CLI escribe el fichero en <code>fudic/terms/then/cart-has.js</code>:</p>
 
-<h2 id="chapter">En este capítulo</h2>
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export const meta = &#123;
+  name: 'cart-has',
+  block: 'then',
+  params: [
+    &#123; name: 'count', type: 'number' &#125;,
+  ],
+&#125;;
+
+/** @@type &#123;import('@@fudic/terms').Term&lt;string&gt;['run']&#125; */
+export async function run(ctx, &#123; count &#125;) &#123;
+  return &#123; pass: false, evidence: 'not implemented' &#125;;
+&#125;
+
+export const selfTest = [];</code></pre>
+</ui-code>
+
+<p><code>meta</code> dice cómo se escribe el paso y <code>run</code> dice qué hace. La línea del comentario le da tipos a <code>run</code> para que el editor complete lo que escribes, y <code>selfTest</code> se deja como está. Recién creado, el término falla siempre, para que nunca pase por accidente:</p>
+
+<pre class="output"><code>  ✗ adding-a-book  6080 ms
+      then cart-has 1
+        got  not implemented</code></pre>
+
+<h2 id="write">2. Escribir lo que comprueba</h2>
+
+<p>Solo se toca <code>run</code>. Recibe <code>ctx</code>, con la página abierta en el navegador, y los argumentos por su nombre. Devuelve <code>pass</code>, que dice si se cumple, y <code>evidence</code>, que dice qué encontró:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>export async function run(ctx, &#123; count &#125;) &#123;
+  const actual = await ctx.locate('role:region/"Cart"&gt;role:listitem').count();
+  return &#123; pass: actual === count, evidence: &#123; expected: String(count), actual: String(actual) &#125; &#125;;
+&#125;</code></pre>
+</ui-code>
+
+<p><code>ctx.locate</code> busca con las mismas referencias que un criterio, también dentro de los componentes. Devuelve un <a href="https://playwright.dev/docs/api/class-locator" target="_blank" rel="noopener">Locator de Playwright</a>, la herramienta con la que Fudic maneja el navegador, y <code>count()</code> es uno de sus métodos. <code>count</code> llega ya como número, porque su tipo es <code>number</code>.</p>
+
+<h2 id="run">3. Ejecutarlo</h2>
+
+<ui-code>
+<pre><code>fudic spec</code></pre>
+</ui-code>
+
+<pre class="output"><code>page-shop
+  ✓ adding-a-book  1147 ms</code></pre>
+
+<p>No hace falta esperar a que el carrito se pinte. Si un <code>then</code> no se cumple, Fudic lo vuelve a leer durante 5 segundos antes de darlo por fallido.</p>
+
+<p>Para que un fallo se lea como una frase, se añade <code>describe</code> a <code>meta</code>. Recibe los argumentos y devuelve el texto del paso:</p>
+
+<ui-code .path="fudic/terms/then/cart-has.js">
+<pre><code>  describe: (&#123; count &#125;) =&gt; `the cart has $&#123;count&#125; items`,</code></pre>
+</ui-code>
+
+<p>Con <code>cart-has 2</code> y un solo libro en el carrito, <code>fudic spec</code> enseña la frase y lo que esperaba frente a lo que encontró:</p>
+
+<pre class="output"><code>  ✗ adding-a-book  6148 ms
+      then the cart has 2 items
+        expected  2
+        actual    1</code></pre>
+
+<p>El workbench enseña lo mismo, con la captura de la página. Lo explica <a href="/docs/testing/workbench">El workbench</a>.</p>
+
+<h2 id="editor">En el editor</h2>
+
+<p>Desde que el fichero existe, el editor ofrece <code>cart-has</code> al escribir un <code>.fudspec</code> y subraya un <code>cart-has</code> sin número. Un paso que no existe sale subrayado con <a href="/docs/reference/diagnostics/FUD0940"><code>FUD0940</code></a>, y la bombilla ofrece crear su fichero, con un argumento de texto por cada uno que lleve la línea.</p>
+
+<h2 id="when">Cuándo escribir uno</h2>
 
 <ul>
-  <li><a href="/docs/terms/anatomy">Cómo funciona un término</a>: <code>meta</code>, <code>run</code>, el <code>ctx</code>, y qué hace Fudic con cada bloque.</li>
-  <li><a href="/docs/terms/step-by-step">Uno de cada bloque</a>: los tres términos de arriba, escritos y probados.</li>
-  <li><a href="/docs/terms/bench">Ampliar el <code>ctx</code></a>: lo que comparten todos los términos de un proyecto.</li>
-  <li><a href="/docs/terms/sharing">Sustituir y compartir</a>: cambiar uno de serie y reutilizar código entre proyectos.</li>
+  <li><strong>Cuando una secuencia se repite.</strong> Si varios criterios empiezan con los mismos pasos para entrar como un usuario, esos pasos son un término.</li>
+  <li><strong>Cuando el criterio no se entiende.</strong> Una referencia de tres niveles dice dónde está algo. Un término le pone nombre.</li>
+  <li><strong>Cuando los pasos de Fudic no llegan.</strong> El <code>localStorage</code>, un <code>&lt;canvas&gt;</code> o arrastrar y soltar se escriben en un término, que tiene a mano la página entera de Playwright.</li>
 </ul>
 
-@render pager(prev: "/docs/testing/history", prevTitle: "Historial y aprobación", next: "/docs/terms/anatomy", nextTitle: "Cómo funciona un término")
+<p>Un término que solo cambia el nombre de uno de Fudic, como <code>click-button</code> en vez de <code>click role:button</code>, no aporta nada. Un término propio dice algo de tu producto.</p>
+
+@render pager(prev: "/docs/testing/history", prevTitle: "Historial y aprobación", next: "/docs/terms/step-by-step", nextTitle: "Preparar y actuar")

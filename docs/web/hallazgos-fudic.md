@@ -975,6 +975,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió en el tutorial.** El selector de tallas pone sus botones en un `<p>`, sin lista.
 - **Qué debería hacer.** Que `FUD1440` mire el padre: una hoja cuyo selector exige un padre que el
   elemento no tiene no lo estiliza.
+- **Vuelto a comprobar** el 2026-11-26, con una tienda de prueba para el capítulo Términos propios:
+  con `"button p ul"`, `FUD1440` pide `ol` para el `<li>`; con `"button ol p ul"`, `FUD1441` dice
+  que `"ol"` no estiliza nada.
 
 ## 66. Un `bus:` que nadie anuncia no avisa
 

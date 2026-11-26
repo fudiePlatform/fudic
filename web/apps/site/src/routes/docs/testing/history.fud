@@ -86,4 +86,4 @@
   <li><strong>Una línea que no se entiende</strong> es un aviso, <a href="/docs/reference/diagnostics/FUD1220"><code>FUD1220</code></a>, y se salta.</li>
 </ul>
 
-@render pager(prev: "/docs/testing/unit", prevTitle: "Tests unitarios", next: "/docs/terms", nextTitle: "Por qué ampliar el lenguaje")
+@render pager(prev: "/docs/testing/unit", prevTitle: "Tests unitarios", next: "/docs/terms", nextTitle: "Tus propios pasos")
