@@ -1,0 +1,11 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./account.fudapi">
+<head>
+  <title>Account</title>
+</head>
+
+@if (data.user !== "") {
+  <h1>Hello, @data.user.</h1>
+} else {
+  <h1>You are not signed in.</h1>
+}

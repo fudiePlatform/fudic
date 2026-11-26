@@ -1,0 +1,15 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  async function signIn() {
+    await login({ user: "Ana" });
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<button type="button" @click=@signIn>Sign in as Ana</button>

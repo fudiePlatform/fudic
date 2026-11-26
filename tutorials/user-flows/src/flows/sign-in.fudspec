@@ -1,0 +1,20 @@
+flow sign-in
+
+criterion signed-in-user-sees-their-account
+  given
+    url /
+  when
+    click role:button/"Sign in as Ana"
+    go /account
+  then
+    text h1 "Hello, Ana."
+
+criterion another-person-is-not-signed-in
+  given
+    url /
+  when
+    click role:button/"Sign in as Ana"
+    as luis
+    go /account
+  then
+    text h1 "You are not signed in."

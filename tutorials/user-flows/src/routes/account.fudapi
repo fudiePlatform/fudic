@@ -1,0 +1,3 @@
+# Who is in: the name in the session cookie, or "" for nobody.
+load
+  user  str

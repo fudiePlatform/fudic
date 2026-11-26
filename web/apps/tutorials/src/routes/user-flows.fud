@@ -1,0 +1,200 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un flujo entre páginas · Tutoriales de Fudic</title>
+  <meta name="description" content="Prueba con fudic g flow lo que cruza varias páginas: entrar en la portada y verlo en la cuenta, con el servidor de verdad. Y con as, que otra persona no ve la sesión de la primera.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/user-flows">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un flujo entre páginas · Tutoriales de Fudic">
+  <meta property="og:description" content="Entrar en una página y comprobarlo en otra, con una y con dos personas.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/user-flows">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("user-flows")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#pages">1. Dos páginas que comparten la sesión</a></li>
+        <li><a href="#flow">2. Escribe el flujo</a></li>
+        <li><a href="#two-people">3. Una segunda persona</a></li>
+        <li><a href="#failing">4. Lee un fallo</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Tests</span></p>
+
+<h1>Un flujo entre páginas</h1>
+
+<p class="lede">Pruebas un recorrido de dos páginas: alguien entra en la portada y la página de su cuenta le saluda por su nombre. Después compruebas que otra persona no ve esa sesión.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Crear un flujo con <code>fudic g flow</code> y escribir un criterio que cruza páginas con <code>go</code>.</li>
+    <li>Probar con <code>as</code> lo que ve una segunda persona, con su propio navegador.</li>
+    <li>Leer el fallo de un flujo en <code>fudic spec</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="pages">1. Dos páginas que comparten la sesión</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+npx fudic g page account --server</code></pre>
+</ui-code>
+
+<p>La portada tiene un botón que entra como Ana. La función <code>login</code> guarda su nombre en la cookie <code>session</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Signs in as `user`: the session cookie holds the name.
+post login
+  user  str</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; setCookie &#125; from '@@fudic/http';
+import &#123; login &#125; from 'fudic:routes/index';
+
+login.handle((ctx) =&gt; &#123;
+  setCookie(ctx, 'session', ctx.args.user);
+&#125;);</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  async function signIn() &#123;
+    await login(&#123; user: "Ana" &#125;);
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;button type="button" @@click=@@signIn&gt;Sign in as Ana&lt;/button&gt;</code></pre>
+</ui-code>
+
+<p>La cuenta lee la cookie en su <code>load</code> y saluda a quien haya entrado:</p>
+
+<ui-code .path="src/routes/account.fudapi">
+<pre><code># Who is in: the name in the session cookie, or "" for nobody.
+load
+  user  str</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/account.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/account';
+
+load.handle((ctx) =&gt; (&#123; user: ctx.cookies.get('session') ?? '' &#125;));</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/account.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./account.fudapi"&gt;
+&lt;head&gt;
+  &lt;title&gt;Account&lt;/title&gt;
+&lt;/head&gt;
+
+@@if (data.user !== "") &#123;
+  &lt;h1&gt;Hello, @@data.user.&lt;/h1&gt;
+&#125; else &#123;
+  &lt;h1&gt;You are not signed in.&lt;/h1&gt;
+&#125;</code></pre>
+</ui-code>
+
+<h2 id="flow">2. Escribe el flujo</h2>
+
+<p>El criterio de un componente o de una página se queda en esa pieza. Un flujo es un criterio que va de una página a otra, con el servidor de verdad. Así se prueba que lo que pasa en una página se ve en la siguiente:</p>
+
+<ui-code>
+<pre><code>npx fudic g flow sign-in</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/flows/sign-in.fudspec
+  create  src/flows/sign-in.fixture.ts</code></pre>
+
+<ui-code .path="src/flows/sign-in.fudspec">
+<pre><code>flow sign-in
+
+criterion signed-in-user-sees-their-account
+  given
+    url /
+  when
+    click role:button/"Sign in as Ana"
+    go /account
+  then
+    text h1 "Hello, Ana."</code></pre>
+</ui-code>
+
+<p><code>url /</code> dice en qué página empieza. <code>click</code> entra como Ana, y <code>go /account</code> navega a la cuenta en el mismo navegador, con la cookie que acaba de recibir.</p>
+
+<ui-code>
+<pre><code>npx fudic spec</code></pre>
+</ui-code>
+
+<pre class="output"><code>flow-sign-in
+  ✓ signed-in-user-sees-their-account  2403 ms</code></pre>
+
+<p>El fixture que dejó la CLI, <code>sign-in.fixture.ts</code>, sirve para cambiar servicios del servidor por otros de prueba. Este flujo no lo necesita, y lo explica <a href="/docs/testing/pages-and-flows">Páginas y flujos</a>.</p>
+
+<h2 id="two-people">3. Una segunda persona</h2>
+
+<p>Con <code>as</code>, los pasos siguientes los hace otra persona, con su propio navegador y sus propias cookies. Añade un criterio en el que Luis abre la cuenta después de que Ana haya entrado:</p>
+
+<ui-code .path="src/flows/sign-in.fudspec">
+<pre><code>criterion another-person-is-not-signed-in
+  given
+    url /
+  when
+    click role:button/"Sign in as Ana"
+    as luis
+    go /account
+  then
+    text h1 "You are not signed in."</code></pre>
+</ui-code>
+
+<pre class="output"><code>flow-sign-in
+  ✓ signed-in-user-sees-their-account  2403 ms
+  ✓ another-person-is-not-signed-in    2535 ms
+2 criteria · 2 pass · 0 fail · 0 error · 4.1 s · chrome</code></pre>
+
+<p>Luis no ve la sesión de Ana, porque la cookie vive en el navegador de Ana. Cada criterio empieza además con navegadores nuevos, así que el segundo no hereda nada del primero.</p>
+
+<h2 id="failing">4. Lee un fallo</h2>
+
+<p>Cambia el saludo de la cuenta por <code>Welcome, @@data.user.</code> y vuelve a ejecutar <code>npx fudic spec</code>:</p>
+
+<pre class="output"><code>flow-sign-in
+  ✗ signed-in-user-sees-their-account  7046 ms
+      then h1 says "Hello, Ana."
+        expected  contains "Hello, Ana."
+        actual    "Welcome, Ana."
+  ✓ another-person-is-not-signed-in    2120 ms
+2 criteria · 1 pass · 1 fail · 0 error · 8.5 s · chrome</code></pre>
+
+<p>Falla el paso que no se cumple, con lo que esperaba y lo que encontró. El primer criterio tarda siete segundos porque Fudic vuelve a leer un <code>then</code> durante cinco antes de darlo por fallido. Deja el saludo como estaba.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/user-flows" target="_blank" rel="noopener">la solución de Un flujo entre páginas, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/showcase", prevTitle: "Un showcase de cada componente", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
