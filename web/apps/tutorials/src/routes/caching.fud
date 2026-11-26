@@ -210,4 +210,4 @@ dist/fudic-boot-c854ce96.js                        0.90 kB │ gzip: 0.48 kB</co
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/caching" target="_blank" rel="noopener">la solución de Caché HTTP de páginas y assets, en GitHub</a>. Compara tu <code>assets.headers</code> con el suyo.</p>
 
-@render pager(prev: "/tutorials/trusted-types", prevTitle: "Trusted Types", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/trusted-types", prevTitle: "Trusted Types", next: "/tutorials/lighthouse", nextTitle: "Un 100 en Lighthouse")

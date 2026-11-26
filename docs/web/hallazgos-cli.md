@@ -175,8 +175,8 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Y otra vez** con los tutoriales de Seguridad (`security-headers`, `observatory`, `csp`,
   `trusted-types`), el 2026-11-26: el `href` frágil y los títulos «Security-headers»,
   «Observatory», «Csp» y «Trusted-types», corregidos a mano: los cuatro de la categoría.
-- **Y otra vez** con los tutoriales de Rendimiento (`caching`), el 2026-11-26: el `href` frágil y
-  el título «Caching», corregidos a mano.
+- **Y otra vez** con los tutoriales de Rendimiento (`caching`, `lighthouse`), el 2026-11-26: el
+  `href` frágil y los títulos «Caching» y «Lighthouse», corregidos a mano: los dos de la categoría.
 - **De paso.** El `<title>` y el `<h1>` generados dicen «Getting-started»: la CLI pone en mayúscula
   la primera letra del segmento, pero deja el guion.
 
@@ -382,6 +382,11 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Qué debería hacer.** Que la plantilla traiga la fuente ya recortada (pesos y `unicode-range`)
   y sin la cursiva, o directamente la fuente del sistema, y que el recorte con fontTools que
   documenta `web/libs/guide/README.md` sea parte de la CLI.
+- **Vuelto a comprobar (tutorial `lighthouse`), el 2026-11-26**, con la CLI de Lighthouse 12.8.2
+  sobre `fudic preview`. La app recién creada, con solo su `<h1>`, saca 100 en rendimiento móvil (de
+  cinco pasadas, alguna da 89–91); con una imagen y un párrafo, 90 en todas, con el primer pintado en
+  2,8 s. Quitando los dos `@font-face`, `"Inter"` y `fonts/`, 100 en todas (0,9 s). La frase de
+  arriba, «ninguna app recién creada saca 100», vale en cuanto la página tiene texto.
 
 ## 24. `fudic g api` instala una dependencia sin decirlo
 

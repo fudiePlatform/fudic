@@ -1,0 +1,193 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un 100 en Lighthouse · Tutoriales de Fudic</title>
+  <meta name="description" content="Lleva una app de Fudic a 100 en los cuatro apartados de Lighthouse: medir el build y no fudic dev, la meta description, el alt y el tamaño de una imagen, el texto de un enlace y la fuente que pesa en móvil.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/lighthouse">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un 100 en Lighthouse · Tutoriales de Fudic">
+  <meta property="og:description" content="Mide tu app con Lighthouse y corrige lo que baja la nota, hasta 100 en móvil y escritorio.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/lighthouse">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render performanceNav("lighthouse")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#dev">1. Mide fudic dev, para ver por qué no</a></li>
+        <li><a href="#build">2. Mide el build</a></li>
+        <li><a href="#content">3. Contenido de verdad</a></li>
+        <li><a href="#font">4. La fuente, en móvil</a></li>
+        <li><a href="#desktop">5. Escritorio, y lo que no mide</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Rendimiento</span></p>
+
+<h1>Un 100 en Lighthouse</h1>
+
+<p class="lede">Mides tu app con Lighthouse y corriges, uno a uno, los fallos que le bajan la nota, hasta sacar 100 en sus cuatro apartados.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Medir lo que se despliega, y no el servidor de desarrollo.</li>
+    <li>Corregir los fallos de accesibilidad y SEO más comunes de una página.</li>
+    <li>Ver cuánto pesa una fuente en la nota de móvil.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y Google Chrome.</p>
+</section>
+
+<h2 id="dev">1. Mide <code>fudic dev</code>, para ver por qué no</h2>
+
+<p>Lighthouse mide una página en cuatro apartados: rendimiento, accesibilidad, buenas prácticas y SEO. Crea una app y arráncala como mientras trabajas en ella:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic dev</code></pre>
+</ui-code>
+
+<p>En otra terminal, mídela con la CLI de Lighthouse. Abre Chrome, analiza la página como un móvil y enseña el informe:</p>
+
+<ui-code>
+<pre><code>npx lighthouse@@12.8.2 http://localhost:5173/ --view</code></pre>
+</ui-code>
+
+<p>Rendimiento 92, accesibilidad 100, buenas prácticas 100 y SEO 90. Entre lo que el informe pide en rendimiento, con sus títulos en inglés:</p>
+
+<pre class="output"><code>Minify JavaScript                Est savings of 177 KiB
+Enable text compression          Est savings of 166 KiB
+Use efficient cache lifetimes    Est savings of 346 KiB</code></pre>
+
+<p>Nada de eso es de tu app. <code>fudic dev</code> sirve el código sin empaquetar ni minificar y lo recompila al pedirlo, para que cada cambio se vea al guardar. Para el servidor con Ctrl+C.</p>
+
+<h2 id="build">2. Mide el build</h2>
+
+<p>Construye la app y sirve el build, que es lo que verá quien la visite:</p>
+
+<ui-code>
+<pre><code>pnpm build
+npx fudic preview</code></pre>
+</ui-code>
+
+<p>Mídela otra vez, ahora en el puerto de la preview:</p>
+
+<ui-code>
+<pre><code>npx lighthouse@@12.8.2 http://localhost:4173/ --view</code></pre>
+</ui-code>
+
+<p>Rendimiento 100, accesibilidad 100, buenas prácticas 100 y SEO 90. Lo único que falla:</p>
+
+<pre class="output"><code>Document does not have a meta description</code></pre>
+
+<p>Es el resumen que enseña un buscador bajo el título. Añádelo en el <code>&lt;head&gt;</code> de la página:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+  &lt;meta name="description" content="Fresh coffee every morning, roasted in the shop."&gt;
+&lt;/head&gt;</code></pre>
+</ui-code>
+
+<p>Para la preview, construye, sírvela otra vez y mide: 100 en los cuatro.</p>
+
+<h2 id="content">3. Contenido de verdad</h2>
+
+<p>Una página con un título siempre saca buena nota. Dale una imagen y un enlace. Guarda una imagen en <code>public/coffee.svg</code>:</p>
+
+<ui-code .path="public/coffee.svg">
+<pre><code>&lt;svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"&gt;&lt;rect width="1200" height="800" fill="#6f4e37"/&gt;&lt;circle cx="600" cy="400" r="220" fill="#f5e6d3"/&gt;&lt;/svg&gt;</code></pre>
+</ui-code>
+
+<p>Crea la página a la que va el enlace:</p>
+
+<ui-code>
+<pre><code>npx fudic g page menu</code></pre>
+</ui-code>
+
+<p>Y escribe esto debajo del <code>&lt;h1&gt;</code> de la portada:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;h1&gt;Home&lt;/h1&gt;
+&lt;img src="/coffee.svg"&gt;
+&lt;p&gt;Fresh coffee every morning. To see the menu, click &lt;a href="/menu"&gt;here&lt;/a&gt;.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Construye, sirve y mide. Accesibilidad baja a 87 y SEO a 82, por tres fallos:</p>
+
+<pre class="output"><code>Image elements do not have `[alt]` attributes
+Image elements do not have explicit `width` and `height`
+Links do not have descriptive text</code></pre>
+
+<ul>
+  <li><strong>Sin <code>alt</code></strong>, un lector de pantalla no sabe qué enseña la imagen, y un buscador tampoco.</li>
+  <li><strong>Sin <code>width</code> y <code>height</code></strong>, el navegador no reserva su hueco y el texto de debajo salta cuando llega la imagen.</li>
+  <li><strong>«here»</strong> no dice adónde va el enlace. Quien recorre los enlaces de una página, con un lector de pantalla o un buscador, oye solo eso.</li>
+</ul>
+
+<p>Corrige los tres:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;img src="/coffee.svg" alt="A cup of coffee seen from above" width="1200" height="800"&gt;
+&lt;p&gt;Fresh coffee every morning. &lt;a href="/menu"&gt;See the menu&lt;/a&gt;.&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Construye, sirve y mide: accesibilidad y SEO vuelven a 100. Pero ahora rendimiento se queda en 90, y lo marca el primer pintado:</p>
+
+<pre class="output"><code>First Contentful Paint      2.8 s
+Largest Contentful Paint    2.9 s</code></pre>
+
+<h2 id="font">4. La fuente, en móvil</h2>
+
+<p>Lighthouse simula un móvil lento con una red 4G mala. La guía de la app trae la fuente Inter, de 352 KB, y ahora que la página tiene un párrafo, el primer pintado espera a que llegue. Usa la fuente del sistema, que no se descarga. Borra los dos bloques <code>@@font-face</code> del principio de <code>tokens.css</code>, para que empiece así:</p>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>/* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
+:root &#123;
+  color-scheme: light dark;</code></pre>
+</ui-code>
+
+<p>Quita <code>"Inter"</code> de la fuente de la app:</p>
+
+<ui-code .path="src/guide/tokens.css">
+<pre><code>  --my-app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;</code></pre>
+</ui-code>
+
+<p>Y borra la carpeta de la fuente, que ya nadie usa:</p>
+
+<ui-code>
+<pre><code>rm -r src/guide/fonts</code></pre>
+</ui-code>
+
+<p>Construye, sirve y mide varias veces. Rendimiento vuelve a 100, con el primer pintado en 0,9 segundos. Si quieres una fuente propia, recórtala a los pesos y caracteres que uses y precárgala: es lo que hace esta web, contado en <a href="/docs/performance/lighthouse#what-moved">Lo que movió la nota</a>.</p>
+
+<h2 id="desktop">5. Escritorio, y lo que no mide</h2>
+
+<p>Por defecto, Lighthouse mide como un móvil. Para escritorio:</p>
+
+<ui-code>
+<pre><code>npx lighthouse@@12.8.2 http://localhost:4173/ --preset=desktop --view</code></pre>
+</ui-code>
+
+<p>100 en los cuatro, con el primer pintado en 0,3 segundos. Lo mismo sale en la pestaña Lighthouse de las herramientas de Chrome, en una ventana de incógnito para que no cuenten las extensiones.</p>
+
+<p>Lighthouse carga la página y no toca nada, así que no mide lo que tarda en responder a un clic, el INP. Ese se mide usándola, como cuenta <a href="/docs/performance/lighthouse#inp">El INP, interactuando</a>. Al acabar, para la preview con Ctrl+C.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/lighthouse" target="_blank" rel="noopener">la solución de Un 100 en Lighthouse, en GitHub</a>. Compara tu <code>src/routes/index.fud</code> y tu <code>src/guide/tokens.css</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/caching", prevTitle: "Caché HTTP de páginas y assets", next: "/tutorials/", nextTitle: "Todas las categorías")

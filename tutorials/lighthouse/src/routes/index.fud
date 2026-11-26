@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Home</title>
+  <meta name="description" content="Fresh coffee every morning, roasted in the shop.">
+</head>
+
+<h1>Home</h1>
+<img src="/coffee.svg" alt="A cup of coffee seen from above" width="1200" height="800">
+<p>Fresh coffee every morning. <a href="/menu">See the menu</a>.</p>

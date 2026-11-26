@@ -182,6 +182,6 @@
   <details class="toggle"><summary>Tutoriales de Rendimiento</summary></details>
   <ol class="tutorial-list">
     @render tutorial("caching", "Caché HTTP de páginas y assets", "advanced", @current)
-    @render tutorial("lighthouse", "Un 100 en Lighthouse", "advanced", @current, false)
+    @render tutorial("lighthouse", "Un 100 en Lighthouse", "advanced", @current)
   </ol>
 }

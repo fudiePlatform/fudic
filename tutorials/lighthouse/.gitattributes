@@ -1,0 +1,2 @@
+# The history of each piece only grows: two branches that add lines join without a conflict.
+*.fudlog merge=union
