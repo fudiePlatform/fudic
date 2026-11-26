@@ -165,4 +165,4 @@ Received:
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/unit-tests" target="_blank" rel="noopener">la solución de Probar un componente, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/lighthouse", prevTitle: "Un 100 en Lighthouse", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/lighthouse", prevTitle: "Un 100 en Lighthouse", next: "/tutorials/page-tests", nextTitle: "Probar una página, su layout y un pipe")

@@ -1,0 +1,187 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Probar una página, su layout y un pipe · Tutoriales de Fudic</title>
+  <meta name="description" content="Pinta el layout solo con renderLayout, prueba un pipe propio en cada idioma con format y visita la página que los junta con visit.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/page-tests">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Probar una página, su layout y un pipe · Tutoriales de Fudic">
+  <meta property="og:description" content="renderLayout, format y visit: una prueba por pieza.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/page-tests">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render testsNav("page-tests")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#layout">1. Prueba el layout</a></li>
+        <li><a href="#pipe">2. Prueba un pipe</a></li>
+        <li><a href="#page">3. Prueba la página entera</a></li>
+        <li><a href="#run">4. Ejecútalos</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="beginner">Principiante</span> <span class="category">Tests</span></p>
+
+<h1>Probar una página, su layout y un pipe</h1>
+
+<p class="lede">Pruebas cada pieza por separado: el layout, un pipe propio y la página que los junta.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Pintar un layout en un test con <code>renderLayout</code>, con un cuerpo de prueba.</li>
+    <li>Probar un pipe propio con <code>format</code>, en más de un idioma.</li>
+    <li>Visitar una página con <code>visit</code> y comprobar su título, su encabezado y lo que pone el layout.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm.</p>
+</section>
+
+<h2 id="layout">1. Prueba el layout</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app</code></pre>
+</ui-code>
+
+<p>El layout es el marco de todas las páginas. Añádele un menú encima del <code>&lt;main&gt;</code>:</p>
+
+<ui-code .path="src/layouts/_layout.fud">
+<pre><code>  &lt;body&gt;
+    &lt;nav&gt;
+      &lt;a href="/"&gt;Home&lt;/a&gt;
+      &lt;a href="/about"&gt;About&lt;/a&gt;
+    &lt;/nav&gt;
+    &lt;main&gt;@@RenderBody()&lt;/main&gt;
+  &lt;/body&gt;</code></pre>
+</ui-code>
+
+<p><code>fudic new</code> ya dejó un test del layout, que comprueba que la página se pinta dentro. Añade otro para el menú:</p>
+
+<ui-code .path="src/layouts/_layout.test.ts">
+<pre><code>test('links to every page', async () =&gt; &#123;
+  const page = await renderLayout(Layout, &#123; body: '&lt;p&gt;Hello&lt;/p&gt;' &#125;);
+  expect(page.getByRole('link', &#123; name: 'Home' &#125;)).toHaveAttribute('href', '/');
+  expect(page.getByRole('link', &#123; name: 'About' &#125;)).toHaveAttribute('href', '/about');
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>renderLayout</code> pinta el layout sin ninguna página. En su lugar pone el HTML que le das en <code>body</code>, así que el test del layout no depende de ninguna página.</p>
+
+<h2 id="pipe">2. Prueba un pipe</h2>
+
+<p>Un pipe da formato a un valor en la vista, como <code>@@(title | shout)</code>. Crea uno que lo pase a mayúsculas:</p>
+
+<ui-code>
+<pre><code>npx fudic g pipe shout</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created pipe shout in src/pipes/
+  shout.fudapi     the contract: what it formats, on str
+  shout.ts         its one implementation: the view, the server and the browser import it
+  shout.test.ts    unit test</code></pre>
+
+<p>El contrato, <code>shout.fudapi</code>, dice que formatea textos. La implementación recibe el valor y el idioma de la página:</p>
+
+<ui-code .path="src/pipes/shout.ts">
+<pre><code>import &#123; shout &#125; from 'fudic:pipes/shout';
+
+export default shout.implement((value, locale) =&gt; value.toLocaleUpperCase(locale));</code></pre>
+</ui-code>
+
+<p>Ejecuta <code>npx fudic test</code>. El test que dejó la CLI falla, porque comprobaba la implementación vacía, que devolvía el valor tal cual:</p>
+
+<pre class="output"><code> FAIL  src/pipes/shout.test.ts &gt; shout formats a value
+AssertionError: expected 'FUDIC' to be 'fudic' // Object.is equality
+
+Expected: "fudic"
+Received: "FUDIC"</code></pre>
+
+<p>Cámbialo por dos tests de verdad, uno en inglés y otro en turco:</p>
+
+<ui-code .path="src/pipes/shout.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import shout from './shout';
+
+test('shout writes the value in upper case', () =&gt; &#123;
+  expect(shout.format('new books', 'en')).toBe('NEW BOOKS');
+&#125;);
+
+test('shout follows the rules of each language', () =&gt; &#123;
+  expect(shout.format('istanbul', 'tr')).toBe('İSTANBUL');
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>format</code> ejecuta el pipe con un valor y un idioma, sin página ni navegador. En turco, la <code>i</code> minúscula tiene punto también en mayúscula, y el segundo test comprueba que el pipe usa el idioma que recibe.</p>
+
+<h2 id="page">3. Prueba la página entera</h2>
+
+<ui-code>
+<pre><code>npx fudic g page about</code></pre>
+</ui-code>
+
+<p>Escribe la página con un aviso que usa el pipe:</p>
+
+<ui-code .path="src/routes/about.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+
+@@code &#123;
+  import shout from "../pipes/shout";
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;About us&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;About us&lt;/h1&gt;
+&lt;p class="notice"&gt;@@("new books every week" | shout)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>La CLI dejó un test que comprueba que <code>/about</code> responde 200. Añade dos más debajo:</p>
+
+<ui-code .path="src/routes/about.test.ts">
+<pre><code>test('has its title, its heading and the layout around it', async () =&gt; &#123;
+  const page = await visit('/about');
+  expect(page.document.title).toBe('About us');
+  expect(page.getByRole('heading', &#123; level: 1 &#125;)).toHaveTextContent('About us');
+  expect(page.getByRole('link', &#123; name: 'Home' &#125;)).toBeInTheDocument();
+&#125;);
+
+test('shouts its notice', async () =&gt; &#123;
+  const page = await visit('/about');
+  expect(page.query('.notice')).toHaveTextContent('NEW BOOKS EVERY WEEK');
+&#125;);</code></pre>
+</ui-code>
+
+<p><code>visit</code> pide la página por su URL y la pinta como lo haría <code>fudic dev</code>, con su layout alrededor. Por eso encuentra el enlace «Home», que no está en la página sino en el layout. <code>page.query</code> busca con un selector de CSS.</p>
+
+<h2 id="run">4. Ejecútalos</h2>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> Test Files  4 passed (4)
+      Tests  8 passed (8)
+
+fudic test · 1 project · passed · 4.9 s</code></pre>
+
+<p>Cada pieza tiene su test. Si mañana cambias el menú, falla el test del layout. Si cambias el pipe, falla el suyo. La página solo comprueba que todo está junto. Las tres funciones están en <a href="/docs/testing/unit">Tests unitarios</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/page-tests" target="_blank" rel="noopener">la solución de Probar una página, su layout y un pipe, en GitHub</a>.</p>
+
+@render pager(prev: "/tutorials/unit-tests", prevTitle: "Probar un componente", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")

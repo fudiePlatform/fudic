@@ -1,0 +1,12 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  import shout from "../pipes/shout";
+}
+
+<head>
+  <title>About us</title>
+</head>
+
+<h1>About us</h1>
+<p class="notice">@("new books every week" | shout)</p>

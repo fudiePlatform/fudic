@@ -1,0 +1,6 @@
+/* Adopted by every component and linked by every page: the one reset everything shares. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

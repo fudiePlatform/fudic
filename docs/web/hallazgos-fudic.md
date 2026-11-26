@@ -1614,3 +1614,13 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   ficheros de test cambiados desde el rojo responda un diagnóstico y un `next` que pida enseñar el
   cambio a la persona.
 
+## 102. `visit` lanza con una URL que no existe, en vez de pintar el 404
+
+- **Qué pasó.** Escribiendo el tutorial `page-tests` (2026-11-26): en una app de `fudic new`,
+  `await visit('/nope')` lanza `visit('/nope'): no route matches /nope`
+  (`packages/testing/src/visit.ts:73`). En `fudic dev`, la misma URL responde `404` con la página de
+  error. Un `load` que lanza `notFound()` sí sale como `404` en `visit`; una URL sin ruta, no.
+- **Cómo se resolvió en el tutorial.** No prueba el 404 de una URL que no existe.
+- **Qué debería hacer.** Que `visit` responda como `fudic dev`: `status` 404 y el `_error.fud` del
+  proyecto, para que la página de error de «no encontrado» se pueda probar.
+

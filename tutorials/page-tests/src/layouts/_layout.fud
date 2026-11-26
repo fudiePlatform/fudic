@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @* Keep this line: fudic puts its scripts here. *@
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+    </nav>
+    <main>@RenderBody()</main>
+  </body>
+</html>
