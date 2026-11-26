@@ -176,4 +176,4 @@ content-type: application/problem+json
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/json-api" target="_blank" rel="noopener">la solución de Una API con su .fudapi, en GitHub</a>. Compara tu <code>index.fudapi</code> y tu <code>src/server/routes/index.ts</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/task", prevTitle: "El estado de una llamada con task", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/task", prevTitle: "El estado de una llamada con task", next: "/tutorials/server-types", nextTitle: "Tipos compartidos")

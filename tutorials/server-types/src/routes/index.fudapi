@@ -1,0 +1,13 @@
+# The orders of the shop, read on every request.
+load ssr
+  orders  Order[]
+
+type Order
+  id      i32
+  item    str
+  status  Status
+  note    str?
+
+enum Status
+  pending
+  shipped

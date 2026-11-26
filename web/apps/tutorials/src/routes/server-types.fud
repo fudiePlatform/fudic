@@ -1,0 +1,176 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Tipos compartidos · Tutoriales de Fudic</title>
+  <meta name="description" content="Declara un type y un enum de Fudic una sola vez en el .fudapi y úsalos con su tipo en el servidor y en la página, con campos opcionales y errores en los dos lados.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/server-types">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tipos compartidos · Tutoriales de Fudic">
+  <meta property="og:description" content="Un type y un enum declarados una vez, tipados en el servidor y en la página.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/server-types">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("server-types")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su contrato</a></li>
+        <li><a href="#declare">2. Un tipo y un enum</a></li>
+        <li><a href="#both-sides">3. El mismo tipo en los dos lados</a></li>
+        <li><a href="#optional">4. Un campo opcional</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>Tipos compartidos</h1>
+
+<p class="lede">Declaras un pedido y sus estados una sola vez, en el contrato, y el servidor que los calcula y la página que los pinta comparten ese tipo: un error en cualquiera de los dos lados sale antes de ejecutar nada.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar un tipo con <code>type</code> y una lista cerrada de valores con <code>enum</code>.</li>
+    <li>Usarlos en el servidor con <code>import type</code>, y en la página, sin importar nada.</li>
+    <li>Declarar un campo opcional y pintarlo solo cuando llega.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Los datos de una página con <code>load</code> están en <a href="/tutorials/route-data">Datos del servidor para la página</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su contrato</h2>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<pre class="output"><code>  create  src/routes/index.fudapi
+  create  src/server/routes/index.ts
+  modify  src/routes/index.fud
+  modify  package.json</code></pre>
+
+<h2 id="declare">2. Un tipo y un enum</h2>
+
+<p>Un pedido tiene un número, un artículo y un estado, que solo puede ser «pendiente» o «enviado». El pedido es un <code>type</code>, con un campo por línea, y su estado, un <code>enum</code>, con un valor por línea:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The orders of the shop, read on every request.
+load ssr
+  orders  Order[]
+
+type Order
+  id      i32
+  item    str
+  status  Status
+
+enum Status
+  pending
+  shipped</code></pre>
+</ui-code>
+
+<p>Fudic convierte cada declaración en un tipo de TypeScript, que el servidor importa con <code>import type</code> del módulo del contrato. Escribe los pedidos en una constante con ese tipo, como si vinieran de una base de datos:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load, type Order &#125; from 'fudic:routes/index';
+
+const orders: Order[] = [
+  &#123; id: 1, item: 'Green tea', status: 'shipped' &#125;,
+  &#123; id: 2, item: 'Coffee', status: 'pending' &#125;,
+];
+
+load.handle(() =&gt; (&#123; orders &#125;));</code></pre>
+</ui-code>
+
+<p>La página los recibe en <code>data</code>, sin importar nada:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+&lt;head&gt;
+  &lt;title&gt;Orders&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Orders&lt;/h1&gt;
+&lt;ul&gt;
+  @@foreach (const order of data.orders) key (order.id) &#123;
+    &lt;li&gt;
+      #@@order.id @@order.item: @@(order.status === "shipped" ? "on its way" : "waiting")
+    &lt;/li&gt;
+  &#125;
+&lt;/ul&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>: «#1 Green tea: on its way» y «#2 Coffee: waiting».</p>
+
+<h2 id="both-sides">3. El mismo tipo en los dos lados</h2>
+
+<p>En TypeScript, el <code>enum</code> es la unión de sus valores: <code>'pending' | 'shipped'</code>. Da al segundo pedido un estado que no existe, <code>status: 'lost'</code>, y guarda:</p>
+
+<pre class="output"><code>my-app   src/server/routes/index.ts:5:28 - error TS2322: Type '"lost"' is not assignable to type 'Status'.
+my-app     5    &#123; id: 2, item: 'Coffee', status: 'lost' &#125;,
+my-app                                   ──────
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Vuelve a <code>'pending'</code>. Ahora equivócate en la página: compara con <code>"sent"</code> en vez de <code>"shipped"</code>:</p>
+
+<pre class="output"><code>my-app   src/routes/index.fud:12:33 - error TS2367: This comparison appears to be unintentional because the types 'Status' and '"sent"' have no overlap.
+my-app     12        #@@order.id @@order.item: @@(order.status === "sent" ? "on its way" : "waiting")
+my-app                                         ───────────────────────
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Es el mismo <code>Status</code> en los dos lados, porque los dos salen del contrato. Si mañana añades un estado al <code>enum</code>, el servidor y la página lo conocen a la vez. Vuelve a escribir <code>"shipped"</code>.</p>
+
+<p>Los tipos no se quedan en el editor: el servidor también comprueba los que le llegan, y rechaza con un <code>400</code> lo que no cumple. Lo viste con los argumentos en <a href="/tutorials/json-api">Una API con su .fudapi</a>.</p>
+
+<h2 id="optional">4. Un campo opcional</h2>
+
+<p>Algunos pedidos llevan una nota. Un <code>?</code> tras el tipo dice que el campo puede faltar:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code>type Order
+  id      i32
+  item    str
+  status  Status
+  note    str?</code></pre>
+</ui-code>
+
+<p>Dale una nota solo al segundo pedido:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>  &#123; id: 2, item: 'Coffee', status: 'pending', note: 'Gift wrap' &#125;,</code></pre>
+</ui-code>
+
+<p>En TypeScript, <code>note</code> es <code>note?: string</code>. Pintarla tal cual dejaría un <code>&lt;small&gt;</code> vacío en el primer pedido, así que píntala solo cuando llega:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>    &lt;li&gt;
+      #@@order.id @@order.item: @@(order.status === "shipped" ? "on its way" : "waiting")
+      @@if (order.note !== undefined) &#123;
+        &lt;small&gt;@@order.note&lt;/small&gt;
+      &#125;
+    &lt;/li&gt;</code></pre>
+</ui-code>
+
+<p>El café sale con «Gift wrap», y el té, sin nada más. Funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>.</p>
+
+<p>Los tipos de un <code>.fudapi</code> son del proyecto entero: cualquier otro contrato usa <code>Order</code> sin importarlo. Los demás tipos (listas, mapas, fechas, ficheros) están en <a href="/docs/server/types">Tipos</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-types" target="_blank" rel="noopener">la solución de Tipos compartidos, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/json-api", prevTitle: "Una API con su .fudapi", next: "/tutorials/", nextTitle: "Todas las categorías")

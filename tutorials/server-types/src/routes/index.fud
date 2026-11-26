@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>Orders</title>
+</head>
+
+<h1>Orders</h1>
+<ul>
+  @foreach (const order of data.orders) key (order.id) {
+    <li>
+      #@order.id @order.item: @(order.status === "shipped" ? "on its way" : "waiting")
+      @if (order.note !== undefined) {
+        <small>@order.note</small>
+      }
+    </li>
+  }
+</ul>
