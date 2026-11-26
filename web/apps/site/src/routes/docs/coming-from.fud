@@ -1,0 +1,65 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Vienes de otro framework · Fudic</title>
+  <meta name="description" content="Si trabajas con React, Angular, Vue o Web Components, casi todo lo de Fudic tiene un equivalente en lo que ya conoces. Una página por framework, con cada concepto traducido y enlazado a su capítulo.">
+  <link rel="canonical" href="https://fudic.dev/docs/coming-from">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Vienes de otro framework · Fudic">
+  <meta property="og:description" content="React, Angular, Vue y Web Components, traducidos a Fudic concepto a concepto.">
+  <meta property="og:url" content="https://fudic.dev/docs/coming-from">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("coming-from")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>En esta página</summary></details>
+      <ul>
+        <li><a href="#choose">Elige el tuyo</a></li>
+        <li><a href="#common">Lo que cambia para todos</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<h1>Vienes de otro framework</h1>
+
+<p>Si trabajas con React, Angular, Vue o Web Components, casi todo lo de Fudic tiene un equivalente en lo que ya conoces. Cada página de esta sección traduce los conceptos de un framework y enlaza al capítulo que explica cada uno.</p>
+
+<h2 id="choose">Elige el tuyo</h2>
+
+<ul>
+  <li><a href="/docs/coming-from/react">Vienes de React</a>: JSX, hooks, Context y Next.js, escritos en Fudic.</li>
+  <li><a href="/docs/coming-from/angular">Vienes de Angular</a>: el más cercano, con el mismo control de flujo, los mismos signals y la misma inyección de dependencias.</li>
+  <li><a href="/docs/coming-from/vue">Vienes de Vue</a>: componentes de fichero único, como en Vue, con el shadow DOM en lugar de <code>scoped</code>.</li>
+  <li><a href="/docs/coming-from/web-components">Vienes de Web Components</a>: lo que hoy escribes a mano, en nativo o con Lit, y Fudic escribe por ti.</li>
+</ul>
+
+<h2 id="common">Lo que cambia para todos</h2>
+
+<p>Vengas de donde vengas, hay cuatro ideas nuevas:</p>
+
+<ul>
+  <li><strong>El HTML llega pintado.</strong> Cada componente sale del servidor como <a href="/docs/getting-started#declarative-shadow-dom">Declarative Shadow DOM</a>, y el navegador lo muestra antes de cargar una línea de JavaScript.</li>
+  <li><strong>Cada componente se hidrata por su cuenta.</strong> Un componente descarga su código cuando entra en pantalla y se activa en su primera interacción. Uno sin estado ni eventos no descarga nada. Lo explica <a href="/docs/reactivity/hydration">Hidratación</a>.</li>
+  <li><strong>No hay router en el navegador.</strong> Cada página es un documento completo, y se navega con un <code>&lt;a href&gt;</code> estándar. Lo explica <a href="/docs/routing#navigation">Navegar</a>.</li>
+  <li><strong>La vista rellena huecos.</strong> Una expresión de la plantilla admite una lista cerrada de operaciones, para que la misma vista se pueda pintar en servidores de otros lenguajes. La lógica va en el <code>@@code</code>. Lo explica <a href="/docs/template-syntax#view-fills-gaps">La vista rellena huecos</a>.</li>
+</ul>
+
+<p>Lo demás es estándar: el markup es HTML, los estilos son CSS y el código es TypeScript.</p>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noopener">Web Components</a>: los estándares sobre los que se construye cada componente de Fudic.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el shadow DOM escrito en HTML, que el servidor puede enviar.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: el tag propio de cada componente.</li>
+</ul>
+
+@render pager(prev: "/docs/getting-started", prevTitle: "Empezar con Fudic", next: "/docs/coming-from/react", nextTitle: "Vienes de React")

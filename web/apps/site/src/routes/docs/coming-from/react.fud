@@ -1,0 +1,145 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Vienes de React · Fudic</title>
+  <meta name="description" content="De React a Fudic: JSX, hooks, Context, Suspense y las rutas de Next.js, cada uno con su equivalente en Fudic y su capítulo. Lo que cambia y el mismo componente escrito en los dos.">
+  <link rel="canonical" href="https://fudic.dev/docs/coming-from/react">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Vienes de React · Fudic">
+  <meta property="og:description" content="JSX, hooks, Context y Next.js, traducidos a Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/coming-from/react">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("coming-from-react")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>En esta página</summary></details>
+      <ul>
+        <li><a href="#equivalents">Equivalencias</a></li>
+        <li><a href="#unlearn">Lo que hay que desaprender</a></li>
+        <li><a href="#same-component">El mismo componente</a></li>
+        <li><a href="#when-not">Cuándo no elegir Fudic</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<h1>Vienes de React</h1>
+
+<p>En Fudic, un componente es HTML estándar con huecos, no una función que devuelve JSX. El estado se guarda en signals, y el <code>@@code</code> de un componente se ejecuta una sola vez. La tabla se refiere a React 19 y Next.js, a noviembre de 2026.</p>
+
+<h2 id="equivalents">Equivalencias</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">En React</th><th scope="col">En Fudic</th><th scope="col">Dónde se explica</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Una función que devuelve JSX</td><td>Un <code>.fud</code>: su tag envuelve un <code>&lt;template shadowrootmode&gt;</code></td><td><a href="/docs/template-syntax/components">Componentes</a></td></tr>
+    <tr><td><code>&#123;count&#125;</code>, <code>&#123;ok &amp;&amp; …&#125;</code></td><td><code>@@count()</code>, <code>@@if (ok) &#123; … &#125;</code></td><td><a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a></td></tr>
+    <tr><td><code>items.map(…)</code> con <code>key</code></td><td><code>@@foreach (…) key (item.id)</code></td><td><a href="/docs/template-syntax/expressions#loops">Bucles</a></td></tr>
+    <tr><td><code>className</code>, <code>clsx</code></td><td><code>class</code> y <code>class:done=@@x</code></td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>onClick=&#123;save&#125;</code></td><td><code>@@click=@@save</code></td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td>Props</td><td><code>props&lt;T&gt;()</code>, y <code>.title=@@x</code> al usarlo</td><td><a href="/docs/template-syntax/components#props">Props</a></td></tr>
+    <tr><td><code>children</code></td><td><code>&lt;slot&gt;</code></td><td><a href="/docs/template-syntax/components#slots">Slots</a></td></tr>
+    <tr><td>Una prop <code>onChange</code></td><td>Igual: una prop función</td><td><a href="/docs/template-syntax/components#function-prop">Para que el hijo avise al padre</a></td></tr>
+    <tr><td><code>useState</code>, <code>useMemo</code>, <code>useEffect</code></td><td><code>signal</code>, <code>computed</code>, <code>effect</code></td><td><a href="/docs/reactivity#instead-of">Signals</a></td></tr>
+    <tr><td><code>useEffect(fn, [])</code></td><td><code>afterHydrate</code></td><td><a href="/docs/reactivity/lifecycle#instead-of">Ciclo de vida</a></td></tr>
+    <tr><td>Context</td><td><code>provide</code> e <code>inject</code></td><td><a href="/docs/di/providers">Dueños y subárboles</a></td></tr>
+    <tr><td>Redux, Zustand</td><td>Un módulo que exporta signals</td><td><a href="/docs/reactivity#store">Compartir estado</a></td></tr>
+    <tr><td>Suspense y streaming</td><td><code>@@await</code></td><td><a href="/docs/template-syntax/await"><code>@@await</code></a></td></tr>
+    <tr><td>Server Components, Server Functions</td><td>El <code>.fudapi</code>: <code>load</code> y funciones de servidor</td><td><a href="/docs/server">El contrato <code>.fudapi</code></a></td></tr>
+    <tr><td><code>app/blog/[slug]/page.tsx</code></td><td><code>src/routes/blog/[slug].fud</code></td><td><a href="/docs/routing">Rutas por carpetas</a></td></tr>
+    <tr><td>React Router</td><td>Un <code>&lt;a href&gt;</code>, sin router en el navegador</td><td><a href="/docs/routing#navigation">Navegar</a></td></tr>
+    <tr><td>CSS Modules, CSS-in-JS</td><td>El <code>&lt;style&gt;</code> del componente</td><td><a href="/docs/styles">El CSS de un componente</a></td></tr>
+    <tr><td>react-hook-form con Zod</td><td>Un <code>form</code> en el <code>.fudapi</code></td><td><a href="/docs/forms">El formulario</a></td></tr>
+    <tr><td>react-intl, i18next</td><td>Una compilación por idioma</td><td><a href="/docs/i18n">Traducir una app</a></td></tr>
+    <tr><td>React Testing Library</td><td><code>fudic test</code>, con las mismas búsquedas por rol, y <code>fudic spec</code></td><td><a href="/docs/testing">Criterios</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="unlearn">Lo que hay que desaprender</h2>
+
+<ul>
+  <li><strong>El componente no se vuelve a ejecutar.</strong> En React, cada cambio de estado ejecuta otra vez la función entera. En Fudic, el <code>@@code</code> se ejecuta una vez, y al cambiar un signal solo se actualiza lo que lo lee. No hay reglas de los hooks, ni <code>useCallback</code>, ni <code>memo</code>.</li>
+  <li><strong>No hay DOM virtual.</strong> El servidor pinta el HTML, y el navegador se engancha a él sin volver a pintarlo.</li>
+  <li><strong>La vista no es JavaScript.</strong> En JSX cabe cualquier expresión. En una plantilla de Fudic cabe una lista cerrada, para que la misma vista se pueda pintar en un servidor de otro lenguaje. Un <code>find</code> se escribe <code>filter(…)[0]</code>, y un cálculo largo va en un <code>computed</code>. La lista está en <a href="/docs/template-syntax/expressions#the-closed-list">Lo que admite una expresión</a>.</li>
+  <li><strong>No se hidrata la página entera.</strong> Cada componente se hidrata por su cuenta, en su primera interacción. Lo explica <a href="/docs/reactivity/hydration">Hidratación</a>.</li>
+</ul>
+
+<h2 id="same-component">El mismo componente</h2>
+
+<p>Un contador que empieza en el valor de una prop y avisa al pasar de diez. En React:</p>
+
+<ui-code .path="Counter.tsx">
+<pre><code>import &#123; useState &#125; from "react";
+
+export function Counter(&#123; start = 0 &#125;: &#123; start?: number &#125;) &#123;
+  const [count, setCount] = useState(start);
+
+  return (
+    &lt;&gt;
+      &lt;button type="button" onClick=&#123;() =&gt; setCount(count + 1)&#125;&gt;+1&lt;/button&gt;
+      &lt;output&gt;&#123;count&#125;&lt;/output&gt;
+      &#123;count &gt;= 10 &amp;&amp; &lt;p&gt;That is a lot.&lt;/p&gt;&#125;
+    &lt;/&gt;
+  );
+&#125;</code></pre>
+</ui-code>
+
+<p>En Fudic:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+  const many = computed(() =&gt; count() &gt;= 10);
+
+  function inc() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@inc&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+    @@if (many()) &#123;
+      &lt;p&gt;That is a lot.&lt;/p&gt;
+    &#125;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li>El <code>&lt;myapp-counter&gt;</code> que envuelve el <code>&lt;template&gt;</code> es el tag del componente en la página. Se usa como <code>&lt;myapp-counter .start=10&gt;</code>.</li>
+  <li><code>signal(start)</code> hace el papel de <code>useState</code>. Se lee con <code>count()</code> y se escribe con <code>count.set(…)</code>.</li>
+  <li>El servidor envía el contador ya pintado, con su número. El código del botón llega cuando el contador entra en pantalla.</li>
+</ul>
+
+<h2 id="when-not">Cuándo no elegir Fudic</h2>
+
+<ul>
+  <li><strong>Si compartes código con una app móvil.</strong> React Native reutiliza tus componentes y tu lógica. Fudic solo hace web.</li>
+  <li><strong>Si tu app es una sola pantalla con mucho estado en el cliente</strong>, como un editor gráfico. El fuerte de Fudic son las páginas que llegan pintadas del servidor.</li>
+  <li><strong>Si tu interfaz descansa en una librería de componentes de React</strong>, como MUI. En Fudic tendrías que escribir esos componentes.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Usar shadow DOM</a>: lo que aísla el CSS de cada componente, sin CSS Modules.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots" target="_blank" rel="noopener">Using templates and slots</a>: el estándar que hace de <code>children</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a" target="_blank" rel="noopener"><code>&lt;a&gt;</code></a>: con lo que se navega, sin router.</li>
+</ul>
+
+@render pager(prev: "/docs/coming-from", prevTitle: "Vienes de otro framework", next: "/docs/coming-from/angular", nextTitle: "Vienes de Angular")

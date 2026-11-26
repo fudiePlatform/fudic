@@ -1387,3 +1387,22 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que `fudic translate` informe `FUD1020` como error, con su posición, y no
   toque el catálogo de ese fichero mientras lo haya, igual que hace con un catálogo que no es JSON
   válido (`FUD1023`).
+
+## 91. Una página no puede usar un custom element que no sea un `.fud`
+
+- **Qué pasó.** Escribiendo «Vienes de Web Components» (`/docs/coming-from/web-components`,
+  2026-11-26). La idea era decir que un componente de Fudic convive en la misma página con uno de
+  Lit, uno nativo o uno de una librería como Material Web o Web Awesome, y que así se adopta Fudic
+  poco a poco. No se puede: todo tag con guion tiene que tener su `<link rel="component">`, y ese
+  enlace solo acepta un `.fud` (decisión 41, `component-declared` en
+  `packages/compiler/src/semantic/analyzers/component-declared.ts`). Un `<sl-button>` o un
+  `<md-filled-button>` en una página da `FUD0191`, y no hay forma de declararlo.
+- **Cómo se resolvió en la web.** La página no promete la convivencia. En «Cuándo no elegir Fudic»
+  de React, Angular y Vue se dice que habría que escribir los componentes de su librería, sin
+  mencionar las de componentes web.
+- **Qué debería hacer.** Dejar declarar un custom element ajeno, por ejemplo un
+  `<link rel="component" href="…">` que apunte a un módulo JS o al nombre de un paquete, o una
+  lista en `fudic.json`. El compilador lo trataría como un elemento opaco: sin props tipadas (o
+  con las de su Custom Elements Manifest, si lo trae), sin pintarlo en el servidor y cargando su
+  módulo en el navegador. Es el argumento más fuerte ante quien ya usa componentes web, y el
+  estándar se lo promete: un custom element funciona en cualquier página.

@@ -53,7 +53,19 @@
   <ol class="chapters">
       <li><a href="/docs/getting-started" aria-current=@(current === "getting-started" ? "page" : false)>Empezar con Fudic</a></li>
       <li>
-        <details class="chapter" open=@(current === "template-syntax" || current === "components" || current === "routes-and-layouts" || current === "snippets" || current === "expressions" || current === "await" || current === "attributes-and-properties" || current === "events" || current === "ref-and-raw")>
+        <details class="chapter" open=@(current === "coming-from" || current === "coming-from-react" || current === "coming-from-angular" || current === "coming-from-vue" || current === "coming-from-web-components")>
+          <summary>Vienes de otro framework</summary>
+          <ol>
+            <li><a href="/docs/coming-from" aria-current=@(current === "coming-from" ? "page" : false)>Vienes de otro framework</a></li>
+            <li><a href="/docs/coming-from/react" aria-current=@(current === "coming-from-react" ? "page" : false)>Vienes de React</a></li>
+            <li><a href="/docs/coming-from/angular" aria-current=@(current === "coming-from-angular" ? "page" : false)>Vienes de Angular</a></li>
+            <li><a href="/docs/coming-from/vue" aria-current=@(current === "coming-from-vue" ? "page" : false)>Vienes de Vue</a></li>
+            <li><a href="/docs/coming-from/web-components" aria-current=@(current === "coming-from-web-components" ? "page" : false)>Vienes de Web Components</a></li>
+        </ol>
+        </details>
+      </li>
+      <li>
+        <details class="chapter" open=@(current === "template-syntax"|| current === "components" || current === "routes-and-layouts" || current === "snippets" || current === "expressions" || current === "await" || current === "attributes-and-properties" || current === "events" || current === "ref-and-raw")>
           <summary>El lenguaje <code>.fud</code></summary>
           <ol>
             <li><a href="/docs/template-syntax" aria-current=@(current === "template-syntax" ? "page" : false)>Sintaxis de plantillas</a></li>

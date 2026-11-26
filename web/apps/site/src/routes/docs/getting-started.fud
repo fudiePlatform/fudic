@@ -76,7 +76,7 @@
 </ul>
 
 <ui-note>
-  <p>Si vienes de React, Vue o Angular, casi todo te sonará, pero no hay JSX, ni DOM virtual, ni decoradores. El markup es HTML, los estilos son CSS y el código es TypeScript, los tres estándar.</p>
+  <p>Si vienes de React, Vue o Angular, casi todo te sonará, pero no hay JSX, ni DOM virtual, ni decoradores. El markup es HTML, los estilos son CSS y el código es TypeScript, los tres estándar. Cada concepto de tu framework tiene su equivalente en <a href="/docs/coming-from">Vienes de otro framework</a>.</p>
 </ui-note>
 
 <h2 id="five-minutes">En cinco minutos</h2>

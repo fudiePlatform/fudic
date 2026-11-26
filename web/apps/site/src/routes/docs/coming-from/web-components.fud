@@ -1,0 +1,184 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Vienes de Web Components · Fudic</title>
+  <meta name="description" content="Si escribes componentes web nativos o con Lit, Fudic genera el mismo estándar que ya usas: custom elements con Declarative Shadow DOM. Lo que hoy escribes a mano y Fudic escribe por ti, y el mismo componente escrito en los tres.">
+  <link rel="canonical" href="https://fudic.dev/docs/coming-from/web-components">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Vienes de Web Components · Fudic">
+  <meta property="og:description" content="Componentes web nativos y Lit: lo que hoy escribes a mano, Fudic lo escribe por ti.">
+  <meta property="og:url" content="https://fudic.dev/docs/coming-from/web-components">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("coming-from-web-components")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>En esta página</summary></details>
+      <ul>
+        <li><a href="#same-standard">Lo que no cambia</a></li>
+        <li><a href="#equivalents">Equivalencias</a></li>
+        <li><a href="#stop-writing">Lo que dejas de escribir</a></li>
+        <li><a href="#same-component">El mismo componente</a></li>
+        <li><a href="#when-not">Cuándo no elegir Fudic</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<h1>Vienes de Web Components</h1>
+
+<p>Cada componente de Fudic es un custom element con Declarative Shadow DOM: el mismo estándar que ya usas, escribas componentes nativos o con Lit. Aquí no hay conceptos que traducir. Lo que cambia es lo que dejas de escribir a mano. La tabla se refiere a Lit 3, a noviembre de 2026.</p>
+
+<h2 id="same-standard">Lo que no cambia</h2>
+
+<p>Todo lo que sabes del estándar sirve tal cual en Fudic:</p>
+
+<ul>
+  <li>el tag con guion de cada componente;</li>
+  <li><code>&lt;slot&gt;</code>, <code>:host</code>, <code>::slotted()</code> y <code>::part()</code>;</li>
+  <li>las custom properties, que cruzan el shadow root;</li>
+  <li><code>CustomEvent</code>, con el que viajan los eventos de Fudic por la página;</li>
+  <li><code>ElementInternals</code>, en el que se apoyan los componentes que son campos de un formulario.</li>
+</ul>
+
+<h2 id="equivalents">Equivalencias</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">Nativo</th><th scope="col">Lit</th><th scope="col">En Fudic</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>customElements.define</code> y una clase</td><td><code>LitElement</code> y <code>@@customElement</code></td><td>Un <code>.fud</code> con su tag. Lo explica <a href="/docs/template-syntax/components">Componentes</a></td></tr>
+    <tr><td><code>attachShadow</code></td><td><code>render()</code>, en el navegador</td><td>Un <code>&lt;template shadowrootmode&gt;</code> que el servidor envía pintado. Lo explica <a href="/docs/getting-started#declarative-shadow-dom">Qué es Declarative Shadow DOM</a></td></tr>
+    <tr><td><code>innerHTML</code> o clonar un <code>&lt;template&gt;</code></td><td><code>html`…`</code></td><td>La sintaxis <code>@@</code>. Lo explica <a href="/docs/template-syntax">Sintaxis de plantillas</a></td></tr>
+    <tr><td><code>observedAttributes</code> y <code>attributeChangedCallback</code></td><td><code>@@property</code> y <code>@@state</code></td><td><code>props&lt;T&gt;()</code> y <code>signal</code>. Lo explica <a href="/docs/reactivity">Signals</a></td></tr>
+    <tr><td><code>connectedCallback</code>, <code>disconnectedCallback</code></td><td>Los mismos, y <code>firstUpdated</code></td><td><code>onConnect</code>, <code>onDisconnect</code> y <code>afterHydrate</code>. Lo explica <a href="/docs/reactivity/lifecycle">Ciclo de vida</a></td></tr>
+    <tr><td><code>adoptedStyleSheets</code></td><td><code>static styles</code> y <code>css`…`</code></td><td>Un <code>&lt;style&gt;</code> en el <code>&lt;head&gt;</code> del <code>.fud</code>. Lo explica <a href="/docs/styles">El CSS de un componente</a></td></tr>
+    <tr><td><code>dispatchEvent(new CustomEvent(…))</code></td><td>Lo mismo</td><td><code>emit</code> y <code>bus:</code>. Lo explica <a href="/docs/template-syntax/events#event-bus">El bus de eventos</a></td></tr>
+    <tr><td>Un evento que sube por el DOM</td><td><code>@@lit/context</code></td><td><code>provide</code> e <code>inject</code>. Lo explica <a href="/docs/di/providers">Dueños y subárboles</a></td></tr>
+    <tr><td><code>attachInternals()</code></td><td>Lo mismo, a mano</td><td>El marcador <code>formassociated</code>. Lo explica <a href="/docs/forms/form-associated">Controles form-associated</a></td></tr>
+    <tr><td>Una promesa y su estado, a mano</td><td><code>@@lit/task</code></td><td><code>@@await</code>. Lo explica <a href="/docs/template-syntax/await"><code>@@await</code></a></td></tr>
+    <tr><td>Sin pintado en el servidor</td><td><code>@@lit-labs/ssr</code></td><td>Siempre pintado en el servidor. Lo explica <a href="/docs/routing/rendering">Cuándo se pinta: los modos</a></td></tr>
+    <tr><td>—</td><td><code>@@lit/localize</code></td><td>Una compilación por idioma. Lo explica <a href="/docs/i18n">Traducir una app</a></td></tr>
+  </tbody>
+</table>
+
+<p>El SSR de Lit está en <a href="https://lit.dev/docs/ssr/overview/" target="_blank" rel="noopener">Lit Labs</a>, la familia de paquetes que el propio Lit llama experimentales.</p>
+
+<h2 id="stop-writing">Lo que dejas de escribir</h2>
+
+<ul>
+  <li><strong>El shadow root en el servidor.</strong> Fudic escribe el <code>&lt;template shadowrootmode&gt;</code> de cada componente con su contenido. El componente se ve antes de que cargue su código, y no hay un hueco en blanco hasta que se registra.</li>
+  <li><strong>La hidratación.</strong> El componente se engancha al HTML que pintó el servidor, sin volver a pintarlo. Su código se descarga cuando entra en pantalla, y se activa en su primera interacción. Lo explica <a href="/docs/reactivity/hydration">Hidratación</a>.</li>
+  <li><strong>La sincronización del DOM.</strong> No hay que copiar un atributo al estado ni el estado al DOM. Al cambiar un signal, se actualiza lo que lo lee.</li>
+  <li><strong>Una hoja por instancia.</strong> Cien tarjetas comparten una sola copia de su CSS. Lo explica <a href="/docs/styles#one-copy">Una copia por página</a>.</li>
+  <li><strong>El servidor.</strong> Las rutas, los datos de cada página y las llamadas al servidor, tipadas desde un contrato. Lo explica <a href="/docs/server">El contrato <code>.fudapi</code></a>.</li>
+</ul>
+
+<h2 id="same-component">El mismo componente</h2>
+
+<p>Un contador que empieza en el valor de una prop y avisa al pasar de diez. Nativo:</p>
+
+<ui-code .path="my-counter.js">
+<pre><code>class MyCounter extends HTMLElement &#123;
+  #count = 0;
+
+  connectedCallback() &#123;
+    this.#count = Number(this.getAttribute("start") ?? 0);
+    const root = this.attachShadow(&#123; mode: "open" &#125;);
+    root.innerHTML = `
+      &lt;button type="button"&gt;+1&lt;/button&gt;
+      &lt;output&gt;&lt;/output&gt;
+      &lt;p hidden&gt;That is a lot.&lt;/p&gt;`;
+    root.querySelector("button").addEventListener("click", () =&gt; &#123;
+      this.#count++;
+      this.#render();
+    &#125;);
+    this.#render();
+  &#125;
+
+  #render() &#123;
+    this.shadowRoot.querySelector("output").textContent = String(this.#count);
+    this.shadowRoot.querySelector("p").hidden = this.#count &lt; 10;
+  &#125;
+&#125;
+
+customElements.define("my-counter", MyCounter);</code></pre>
+</ui-code>
+
+<p>Con Lit:</p>
+
+<ui-code .path="my-counter.ts">
+<pre><code>import &#123; LitElement, html, nothing &#125; from "lit";
+import &#123; customElement, property, state &#125; from "lit/decorators.js";
+
+@@customElement("my-counter")
+export class MyCounter extends LitElement &#123;
+  @@property(&#123; type: Number &#125;) start = 0;
+  @@state() private count?: number;
+
+  render() &#123;
+    const count = this.count ?? this.start;
+    return html`
+      &lt;button type="button" @@click=$&#123;() =&gt; (this.count = count + 1)&#125;&gt;+1&lt;/button&gt;
+      &lt;output&gt;$&#123;count&#125;&lt;/output&gt;
+      $&#123;count &gt;= 10 ? html`&lt;p&gt;That is a lot.&lt;/p&gt;` : nothing&#125;
+    `;
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>En Fudic:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+  const many = computed(() =&gt; count() &gt;= 10);
+
+  function inc() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@inc&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+    @@if (many()) &#123;
+      &lt;p&gt;That is a lot.&lt;/p&gt;
+    &#125;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li>El nativo y el de Lit crean su shadow root en el navegador, así que hasta que carga su script la página muestra un hueco.</li>
+  <li>El de Fudic llega del servidor ya pintado, con su número, y su script llega cuando el contador entra en pantalla.</li>
+  <li>En el navegador, los tres son un custom element con su shadow root.</li>
+</ul>
+
+<h2 id="when-not">Cuándo no elegir Fudic</h2>
+
+<ul>
+  <li><strong>Si publicas una librería de componentes</strong> para que otros la usen en sus apps de React, Angular o Vue. Fudic es un framework de apps: compila juntos las páginas, los componentes y el servidor. Lit está hecho para publicar componentes sueltos.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noopener">Declarative Shadow DOM</a>: el shadow root que escribe Fudic en el HTML.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements" target="_blank" rel="noopener">Using custom elements</a>: lo que es cada componente de Fudic en el navegador.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noopener"><code>ElementInternals</code></a>: lo que hay debajo de <code>formassociated</code>.</li>
+</ul>
+
+@render pager(prev: "/docs/coming-from/vue", prevTitle: "Vienes de Vue", next: "/docs/template-syntax", nextTitle: "Sintaxis de plantillas")

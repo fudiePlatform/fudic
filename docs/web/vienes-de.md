@@ -2,7 +2,7 @@
 
 Plan para una parte de la web dirigida a quien llega desde los tres frameworks dominantes o
 desde los Web Components.
-**Pendiente**: se aborda cuando Docs, MCP y Tutoriales estén cerrados.
+**En revisión**: las cinco páginas están escritas (`web/apps/site/src/routes/docs/coming-from*`).
 
 ## 1. Alcance
 

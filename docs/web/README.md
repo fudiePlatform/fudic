@@ -26,7 +26,7 @@ Cómo se cuenta Fudic, dónde está el riesgo y qué falta antes de lanzar:
 | **Documentación** | La guía completa del framework (§5). La escribimos entre los dos. | **Ahora.** |
 | **Tutoriales** | 74 tutoriales en 16 categorías, en su propia app (`/tutorials`), cada uno con su solución en `tutorials/<slug>/`: [tutorial/README.md](tutorial/README.md). | **En pausa**: portada y primer tutorial hechos; falta decidir cómo se prueba su código (tutorial/README.md §6.1). |
 | **MCP** | Toda la documentación del MCP, en su propia app: [mcp/README.md](mcp/README.md). | **Ahora**: plan en revisión. |
-| **Vienes de…** | Un grupo dentro de Docs (`/docs/coming-from`) para quien llega de React, Angular, Vue o Web Components (nativos y Lit): [vienes-de.md](vienes-de.md). | **Pendiente**: cuando Docs, MCP y Tutoriales estén cerrados. |
+| **Vienes de…** | Un grupo dentro de Docs (`/docs/coming-from`) para quien llega de React, Angular, Vue o Web Components (nativos y Lit): [vienes-de.md](vienes-de.md). | En revisión: las cinco páginas, hechas. |
 
 ### Diseño de la Documentación
 
@@ -84,6 +84,7 @@ diga otro.
 | # | Capítulo | Contenido | Estado |
 |---|---|---|---|
 | 1 | **Empezar** | Qué es fudic. Crear un proyecto (`npx @fudic/cli new`). Estructura de carpetas. Tu primer componente. | **Hecho** |
+| 1b | **Vienes de otro framework** | Cinco páginas bajo `/docs/coming-from`: la portada (las cuatro ideas que cambian para todos) y una por React, Angular, Vue y Web Components (nativos y Lit). Cada una: equivalencias enlazadas a su capítulo, lo que hay que desaprender (en Web Components, lo que no cambia y lo que dejas de escribir), el mismo contador en los dos y cuándo no elegir Fudic. Plan en [vienes-de.md](vienes-de.md). | En revisión |
 | 2 | **El lenguaje `.fud`** | Nueve páginas bajo `/docs/template-syntax`: Sintaxis de plantillas (por qué Razor adaptado a TypeScript, las cuatro piezas, vistas políglotas), Componentes, Rutas y layouts, Snippets, Expresiones y control de flujo, `@await`, Atributos y propiedades, Eventos (delegación y bus), `ref` y `@raw`. | **Hecho** |
 | 3 | **Reactividad y ciclo de vida** | Signals, derivados y efectos. Ciclo de vida del componente. Hidratación en la primera interacción, sin perder ningún clic. | En revisión |
 | 4 | **Estilos** | Cuatro páginas bajo `/docs/styles`: El CSS de un componente (shadow DOM, lo que cruza su frontera, una copia por documento, `style` en el markup), Hojas compartidas (documento, `globalStyles`, `styles`, tokens en `:root`), La guía de estilos (un trozo por elemento, `:where()`, `@sheet`) y Cómo llega el CSS (poda, `css: inline \| link`; Baseline, citado). | En revisión |
@@ -249,3 +250,4 @@ Los pasos 3 y 4 pueden ir en paralelo si Pedro lo prefiere: el esqueleto no depe
 | 2026-11-23 | Capítulo **Términos propios**, nuevo, a petición de Pedro: cinco páginas creadas con `fudic g page` (hallazgo 6 de la CLI). Sale del código de `@fudic/terms`, `@fudic/spec` y del motor del workbench. La página de `selfTest` que se propuso no se escribió: nadie lo ejecuta (hallazgo 45 del framework); va dentro de Cómo funciona un término. «Tus propios pasos» se quita de Pruebas y sus enlaces van al capítulo nuevo. Criterios decía que un texto que nunca llega da `FUD1202`: falla con su evidencia. Hallazgos 45 y 46. |
 | 2026-11-24 | Portada: el boceto `hero.html` pasa a `index.fud`, con el layout `home` y `<ui-command>` en `@web/ui`. Lighthouse 100/100/100/100 en móvil y escritorio. Boceto borrado. |
 | 2026-11-25 | **Tutoriales**: plan en [tutorial/README.md](tutorial/README.md), app `web/apps/tutorials` en `/tutorials/`, «Tutoriales» en la cabecera y el pie, la portada con las 16 categorías y el primer tutorial (`first-app`), con su solución en `tutorials/first-app/`. |
+| 2026-11-26 | **Vienes de otro framework**, según [vienes-de.md](vienes-de.md): cinco páginas bajo `/docs/coming-from`, creadas con `fudic g page` (hallazgo 6 de la CLI), un grupo en el menú tras «Empezar con Fudic», una nota en la portada y el enlace en la nota de «Empezar con Fudic». El contador de ejemplo se compiló en el build. Un componente de Fudic no puede convivir en una página con un custom element ajeno: hallazgo 91 del framework, y la página de Web Components no lo promete. |

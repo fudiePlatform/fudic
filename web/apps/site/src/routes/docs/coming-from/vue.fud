@@ -1,0 +1,145 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Vienes de Vue · Fudic</title>
+  <meta name="description" content="De Vue a Fudic: componentes de fichero único, el mismo &#64;click, provide e inject, y el shadow DOM en lugar de scoped. Cada concepto con su equivalente y su capítulo, lo que cambia y el mismo componente escrito en los dos.">
+  <link rel="canonical" href="https://fudic.dev/docs/coming-from/vue">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Vienes de Vue · Fudic">
+  <meta property="og:description" content="Componentes de fichero único, reactividad, provide e inject y Nuxt, traducidos a Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/coming-from/vue">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("coming-from-vue")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>En esta página</summary></details>
+      <ul>
+        <li><a href="#equivalents">Equivalencias</a></li>
+        <li><a href="#unlearn">Lo que hay que desaprender</a></li>
+        <li><a href="#same-component">El mismo componente</a></li>
+        <li><a href="#when-not">Cuándo no elegir Fudic</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<h1>Vienes de Vue</h1>
+
+<p>Un <code>.fud</code> es un componente de fichero único, como un <code>.vue</code>: el código, el markup y el estilo en el mismo fichero. Lo que cambia es que el markup es Declarative Shadow DOM estándar, y que el shadow DOM aísla el estilo. La tabla se refiere a Vue 3.5 y Nuxt, a noviembre de 2026.</p>
+
+<h2 id="equivalents">Equivalencias</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">En Vue</th><th scope="col">En Fudic</th><th scope="col">Dónde se explica</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Un <code>.vue</code>: <code>&lt;script setup&gt;</code>, <code>&lt;template&gt;</code>, <code>&lt;style scoped&gt;</code></td><td>Un <code>.fud</code>: <code>@@code</code>, el tag del componente con su <code>&lt;template shadowrootmode&gt;</code>, un <code>&lt;style&gt;</code> en el <code>&lt;head&gt;</code></td><td><a href="/docs/template-syntax/components">Componentes</a></td></tr>
+    <tr><td><code>&#123;&#123; value &#125;&#125;</code></td><td><code>@@value</code></td><td><a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a></td></tr>
+    <tr><td><code>v-if</code>, <code>v-else-if</code>, <code>v-else</code></td><td><code>@@if</code>, <code>else if</code>, <code>else</code></td><td><a href="/docs/template-syntax/expressions#conditions">Condiciones</a></td></tr>
+    <tr><td><code>v-for</code> con <code>:key</code></td><td><code>@@foreach (…) key (item.id)</code></td><td><a href="/docs/template-syntax/expressions#loops">Bucles</a></td></tr>
+    <tr><td><code>:title="x"</code>, <code>:class="&#123; done &#125;"</code></td><td><code>title=@@x</code>, <code>class:done=@@done</code></td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>@@click="save"</code></td><td><code>@@click=@@save</code></td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td><code>defineProps</code></td><td><code>props&lt;T&gt;()</code>, con la misma desestructuración</td><td><a href="/docs/template-syntax/components#props">Props</a></td></tr>
+    <tr><td><code>defineModel</code></td><td>Una prop <code>Signal&lt;T&gt;</code></td><td><a href="/docs/template-syntax/components#signal-prop">Para que el hijo cambie un valor del padre</a></td></tr>
+    <tr><td><code>defineEmits</code></td><td>Una prop función, o el bus de eventos</td><td><a href="/docs/template-syntax/components#function-prop">Para que el hijo avise al padre</a></td></tr>
+    <tr><td><code>&lt;slot name="title"&gt;</code> y <code>&lt;template #title&gt;</code></td><td><code>&lt;slot name="title"&gt;</code> y <code>slot="title"</code></td><td><a href="/docs/template-syntax/components#slots">Slots</a></td></tr>
+    <tr><td><code>ref</code>, <code>computed</code>, <code>watch</code></td><td><code>signal</code>, <code>computed</code>, <code>effect</code></td><td><a href="/docs/reactivity#instead-of">Signals</a></td></tr>
+    <tr><td><code>onMounted</code>, <code>onUnmounted</code></td><td><code>afterHydrate</code>, <code>onDispose</code></td><td><a href="/docs/reactivity/lifecycle#instead-of">Ciclo de vida</a></td></tr>
+    <tr><td><code>provide</code> e <code>inject</code></td><td><code>provide</code> e <code>inject</code>, con una clase o un token</td><td><a href="/docs/di/providers">Dueños y subárboles</a></td></tr>
+    <tr><td>Pinia</td><td>Un módulo que exporta signals</td><td><a href="/docs/reactivity#store">Compartir estado</a></td></tr>
+    <tr><td><code>pages/blog/[slug].vue</code> de Nuxt</td><td><code>src/routes/blog/[slug].fud</code></td><td><a href="/docs/routing">Rutas por carpetas</a></td></tr>
+    <tr><td>Vue Router</td><td>Un <code>&lt;a href&gt;</code>, sin router en el navegador</td><td><a href="/docs/routing#navigation">Navegar</a></td></tr>
+    <tr><td><code>useFetch</code> y las rutas de servidor de Nuxt</td><td>El <code>.fudapi</code>: <code>load</code> y funciones de servidor</td><td><a href="/docs/server">El contrato <code>.fudapi</code></a></td></tr>
+    <tr><td><code>v-model</code> y VeeValidate</td><td>Un <code>form</code> en el <code>.fudapi</code>, y <code>control=@@form.field</code></td><td><a href="/docs/forms">El formulario</a></td></tr>
+    <tr><td>vue-i18n</td><td>Una compilación por idioma</td><td><a href="/docs/i18n">Traducir una app</a></td></tr>
+    <tr><td>Vitest y Vue Test Utils</td><td><code>fudic test</code>, sobre Vitest, y <code>fudic spec</code></td><td><a href="/docs/testing">Criterios</a></td></tr>
+    <tr><td>Vite</td><td>Vite, con el plugin de Fudic</td><td><a href="/docs/vite">El plugin de Vite</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="unlearn">Lo que hay que desaprender</h2>
+
+<ul>
+  <li><strong>No hay <code>.value</code>.</strong> Un signal se lee llamándolo, <code>count()</code>, y se escribe con <code>count.set(…)</code>, también en la plantilla.</li>
+  <li><strong><code>scoped</code> pasa a ser shadow DOM.</strong> Vue aísla el estilo añadiendo atributos a cada elemento. En Fudic lo aísla el navegador, y no hay <code>:deep()</code>. El estilo entra en un componente por las custom properties y por <code>::part()</code>. Lo explica <a href="/docs/styles#boundary">Lo que cruza la frontera</a>.</li>
+  <li><strong>La plantilla no llama a métodos.</strong> En Fudic, una expresión admite una lista cerrada de operaciones, para que la misma vista se pueda pintar en un servidor de otro lenguaje. La lógica va en un <code>computed</code>. La lista está en <a href="/docs/template-syntax/expressions#the-closed-list">Lo que admite una expresión</a>.</li>
+  <li><strong>No se hidrata la página entera.</strong> Cada componente se hidrata por su cuenta, en su primera interacción. Lo explica <a href="/docs/reactivity/hydration">Hidratación</a>.</li>
+</ul>
+
+<h2 id="same-component">El mismo componente</h2>
+
+<p>Un contador que empieza en el valor de una prop y avisa al pasar de diez. En Vue:</p>
+
+<ui-code .path="Counter.vue">
+<pre><code>&lt;script setup lang="ts"&gt;
+import &#123; computed, ref &#125; from "vue";
+
+const &#123; start = 0 &#125; = defineProps&lt;&#123; start?: number &#125;&gt;();
+const count = ref(start);
+const many = computed(() =&gt; count.value &gt;= 10);
+&lt;/script&gt;
+
+&lt;template&gt;
+  &lt;button type="button" @@click="count++"&gt;+1&lt;/button&gt;
+  &lt;output&gt;&#123;&#123; count &#125;&#125;&lt;/output&gt;
+  &lt;p v-if="many"&gt;That is a lot.&lt;/p&gt;
+&lt;/template&gt;</code></pre>
+</ui-code>
+
+<p>En Fudic:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+  const many = computed(() =&gt; count() &gt;= 10);
+
+  function inc() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@inc&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+    @@if (many()) &#123;
+      &lt;p&gt;That is a lot.&lt;/p&gt;
+    &#125;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li>El <code>&lt;template&gt;</code> de Vue pasa a ser el tag del componente, que envuelve un <code>&lt;template shadowrootmode&gt;</code>. Se usa como <code>&lt;myapp-counter .start=10&gt;</code>.</li>
+  <li>El handler es una función del <code>@@code</code>. Un <code>count++</code> en la plantilla no cabe, porque un signal se escribe con <code>set</code>.</li>
+  <li>El servidor envía el contador ya pintado, con su número. El código del botón llega cuando el contador entra en pantalla.</li>
+</ul>
+
+<h2 id="when-not">Cuándo no elegir Fudic</h2>
+
+<ul>
+  <li><strong>Si tu app es una sola pantalla con mucho estado en el cliente</strong>, como un editor que nunca cambia de página. El fuerte de Fudic son las páginas que llegan pintadas del servidor.</li>
+  <li><strong>Si tu interfaz descansa en una librería de componentes de Vue</strong>, como Vuetify. En Fudic tendrías que escribir esos componentes.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Usar shadow DOM</a>: lo que hace el papel de <code>scoped</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots" target="_blank" rel="noopener">Using templates and slots</a>: los slots del estándar, en los que se inspiran los de Vue.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part" target="_blank" rel="noopener"><code>::part()</code></a>: dar estilo a un componente desde fuera, sin <code>:deep()</code>.</li>
+</ul>
+
+@render pager(prev: "/docs/coming-from/angular", prevTitle: "Vienes de Angular", next: "/docs/coming-from/web-components", nextTitle: "Vienes de Web Components")

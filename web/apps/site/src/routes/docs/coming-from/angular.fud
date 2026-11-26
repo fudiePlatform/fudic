@@ -1,0 +1,157 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Vienes de Angular · Fudic</title>
+  <meta name="description" content="De Angular a Fudic: el mismo control de flujo, los mismos signals y la misma inyección de dependencias. Cada concepto con su equivalente y su capítulo, lo que cambia y el mismo componente escrito en los dos.">
+  <link rel="canonical" href="https://fudic.dev/docs/coming-from/angular">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Vienes de Angular · Fudic">
+  <meta property="og:description" content="Control de flujo, signals e inyección de dependencias, traducidos a Fudic.">
+  <meta property="og:url" content="https://fudic.dev/docs/coming-from/angular">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render docsNav("coming-from-angular")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>En esta página</summary></details>
+      <ul>
+        <li><a href="#equivalents">Equivalencias</a></li>
+        <li><a href="#unlearn">Lo que hay que desaprender</a></li>
+        <li><a href="#same-component">El mismo componente</a></li>
+        <li><a href="#when-not">Cuándo no elegir Fudic</a></li>
+        <li><a href="#mdn">El estándar, en MDN</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<h1>Vienes de Angular</h1>
+
+<p>De los frameworks dominantes, Angular es el más cercano a Fudic. El control de flujo se escribe con <code>@@if</code>, los signals se leen llamándolos y los servicios se piden con <code>inject()</code>. La tabla se refiere a Angular 20 o posterior, a noviembre de 2026.</p>
+
+<h2 id="equivalents">Equivalencias</h2>
+
+<table>
+  <thead>
+    <tr><th scope="col">En Angular</th><th scope="col">En Fudic</th><th scope="col">Dónde se explica</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@@Component</code> con su <code>selector</code></td><td>Un <code>.fud</code>: su tag es el selector y envuelve un <code>&lt;template shadowrootmode&gt;</code></td><td><a href="/docs/template-syntax/components">Componentes</a></td></tr>
+    <tr><td><code>&#123;&#123; value &#125;&#125;</code></td><td><code>@@value</code></td><td><a href="/docs/template-syntax/expressions">Expresiones y control de flujo</a></td></tr>
+    <tr><td><code>@@if</code>, <code>@@switch</code></td><td><code>@@if</code>, <code>@@switch</code></td><td><a href="/docs/template-syntax/expressions#conditions">Condiciones</a></td></tr>
+    <tr><td><code>@@for (…; track item.id)</code> y <code>@@empty</code></td><td><code>@@foreach (…) key (item.id)</code> y <code>@@empty</code></td><td><a href="/docs/template-syntax/expressions#loops">Bucles</a></td></tr>
+    <tr><td><code>[title]="x"</code>, <code>[class.done]="x"</code></td><td><code>title=@@x</code>, <code>class:done=@@x</code></td><td><a href="/docs/template-syntax/attributes-and-properties">Atributos y propiedades</a></td></tr>
+    <tr><td><code>(click)="save()"</code></td><td><code>@@click=@@save</code></td><td><a href="/docs/template-syntax/events">Eventos</a></td></tr>
+    <tr><td><code>input()</code></td><td><code>props&lt;T&gt;()</code>, y <code>.title=@@x</code> al usarlo</td><td><a href="/docs/template-syntax/components#props">Props</a></td></tr>
+    <tr><td><code>model()</code></td><td>Una prop <code>Signal&lt;T&gt;</code></td><td><a href="/docs/template-syntax/components#signal-prop">Para que el hijo cambie un valor del padre</a></td></tr>
+    <tr><td><code>output()</code></td><td>Una prop función, o el bus de eventos</td><td><a href="/docs/template-syntax/components#function-prop">Para que el hijo avise al padre</a></td></tr>
+    <tr><td><code>&lt;ng-content select&gt;</code></td><td><code>&lt;slot name&gt;</code></td><td><a href="/docs/template-syntax/components#slots">Slots</a></td></tr>
+    <tr><td><code>host</code>, <code>@@HostBinding</code>, <code>@@HostListener</code></td><td>Atributos y eventos en el tag del componente</td><td><a href="/docs/template-syntax/components#host">El host</a></td></tr>
+    <tr><td><code>signal</code>, <code>computed</code>, <code>effect</code></td><td><code>signal</code>, <code>computed</code>, <code>effect</code></td><td><a href="/docs/reactivity">Signals</a></td></tr>
+    <tr><td><code>ngOnInit</code>, <code>ngOnDestroy</code></td><td><code>afterHydrate</code>, <code>onDispose</code></td><td><a href="/docs/reactivity/lifecycle#instead-of">Ciclo de vida</a></td></tr>
+    <tr><td><code>@@Injectable(&#123; providedIn: "root" &#125;)</code></td><td><code>Service(Logger)</code></td><td><a href="/docs/di">Servicios</a></td></tr>
+    <tr><td><code>inject()</code>, <code>InjectionToken</code></td><td><code>inject()</code>, <code>token&lt;T&gt;()</code></td><td><a href="/docs/di#tokens">Tokens</a></td></tr>
+    <tr><td><code>providers</code> de un componente</td><td><code>provide()</code> en su <code>@@code</code></td><td><a href="/docs/di/providers">Dueños y subárboles</a></td></tr>
+    <tr><td>Pipes: <code>&#123;&#123; total | currency &#125;&#125;</code></td><td>Pipes: <code>@@(total() | euros)</code></td><td><a href="/docs/template-syntax/expressions#pipes">Pipes</a></td></tr>
+    <tr><td><code>@@defer (hydrate on interaction)</code></td><td>Lo que hace cada componente, sin escribir nada</td><td><a href="/docs/reactivity/hydration">Hidratación</a></td></tr>
+    <tr><td><code>withEventReplay()</code></td><td>De serie: ningún clic se pierde</td><td><a href="/docs/reactivity/hydration#no-lost-clicks">Ningún clic se pierde</a></td></tr>
+    <tr><td>Angular Router</td><td>Una ruta por fichero y un <code>&lt;a href&gt;</code></td><td><a href="/docs/routing">Rutas por carpetas</a></td></tr>
+    <tr><td><code>HttpClient</code></td><td>Funciones del <code>.fudapi</code>, que se llaman como cualquier función</td><td><a href="/docs/server">El contrato <code>.fudapi</code></a></td></tr>
+    <tr><td>Reactive forms y <code>Validators</code></td><td>Un <code>form</code> en el <code>.fudapi</code>, y <code>control=@@form.field</code></td><td><a href="/docs/forms">El formulario</a></td></tr>
+    <tr><td><code>ViewEncapsulation.ShadowDom</code></td><td>Lo que hace siempre</td><td><a href="/docs/styles">El CSS de un componente</a></td></tr>
+    <tr><td><code>@@angular/localize</code></td><td>Una compilación por idioma, sin marcar los textos</td><td><a href="/docs/i18n">Traducir una app</a></td></tr>
+    <tr><td><code>ng new</code>, <code>ng serve</code>, <code>ng generate</code></td><td><code>fudic new</code>, <code>fudic dev</code>, <code>fudic generate</code></td><td><a href="/docs/cli">La CLI</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="unlearn">Lo que hay que desaprender</h2>
+
+<ul>
+  <li><strong>No hay clase ni decorador en el componente.</strong> El componente es su markup, con su tag, y el <code>@@code</code> se ejecuta una vez, como un constructor. Los servicios sí son clases, y se registran con <code>Service</code>, que es un decorador estándar de JavaScript. Lo explica <a href="/docs/di#service">Un servicio</a>.</li>
+  <li><strong>No hay <code>imports</code> en el componente.</strong> Un componente que usa otro lo enlaza con un <code>&lt;link rel="component"&gt;</code>. Lo explica <a href="/docs/template-syntax/components#use-another-component">Usar otro componente</a>.</li>
+  <li><strong>La plantilla no llama a métodos.</strong> Angular deja escribir <code>&#123;&#123; total() &#125;&#125;</code> con cualquier método. En Fudic, una expresión admite una lista cerrada de operaciones, para que la misma vista se pueda pintar en un servidor de otro lenguaje. La lógica va en un <code>computed</code>. La lista está en <a href="/docs/template-syntax/expressions#the-closed-list">Lo que admite una expresión</a>.</li>
+  <li><strong>El shadow DOM no se puede atravesar.</strong> No hay <code>::ng-deep</code>. El estilo entra en un componente por las custom properties y por <code>::part()</code>, las vías del estándar. Lo explica <a href="/docs/styles#boundary">Lo que cruza la frontera</a>.</li>
+</ul>
+
+<h2 id="same-component">El mismo componente</h2>
+
+<p>Un contador que empieza en el valor de una prop y avisa al pasar de diez. En Angular:</p>
+
+<ui-code .path="counter.ts">
+<pre><code>import &#123; Component, computed, input, linkedSignal &#125; from "@@angular/core";
+
+@@Component(&#123;
+  selector: "app-counter",
+  template: `
+    &lt;button type="button" (click)="inc()"&gt;+1&lt;/button&gt;
+    &lt;output&gt;&#123;&#123; count() &#125;&#125;&lt;/output&gt;
+    @@if (many()) &#123;
+      &lt;p&gt;That is a lot.&lt;/p&gt;
+    &#125;
+  `,
+&#125;)
+export class Counter &#123;
+  readonly start = input(0);
+  readonly count = linkedSignal(() =&gt; this.start());
+  readonly many = computed(() =&gt; this.count() &gt;= 10);
+
+  inc() &#123;
+    this.count.update((n) =&gt; n + 1);
+  &#125;
+&#125;</code></pre>
+</ui-code>
+
+<p>En Fudic:</p>
+
+<ui-code .path="src/components/myapp-counter/myapp-counter.fud">
+<pre><code>@@code &#123;
+  import &#123; computed, signal &#125; from "@@fudic/core";
+
+  const &#123; start = 0 &#125; = props&lt;&#123; start?: number &#125;&gt;();
+  const count = signal(start);
+  const many = computed(() =&gt; count() &gt;= 10);
+
+  function inc() &#123;
+    count.set(count() + 1);
+  &#125;
+&#125;
+
+&lt;myapp-counter&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;button type="button" @@click=@@inc&gt;+1&lt;/button&gt;
+    &lt;output&gt;@@count()&lt;/output&gt;
+    @@if (many()) &#123;
+      &lt;p&gt;That is a lot.&lt;/p&gt;
+    &#125;
+  &lt;/template&gt;
+&lt;/myapp-counter&gt;</code></pre>
+</ui-code>
+
+<ul>
+  <li>El selector pasa a ser el tag que envuelve el <code>&lt;template&gt;</code>. Se usa como <code>&lt;myapp-counter .start=10&gt;</code>.</li>
+  <li>El <code>@@if</code> se escribe igual. <code>computed</code> también, sin <code>this</code>.</li>
+  <li>El servidor envía el contador ya pintado, con su número. El código del botón llega cuando el contador entra en pantalla.</li>
+</ul>
+
+<h2 id="when-not">Cuándo no elegir Fudic</h2>
+
+<ul>
+  <li><strong>Si tu app es una sola pantalla con mucho estado en el cliente</strong>, como un panel de gestión que nunca cambia de página. El fuerte de Fudic son las páginas que llegan pintadas del servidor.</li>
+  <li><strong>Si tu interfaz descansa en Angular Material</strong> o en otra librería de componentes de Angular. En Fudic tendrías que escribir esos componentes.</li>
+</ul>
+
+<h2 id="mdn">El estándar, en MDN</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM" target="_blank" rel="noopener">Usar shadow DOM</a>: lo que hay debajo de <code>ViewEncapsulation.ShadowDom</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots" target="_blank" rel="noopener">Using templates and slots</a>: el estándar que hace de <code>&lt;ng-content&gt;</code>.</li>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::part" target="_blank" rel="noopener"><code>::part()</code></a>: dar estilo a un componente desde fuera, sin <code>::ng-deep</code>.</li>
+</ul>
+
+@render pager(prev: "/docs/coming-from/react", prevTitle: "Vienes de React", next: "/docs/coming-from/vue", nextTitle: "Vienes de Vue")

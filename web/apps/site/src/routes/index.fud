@@ -81,6 +81,7 @@
   </ul>
 </section>
 
+  <p class="note">¿Vienes de React, Angular, Vue o Web Components? <a href="/docs/coming-from">Cada concepto, traducido a Fudic</a>.</p>
 </section>
 
 <section class="block" aria-labelledby="llm">
