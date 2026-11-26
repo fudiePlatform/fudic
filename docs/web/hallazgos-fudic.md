@@ -986,6 +986,11 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `cat > src/routes/about.fud` dio el mismo `FUD0156` a una página, hasta un `touch`. Y en
   `page-maps`, con un componente reescrito entero: además de `FUD0156`, `FUD0949` («no component
   <myapp-panel> in the workspace»), `FUD0953` (sin fixture, que sí estaba) y `FUD0191` en la página.
+- **Y con un `.fudapi`** (tutoriales `task` y `middlewares`, 2026-11-26): reescribir el contrato con
+  `cat >` y `fudic dev` en marcha deja el módulo sin sus exportaciones (`TS2305: Module
+  '"fudic:routes/index"' has no exported member 'rename'`, y lo mismo con `login` y `secret`)
+  hasta un `touch`. Parecía un error del contrato (un `fails` sin `catches`, un `chain` con `skip`),
+  y no lo era: con el mismo fichero guardado otra vez, el typecheck queda limpio.
 
 ## 68. Un componente que solo lee un store no se actualiza nunca
 

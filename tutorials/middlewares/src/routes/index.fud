@@ -1,0 +1,26 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  import { task } from "@fudic/core";
+
+  const reading = task(secret);
+
+  function read() {
+    void reading.run();
+  }
+
+  async function signIn() {
+    await login({ user: "Ana" });
+  }
+}
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<button type="button" @click=@read>Read the secret</button>
+<button type="button" @click=@signIn>Sign in as Ana</button>
+<p>@(reading.value() ?? "")</p>
+<p role="alert">@reading.message()</p>

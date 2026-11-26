@@ -173,4 +173,4 @@ my-app   the typecheck failed: 1 error in 1 file</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-types" target="_blank" rel="noopener">la solución de Tipos compartidos, en GitHub</a>. Compara tu <code>index.fudapi</code>, tu <code>src/server/routes/index.ts</code> y tu <code>index.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/json-api", prevTitle: "Una API con su .fudapi", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/json-api", prevTitle: "Una API con su .fudapi", next: "/tutorials/middlewares", nextTitle: "Un middleware de login")

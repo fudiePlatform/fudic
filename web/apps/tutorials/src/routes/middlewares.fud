@@ -1,0 +1,203 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Un middleware de login · Tutoriales de Fudic</title>
+  <meta name="description" content="Escribe un middleware de Fudic que lee la cookie de sesión y deja el usuario en el ctx, protege una función con use auth y todas las de un fichero con chain y skip.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/middlewares">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Un middleware de login · Tutoriales de Fudic">
+  <meta property="og:description" content="Un middleware que comprueba la sesión y deja el usuario en el ctx.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/middlewares">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("middlewares")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y su cadena</a></li>
+        <li><a href="#declare">2. Escribe el middleware</a></li>
+        <li><a href="#use">3. Protege una función</a></li>
+        <li><a href="#typed">4. ctx.user, con su tipo</a></li>
+        <li><a href="#chain">5. Todo el fichero, menos el login</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>Un middleware de login</h1>
+
+<p class="lede">Escribes un middleware que mira quién llama antes de cada función protegida: sin sesión la rechaza, y con sesión le deja al handler el nombre del usuario.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Declarar un middleware con su mitad de servidor y lo que deja en el <code>ctx</code>.</li>
+    <li>Ponerlo delante de una función con <code>use</code>, y de todas las de un fichero con <code>chain</code>.</li>
+    <li>Quitárselo a una función con <code>skip</code>.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. La página llama a las funciones con <code>task</code>, que se cuenta en <a href="/tutorials/task">El estado de una llamada con task</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y su cadena</h2>
+
+<p>Un middleware es código que envuelve a una llamada: hace algo antes, la deja seguir y puede hacer algo después. Los middlewares de una llamada forman su <strong>cadena</strong>. Crea la app, el contrato de la página de inicio y la cadena global:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud
+npx fudic add http</code></pre>
+</ui-code>
+
+<pre class="output"><code>Updated my-app
+  src/http.fudapi: the chain every server function goes through</code></pre>
+
+<ui-code .path="src/http.fudapi">
+<pre><code># The global chain: csrf refuses a call another site's page makes with the user's cookies.
+chain
+  use csrf</code></pre>
+</ui-code>
+
+<p>Es la cadena por la que pasan todas las funciones del proyecto. Trae <code>csrf</code>, un middleware de Fudic que impide que otra web llame a tus funciones con las cookies del usuario. Vas a usar una cookie para la sesión, así que déjalo ahí.</p>
+
+<h2 id="declare">2. Escribe el middleware</h2>
+
+<p>Un middleware se declara en un <code>.fudapi</code>, por convención en <code>src/middlewares/</code>. Este solo tiene mitad de servidor, y deja en el <code>ctx</code> un <code>user</code>, que <code>adds</code> declara con su tipo:</p>
+
+<ui-code .path="src/middlewares/auth.fudapi">
+<pre><code># Who is calling. The server half reads the session cookie and leaves the user in ctx.
+middleware auth
+  server
+  adds
+    user  str</code></pre>
+</ui-code>
+
+<p>Su mitad de servidor va en <code>src/server</code>. Recibe el <code>ctx</code> y <code>next</code>, la llamada que envuelve: sin cookie lanza <code>unauthorized</code>, un <code>401</code>, y con ella sigue con el usuario en el <code>ctx</code>:</p>
+
+<ui-code .path="src/server/auth.ts">
+<pre><code>import &#123; unauthorized &#125; from '@@fudic/http';
+import &#123; auth &#125; from 'fudic:middlewares/auth';
+
+auth.server((ctx, next) =&gt; &#123;
+  const user = ctx.cookies.get('session');
+  if (user === undefined) throw unauthorized('Sign in first.');
+  return next(Object.assign(ctx, &#123; user &#125;));
+&#125;);</code></pre>
+</ui-code>
+
+<p>Aquí la cookie guarda el nombre tal cual, para que el ejemplo sea corto. En una app de verdad guardaría un identificador de sesión, y el middleware buscaría a quién pertenece.</p>
+
+<h2 id="use">3. Protege una función</h2>
+
+<p>Dos funciones: <code>login</code> pone la cookie, y <code>secret</code> solo responde a quien tiene sesión, porque lleva <code>use auth</code> debajo:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Signs in as `user`: the session cookie holds the name.
+post login
+  user  str
+
+# What only a signed-in user may read.
+get secret
+  use auth
+  -&gt; str</code></pre>
+</ui-code>
+
+<p><code>setCookie</code>, de <code>@@fudic/http</code>, escribe la cookie en la respuesta. El handler de <code>secret</code> lee el usuario que dejó el middleware:</p>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; setCookie &#125; from '@@fudic/http';
+import &#123; login, secret &#125; from 'fudic:routes/index';
+
+login.handle((ctx) =&gt; &#123;
+  setCookie(ctx, 'session', ctx.args.user);
+&#125;);
+
+secret.handle((ctx) =&gt; `The code is 42, $&#123;ctx.user&#125;.`);</code></pre>
+</ui-code>
+
+<p>La página tiene un botón para cada una. El secreto se lee con una tarea, que pinta su valor o su error:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; task &#125; from "@@fudic/core";
+
+  const reading = task(secret);
+
+  function read() &#123;
+    void reading.run();
+  &#125;
+
+  async function signIn() &#123;
+    await login(&#123; user: "Ana" &#125;);
+  &#125;
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;Home&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;Home&lt;/h1&gt;
+&lt;button type="button" @@click=@@read&gt;Read the secret&lt;/button&gt;
+&lt;button type="button" @@click=@@signIn&gt;Sign in as Ana&lt;/button&gt;
+&lt;p&gt;@@(reading.value() ?? "")&lt;/p&gt;
+&lt;p role="alert"&gt;@@reading.message()&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>. Pulsa <strong>Read the secret</strong>: la petición responde <code>401</code> y sale «Sign in first.», el mensaje del middleware. El handler de <code>secret</code> no ha llegado a ejecutarse. Pulsa <strong>Sign in as Ana</strong> y después otra vez <strong>Read the secret</strong>: «The code is 42, Ana.».</p>
+
+<p>En la pestaña Aplicación de las herramientas del navegador verás la cookie <code>session</code> con <code>HttpOnly</code> y <code>SameSite=Lax</code>: el JavaScript de la página no la puede leer, y el navegador la manda solo en cada llamada.</p>
+
+<h2 id="typed">4. <code>ctx.user</code>, con su tipo</h2>
+
+<p>Solo las funciones con <code>use auth</code> ven <code>ctx.user</code>. Quita esa línea de <code>secret</code> y guarda:</p>
+
+<pre class="output"><code>my-app   src/server/routes/index.ts:8:47 - error TS2339: Property 'user' does not exist on type 'SecretCtx'.
+my-app     8  secret.handle((ctx) =&gt; `The code is 42, $&#123;ctx.user&#125;.`);
+my-app                                                      ────
+my-app   the typecheck failed: 1 error in 1 file</code></pre>
+
+<p>Así no se puede leer el usuario en una función que nadie protege. Vuelve a poner <code>use auth</code>.</p>
+
+<h2 id="chain">5. Todo el fichero, menos el login</h2>
+
+<p>Si casi todas las funciones de un fichero necesitan sesión, ponlo una vez en la cadena del fichero, con <code>chain</code>, y quítaselo a la que no la necesita con <code>skip</code>:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># Every function of this file asks who is calling.
+chain
+  use auth
+
+# Signs in as `user`: the session cookie holds the name.
+post login
+  skip auth
+  user  str
+
+# What only a signed-in user may read.
+get secret
+  -&gt; str</code></pre>
+</ui-code>
+
+<p>Recarga la página y repite: el mismo <code>401</code>, el login y el secreto. Ahora quita <code>skip auth</code> del login. Al pulsar <strong>Sign in as Ana</strong>, el login también responde <code>401</code>: sin sesión no se puede pedir la sesión. Vuelve a ponerlo. Todo funciona igual tras <code>pnpm build</code> y <code>npx fudic preview</code>.</p>
+
+<p>Una llamada pasa primero por la cadena global (<code>csrf</code>), luego por la del fichero (<code>auth</code>) y al final por la de la función. Las mitades de cliente, los parámetros y los otros middlewares de Fudic están en <a href="/docs/server/middlewares">Middlewares y cadena</a>, y la cookie de sesión, en <a href="/docs/server/session">Sesión y cookies</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/middlewares" target="_blank" rel="noopener">la solución de Un middleware de login, en GitHub</a>. Compara tu <code>auth.fudapi</code>, tu <code>src/server/auth.ts</code> y tu <code>index.fudapi</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/server-types", prevTitle: "Tipos compartidos", next: "/tutorials/", nextTitle: "Todas las categorías")

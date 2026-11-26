@@ -1,0 +1,12 @@
+# Every function of this file asks who is calling.
+chain
+  use auth
+
+# Signs in as `user`: the session cookie holds the name.
+post login
+  skip auth
+  user  str
+
+# What only a signed-in user may read.
+get secret
+  -> str

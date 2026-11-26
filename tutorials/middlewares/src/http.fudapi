@@ -1,0 +1,3 @@
+# The global chain: csrf refuses a call another site's page makes with the user's cookies.
+chain
+  use csrf
