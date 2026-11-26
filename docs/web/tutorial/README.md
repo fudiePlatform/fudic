@@ -190,11 +190,15 @@ que sale el tutorial). Estado: Propuesto → Escrito → En revisión → Hecho,
 | 69 | `function-tests` | Probar funciones de servidor y middlewares | I | `g api`, `test` | testing/unit, server/middlewares | `usuarios.test.ts` | Escrito |
 | 70 | `form-tests` | Probar un formulario y sus reglas | I | `g form`, `g api`, `test` | testing/unit, forms | `user-form.test.ts` | Escrito |
 | 71 | `custom-terms` | Tu primer paso propio en un `.fudspec` | I | `g component`, `g term`, `spec` | testing, terms | `fudic/terms/` | Escrito |
+| 71b | `showcase` | Un showcase de cada componente | I | `g showcase`, `spec` | cli/generate/showcase, testing/workbench | — | Escrito |
+| 71c | `user-flows` | Un flujo entre páginas | A | `g flow` | testing/pages-and-flows | `src/flows/alta-de-usuario.fudspec` | Propuesto |
+| 71d | `history` | Aprobar y aceptar: el historial de una pieza | A | `approve`, `accept`, `history` | testing/history, cli/history | — | Propuesto |
 
 Rehecho el 2026-11-26 a petición de Pedro: quien acaba la categoría sabe probar cada variante del
 `.fudapi` y cada pieza (componente, página, layout, pipe), y ampliar un `.fudspec` sin leer la
 referencia de los términos. `showcase`, `user-flows` y `history` salen del índice: el workbench, los
-flujos y el historial quedan en `/docs/testing`.
+flujos y el historial quedan en `/docs/testing`. El mismo día, Pedro pidió que no faltara nada: vuelven
+como 71b, 71c y 71d, detrás de los seis.
 
 ### 3.15 Proyecto y build
 
@@ -389,3 +393,4 @@ en [../hallazgos-fudic.md](../hallazgos-fudic.md).
 | 2026-11-26 | `custom-terms`, con su solución en `tutorials/custom-terms/`: el contador con un criterio de tres `click` y un `text`, reescrito como `adds 3` / `shows 3`; el `FUD0940` de `fudic spec` y del language server (con «Create then/shows.js»); `fudic g term when adds --param times:number` con `ctx.act` en un bucle y `fudic g term then shows --param count:number` con `pass`, `evidence` y `describe`; el fallo real con `+ 2` («expected 3, actual 6») y un segundo criterio `adds 10`. Hallazgo 105 del framework (el primer `fudic spec` de un proyecto nuevo acaba en error). Con él, la categoría Tests queda escrita entera. Lighthouse: 99–100 / 100 / 100 / 100. |
 | 2026-11-26 | `load-tests`, paso 5, a petición de Pedro («no dejas nada»): `fudic g page week --server` con `load ssr` y `bestseller str later`, `@await` y `@catch`, el servicio lento simulado en el test y su fallo, que deja la página en 200 y pinta el `@catch`. Comprobado con `fudic dev`: primer byte a 0,07 s y página entera a 2,07 s. Hallazgo 106 del framework (`visit` con `data` da 500 si la página tiene un `later`). |
 | 2026-11-26 | `function-tests`, paso 5: la cadena global en `src/http.fudapi` con un middleware `maintenance` que responde 503 mientras `isClosed()`; probado en un fichero propio con `vi.mock`, donde hasta `login`, que se salta `auth`, responde 503. `tsc --noEmit` limpio. |
+| 2026-11-26 | `showcase`, con su solución en `tutorials/showcase/`: una insignia con `text` y `tone`, su fixture con `base` y `warning`, `fudic g showcase` (las dos páginas, vistas con `curl` en `fudic dev`), dos criterios con `props base` y `props warning`, y un caso `sold-out` que el showcase no ve hasta volver a ejecutar el comando, ni con `fudic dev` en marcha. Hallazgo 32 de la CLI (`Showcase of  in`, con el nombre vacío) y corregida la frase de `cli/generate/showcase`, que daba a entender que se rehace solo. Lighthouse: 99–100 / 100 / 100 / 100. |

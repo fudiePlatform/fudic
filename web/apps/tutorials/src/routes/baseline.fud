@@ -200,4 +200,4 @@ Allow field-sizing in the project</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/baseline" target="_blank" rel="noopener">la solución de Baseline: qué navegadores soportas, en GitHub</a>. Compara tu nota y tu <code>fudic.json</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/custom-terms", prevTitle: "Tu primer paso propio en un .fudspec", next: "/tutorials/workspace", nextTitle: "Dos apps y una librería")
+@render pager(prev: "/tutorials/showcase", prevTitle: "Un showcase de cada componente", next: "/tutorials/workspace", nextTitle: "Dos apps y una librería")

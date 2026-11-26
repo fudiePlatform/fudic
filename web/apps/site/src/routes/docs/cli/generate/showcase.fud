@@ -75,7 +75,7 @@ fudic g showcase</code></pre>
 
 <ul>
   <li>Ejecuta los fixtures para saber qué enseñar, así que necesita las dependencias del proyecto instaladas.</li>
-  <li>El comando se vuelve a ejecutar cada vez que cambia un fixture, y reescribe las páginas que generó.</li>
+  <li>Cuando cambia un fixture, hay que volver a ejecutar el comando, que reescribe las páginas que generó. <code>fudic dev</code> no lo hace por su cuenta.</li>
 </ul>
 
 <h2 id="guide">En la guía</h2>

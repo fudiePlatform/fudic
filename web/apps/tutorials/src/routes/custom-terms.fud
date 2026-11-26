@@ -231,4 +231,4 @@ export const selfTest = [];</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/custom-terms" target="_blank" rel="noopener">la solución de Tu primer paso propio en un .fudspec, en GitHub</a>.</p>
 
-@render pager(prev: "/tutorials/form-tests", prevTitle: "Probar un formulario y sus reglas", next: "/tutorials/baseline", nextTitle: "Baseline: qué navegadores soportas")
+@render pager(prev: "/tutorials/form-tests", prevTitle: "Probar un formulario y sus reglas", next: "/tutorials/showcase", nextTitle: "Un showcase de cada componente")

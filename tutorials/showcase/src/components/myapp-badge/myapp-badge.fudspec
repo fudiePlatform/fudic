@@ -1,0 +1,20 @@
+component myapp-badge
+
+criterion says-new
+  given
+    props base
+  then
+    text myapp-badge "New"
+
+criterion warns-few-left
+  given
+    props warning
+  then
+    text myapp-badge "Few left"
+    attribute span class "badge warning"
+
+criterion says-sold-out
+  given
+    props sold-out
+  then
+    text myapp-badge "Sold out"

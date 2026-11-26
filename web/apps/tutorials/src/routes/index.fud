@@ -38,7 +38,7 @@
   @render category("service-worker", "Service worker", "Arráncalo, funciona sin red y pinta lo mismo que el servidor.", 3, false, true, true, "/tutorials/service-worker")
   @render category("security", "Seguridad", "Cabeceras de seguridad, HTTP Observatory, Content Security Policy y Trusted Types.", 4, false, true, true, "/tutorials/security-headers")
   @render category("performance", "Rendimiento", "La caché HTTP y un 100 en Lighthouse.", 2, false, false, true, "/tutorials/caching")
-  @render category("tests", "Tests", "Prueba cada pieza y cada .fudapi, y escribe tus propios pasos de .fudspec.", 6, true, true, false, "/tutorials/unit-tests")
+  @render category("tests", "Tests", "Prueba cada pieza y cada .fudapi, y escribe tus propios pasos de .fudspec.", 9, true, true, true, "/tutorials/unit-tests")
   @render category("project", "Proyecto y build", "Los navegadores que soportas y un workspace con varias apps.", 2, false, true, true, "/tutorials/baseline")
   @render category("agents", "Agentes", "Construye con tu agente y el MCP de Fudic.", 1, false, true, false, "/tutorials/mcp")
 </ol>

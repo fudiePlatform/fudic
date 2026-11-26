@@ -510,3 +510,15 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   preview no se tocó.
 - **Qué debería hacer.** Comprobar el puerto en `localhost` como lo resolverá el navegador (IPv4 e
   IPv6), y pasar al siguiente libre o fallar con un mensaje, como hace Vite con `strictPort`.
+
+## 32. `fudic g showcase` en una app dice «Showcase of  in»
+
+- **Qué pasó.** Escribiendo el tutorial `showcase` (2026-11-26), en una app de `fudic new`,
+  `fudic g showcase` imprime `Showcase of  in src/routes/showcase/`, con el nombre vacío
+  (`packages/cli/src/plans/showcase.ts:214`, `source.name`). En un workspace, el nombre es el de la
+  librería; en una app sola no hay ninguno.
+- **De paso.** La página de `/docs/cli/generate/showcase` decía «El comando se vuelve a ejecutar cada
+  vez que cambia un fixture», que se lee como que lo hace solo. Con `fudic dev` en marcha, añadir un
+  caso al fixture no cambia el showcase hasta ejecutar otra vez `fudic g showcase`. Corregida.
+- **Qué debería hacer.** Escribir el nombre de la app, o quitar «of» cuando no hay librería.
+

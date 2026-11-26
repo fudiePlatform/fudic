@@ -1,0 +1,16 @@
+@code {
+  const { text, tone = "info" } = props<{ text: string; tone?: "info" | "warning" }>();
+}
+
+<head>
+  <style>
+    .badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: #dbeafe; }
+    .warning { background: #fef3c7; }
+  </style>
+</head>
+
+<myapp-badge>
+  <template shadowrootmode="open">
+    <span class=@("badge " + tone)>@text</span>
+  </template>
+</myapp-badge>
