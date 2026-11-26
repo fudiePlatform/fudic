@@ -155,7 +155,7 @@
     @render tutorial("json-api", "Una API con su .fudapi", "intermediate", @current)
     @render tutorial("server-types", "Tipos compartidos", "intermediate", @current)
     @render tutorial("middlewares", "Un middleware de login", "intermediate", @current)
-    @render tutorial("pipes", "Los pipes de Fudic, y uno propio", "intermediate", @current, false)
+    @render tutorial("pipes", "Los pipes de Fudic, y uno propio", "intermediate", @current)
     @render tutorial("session", "Sesión por petición", "advanced", @current, false)
     @render tutorial("live-search", "Una búsqueda que sigue a un signal", "advanced", @current, false)
     @render tutorial("production-server", "Arrancarlo en Node", "advanced", @current, false)

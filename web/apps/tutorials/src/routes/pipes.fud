@@ -1,0 +1,195 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Los pipes de Fudic, y uno propio · Tutoriales de Fudic</title>
+  <meta name="description" content="Formatea una fecha y una lista con los pipes date y list de Fudic, que pintan lo mismo en el servidor y en el navegador, y crea un pipe propio con fudic g pipe, con su test.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/pipes">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Los pipes de Fudic, y uno propio · Tutoriales de Fudic">
+  <meta property="og:description" content="date, list y un pipe propio creado con fudic g pipe.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/pipes">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render serverNav("pipes")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y sus datos</a></li>
+        <li><a href="#builtin">2. Una fecha y una lista</a></li>
+        <li><a href="#own">3. Un pipe propio</a></li>
+        <li><a href="#test">4. Su test</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="intermediate">Intermedio</span> <span class="category">Servidor</span></p>
+
+<h1>Los pipes de Fudic, y uno propio</h1>
+
+<p class="lede">Pintas la fecha y las etiquetas de un artículo con dos pipes de Fudic, y las iniciales de su autor con uno que escribes tú.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Formatear valores en la vista con los pipes <code>date</code> y <code>list</code>.</li>
+    <li>Crear un pipe propio con <code>fudic g pipe</code> e implementarlo.</li>
+    <li>Probarlo con su test unitario.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior y pnpm. Un pipe en una expresión, <code>currency</code>, sale en <a href="/tutorials/expressions">Pintar valores con @@(…)</a>, y los datos de la página, en <a href="/tutorials/route-data">Datos del servidor para la página</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y sus datos</h2>
+
+<p>Un pipe convierte un valor en el texto que se pinta, en el idioma de la página, y da el mismo texto en el servidor y en el navegador. Para tener algo que formatear, la página de inicio enseña un artículo que llega del servidor:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g api src/routes/index.fud</code></pre>
+</ui-code>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The post the page shows.
+load
+  title      str
+  author     str
+  published  date
+  tags       str[]</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/index';
+
+load.handle(() =&gt; (&#123;
+  title: 'Pipes in five minutes',
+  author: 'ada lovelace',
+  published: new Date('2026-11-26T09:30:00Z'),
+  tags: ['views', 'server', 'i18n'],
+&#125;));</code></pre>
+</ui-code>
+
+<h2 id="builtin">2. Una fecha y una lista</h2>
+
+<p><code>@@fudic/core</code> trae seis pipes, sobre <code>Intl</code>, el estándar de JavaScript para formatear según el idioma. Cada uno se configura una vez en el <code>@@code</code> y se aplica en la vista con <code>|</code>:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;link rel="layout" href="../layouts/_layout.fud"&gt;
+&lt;link rel="server" href="./index.fudapi"&gt;
+
+@@code &#123;
+  import &#123; date, list &#125; from "@@fudic/core";
+
+  const day = date(&#123; dateStyle: "long", timeZone: "Europe/Madrid" &#125;);
+  const tags = list();
+&#125;
+
+&lt;head&gt;
+  &lt;title&gt;@@data.title&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;h1&gt;@@data.title&lt;/h1&gt;
+&lt;p&gt;By @@data.author, on @@(data.published | day)&lt;/p&gt;
+&lt;p&gt;Tags: @@(data.tags | tags)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y abre <code>http://localhost:5173/</code>:</p>
+
+<pre class="output"><code>By ada lovelace, on November 26, 2026
+Tags: views, server, and i18n</code></pre>
+
+<p>Las opciones de <code>date</code> son las de <code>Intl.DateTimeFormat</code>, con una diferencia: <code>timeZone</code> es obligatoria. Quítala y guarda:</p>
+
+<pre class="output"><code>my-app   src/routes/index.fud:7:20 - error TS2345: Argument of type '&#123; dateStyle: "long"; &#125;' is not assignable to parameter of type 'DateTimeFormatOptions &amp; &#123; timeZone: string; &#125;'.
+my-app     Property 'timeZone' is missing in type '&#123; dateStyle: "long"; &#125;' but required in type '&#123; timeZone: string; &#125;'.</code></pre>
+
+<p>Sin ella, el servidor pintaría la fecha en su zona horaria, y el navegador, en la del usuario: la misma fecha podría salir con dos días distintos. Vuelve a ponerla. El idioma, en cambio, no se le pasa al pipe: lo pone la página.</p>
+
+<h2 id="own">3. Un pipe propio</h2>
+
+<p>Para un formato que <code>Intl</code> no trae, como las iniciales de un nombre, crea un pipe:</p>
+
+<ui-code>
+<pre><code>npx fudic g pipe initials</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created pipe initials in src/pipes/
+  initials.fudapi     the contract: what it formats, on str
+  initials.ts         its one implementation: the view, the server and the browser import it
+  initials.test.ts    unit test</code></pre>
+
+<p>El contrato dice qué formatea: un <code>str</code>. Añádele un comentario encima, que el editor enseña al pasar el ratón:</p>
+
+<ui-code .path="src/pipes/initials.fudapi">
+<pre><code># The initials of a name: "ada lovelace" is "AL".
+pipe initials
+  on str</code></pre>
+</ui-code>
+
+<p>La implementación recibe el valor y el idioma de la página. Usa ese idioma para pasar a mayúsculas, porque no todos los idiomas lo hacen igual:</p>
+
+<ui-code .path="src/pipes/initials.ts">
+<pre><code>import &#123; initials &#125; from 'fudic:pipes/initials';
+
+export default initials.implement((value, locale) =&gt;
+  value.split(/\s+/u).map((word) =&gt; word.charAt(0).toLocaleUpperCase(locale)).join(''),
+);</code></pre>
+</ui-code>
+
+<p><code>src/pipes</code> no es ni de servidor ni de navegador: su código se ejecuta en los dos. Impórtalo en la página y úsalo como los de Fudic:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>@@code &#123;
+  import &#123; date, list &#125; from "@@fudic/core";
+  import initials from "../pipes/initials";
+  …
+&#125;
+…
+&lt;p&gt;&lt;span class="avatar"&gt;@@(data.author | initials)&lt;/span&gt; By @@data.author, on @@(data.published | day)&lt;/p&gt;</code></pre>
+</ui-code>
+
+<p>La línea empieza ahora por «AL».</p>
+
+<h2 id="test">4. Su test</h2>
+
+<p>La CLI dejó un test para el pipe. Ejecuta los tests del proyecto:</p>
+
+<ui-code>
+<pre><code>npx fudic test</code></pre>
+</ui-code>
+
+<pre class="output"><code> FAIL  src/pipes/initials.test.ts &gt; initials formats a value
+AssertionError: expected 'F' to be 'fudic' // Object.is equality
+Expected: "fudic"
+Received: "F"</code></pre>
+
+<p>El test generado espera que el pipe devuelva el valor tal cual, que es lo que hacía antes de implementarlo. Cámbialo por lo que debe hacer ahora:</p>
+
+<ui-code .path="src/pipes/initials.test.ts">
+<pre><code>import &#123; expect, test &#125; from 'vitest';
+import initials from './initials';
+
+test('initials takes the first letter of each word, in upper case', () =&gt; &#123;
+  expect(initials.format('ada lovelace', 'en')).toBe('AL');
+&#125;);</code></pre>
+</ui-code>
+
+<p>Con <code>npx fudic test</code> otra vez, pasan los tres tests. <code>format</code> es la misma función que usa la vista, así que el test prueba lo que se pinta. Todo sale igual tras <code>pnpm build</code> y <code>npx fudic preview</code>.</p>
+
+<p>Los seis pipes de Fudic y los pipes con parámetros están en <a href="/docs/server/pipes">Pipes</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/pipes" target="_blank" rel="noopener">la solución de Los pipes de Fudic, y uno propio, en GitHub</a>. Compara tu <code>src/pipes/</code> y tu <code>index.fud</code> con los suyos.</p>
+
+@render pager(prev: "/tutorials/middlewares", prevTitle: "Un middleware de login", next: "/tutorials/", nextTitle: "Todas las categorías")

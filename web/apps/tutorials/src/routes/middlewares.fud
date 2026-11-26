@@ -200,4 +200,4 @@ get secret
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/middlewares" target="_blank" rel="noopener">la solución de Un middleware de login, en GitHub</a>. Compara tu <code>auth.fudapi</code>, tu <code>src/server/auth.ts</code> y tu <code>index.fudapi</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/server-types", prevTitle: "Tipos compartidos", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/server-types", prevTitle: "Tipos compartidos", next: "/tutorials/pipes", nextTitle: "Los pipes de Fudic, y uno propio")

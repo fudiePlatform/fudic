@@ -1,0 +1,3 @@
+# The initials of a name: "ada lovelace" is "AL".
+pipe initials
+  on str

@@ -1171,6 +1171,10 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   que explica. El aviso le saldrá igual a quien lo siga.
 - **Qué debería hacer.** Publicar `impl/` junto a los `.map`, o no publicar los `.map` de esos dos
   módulos.
+- **Y peor en `fudic test`** (tutorial `pipes`, 2026-11-26): en una app con `@fudic/http` (que trae
+  `@fudic/forms` como dependencia), `fudic test` imprime 98 avisos «Sourcemap
+  for … points to missing source files» antes del resultado, de `@fudic/http/dist/contract/` y de
+  casi todo `@fudic/forms/dist/`. El tutorial cita solo las líneas del test que falla.
 
 ## 80. Una URL que no existe, pedida sin `Accept: text/html`, responde el «Cannot GET» de Connect
 

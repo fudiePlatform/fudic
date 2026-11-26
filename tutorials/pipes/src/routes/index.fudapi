@@ -1,0 +1,6 @@
+# The post the page shows.
+load
+  title      str
+  author     str
+  published  date
+  tags       str[]
