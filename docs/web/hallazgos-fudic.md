@@ -1673,3 +1673,14 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Que `fudic spec` optimice las dependencias antes de abrir el navegador, o
   que reintente el criterio cuando lo que falla es la carga de un módulo.
 
+## 106. `visit` con `data` da 500 si la página tiene un campo `later`
+
+- **Qué pasó.** Escribiendo el paso 5 de `load-tests` (2026-11-26). Con un `load ssr` que tiene
+  `books Book[]` y `bestseller str later`, `visit('/books', { data: { books: […], bestseller:
+  Promise.resolve('Emma') } })` responde `500 Internal Server Error`, y con `bestseller: 'Emma'`
+  también. Sin el campo `later`, el mismo `data` pinta la página.
+- **Cómo se resolvió en el tutorial.** El dato tardío va en una página aparte (`/week`), probada con
+  `visit` y el servicio simulado; el test con `data` se queda en `/books`, que no tiene `later`.
+- **Qué debería hacer.** Aceptar en `data` un campo `later` como valor o como promesa, igual que lo
+  devuelve el handler.
+

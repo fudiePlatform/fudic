@@ -1,0 +1,3 @@
+# The page goes out at once; the best seller arrives later, from a slow service.
+load ssr
+  bestseller  str  later

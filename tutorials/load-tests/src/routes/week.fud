@@ -1,0 +1,12 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./week.fudapi">
+<head>
+  <title>This week</title>
+</head>
+
+<h1>This week</h1>
+@await data.bestseller {
+  <p>Best seller of the week: @data.bestseller</p>
+} @catch (e) {
+  <p role="alert">The best seller could not be loaded.</p>
+}

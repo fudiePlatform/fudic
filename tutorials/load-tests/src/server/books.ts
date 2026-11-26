@@ -6,3 +6,9 @@ export async function allBooks() {
     { id: 3, title: 'Emma' },
   ];
 }
+
+// The best seller of the week: a slow service, two seconds away.
+export async function bestseller() {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  return 'Dune';
+}
