@@ -1,0 +1,14 @@
+<link rel="component" href="../myapp-hello/myapp-hello.fud">
+
+@code {
+  import { provide } from "@fudic/di";
+  import { Session } from "../../services/session.service";
+
+  provide(Session, () => new Session());
+}
+
+<myapp-account>
+  <template shadowrootmode="open">
+    <myapp-hello></myapp-hello>
+  </template>
+</myapp-account>

@@ -1,0 +1,7 @@
+component myapp-account
+
+criterion renders
+  given
+    props base
+  then
+    present myapp-account

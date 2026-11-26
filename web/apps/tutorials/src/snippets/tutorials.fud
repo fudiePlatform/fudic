@@ -138,6 +138,6 @@
   <ol class="tutorial-list">
     @render tutorial("services", "Un servicio inyectado", "intermediate", @current)
     @render tutorial("providers", "Un servicio compartido por quien no se ve", "intermediate", @current)
-    @render tutorial("server-di", "Proveedores en el servidor, por petición", "advanced", @current, false)
+    @render tutorial("server-di", "Proveedores en el servidor, por petición", "advanced", @current)
   </ol>
 }

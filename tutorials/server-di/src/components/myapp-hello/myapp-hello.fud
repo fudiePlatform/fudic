@@ -1,0 +1,20 @@
+@code {
+  import { signal } from "@fudic/core";
+  import { inject } from "@fudic/di";
+  import { Session } from "../../services/session.service";
+
+  const session = inject(Session);
+  const waved = signal("");
+
+  function wave() {
+    waved.set(`${session.name} waved from the browser.`);
+  }
+}
+
+<myapp-hello>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="button p">
+    <p>Hello, @session.name.</p>
+    <button type="button" @click=@wave>Wave</button>
+    <p>@waved()</p>
+  </template>
+</myapp-hello>

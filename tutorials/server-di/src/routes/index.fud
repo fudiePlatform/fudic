@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/myapp-account/myapp-account.fud">
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<h1>Home</h1>
+<myapp-account></myapp-account>

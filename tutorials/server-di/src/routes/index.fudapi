@@ -1,0 +1,3 @@
+# The data of the page, read on the server: its handler is in src/server/routes/index.ts.
+load ssr
+  user  str

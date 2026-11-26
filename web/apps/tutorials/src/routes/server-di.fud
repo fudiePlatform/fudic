@@ -1,0 +1,236 @@
+<link rel="layout" href="@web/ui/layouts/docs.fud">
+<link rel="snippet" href="@web/ui/snippets/site.fud">
+<link rel="snippet" href="../snippets/tutorials.fud">
+<link rel="component" href="@web/ui/ui-code.fud">
+<link rel="component" href="@web/ui/ui-toc.fud">
+
+<head>
+  <title>Proveedores en el servidor, por petición · Tutoriales de Fudic</title>
+  <meta name="description" content="Construye un servicio de Fudic con un valor que publica el load, comprueba con dos peticiones a la vez que cada una tiene su instancia, y que el navegador construye la suya con el mismo valor.">
+  <link rel="canonical" href="https://fudic.dev/tutorials/server-di">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Proveedores en el servidor, por petición · Tutoriales de Fudic">
+  <meta property="og:description" content="Una sesión por petición en el servidor, y la misma en el navegador, sin que viaje el objeto.">
+  <meta property="og:url" content="https://fudic.dev/tutorials/server-di">
+  <meta property="og:site_name" content="Fudic">
+</head>
+
+@section nav {
+  @render diNav("server-di")
+}
+
+@section toc {
+  <ui-toc>
+    <details class="toggle"><summary>Pasos</summary></details>
+      <ul>
+        <li><a href="#objectives">Objetivos</a></li>
+        <li><a href="#create">1. Crea la app y sus piezas</a></li>
+        <li><a href="#publish">2. Una sesión hecha de un valor publicado</a></li>
+        <li><a href="#requests">3. Dos peticiones a la vez</a></li>
+        <li><a href="#browser">4. El valor viaja al navegador</a></li>
+        <li><a href="#solution">Solución</a></li>
+      </ul>
+  </ui-toc>
+}
+
+<p class="tutorial-meta"><span class="level" data-level="advanced">Avanzado</span> <span class="category">Inyección de dependencias</span></p>
+
+<h1>Proveedores en el servidor, por petición</h1>
+
+<p class="lede">Haces una sesión que el servidor construye para cada petición con el nombre del visitante, y que el navegador vuelve a construir igual, sin que el objeto viaje.</p>
+
+<section class="objectives" aria-labelledby="objectives">
+  <h2 id="objectives">Objetivos</h2>
+  <ul>
+    <li>Publicar un valor desde el <code>load</code> con <code>publish</code>, bajo un token.</li>
+    <li>Ver que cada petición tiene sus propias instancias, aunque haya un <code>await</code> por medio.</li>
+    <li>Ver que al navegador viaja el valor, y que con él construye la misma sesión.</li>
+  </ul>
+  <p>Necesitas Node.js 22.12 o posterior, pnpm y <code>curl</code> 7.68 o posterior. Un componente que provee un servicio está en <a href="/tutorials/providers">Un servicio compartido por quien no se ve</a>, y el <code>load</code> de una página, en <a href="/docs/routing/data">Los datos de la página</a>.</p>
+</section>
+
+<h2 id="create">1. Crea la app y sus piezas</h2>
+
+<p>Una sesión que provee una cuenta, el contrato de la página de inicio con su <code>load</code>, la cuenta enlazada desde esa página y el saludo que va dentro de la cuenta:</p>
+
+<ui-code>
+<pre><code>npx @@fudic/cli new my-app
+cd my-app
+npx fudic g service session --provided
+npx fudic g api src/routes/index.fud
+npx fudic g component account --in src/routes/index.fud
+npx fudic g component hello</code></pre>
+</ui-code>
+
+<pre class="output"><code>Created service Session in src/services/
+  session.service.ts         class Session, provided by a component: provide(Session) for its subtree
+  session.service.test.ts    unit test
+
+  Added @@fudic/di 0.0.1 to my-app (it was not there)</code></pre>
+
+<h2 id="publish">2. Una sesión hecha de un valor publicado</h2>
+
+<p>La sesión no recibe el nombre por constructor: lo pide con <code>inject</code> a un token, el valor con nombre que el servidor publica. Si nadie lo publica, es <code>guest</code>:</p>
+
+<ui-code .path="src/services/session.service.ts">
+<pre><code>import &#123; inject, token &#125; from '@@fudic/di';
+
+// The name the server publishes for each request: the browser builds its Session from it.
+export const USER = token&lt;string&gt;('user');
+
+// A component provides it with provide(): that component and the ones under it share one.
+export class Session &#123;
+  readonly name = inject(USER, &#123; optional: true &#125;) ?? 'guest';
+&#125;</code></pre>
+</ui-code>
+
+<p>El <code>load</code> lee el nombre de la URL, espera un segundo, como si consultara una base de datos, y lo publica bajo <code>USER</code>. Es <code>ssr</code> porque cambia en cada petición:</p>
+
+<ui-code .path="src/routes/index.fudapi">
+<pre><code># The data of the page, read on the server: its handler is in src/server/routes/index.ts.
+load ssr
+  user  str</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; publish &#125; from '@@fudic/di';
+import &#123; load &#125; from 'fudic:routes/index';
+import &#123; USER &#125; from '../../services/session.service';
+
+load.handle(async (ctx) =&gt; &#123;
+  const user = ctx.url.searchParams.get('user') ?? 'guest';
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+  publish(USER, user);
+  return &#123; user &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<p>La cuenta provee la sesión a lo que tiene dentro, y el saludo la pide:</p>
+
+<ui-code .path="src/components/myapp-account/myapp-account.fud">
+<pre><code>&lt;link rel="component" href="../myapp-hello/myapp-hello.fud"&gt;
+
+@@code &#123;
+  import &#123; provide &#125; from "@@fudic/di";
+  import &#123; Session &#125; from "../../services/session.service";
+
+  provide(Session, () =&gt; new Session());
+&#125;
+
+&lt;myapp-account&gt;
+  &lt;template shadowrootmode="open"&gt;
+    &lt;myapp-hello&gt;&lt;/myapp-hello&gt;
+  &lt;/template&gt;
+&lt;/myapp-account&gt;</code></pre>
+</ui-code>
+
+<ui-code .path="src/components/myapp-hello/myapp-hello.fud">
+<pre><code>@@code &#123;
+  import &#123; signal &#125; from "@@fudic/core";
+  import &#123; inject &#125; from "@@fudic/di";
+  import &#123; Session &#125; from "../../services/session.service";
+
+  const session = inject(Session);
+  const waved = signal("");
+
+  function wave() &#123;
+    waved.set(`$&#123;session.name&#125; waved from the browser.`);
+  &#125;
+&#125;
+
+&lt;myapp-hello&gt;
+  &lt;template shadowrootmode="open" shadowrootadoptedstylesheets="button p"&gt;
+    &lt;p&gt;Hello, @@session.name.&lt;/p&gt;
+    &lt;button type="button" @@click=@@wave&gt;Wave&lt;/button&gt;
+    &lt;p&gt;@@waved()&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/myapp-hello&gt;</code></pre>
+</ui-code>
+
+<p>Escribe la cuenta en la página, debajo del título:</p>
+
+<ui-code .path="src/routes/index.fud">
+<pre><code>&lt;myapp-account&gt;&lt;/myapp-account&gt;</code></pre>
+</ui-code>
+
+<p>Arranca <code>npx fudic dev</code> y pide la página como Ana:</p>
+
+<ui-code>
+<pre><code>curl -s -H "Accept: text/html" "http://localhost:5173/?user=Ana" | grep -o "&lt;p&gt;Hello[^&lt;]*&lt;/p&gt;"</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;Hello, Ana.&lt;/p&gt;</code></pre>
+
+<p><code>publish</code> llega después del <code>await</code>, y aun así la sesión lo encuentra: el contenedor de la petición la sigue a través de cada <code>await</code>.</p>
+
+<h2 id="requests">3. Dos peticiones a la vez</h2>
+
+<p>En el servidor, cada petición tiene su propio contenedor raíz, donde viven sus instancias. Pide la página como Ana y como Luis a la vez:</p>
+
+<ui-code>
+<pre><code>curl -s --parallel --parallel-immediate -H "Accept: text/html" "http://localhost:5173/?user=Ana" "http://localhost:5173/?user=Luis" | grep -o "&lt;p&gt;Hello[^&lt;]*&lt;/p&gt;"</code></pre>
+</ui-code>
+
+<pre class="output"><code>&lt;p&gt;Hello, Ana.&lt;/p&gt;
+&lt;p&gt;Hello, Luis.&lt;/p&gt;</code></pre>
+
+<p>Las dos respuestas llegan en algo más de un segundo, así que las dos peticiones esperaban a la vez, y cada una saludó a su visitante. El orden de las dos líneas puede cambiar.</p>
+
+<p>Mira qué pasaría con una variable de módulo. Cambia el servicio y el <code>load</code> por estos, que están mal a propósito:</p>
+
+<ui-code .path="src/services/session.service.ts">
+<pre><code>// Wrong on purpose: one variable for every request of the server.
+let current = 'guest';
+
+export function setCurrent(user: string): void &#123;
+  current = user;
+&#125;
+
+export class Session &#123;
+  readonly name = current;
+&#125;</code></pre>
+</ui-code>
+
+<ui-code .path="src/server/routes/index.ts">
+<pre><code>import &#123; load &#125; from 'fudic:routes/index';
+import &#123; setCurrent &#125; from '../../services/session.service';
+
+load.handle(async (ctx) =&gt; &#123;
+  const user = ctx.url.searchParams.get('user') ?? 'guest';
+  setCurrent(user);
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+  return &#123; user &#125;;
+&#125;);</code></pre>
+</ui-code>
+
+<p>Repite el mismo <code>curl</code>:</p>
+
+<pre class="output"><code>&lt;p&gt;Hello, Luis.&lt;/p&gt;
+&lt;p&gt;Hello, Luis.&lt;/p&gt;</code></pre>
+
+<p>Ana recibe la página de Luis. Una variable de módulo la comparten todas las peticiones del proceso, y la de Luis escribió encima mientras la de Ana esperaba. Puede salir Ana dos veces: gana la última que llega. Vuelve a poner los dos ficheros del paso 2.</p>
+
+<h2 id="browser">4. El valor viaja al navegador</h2>
+
+<p>Abre <code>http://localhost:5173/?user=Ana</code> y pulsa <strong>Wave</strong>:</p>
+
+<pre class="output"><code>Hello, Ana.
+Ana waved from the browser.</code></pre>
+
+<p>La sesión del navegador también se llama Ana, y nadie le pasó el objeto del servidor. Abre el código fuente con <kbd>Ctrl</kbd>+<kbd>U</kbd>. Al final está lo que se publicó, con el nombre del token como clave:</p>
+
+<pre class="output"><code>&lt;script type="application/json" id="fud-di"&gt;&#123;"user":"Ana"&#125;&lt;/script&gt;</code></pre>
+
+<ul>
+  <li><strong>Viajan valores, no instancias.</strong> El navegador construye su propia sesión, y su <code>inject(USER)</code> encuentra el valor que publicó el servidor.</li>
+  <li><strong>Solo cruza lo que se publica</strong>, como JSON dentro de la página. Una conexión a la base de datos o una clave que el servidor inyecte nunca llegan al navegador.</li>
+  <li><strong>El nombre del token es la clave</strong>, así que no se puede repetir en una misma ruta.</li>
+</ul>
+
+<p>Cómo cambiar un servicio por otro en las pruebas, desde el fixture de un <code>.fudspec</code>, está en <a href="/docs/di/server">Servidor y navegador</a>.</p>
+
+<h2 id="solution">Solución</h2>
+
+<p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/server-di" target="_blank" rel="noopener">la solución de Proveedores en el servidor, por petición, en GitHub</a>. Compara tu <code>session.service.ts</code> y tu <code>src/server/routes/index.ts</code> con los suyos. Su <code>session.service.test.ts</code> prueba la sesión con un contenedor sembrado, como lo siembra el servidor.</p>
+
+@render pager(prev: "/tutorials/providers", prevTitle: "Un servicio compartido por quien no se ve", next: "/tutorials/", nextTitle: "Todas las categorías")

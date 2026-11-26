@@ -1305,6 +1305,36 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   antes de que el test registre nada.
 - **Cómo se resolvió en el tutorial.** Como en el nº 70: la solución quita el test del producto, y
   el de la tienda, que lo provee, lo monta dentro.
+- **Y otra vez** en el tutorial `server-di` (2026-11-26), con `<myapp-hello>` dentro de un
+  `<myapp-account>` que provee la sesión: su test generado falla con el mismo `FUD0680`, y la
+  solución lo quita. Además, el test que genera `fudic g service` (`new Session()`) falla en cuanto
+  la clase hace un `inject()` en un campo, porque no hay contenedor: la solución lo prueba con
+  `createRoot({ user: 'Ana' })`, `provideIn` e `injectFrom`.
 - **Qué debería hacer.** Que `FUD0680` no salte en la envoltura de `mount` cuando el test da
   `providers` (o nunca en ella: quien registra es el test), y que `fudic g component` no deje un
   test que falla en un componente que inyecta un servicio provisto.
+
+## 87. Sin un componente dueño en la página, el navegador tira lo que publicó el servidor
+
+- **Qué pasó.** Escribiendo el tutorial `server-di` (2026-11-26): un `Session` registrado con
+  `Service(Session)` que hace `inject(USER, { optional: true }) ?? 'guest'`, un `load ssr` que hace
+  `publish(USER, 'Ana')` y un componente que pinta `Hello, @session.name.` con un botón. El servidor
+  pinta «Hello, Ana.» y la página trae `<script type="application/json" id="fud-di">{"user":"Ana"}</script>`,
+  pero al pulsar el botón el componente se hidrata con un `Session` de nombre `guest`, y repinta
+  «Hello, guest.» encima de lo que pintó el servidor. Con cualquier componente de la página que haga
+  un `provide` (y por tanto un bloque `fud-ioc`), el mismo código saluda a Ana en el navegador.
+- **Por qué.** `readEndBlocks` lee y borra `fud-di` con el resto de bloques, pero el arranque solo
+  llama a `inject(maps.ioc, maps.di)` cuando hay mapa de dueños
+  (`packages/core/src/hydrate/install.ts:264`, `maps.ioc === null ? undefined : …`): sin `fud-ioc`,
+  la semilla no llega nunca a la raíz.
+- **Dónde lo dice la web.** «Servidor y navegador» (`/docs/di/server#seed`) enseña justo ese caso:
+  un `Cart` de la raíz que nace en el navegador con las tres líneas publicadas, sin ningún dueño.
+  `examples/basic` no lo ve porque su `/di` tiene a `di-owner`.
+- **Cómo se resolvió en el tutorial.** La sesión la provee un componente, `<myapp-account>`, que da
+  a la página su `fud-ioc`. Es un diseño razonable para una sesión, y seguirá funcionando cuando se
+  arregle.
+- **Qué debería hacer.** Sembrar la raíz con `fud-di` aunque la página no tenga dueños.
+- **De paso.** Un token declarado en el `@code` del componente que lo provee
+  (`const NOTHING = token<number>("nothing"); provide(NOTHING, () => 0);`) compila limpio, pero el
+  módulo IoC del componente no lleva la declaración, y el navegador da `NOTHING is not defined` al
+  instalar la página. Con el token en un módulo `.ts` importado, funciona.

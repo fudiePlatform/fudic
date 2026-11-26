@@ -190,4 +190,4 @@ Added. Items: 1</code></pre>
 
 <p>El proyecto terminado está en <a href="https://github.com/fudiePlatform/fudic/tree/main/tutorials/providers" target="_blank" rel="noopener">la solución de Un servicio compartido por quien no se ve, en GitHub</a>. Compara tu <code>myapp-shop.fud</code> y tu <code>myapp-product.fud</code> con los suyos.</p>
 
-@render pager(prev: "/tutorials/services", prevTitle: "Un servicio inyectado", next: "/tutorials/", nextTitle: "Todas las categorías")
+@render pager(prev: "/tutorials/services", prevTitle: "Un servicio inyectado", next: "/tutorials/server-di", nextTitle: "Proveedores en el servidor, por petición")
