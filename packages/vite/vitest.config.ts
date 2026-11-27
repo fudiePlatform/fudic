@@ -19,6 +19,8 @@ export default defineConfig({
         'src/swbuild.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // SDD-84: the app's headers in the build, born at 100.
         'src/headers.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Finding 1 of the website: the preview compresses what it serves, born at 100.
+        'src/compress.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // The project's style guide, read by the host (SDD-42), and the registry that names
         // every file a `.fud` links (BUG-40). Same rule, same floor, from their first commit.
         'src/styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

@@ -63,7 +63,7 @@ describe('pluginLog — a diagnostic as Vite takes it', () => {
     expect(log.loc).toEqual({ file, line: 2, column: 3 });
     expect(log.frame).toBe('  2    </q>\n       ────');
     expect(log.message.split('\n')[0]).toBe(`src/a.fud:2:3 - error FUD0051: ${stray.message}`);
-    expect(log.message).toContain('#FUD0051');
+    expect(log.message).toContain('/diagnostics/FUD0051');
     expect(log.message).not.toContain('────');
   });
 

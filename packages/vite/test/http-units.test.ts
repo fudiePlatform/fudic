@@ -37,7 +37,8 @@ describe('the functions middleware, before anything else (§4.15)', () => {
   }
 
   it.each(['configureServer', 'configurePreviewServer'] as const)('%s: a request without url is not a function’s', async (hook) => {
-    const [first] = await middlewares(hook);
+    // In preview the compression goes first (finding 1 of the website): the app is the next one.
+    const [first] = (await middlewares(hook)).slice(hook === 'configurePreviewServer' ? 1 : 0);
     const next = vi.fn();
     first!({}, { on: () => undefined }, next);
     // Preview mounts the build's server.mjs first, so it answers on a later tick (SDD-81 §3.10).

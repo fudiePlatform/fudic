@@ -100,6 +100,7 @@ import {
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { buildIo } from './build-memory.js';
 import { compileFud } from './compile.js';
+import { compression } from './compress.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
   coordinatorFor,
@@ -1252,6 +1253,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           .then((fudic) => (fudic === null ? next() : nodeMiddleware(fudic, { notFound })(req, res, next)))
           .catch(next);
       };
+      // First, so it wraps every answer behind it: the pages and the files Vite serves, compressed
+      // as the host of a deployed app compresses them.
+      server.middlewares.use(compression());
       // A request of a criterion runs in its scope, as in dev: the server's `Date` reads its clock.
       if (benchBuild) {
         server.middlewares.use((req, _res, next) => {

@@ -4,7 +4,7 @@ Lo que la web encuentra en Fudic y no es de la CLI (esos van en
 [hallazgos-cli.md](hallazgos-cli.md)): el compilador, el runtime, el servidor o la guía de
 estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería hacer Fudic.
 
-## 1. La preview no comprime
+## 1. La preview no comprime — Resuelto el 2026-11-27
 
 - **Qué pasó.** Lighthouse sobre la preview marca `uses-text-compression`: el HTML de
   `/docs/getting-started` sale en 38,7 KB sin comprimir (10,3 KB con gzip, 9 KB con brotli), y
@@ -23,6 +23,19 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   framework. Precomprimir triplica ficheros, alarga la build y congela los formatos. La
   documentación lo dirá en una línea: la compresión la hace tu hosting; la preview comprime para
   que tus mediciones sean reales.
+- **Resuelto el 2026-11-27.** `@fudic/vite` comprime en la preview (`src/compress.ts`, un
+  middleware que va el primero y envuelve las páginas de `@fudic/server` y los ficheros de Vite):
+  brotli o gzip según `Accept-Encoding`, `Vary: Accept-Encoding`, sin tocar fuentes ni imágenes,
+  y una página en streaming sigue saliendo por trozos. `fudic preview` lo hereda: su proxy pasa
+  las cabeceras y los bytes tal cual. Brotli va a calidad 5: con la 11, la que trae Node por
+  defecto, la página de 37 KB tardaba unos 50 ms en el servidor en vez de 8. Medido en
+  `web/apps/site`:
+  - `/docs/getting-started`: 37.160 B → 9.405 B; la portada, 18.031 B → 4.806 B; la hoja de la
+    guía, 4.630 B → 1.292 B.
+  - Lighthouse 12.8.2 móvil, tres pasadas: la portada, **100** (FCP 1,3 s);
+    `/docs/getting-started`, 99 (FCP 1,4 s), con `uses-text-compression` en verde. Lo que le
+    queda a esa página son las dos hojas que bloquean el render (la guía y `docs.css`): es el
+    nº 108.
 
 ## 2. ~~Un componente que se hidrata al cargar entra en la cadena crítica~~ (descartado)
 

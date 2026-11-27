@@ -655,7 +655,8 @@ describe('configurePreviewServer middleware', () => {
       middlewares: { use: (fn: Middleware) => used.push(fn) },
     }) as () => void;
     after();
-    return { app: used[0]!, notFound: used[1]! };
+    // The compression goes first (finding 1 of the website); the app and the 404 are the last two.
+    return { app: used.at(-2)!, notFound: used.at(-1)! };
   }
 
   const navigation = (url: string): Req => ({ url, method: 'GET', headers: { accept: 'text/html,application/xhtml+xml', host: 'localhost:4173' } });
