@@ -12,6 +12,10 @@
  * the first `write`/`end`): a compressible type, no `Content-Encoding` yet, no `no-transform`, a
  * status with a whole body, and not a body known to be under {@link MIN_SIZE}. A streamed page
  * (a `later` field) keeps streaming: every chunk is flushed through the compressor as it comes.
+ *
+ * Vite's preview has a compression of its own (gzip only), between the plugins' middlewares and
+ * its static files. It would wrap those files inside this one and gzip them first. The encoding is
+ * negotiated here, once, so what comes after is told the client takes none (`identity`).
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -99,6 +103,8 @@ function rest(encoding: BufferEncoding | Callback | undefined, callback: Callbac
 export function compression(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
   return (req, res, next) => {
     const encoding = negotiate(req.headers['accept-encoding']);
+    // Negotiated here, once: nothing after this compresses again (Vite's own gzip among them).
+    req.headers['accept-encoding'] = 'identity';
     const writeHead = res.writeHead.bind(res) as (...args: unknown[]) => ServerResponse;
     const write = res.write.bind(res) as Write;
     const end = res.end.bind(res) as End;

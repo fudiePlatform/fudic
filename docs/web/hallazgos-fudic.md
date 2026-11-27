@@ -36,6 +36,14 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
     `/docs/getting-started`, 99 (FCP 1,4 s), con `uses-text-compression` en verde. Lo que le
     queda a esa página son las dos hojas que bloquean el render (la guía y `docs.css`): es el
     nº 108.
+  - **Lo que no se vio al apuntarlo.** La preview de Vite 8 sí comprime, con su propio middleware
+    (`@polka/compression`, solo gzip, desde 1 KB), pero va después de los de los plugins: las
+    páginas, que contesta `@fudic/server` antes, salían sin comprimir; los ficheros, en gzip. Lo
+    vio Pedro en DevTools tras el primer arreglo: los componentes y el CSS seguían en gzip, porque
+    el gzip de Vite los envolvía por dentro y comprimía antes. Ahora el middleware de Fudic
+    negocia una vez y deja `Accept-Encoding: identity` para lo que va detrás: todo sale en brotli.
+    Lo de menos de 1 KB sale sin comprimir, a propósito (Lighthouse no cuenta ahorros tan
+    pequeños).
 
 ## 2. ~~Un componente que se hidrata al cargar entra en la cadena crítica~~ (descartado)
 

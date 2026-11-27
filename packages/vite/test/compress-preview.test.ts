@@ -20,10 +20,13 @@ interface Answer {
   readonly body: Buffer;
 }
 
-/** `path` asked with `Accept-Encoding: br`, its body as it came over the wire. */
+/** What Chrome sends: gzip comes first, and Vite's own compression would take it. */
+const CHROME = 'gzip, deflate, br, zstd';
+
+/** `path` asked as Chrome asks it, its body as it came over the wire. */
 function get(port: number, path: string): Promise<Answer> {
   return new Promise((resolve, reject) => {
-    const req = request({ host: 'localhost', port, path, headers: { 'accept-encoding': 'br', accept: 'text/html' } }, (res) => {
+    const req = request({ host: 'localhost', port, path, headers: { 'accept-encoding': CHROME, accept: 'text/html' } }, (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (chunk: Buffer) => chunks.push(chunk));
       res.on('end', () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks) }));
@@ -70,7 +73,7 @@ describe('vite preview compresses what it serves', () => {
     expect(brotliDecompressSync(page.body).toString('utf8')).toContain('<title>Shop</title>');
   });
 
-  it('a script of the build, served by Vite, with brotli too', async () => {
+  it('a script of the build, served by Vite, with brotli and not Vite’s own gzip', async () => {
     const scripts = readdirSync(join(dist, 'assets'), { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
       .map((entry) => join(entry.parentPath, entry.name));

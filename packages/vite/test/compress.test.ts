@@ -273,6 +273,16 @@ describe('compression', () => {
     expect(answer.text).toBe(PAGE);
   });
 
+  it('negotiates once: what comes after is told the client takes no encoding', async () => {
+    let seen: string | undefined;
+    const answer = await ask((req, res) => {
+      seen = req.headers['accept-encoding'];
+      html(req, res);
+    }, { 'accept-encoding': 'gzip, deflate, br, zstd' });
+    expect(seen).toBe('identity');
+    expect(answer.headers['content-encoding']).toBe('br');
+  });
+
   it('answers a HEAD with the headers a GET would have', async () => {
     const answer = await ask(html, { 'accept-encoding': 'br' }, 'HEAD');
     expect(answer.headers['content-encoding']).toBe('br');
