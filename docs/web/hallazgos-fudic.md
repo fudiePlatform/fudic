@@ -1574,6 +1574,13 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **De paso.** Un `page.headers` con un error de valor (`FUD1543`) para `pnpm build` con el
   mensaje bueno, seguido de una docena de líneas de pila de `@fudic/vite`, Rolldown y Vite, igual
   que el `FUD1027` del nº 30 de la CLI.
+- **En la web, el 2026-11-27.** `site`, `mcp` y `tutorials` llevan `X-Content-Type-Options: nosniff`
+  en `page.headers` y en el bloque `/**` de `assets.headers`. Comprobado con `pnpm preview` desde
+  `web/`: las páginas de las tres apps, el runtime de `/_fudic/`, las hojas, la fuente y los
+  componentes lo llevan. `fudic-routes.json` no, porque sus cabeceras son de Fudic y no lee
+  `assets.headers` (como el service worker); `nosniff` solo cuenta en scripts y hojas. Queda la
+  plantilla de `fudic new` y la línea en `KNOWN` (con el resto de la CLI), y volver a medir con
+  Observatory cuando Fudic sirva HTTPS en local (SDD-90).
 
 ## 96. `Permissions-Policy` solo se comprueba por su sintaxis
 
