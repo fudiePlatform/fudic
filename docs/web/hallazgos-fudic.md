@@ -49,6 +49,14 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 - **Qué debería hacer.** Resolver un `href` con nombre de paquete (`@scope/pkg/…`) en cualquier
   `<link>` del head, como ya hace con `rel="layout"`, `"snippet"` y `"component"`. Y que `@@`
   en un atributo produzca `@`. Va con la fase de las `@` de la gramática.
+- **Vuelto a comprobar** el 2026-11-27, al mover la guía de `web/libs/guide` a `packages/guide`
+  (`@fudic/guide`). La ruta relativa de la precarga dejó de existir, y el build **no dijo nada**:
+  el HTML salió con `href="../../../guide/fonts/…"` tal cual, una precarga rota en cada página de
+  las tres apps. Con `../../node_modules/@fudic/guide/fonts/…` el `@fudic` se lee como expresión
+  y el prerender falla con `FUD0620` («fudic is not defined»). Se dejó
+  `../../../../../packages/guide/fonts/…`, que cruza del monorepo a otro paquete por disco. **Qué
+  debería hacer, además:** avisar de un `href` relativo de un `<link>` que no apunta a ningún
+  fichero, en vez de copiarlo tal cual.
 
 ## 4. La guía no puede pedir que se precargue su fuente
 
