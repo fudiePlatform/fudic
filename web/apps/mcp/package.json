@@ -13,10 +13,10 @@
   "dependencies": {
     "@fudic/core": "workspace:*",
     "@fudic/dom": "workspace:*",
+    "@fudic/guide": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*",
-    "@web/ui": "workspace:*",
-    "@web/guide": "workspace:*"
+    "@web/ui": "workspace:*"
   },
   "devDependencies": {
     "@fudic/cli": "workspace:*",

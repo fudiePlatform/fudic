@@ -1,0 +1,42 @@
+{
+  "name": "@fudic/guide",
+  "version": "0.0.1",
+  "description": "Fudic's style guide: design tokens with a dark mode, one small self-hosted font, a favicon and a stylesheet per element. The same guide as fudic.dev.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/guide#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/guide"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "style guide",
+    "design tokens",
+    "css"
+  ],
+  "files": [
+    "*.css",
+    "fonts",
+    "icons",
+    "logo.svg",
+    "fudic.json",
+    "README.md"
+  ],
+  "exports": {
+    "./fudic.json": "./fudic.json",
+    "./*.css": "./*.css",
+    "./fonts/*": "./fonts/*",
+    "./icons/*": "./icons/*",
+    "./logo.svg": "./logo.svg"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

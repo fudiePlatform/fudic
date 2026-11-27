@@ -387,7 +387,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   pesos 400–600 y a Latin-1 (23 KB), y precargada; el manual se cambió para usar esa fuente web.
 - **Qué debería hacer.** Que la plantilla traiga la fuente ya recortada (pesos y `unicode-range`)
   y sin la cursiva, o directamente la fuente del sistema, y que el recorte con fontTools que
-  documenta `web/libs/guide/README.md` sea parte de la CLI.
+  documenta `packages/guide/README.md` sea parte de la CLI.
 - **Vuelto a comprobar (tutorial `lighthouse`), el 2026-11-26**, con la CLI de Lighthouse 12.8.2
   sobre `fudic preview`. La app recién creada, con solo su `<h1>`, saca 100 en rendimiento móvil (de
   cinco pasadas, alguna da 89–91); con una imagen y un párrafo, 90 en todas, con el primer pintado en

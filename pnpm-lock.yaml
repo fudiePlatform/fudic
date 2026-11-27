@@ -548,6 +548,8 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/guide: {}
+
   packages/history:
     dependencies:
       '@fudic/api':
@@ -1226,15 +1228,15 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../packages/dom
+      '@fudic/guide':
+        specifier: workspace:*
+        version: link:../../../packages/guide
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../packages/ssr
       '@fudic/transport':
         specifier: workspace:*
         version: link:../../../packages/transport
-      '@web/guide':
-        specifier: workspace:*
-        version: link:../../libs/guide
       '@web/ui':
         specifier: workspace:*
         version: link:../../libs/ui
@@ -1275,6 +1277,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../packages/dom
+      '@fudic/guide':
+        specifier: workspace:*
+        version: link:../../../packages/guide
       '@fudic/http':
         specifier: workspace:*
         version: link:../../../packages/http
@@ -1284,9 +1289,6 @@ importers:
       '@fudic/transport':
         specifier: workspace:*
         version: link:../../../packages/transport
-      '@web/guide':
-        specifier: workspace:*
-        version: link:../../libs/guide
       '@web/ui':
         specifier: workspace:*
         version: link:../../libs/ui
@@ -1324,15 +1326,15 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../packages/dom
+      '@fudic/guide':
+        specifier: workspace:*
+        version: link:../../../packages/guide
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../packages/ssr
       '@fudic/transport':
         specifier: workspace:*
         version: link:../../../packages/transport
-      '@web/guide':
-        specifier: workspace:*
-        version: link:../../libs/guide
       '@web/ui':
         specifier: workspace:*
         version: link:../../libs/ui
@@ -1362,13 +1364,11 @@ importers:
         specifier: 4.1.9
         version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
 
-  web/libs/guide: {}
-
   web/libs/ui:
     dependencies:
-      '@web/guide':
+      '@fudic/guide':
         specifier: workspace:*
-        version: link:../guide
+        version: link:../../../packages/guide
     devDependencies:
       '@fudic/cli':
         specifier: workspace:*

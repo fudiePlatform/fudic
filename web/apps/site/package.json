@@ -14,11 +14,11 @@
     "@fudic/core": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
     "@fudic/dom": "workspace:*",
+    "@fudic/guide": "workspace:*",
     "@fudic/http": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*",
-    "@web/ui": "workspace:*",
-    "@web/guide": "workspace:*"
+    "@web/ui": "workspace:*"
   },
   "devDependencies": {
     "@fudic/cli": "workspace:*",

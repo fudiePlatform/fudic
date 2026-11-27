@@ -105,7 +105,7 @@ ningún test unitario habría encontrado.
       - por qué el fallback con `size-adjust` deja el CLS en 0;
       - cuándo compensa directamente la fuente del sistema.
    3. Si la CLI instala fuentes, que automatice el recorte con fontTools que hoy documenta
-      `web/libs/guide/README.md`.
+      `packages/guide/README.md`.
 3. **Volver a medir** con la preview comprimida y la fuente instalada por la guía: el 100 tiene
    que salir sin proxy ni apaños.
 

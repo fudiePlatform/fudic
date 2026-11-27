@@ -62,7 +62,7 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
 - **Cómo se resolvió.** Una sola fuente, Inter Tight, recortada a pesos 400–600 y a Latin-1 más
   puntuación tipográfica (23 KB, con su `unicode-range`); la mono y la cursiva, del sistema.
   El layout la precarga a mano (ver el nº 3). Resultado: **99** en móvil (FCP 1,4 s), **100** con
-  compresión. El recorte con fontTools está en `web/libs/guide/README.md`.
+  compresión. El recorte con fontTools está en `packages/guide/README.md`.
 - **Qué debería hacer.** Que la guía declare sus fuentes críticas
   (`"guide": { "preload": ["fonts/…woff2"] }`) y Fudic escriba el
   `<link rel="preload" as="font" type="font/woff2" crossorigin>` y su Early Hint en cada página
