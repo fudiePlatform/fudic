@@ -1275,6 +1275,11 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   siempre con `immutable` sin depender del fichero. Es seguro: cada ruta de `/_fudic/` lleva la
   versión y la huella, así que su contenido no cambia nunca, haya una versión en el dominio o
   diez.
+- **Vuelto a comprobar** el 2026-11-27, a petición de Pedro, con `pnpm preview` de
+  `web/apps/tutorials` y `curl -sI` sobre cada fichero que pide `/tutorials/`: los 14 de
+  `/_fudic/…` (`core`, `dom`, `transport`) salen sin `Cache-Control`; las hojas, la fuente, el
+  componente de `assets/h/` y `fudic-main-….js` salen con `immutable`. Pasa en toda app que no
+  esté en `/`.
 
 ## 84. Un signal dentro de un servicio inyectado no repinta la plantilla
 
@@ -1688,3 +1693,17 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Aceptar en `data` un campo `later` como valor o como promesa, igual que lo
   devuelve el handler.
 
+## 107. Ninguna respuesta da un `304`: no hay `ETag` ni `If-None-Match`
+
+- **Qué pasó.** Lo señaló Pedro (2026-11-27), a raíz de la compresión (nº 1). Una página estática
+  (prerenderizada) se vuelve a mandar entera en cada visita: ni `@fudic/server` ni la preview de
+  `@fudic/vite` ni el proxy de `fudic preview` escriben `ETag` o `Last-Modified`, ni responden
+  `304 Not Modified` a un `If-None-Match`. Buscado en `packages/server/src`, `packages/vite/src` y
+  `packages/cli/src/serve`: no aparecen ni `etag` ni `if-none-match` ni `304`.
+- **La complicación.** Cada página lleva el nonce de la CSP, distinto en cada respuesta. Un `ETag`
+  calculado sobre el HTML tal cual sale cambiaría siempre y nunca daría un `304`. Hay que
+  calcularlo sobre el HTML sin el nonce (el del build, con su marcador) y, en el `304`, mandar la
+  CSP con un nonce que case con el HTML que el navegador ya tiene, o decidir otro esquema.
+- **Qué debería hacer.** Dar un `ETag` a las páginas estáticas, calculado sin el nonce, y
+  responder `304` cuando coincide, sin romper la CSP. Queda por comprobar qué hacen los ficheros
+  estáticos que salen con `no-cache` en el servidor de Node.

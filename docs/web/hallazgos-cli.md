@@ -522,3 +522,14 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   caso al fixture no cambia el showcase hasta ejecutar otra vez `fudic g showcase`. Corregida.
 - **Qué debería hacer.** Escribir el nombre de la app, o quitar «of» cuando no hay librería.
 
+## 33. La página que crea `fudic new` es un «Home» vacío
+
+- **Qué pasó.** Lo señaló Pedro (2026-11-27). La primera página de una app recién creada
+  (`packages/cli/templates/route.fud`, desde `plans/scaffold.ts:230`) es un `<title>Home</title>`
+  y un `<h1>Home</h1>`, sin nada más. Las CLI de los otros frameworks montan una página de
+  bienvenida cuidada, con enlaces a la documentación y a los siguientes pasos. Lo primero que ve
+  quien prueba Fudic es una página en blanco con una palabra, y la primera impresión es de
+  inmadurez.
+- **Cómo se resolvió en la web.** No aplica: la web reemplaza esa página.
+- **Qué debería hacer.** Una página de bienvenida que enseñe lo que es Fudic y que mantenga el
+  100 en las cuatro categorías de Lighthouse en móvil. Es la primera página que alguien medirá.

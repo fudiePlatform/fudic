@@ -32,6 +32,25 @@ Tres cosas a tener en cuenta:
 No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9), el 37 (resuelto) y el
 CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 
+## Prioridad para el lanzamiento
+
+Lo que Pedro considera primordial (2026-11-27): lo que nota quien prueba Fudic por primera vez.
+Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
+
+| Orden | Qué | Hallazgo |
+|---|---|---|
+| 1 | Los tutoriales llevan `sw.json` y solo lo necesita `offline` | Contenido de `tutorials/` |
+| 2 | La guía de estilos (774 KB) va en los 79 tutoriales, y StackBlitz clona el repo entero al abrir uno | Contenido de `tutorials/` |
+| 3 | El HTML no sale comprimido: es lo que impide nacer con 100 en móvil | 1 |
+| 4 | La fuente de la guía pesa 740 KB en dos ficheros | CLI-23 |
+| 5 | `fudic new` crea un «Home» vacío | CLI-33 |
+| 6 | Ninguna página estática da un `304`, con el nonce de por medio | 107 |
+| 7 | Con varias apps, fuera de `/` el runtime sale sin `Cache-Control` | 83 |
+| 8 | `fudic dev` y `fudic preview` en `web/` no sirven solo sus tres apps | CLI-8 (con CLI-2 y CLI-5) |
+| 9 | No hay `fudic build` para las mismas apps | CLI-11 |
+| 10 | La plantilla trae `Strict-Transport-Security` y Fudic no sirve HTTPS | CLI-27 |
+| 11 | HTTP Observatory echa en falta `X-Content-Type-Options` | 95 |
+
 ## Clasificación
 
 ### @fudic/compiler (24)
@@ -114,13 +133,14 @@ CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 | 96 | `Permissions-Policy` solo se comprueba por su sintaxis (→ `vite`: `fudic dev` manda el valor con `FUD1543`) |
 | 100 | Un `baseline` mal escrito trae un `FUD0726` falso; `"2024"` entre comillas (→ `vite`: el `FUD1524` de antes de fallar) |
 
-### @fudic/server (3)
+### @fudic/server (4)
 
 | Nº | Hallazgo |
 |---|---|
 | 12 | Una función que monte las tres piezas en su orden (→ documentación) |
 | 16 | `paramFallback: 'notFound'` no se respeta en el servidor |
 | 50 | El nonce del script en línea en la CSP (→ `compiler`) |
+| 107 | Ninguna respuesta da un `304`: sin `ETag`, y con el nonce de por medio |
 
 ### @fudic/transport (5)
 
@@ -201,7 +221,7 @@ CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 | 46 | Guardar `bench.js` no vuelve a ejecutar; `pass: false` en un `given` o un `when` no para el criterio |
 | 105 | El primer `fudic spec` de un proyecto nuevo acaba en error (Vite optimiza a mitad de la ejecución) |
 
-### @fudic/cli (35)
+### @fudic/cli (36)
 
 | Nº | Hallazgo |
 |---|---|
@@ -240,6 +260,7 @@ CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 | CLI-30 | `fudic add i18n` no escribe `site`; reescribe el formato de `fudic.json` (→ `vite`: la pila de `FUD1027`) |
 | CLI-31 | `fudic preview` anuncia un puerto que otro proceso tiene en IPv6 |
 | CLI-32 | `fudic g showcase` en una app dice «Showcase of  in» |
+| CLI-33 | La página que crea `fudic new` es un «Home» vacío |
 
 ### @fudic/mcp (4)
 
@@ -334,9 +355,10 @@ Estimado a partir del texto de cada hallazgo, sin haber abierto el código de ca
     CLI-22): comparten causa, y es lo que más rodeos ha costado en la web (el CLI-6 se repitió
     con cada capítulo y cada categoría de tutoriales).
   - Generadores nuevos: CLI-7, CLI-11, CLI-12, CLI-20.
+  - La página de bienvenida de `fudic new`: CLI-33.
   - Otros: 4, 17, 30, 47, 48, 69, 70, 72, 87, 92, 97, 101, 104, CLI-23.
   - Hay que investigar antes de saber cuánto cuestan: 35, 52, 75, 105.
-- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91, CLI-27.
+- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91, 107, CLI-27.
 
 ## Por qué los tests al 100 % no los cazaron
 
