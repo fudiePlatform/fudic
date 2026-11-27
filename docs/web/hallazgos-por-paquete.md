@@ -3,12 +3,17 @@
 Resumen de la conversación del 2026-11-26 sobre [hallazgos-fudic.md](hallazgos-fudic.md): la
 clasificación por paquete, cómo se van a arreglar y por qué los tests al 100 % no los cazaron.
 Del 84 al 106, los que salieron al terminar los tutoriales, se añadieron el 2026-11-27.
+
+Clasifica también los de [hallazgos-cli.md](hallazgos-cli.md), que tiene su propia numeración.
+Para distinguirlos, aquí llevan delante «CLI-»: «CLI-6» es el nº 6 de `hallazgos-cli.md`, y un
+número solo, como «6», es el de `hallazgos-fudic.md`.
 Es un borrador: se rehará cuando cambien los hallazgos.
 
 ## Cómo se arreglan
 
 Sin un BUG-NN por hallazgo. Se coge un paquete y se arreglan todos los suyos de una vez. Al
-terminar, cada hallazgo se marca en `hallazgos-fudic.md` con «Resuelto el <fecha>», como el nº 37.
+terminar, cada hallazgo se marca en su fichero (`hallazgos-fudic.md` o `hallazgos-cli.md`) con
+«Resuelto el <fecha>», como el nº 37 o el CLI-14.
 
 Tres cosas a tener en cuenta:
 
@@ -18,12 +23,14 @@ Tres cosas a tener en cuenta:
   20 (`transport`, `cli` y la guía del MCP), 40 (`api` y `dom`), 50 (`compiler` y `server`),
   54 (`compiler` y `testing`), 68 (`compiler` y `core`), 85 (`compiler` y `vite`), 86 (`testing`
   y `cli`), 87 (`core` y `compiler`), 88 (`testing` y `cli`), 95 (`cli`, `config` y `vite`),
-  96 (`config` y `vite`), 99 (`language-server` y `compiler`) y 100 (`config` y `vite`).
+  96 (`config` y `vite`), 99 (`language-server` y `compiler`), 100 (`config` y `vite`), CLI-3
+  (`cli` y `config`), CLI-26 (`cli` y `forms`) y CLI-30 (`cli` y `vite`).
 - **Decisiones pendientes de Pedro.** Hay que tomarlas antes de empezar el paquete (ver más abajo).
 - **Orden.** Primero un paquete pequeño, para fijar el ritmo (`api` o `transport`). Después `vite`,
   que es lo que más se nota en los tutoriales.
 
-No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 (resuelto).
+No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9), el 37 (resuelto) y el
+CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 
 ## Clasificación
 
@@ -97,12 +104,13 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 89 | No ve un catálogo que no existía cuando compiló la página |
 | 92 | El id del build no cambia con la línea `load` ni con `sw.headers` |
 
-### @fudic/config (4)
+### @fudic/config (5)
 
 | Nº | Hallazgo |
 |---|---|
 | 4 | `"guide": { "preload": [...] }` |
 | 5 | Plantilla de `assets.headers`, varias rutas por bloque, bloque vacío como error, aviso por la coma |
+| CLI-9 | `assets.headers` de `fudic new` deja sin caché lo que emite Fudic (se arregla con el 5) |
 | 96 | `Permissions-Policy` solo se comprueba por su sintaxis (→ `vite`: `fudic dev` manda el valor con `FUD1543`) |
 | 100 | Un `baseline` mal escrito trae un `FUD0726` falso; `"2024"` entre comillas (→ `vite`: el `FUD1524` de antes de fallar) |
 
@@ -193,7 +201,7 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 46 | Guardar `bench.js` no vuelve a ejecutar; `pass: false` en un `given` o un `when` no para el criterio |
 | 105 | El primer `fudic spec` de un proyecto nuevo acaba en error (Vite optimiza a mitad de la ejecución) |
 
-### @fudic/cli (5)
+### @fudic/cli (35)
 
 | Nº | Hallazgo |
 |---|---|
@@ -202,6 +210,36 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 32 | `img.css` de la plantilla de la guía |
 | 90 | `fudic translate` no avisa de un `t()` con una variable, y borra su traducción |
 | 95 | La plantilla de `page.headers` y `assets.headers` sin `X-Content-Type-Options: nosniff` (→ `config`: la línea en `KNOWN`; → `vite`: la pila de `FUD1543` en el build) |
+| CLI-1 | `fudic new` dentro de un repo git hace su propio `git init` |
+| CLI-2 | `fudic new --workspace` dentro de un workspace pnpm crea uno anidado |
+| CLI-3 | Sin Service Worker, el README y `page.headers` siguen hablando de él (→ `config`: `headers/templates.ts`) |
+| CLI-4 | Recomienda `pnpm dev` y no sus comandos; con `--pm npm`, `npm dev` |
+| CLI-5 | `--project` escoge un proyecto de otro workspace; valida proyectos que el comando no toca |
+| CLI-6 | `g page --layout @web/ui/…` revienta con `ENOENT`; la ruta relativa escribe un `href` frágil; títulos como «Getting-started» |
+| CLI-7 | No hay generador para la hoja de un layout |
+| CLI-8 | `fudic preview` y `fudic dev` en una app sirven todas las del monorepo |
+| CLI-10 | No hay generador para una hoja de `styles` |
+| CLI-11 | No hay `fudic build` |
+| CLI-12 | No hay generador para un middleware ni para una regla |
+| CLI-13 | La ayuda general no lista `generate pipe` ni `check`; `fmt` no nombra los `.fudapi` |
+| CLI-15 | `fudic --version` enseña la ayuda entera |
+| CLI-16 | `g api` sobre un fichero que no existe dice que no es una ruta |
+| CLI-17 | `--force --dry-run` sobre un fichero idéntico enseña un cambio vacío |
+| CLI-18 | `fudic accept --dry-run` dice `(in )` |
+| CLI-19 | `g api` añade `@fudic/http` con versión fija dentro de un workspace, y fuera de orden |
+| CLI-20 | `fudic new` solo configura el MCP para Claude Code (la parte que queda) |
+| CLI-21 | `g component` y `g page` no aceptan `--purpose` |
+| CLI-22 | `g error-page --layout` resuelve la ruta de tres formas; «Created … in » |
+| CLI-23 | La guía de `fudic new` trae una fuente de 344 KB y su cursiva de 379 KB |
+| CLI-24 | `g api` y `g page --server` instalan `@fudic/http` sin decirlo |
+| CLI-25 | `g style` deja la hoja en la raíz del proyecto; «Created … in » |
+| CLI-26 | `g form` y `add forms` no añaden `@fudic/http` (→ `forms`: o que la declare) |
+| CLI-27 | `fudic preview` no sirve HTTP/2 ni HTTPS, y se cuelga si la app sirve HTTPS |
+| CLI-28 | El proxy de `fudic dev` y `fudic preview` no aborta la petición cuando el navegador la cancela |
+| CLI-29 | `fudic add i18n` deja el `lang="en"` del layout |
+| CLI-30 | `fudic add i18n` no escribe `site`; reescribe el formato de `fudic.json` (→ `vite`: la pila de `FUD1027`) |
+| CLI-31 | `fudic preview` anuncia un puerto que otro proceso tiene en IPv6 |
+| CLI-32 | `fudic g showcase` en una app dice «Showcase of  in» |
 
 ### @fudic/mcp (4)
 
@@ -270,6 +308,11 @@ Son textos que no cambian lo que hace el código:
 | 97 | `compiler` | ¿El `<script src>` del cuerpo recibe el nonce, o se avisa y se ofrece moverlo al `<head>`? |
 | 100 | `config` | ¿`"2024"` entre comillas vale como año, o lo dice `FUD0725`? |
 | 104 | `forms` | ¿`$validate({ server: true })` en un test pregunta al servidor en memoria, o la regla remota avisa de que no se ejecuta? |
+| CLI-11 | `cli` | ¿Hay un `fudic build`, o el build sigue siendo el script de Vite? |
+| CLI-20 | `cli` | ¿Una opción de `fudic new` o un `fudic add agent <entorno>`? ¿Para qué agentes? |
+| CLI-23 | `cli` | ¿La guía trae la fuente recortada, o la del sistema? |
+| CLI-26 | `cli` y `forms` | ¿`g form` añade `@fudic/http`, o `@fudic/forms` la declara como dependencia? |
+| CLI-27 | `cli` | ¿`fudic preview` sirve HTTPS y HTTP/2, o solo detecta el backend en HTTPS y lo dice? |
 
 ## Esfuerzo estimado
 
@@ -277,16 +320,23 @@ Estimado a partir del texto de cada hallazgo, sin haber abierto el código de ca
 
 - **Fáciles** (un cambio pequeño y localizado): 1, 5, 9, 12, 13, 14, 16, 18, 19, 21, 22, 23, 25,
   33, 34, 36, 39, 41, 42, 43, 44, 49, 51, 54, 57, 73, 74, 77, 78, 79, 80, 83, 90, 94, 95, 96,
-  98, 99, 100, 103 y toda la documentación.
+  98, 99, 100, 103 y toda la documentación. De la CLI: CLI-1, CLI-3, CLI-4, CLI-10, CLI-13,
+  CLI-15, CLI-16, CLI-17, CLI-21, CLI-24, CLI-26, CLI-28, CLI-29, CLI-30 y CLI-31.
+  - El nombre vacío en la salida (CLI-18, CLI-25, CLI-32 y el «in » del CLI-22): seguramente
+    una sola causa.
 - **Medianos** (hay que entender bien una pieza):
   - El watcher de `fudic dev` (31, 62, 63, 67, 71, 89): seguramente comparten causa.
   - Diagnósticos propios en vez de errores de TypeScript (58, 59, 64, 65, 66), y diagnósticos
     que solo salen en el emit (85).
   - Bugs del compilador: 3, 7, 8, 11, 56, 61, 82.
   - `visit` y `mount` de `@fudic/testing` (86, 88, 102, 106).
-  - Otros: 4, 17, 30, 47, 48, 69, 70, 72, 87, 92, 97, 101, 104.
+  - La CLI dentro de un monorepo que no creó ella (CLI-2, CLI-5, CLI-6, CLI-8, CLI-19,
+    CLI-22): comparten causa, y es lo que más rodeos ha costado en la web (el CLI-6 se repitió
+    con cada capítulo y cada categoría de tutoriales).
+  - Generadores nuevos: CLI-7, CLI-11, CLI-12, CLI-20.
+  - Otros: 4, 17, 30, 47, 48, 69, 70, 72, 87, 92, 97, 101, 104, CLI-23.
   - Hay que investigar antes de saber cuánto cuestan: 35, 52, 75, 105.
-- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91.
+- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91, CLI-27.
 
 ## Por qué los tests al 100 % no los cazaron
 
@@ -352,7 +402,9 @@ Los tests corren en un proceso nuevo, con ficheros completos y entradas limpias.
 ### Dos agravantes
 
 - **Los paquetes con más hallazgos no están al 100 %.** `compiler` (24) y `vite` (21), junto
-  con `transport` (5), son los de la deuda heredada: ramas al 95,6, 83,1 y 83,8.
+  con `transport` (5), son los de la deuda heredada: ramas al 95,6, 83,1 y 83,8. `cli` (35)
+  tampoco: tiene el mismo suelo de 80/80/75, con el 100 solo en algunos ficheros, aunque el
+  CLAUDE.md no lo cuenta en la deuda heredada.
 - **El único consumidor era `examples/basic`**, escrito por el mismo autor y del mismo modo. El 6
   lo dice tal cual: «ningún ejemplo lo usa, así que nadie lo había visto». Y el 87 no se vio
   porque la página `/di` del ejemplo tiene un componente dueño.
