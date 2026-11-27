@@ -273,8 +273,6 @@ mirar las familias que nombra **cualquier** hoja de documento de la página, no 
 
 ## 7. Fuera de alcance
 
-- El `304` de las páginas estáticas (hallazgo 107) y la compresión (hallazgo 1): la guía en línea
-  funciona sin ellos, y los dos van aparte.
 - Mezclar reglas de una pieza extraída con la del paquete.
 - Avisar de que una pieza extraída se ha quedado atrás respecto a una versión nueva de
   `@fudic/guide`.
