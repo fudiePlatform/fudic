@@ -2,6 +2,7 @@
 
 Resumen de la conversación del 2026-11-26 sobre [hallazgos-fudic.md](hallazgos-fudic.md): la
 clasificación por paquete, cómo se van a arreglar y por qué los tests al 100 % no los cazaron.
+Del 84 al 106, los que salieron al terminar los tutoriales, se añadieron el 2026-11-27.
 Es un borrador: se rehará cuando cambien los hallazgos.
 
 ## Cómo se arreglan
@@ -15,7 +16,9 @@ Tres cosas a tener en cuenta:
   principal, y la otra parte se marca con →. No se da por resuelto hasta cerrar todas sus partes:
   5 (`config` y `vite`), 9 (`compiler` y `dom`), 10 (`compiler` y `language-core`),
   20 (`transport`, `cli` y la guía del MCP), 40 (`api` y `dom`), 50 (`compiler` y `server`),
-  54 (`compiler` y `testing`) y 68 (`compiler` y `core`).
+  54 (`compiler` y `testing`), 68 (`compiler` y `core`), 85 (`compiler` y `vite`), 86 (`testing`
+  y `cli`), 87 (`core` y `compiler`), 88 (`testing` y `cli`), 95 (`cli`, `config` y `vite`),
+  96 (`config` y `vite`), 99 (`language-server` y `compiler`) y 100 (`config` y `vite`).
 - **Decisiones pendientes de Pedro.** Hay que tomarlas antes de empezar el paquete (ver más abajo).
 - **Orden.** Primero un paquete pequeño, para fijar el ritmo (`api` o `transport`). Después `vite`,
   que es lo que más se nota en los tutoriales.
@@ -24,7 +27,7 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 
 ## Clasificación
 
-### @fudic/compiler (19)
+### @fudic/compiler (24)
 
 | Nº | Hallazgo |
 |---|---|
@@ -47,6 +50,11 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 68 | Un componente que solo lee un store no se hidrata (→ `core`) |
 | 73 | `summary` en una ruta: `summaryEntriesOf` sin importar |
 | 82 | `fud-data` no sale si solo el `@code` lee `data` |
+| 84 | Un signal dentro de un servicio inyectado no repinta la plantilla |
+| 85 | `FUD0680` y `FUD0684` no salen en el editor; el span de `FUD0680` cae en la página (→ `vite`: la pila) |
+| 91 | Una página no puede usar un custom element que no sea un `.fud` (decisión) |
+| 94 | `FUD0907` sobre `window`: un mensaje propio para los globales del navegador (→ documentación: `FUD0907.md`) |
+| 97 | Un `<script src>` en el cuerpo sale sin nonce, y nadie avisa (decisión) |
 
 ### @fudic/language-core: proyección y tipos (4)
 
@@ -63,7 +71,7 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 |---|---|
 | 57 | FUD1152 con `<` sobre un `const` cuyo tipo es un literal |
 
-### @fudic/vite (19)
+### @fudic/vite (21)
 
 | Nº | Hallazgo |
 |---|---|
@@ -86,13 +94,17 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 78 | La excepción de un handler o de un `load` no sale en la terminal |
 | 80 | «Cannot GET» de Connect sin `Accept: text/html` |
 | 83 | `originRuntime` no aplica `assets.headers` en una app con `base` |
+| 89 | No ve un catálogo que no existía cuando compiló la página |
+| 92 | El id del build no cambia con la línea `load` ni con `sw.headers` |
 
-### @fudic/config (2)
+### @fudic/config (4)
 
 | Nº | Hallazgo |
 |---|---|
 | 4 | `"guide": { "preload": [...] }` |
 | 5 | Plantilla de `assets.headers`, varias rutas por bloque, bloque vacío como error, aviso por la coma |
+| 96 | `Permissions-Policy` solo se comprueba por su sintaxis (→ `vite`: `fudic dev` manda el valor con `FUD1543`) |
+| 100 | Un `baseline` mal escrito trae un `FUD0726` falso; `"2024"` entre comillas (→ `vite`: el `FUD1524` de antes de fallar) |
 
 ### @fudic/server (3)
 
@@ -112,12 +124,13 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 20 | ¿Los patrones de `sw.json` llevan el `base`? (→ `cli`; → documentación: la guía del MCP) |
 | 81 | Una página `sw` guarda los datos por ruta y no por URL |
 
-### @fudic/core (2)
+### @fudic/core (3)
 
 | Nº | Hallazgo |
 |---|---|
 | 22 | `strategy()` sigue exportado y nadie lo usa (el resto del 22, en documentación) |
 | 39 | `Task.progress` no vuelve a `null` al terminar una llamada |
+| 87 | Sin un componente dueño, la semilla `fud-di` no llega a la raíz (→ `compiler`: un token declarado en el `@code` no va al módulo IoC) |
 
 ### @fudic/dom (2)
 
@@ -136,13 +149,14 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 | 74 | `{min}` y `{max}` en `messages` pintan el nombre del tipo |
 | 77 | FUD1080 dice «unknown rule» cuando falta `@fudic/forms` |
 
-### @fudic/forms (3)
+### @fudic/forms (4)
 
 | Nº | Hallazgo |
 |---|---|
 | 25 | `setFormValue(String(value))` para un `File`, una lista o un `bool` |
 | 26 | `form:=` no envía nada sin JavaScript (decisión) |
 | 41 | `Progress` y `Patch` no se exportan |
+| 104 | Una regla `runs remote` no se ejecuta en un test con el formulario solo (decisión) |
 
 ### @fudic/http (3)
 
@@ -158,42 +172,53 @@ No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9) y el 37 
 |---|---|
 | 44 | `destroy` no llega a los hijos |
 
-### @fudic/testing (2)
+### @fudic/testing (7)
 
 | Nº | Hallazgo |
 |---|---|
 | 54 | `renderSnippet` compila el snippet como si fuera un componente |
 | 70 | `mount` con `via: 'client'` sigue pasando por el servidor; un fixture sin una prop obligatoria |
+| 86 | `mount` de un componente que inyecta un servicio provisto da `FUD0680` aunque el test dé `providers` (→ `cli`: el test de `fudic g component` y el de `fudic g service`) |
+| 88 | `visit('/')` en una app con varios idiomas dice que no hay ruta (→ `cli`: `fudic add i18n` y los tests que ya existen) (decisión) |
+| 102 | `visit` lanza con una URL que no existe, en vez de pintar el 404 |
+| 103 | Faltan `getAll…` y `queryAll…`; `data` de `visit` no está tipado |
+| 106 | `visit` con `data` da 500 si la página tiene un campo `later` |
 
-### @fudic/spec y @fudic/workbench (3)
+### @fudic/spec y @fudic/workbench (4)
 
 | Nº | Hallazgo |
 |---|---|
 | 31 | El workbench se queda con un `.fudspec` a medio escribir |
 | 45 | `selfTest` se exige y no se ejecuta |
 | 46 | Guardar `bench.js` no vuelve a ejecutar; `pass: false` en un `given` o un `when` no para el criterio |
+| 105 | El primer `fudic spec` de un proyecto nuevo acaba en error (Vite optimiza a mitad de la ejecución) |
 
-### @fudic/cli (3)
+### @fudic/cli (5)
 
 | Nº | Hallazgo |
 |---|---|
 | 20 | `fudic g app` escribe `"/assets/**"` sin el `base` |
 | 30 | `fudic spec` y `fudic test` no escriben en el `.fudlog` (→ `history`) |
 | 32 | `img.css` de la plantilla de la guía |
+| 90 | `fudic translate` no avisa de un `t()` con una variable, y borra su traducción |
+| 95 | La plantilla de `page.headers` y `assets.headers` sin `X-Content-Type-Options: nosniff` (→ `config`: la línea en `KNOWN`; → `vite`: la pila de `FUD1543` en el build) |
 
-### @fudic/mcp (3)
+### @fudic/mcp (4)
 
 | Nº | Hallazgo |
 |---|---|
 | 47 | Diff vacío, `next` que no corresponde, ejecuciones parciales, los tokens sin acordar |
 | 48 | El hash del aspecto no incluye las hojas de la guía ni los tokens |
 | 49 | Solo encuentra el proyecto por la carpeta en la que arranca |
+| 101 | `fudic_generate` acepta un nombre sin el prefijo; un test cambiado en la fase `view` sin aviso |
 
-### @fudic/language-server (1)
+### @fudic/language-server (3)
 
 | Nº | Hallazgo |
 |---|---|
 | 33 | El snippet `load` ofrece `isr` |
+| 98 | `FUD1547` no ofrece quitar lo que debilita la política; `FUD1545` sale una vez en el build y dos en el editor |
+| 99 | `FUD1555` no ofrece «Explain» ni «Use textContent» (→ `compiler`: `FUD1140` con `signal(trustedHtml(""))`) |
 
 ### @fudic/vscode (1)
 
@@ -224,6 +249,8 @@ Son textos que no cambian lo que hace el código:
 | 30 | El README de `@fudic/history`, si se decide decir quién apunta las ejecuciones |
 | 43 | El `.md` de FUD1063 |
 | 6 | Los mensajes de FUD0915 y FUD0132, que proponen `style:` mientras no se emita |
+| 93 | El mensaje de FUD1548 y el comentario de `sw.headers` que escribe `fudic new`: el service worker se instala, pero no pinta |
+| 94 | Una línea en `FUD0907.md` sobre los globales del navegador |
 
 ## Decisiones pendientes
 
@@ -237,21 +264,29 @@ Son textos que no cambian lo que hace el código:
 | 46 | `workbench` | ¿Un `pass: false` para el criterio? |
 | 60 | `compiler` | ¿Un aviso, o que la propiedad haga hidratable la página? |
 | 76 | `http` | ¿El cliente sigue la redirección solo, o hace falta `error-pages`? |
+| 88 | `testing` | ¿`visit('/')` con varios idiomas responde como una redirección, o acepta el idioma como opción? |
+| 91 | `compiler` | ¿Se pueden declarar custom elements ajenos? ¿Cómo: un `<link rel="component">` a un módulo JS o a un paquete, o una lista en `fudic.json`? |
+| 95 | `server` | ¿Avisar cuando llegan cabeceras de un proxy y `trustProxy` está apagado? |
+| 97 | `compiler` | ¿El `<script src>` del cuerpo recibe el nonce, o se avisa y se ofrece moverlo al `<head>`? |
+| 100 | `config` | ¿`"2024"` entre comillas vale como año, o lo dice `FUD0725`? |
+| 104 | `forms` | ¿`$validate({ server: true })` en un test pregunta al servidor en memoria, o la regla remota avisa de que no se ejecuta? |
 
 ## Esfuerzo estimado
 
 Estimado a partir del texto de cada hallazgo, sin haber abierto el código de cada uno.
 
 - **Fáciles** (un cambio pequeño y localizado): 1, 5, 9, 12, 13, 14, 16, 18, 19, 21, 22, 23, 25,
-  33, 34, 36, 39, 41, 42, 43, 44, 49, 51, 54, 57, 73, 74, 77, 78, 79, 80, 83 y toda la
-  documentación.
+  33, 34, 36, 39, 41, 42, 43, 44, 49, 51, 54, 57, 73, 74, 77, 78, 79, 80, 83, 90, 94, 95, 96,
+  98, 99, 100, 103 y toda la documentación.
 - **Medianos** (hay que entender bien una pieza):
-  - El watcher de `fudic dev` (31, 62, 63, 67, 71): seguramente comparten causa.
-  - Diagnósticos propios en vez de errores de TypeScript (58, 59, 64, 65, 66).
+  - El watcher de `fudic dev` (31, 62, 63, 67, 71, 89): seguramente comparten causa.
+  - Diagnósticos propios en vez de errores de TypeScript (58, 59, 64, 65, 66), y diagnósticos
+    que solo salen en el emit (85).
   - Bugs del compilador: 3, 7, 8, 11, 56, 61, 82.
-  - Otros: 4, 17, 30, 47, 48, 69, 70, 72.
-  - Hay que investigar antes de saber cuánto cuestan: 35, 52, 75.
-- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81.
+  - `visit` y `mount` de `@fudic/testing` (86, 88, 102, 106).
+  - Otros: 4, 17, 30, 47, 48, 69, 70, 72, 87, 92, 97, 101, 104.
+  - Hay que investigar antes de saber cuánto cuestan: 35, 52, 75, 105.
+- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91.
 
 ## Por qué los tests al 100 % no los cazaron
 
@@ -301,29 +336,33 @@ suposición. Muchos hallazgos viven en esa costura:
 - 81: la clave de caché del Service Worker frente a la query string.
 - 12: el orden de los middlewares.
 - 79: el `files` de `package.json`, que no está en `src/` y nunca entra en la cobertura.
+- 87: la semilla `fud-di` de `ssr` frente al arranque de `core`, que solo la lee con dueños.
+- 92: el id del build de vite frente a lo que hace el Service Worker (`fudic-routes.json`,
+  `sw.headers`).
 
 ### 5. Condiciones reales que ningún test reproduce
 
 Los tests corren en un proceso nuevo, con ficheros completos y entradas limpias.
 
 - Ficheros escritos a medias: 31 y 67.
-- Un `fudic dev` que lleva horas en marcha mientras cambian cosas: 62, 63, 71 y 75.
-- Cómo se lanza vite (52), qué hace Chrome (32), no tener red (17), pedir sin
-  `Accept: text/html` (80).
+- Un `fudic dev` que lleva horas en marcha mientras cambian cosas: 62, 63, 71, 75 y 89.
+- Cómo se lanza vite (52), qué hace Chrome (32, 92, 97), no tener red (17), pedir sin
+  `Accept: text/html` (80), un proyecto sin la caché de Vite (105), un proxy delante (95).
 
 ### Dos agravantes
 
-- **Los paquetes con más hallazgos no están al 100 %.** `vite` (19), `compiler` (19) y
-  `transport` (5) son los de la deuda heredada: ramas al 83,1, 95,6 y 83,8.
+- **Los paquetes con más hallazgos no están al 100 %.** `compiler` (24) y `vite` (21), junto
+  con `transport` (5), son los de la deuda heredada: ramas al 95,6, 83,1 y 83,8.
 - **El único consumidor era `examples/basic`**, escrito por el mismo autor y del mismo modo. El 6
-  lo dice tal cual: «ningún ejemplo lo usa, así que nadie lo había visto».
+  lo dice tal cual: «ningún ejemplo lo usa, así que nadie lo había visto». Y el 87 no se vio
+  porque la página `/di` del ejemplo tiene un componente dueño.
 
 La cobertura sirve para lo que promete el CLAUDE.md: es una nota sobre el diseño (no sobran ramas
 ni parámetros muertos), no una prueba de que el programa funcione.
 
 ## Lo que han aportado los tutoriales
 
-Del 57 al 82 casi todos salieron de los tutoriales: unos veinticinco hallazgos en dos días (25 y
+Del 57 al 106 casi todos salieron de los tutoriales: unos cincuenta hallazgos en dos días (25 y
 26 de noviembre). Han funcionado por tres motivos:
 
 - **Usan Fudic como lo usaría otra persona.** Parten de un proyecto nuevo con `fudic new`, con
