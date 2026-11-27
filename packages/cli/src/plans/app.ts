@@ -21,7 +21,7 @@ import { DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../workspac
 import { placeProject } from '../workspace/place.js';
 import type { Project } from '../workspace/discover.js';
 import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
-import { withGuides } from './lib.js';
+import { hasOwnGuide, withGuides } from './lib.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type AppLayout, type AppOptions, type CliError, type NewOptions, type Plan } from '../types.js';
 import { isLayout } from '../layout.js';
@@ -98,7 +98,8 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
   const taken = others.find((app) => app.base === base);
   const frame = layoutLibrary(opts.layout, opts.cwd, io);
   const asked = frame.library === undefined || opts.uses.includes(frame.library) ? opts.uses : [...opts.uses, frame.library];
-  // Every style guide and every error page of the workspace come with it: a new app looks like the others.
+  // Every style guide and every error page of the workspace come with it — `@fudic/guide` when the
+  // workspace has no copy of its own: a new app looks like the others.
   const uses = withGuides(asked, projects, io);
 
   const errors = [
@@ -111,7 +112,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
 
   const built = scaffoldChanges(
     opts,
-    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, uses, (lib) => declaredName(projects.find((project) => project.name === lib)!, io) ?? packageOf(scope, lib)), serve: { base, port } }, asNew),
+    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, uses, (lib) => declaredName(projects.find((project) => project.name === lib)!, io) ?? packageOf(scope, lib)), guide: !hasOwnGuide(projects), serve: { base, port } }, asNew),
     io,
   );
 

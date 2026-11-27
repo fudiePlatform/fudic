@@ -16,14 +16,9 @@ import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { layoutTest, localesField, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
 import { ENV_DECLARATION, ENV_FILE } from './spec.js';
-import { APP_GUIDE_DIR, guideFiles } from './guide-files.js';
+import { GUIDE_PACKAGE } from './guide-files.js';
 import type { ReadIo } from '../io.js';
 import type { AppLayout, BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
-
-/** The two fields a standalone app's `fudic.json` names its style guide with, as `fudic new` writes them. */
-const GUIDE_FIELDS_JSON = `,
-  "globalStyles": { "base": "${APP_GUIDE_DIR}/base.css" },
-  "guide": { "sheet": "${APP_GUIDE_DIR}/guide.css", "icon": "${APP_GUIDE_DIR}/logo.svg" }`;
 
 /** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
 export const AVAILABLE_TARGETS = ['static'];
@@ -52,6 +47,11 @@ export interface ProjectSite {
    * project that uses nothing, which leaves the `package.json` exactly as it was.
    */
   readonly uses: string;
+  /**
+   * Whether it depends on `@fudic/guide`, the style guide fudic.dev uses. `false` in a workspace
+   * with a copy of its own (`fudic g guide`): the project depends on that one instead.
+   */
+  readonly guide: boolean;
   /**
    * Where a workspace app is served and the port it takes on its own (BUG-50 §4.5). Absent for
    * a standalone app and for the first app of a workspace: `/` on Vite's port.
@@ -119,7 +119,7 @@ const API_TYPES_GLOB = `${API_TYPES_DIR}/**/*.d.ts`;
 const KEEP = '.gitkeep';
 
 /** The `tsconfig.json` of a project: its own, or the workspace base plus an `include`. */
-export function tsconfigFor(site: ProjectSite): string {
+export function tsconfigFor(site: Pick<ProjectSite, 'up'>): string {
   if (site.up === null) return renderTemplate('tsconfig.json.tmpl', { apiTypes: API_TYPES_GLOB });
   return renderTemplate('workspace/tsconfig.project.json.tmpl', {
     apiTypes: API_TYPES_GLOB,
@@ -152,6 +152,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         vitestVersion: VITEST_VERSION,
         tsVersion: TYPESCRIPT_VERSION,
         uses: site.uses,
+        guide: site.guide ? `\n    ${GUIDE_DEPENDENCY},` : '',
         // The MCP server where the repository is: the workspace carries its own.
         mcp: site.up === null ? `\n    "@fudic/mcp": "${FUDIC_VERSION}",` : '',
       }),
@@ -185,11 +186,8 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         locales: localesField(locale),
         server: SERVER_DIR,
         browser: BROWSER_DIR,
-        // A standalone app carries its style guide; in a workspace it is the library's.
-        guide: site.up === null ? GUIDE_FIELDS_JSON : '',
       }),
     ],
-    ...(site.up === null ? guideFiles(joinPosix(site.dir, APP_GUIDE_DIR), site.pkgName) : []),
     [joinPosix(site.dir, 'tsconfig.json'), tsconfigFor(site)],
     // The ambient declarations the templates are typed against, written from the same
     // constant the language server mounts in memory (SDD-23 §3.3), so the editor and `tsc`
@@ -248,12 +246,15 @@ function frameOf(dir: string, layout: AppLayout, indexFile: string): Frame {
   return { own: layout.own, href: hrefBetween(indexFile, joinPosix(dir, LAYOUTS_DIR, `${layout.own}.fud`)) };
 }
 
-/** The README's line about the style guide: the app's own, or the workspace's. */
+/** `"@fudic/guide": "<version>"`, an entry of a `dependencies` block, already quoted for JSON. */
+export const GUIDE_DEPENDENCY = `${JSON.stringify(GUIDE_PACKAGE)}: ${JSON.stringify(FUDIC_VERSION)}`;
+
+/** The README's line about the style guide: `@fudic/guide`, or the workspace's copy of it. */
 function guideLine(site: ProjectSite): string {
   const adopt = 'a component adopts its pieces by name, `shadowrootadoptedstylesheets="button"`';
-  return site.up === null
-    ? `- \`${APP_GUIDE_DIR}/\`: the style guide — tokens with a dark mode, the font, the favicon and a sheet per element. Every page links it; ${adopt}.`
-    : `- The style guide is the workspace's \`libs/guide\`: every page links it; ${adopt}.`;
+  return site.guide
+    ? `- The style guide is \`${GUIDE_PACKAGE}\`, the one fudic.dev uses: every page links it; ${adopt}. \`fudic g guide\` makes a copy of your own.`
+    : `- The style guide is the workspace's own copy of \`${GUIDE_PACKAGE}\`: every page links it; ${adopt}.`;
 }
 
 /** The README's line about the frame of the pages. */

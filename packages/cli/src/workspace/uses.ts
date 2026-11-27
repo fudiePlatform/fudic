@@ -98,12 +98,13 @@ export function appUses(
 }
 
 /**
- * The whole `dependencies` block of a library, which has none until `--uses` gives it one.
+ * The whole `dependencies` block of a library: `first`, entries already quoted for JSON (the
+ * style guide), then what `--uses` gives it. None when both are empty.
  *
- * A library's own runtime is a PEER, not a dependency (see `plans/lib.ts`), so what `--uses`
- * adds is the first real dependency the package has.
+ * A library's own runtime is a PEER, not a dependency (see `plans/lib.ts`), so these are the
+ * only real dependencies the package has.
  */
-export function libUses(scope: string, uses: readonly string[], packageNamed: (name: string) => string = (name) => packageOf(scope, name)): string {
-  const lines = entries(uses, packageNamed);
+export function libUses(scope: string, uses: readonly string[], first: readonly string[]): string {
+  const lines = [...first, ...entries(uses, (name) => packageOf(scope, name))];
   return lines.length === 0 ? '' : `,\n  "dependencies": {\n    ${lines.join(',\n    ')}\n  }`;
 }

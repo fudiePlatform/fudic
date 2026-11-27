@@ -1,21 +1,21 @@
 /**
- * SDD-79 §4.10, criterion 32 — the colours of the generated guide meet WCAG 2.2 AA, in light and
- * in dark. Read from `templates/guide/tokens.css` as it ships: each `light-dark(a, b)` gives its
+ * SDD-79 §4.10, criterion 32 — the colours of the guide every new project gets meet WCAG 2.2 AA, in
+ * light and in dark. Read from `@fudic/guide`'s `tokens.css` as it ships: each `light-dark(a, b)` gives its
  * two values, and every pair of the table is measured in both modes.
  */
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 
-const TOKENS = readFileSync(fileURLToPath(new URL('../templates/guide/tokens.css', import.meta.url)), 'utf8');
+const TOKENS = readFileSync(createRequire(import.meta.url).resolve('@fudic/guide/tokens.css'), 'utf8');
 
 type Mode = 'light' | 'dark';
 
-/** `--<project>-<name>: light-dark(#light, #dark)` of `css`, by name and mode. */
+/** `--guide-<name>: light-dark(#light, #dark)` of `css`, by name and mode. */
 function colours(css: string): ReadonlyMap<string, Readonly<Record<Mode, string>>> {
   const out = new Map<string, Record<Mode, string>>();
-  for (const m of css.matchAll(/--\{\{project\}\}-([a-z-]+):\s*light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)/giu)) {
+  for (const m of css.matchAll(/--guide-([a-z-]+):\s*light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)/giu)) {
     out.set(m[1]!, { light: m[2]!, dark: m[3]! });
   }
   return out;
@@ -73,7 +73,7 @@ describe('the guide\'s colours (criterion 32)', () => {
   });
 
   it('an ink of #999 breaks it', () => {
-    const grey = TOKENS.replace(/(--\{\{project\}\}-ink:\s*light-dark\()#[0-9a-f]{6}/iu, '$1#999999');
+    const grey = TOKENS.replace(/(--guide-ink:\s*light-dark\()#[0-9a-f]{6}/iu, '$1#999999');
     expect(shortfalls(grey)).toEqual(expect.arrayContaining([expect.stringMatching(/^ink\/surface light /u)]));
   });
 

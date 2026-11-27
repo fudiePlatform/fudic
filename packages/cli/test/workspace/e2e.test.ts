@@ -38,6 +38,10 @@ import { planComponent } from '../../src/plans/component.js';
 import { apply } from '../../src/apply.js';
 import { nodeReadIo, nodeWriteIo } from '../../src/io.js';
 import { RecordingRunner } from '../helpers.js';
+import { FUDIC_VERSION } from '../../src/project.js';
+
+/** `@fudic/guide`, linked into each project as the install would link it. */
+const guidePackage = fileURLToPath(new URL('../../../guide/', import.meta.url));
 import type { Plan } from '../../src/types.js';
 
 const ssrDist = fileURLToPath(new URL('../../../ssr/dist/index.js', import.meta.url));
@@ -135,10 +139,11 @@ describe('a generated workspace builds (criterion 13)', () => {
     // `node_modules` to the library. A junction, so it needs no privilege on Windows.
     mkdirSync(join(ws, 'apps/web/node_modules/@mi-tienda'), { recursive: true });
     symlinkSync(join(ws, 'libs/ui'), join(ws, 'apps/web/node_modules/@mi-tienda/ui'), 'junction');
-    // And to the style guide every app and library of the workspace depends on (SDD-79).
-    symlinkSync(join(ws, 'libs/guide'), join(ws, 'apps/web/node_modules/@mi-tienda/guide'), 'junction');
-    mkdirSync(join(ws, 'libs/ui/node_modules/@mi-tienda'), { recursive: true });
-    symlinkSync(join(ws, 'libs/guide'), join(ws, 'libs/ui/node_modules/@mi-tienda/guide'), 'junction');
+    // And to the style guide every app and library of the workspace depends on, @fudic/guide (SDD-79).
+    for (const project of ['apps/web', 'libs/ui']) {
+      mkdirSync(join(ws, project, 'node_modules/@fudic'), { recursive: true });
+      symlinkSync(guidePackage, join(ws, project, 'node_modules/@fudic/guide'), 'junction');
+    }
 
     const result = (await build({
       root: join(ws, 'apps/web'),
@@ -169,7 +174,7 @@ describe('a generated workspace builds (criterion 13)', () => {
     expect(text).toMatch(/<ui-card[^>]*><template shadowrootmode=/u);
   });
 
-  it('links the style guide of libs/guide and its favicon, and the library component adopts its base (SDD-79 criterion 26)', () => {
+  it('links @fudic/guide and its favicon, and the library component adopts its base (SDD-79 criterion 26)', () => {
     const text = String(output.find((file) => file.fileName === 'index.html')!.source);
     const guide = /<link rel="stylesheet" href="\/assets\/(guide-[\w-]+\.css)">/u.exec(text)?.[1];
     expect(guide, text).toBeDefined();
@@ -177,8 +182,8 @@ describe('a generated workspace builds (criterion 13)', () => {
     expect(css).toContain('color-scheme');
     expect(text).toMatch(/<link rel="icon" href="\/assets\/logo-[\w-]+\.svg">/u);
     expect(text).toMatch(/<ui-card[^>]*><template shadowrootmode="open"[^>]*shadowrootadoptedstylesheets="base[ "]/u);
-    expect(webPkg['dependencies']).toMatchObject({ '@mi-tienda/guide': 'workspace:*' });
-    expect(appPkg['dependencies']).toMatchObject({ '@mi-tienda/guide': 'workspace:*' });
+    expect(webPkg['dependencies']).toMatchObject({ '@fudic/guide': FUDIC_VERSION });
+    expect(appPkg['dependencies']).toMatchObject({ '@fudic/guide': FUDIC_VERSION });
   });
 
   it('emits the client chunk of the library component', () => {

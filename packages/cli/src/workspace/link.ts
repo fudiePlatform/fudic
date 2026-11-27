@@ -189,7 +189,7 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'
  * Written into the text rather than re-serialized, for the reason `wire.ts` gives for the
  * `.fud`: this is a file the user owns, and the command touches the one line it adds.
  */
-export function declareDependency(path: string, shown: string, name: string, version: string, io: ReadIo): FileChange | undefined {
+export function declareDependency(path: string, shown: string, name: string, version: string, io: ReadIo): Extract<FileChange, { kind: 'modify' }> | undefined {
   const before = io.read(path);
   const manifest = parse(before) as Record<string, unknown>;
   const declared = DEPENDENCY_FIELDS.some((field) => {

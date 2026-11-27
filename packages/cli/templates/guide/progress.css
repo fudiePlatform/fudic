@@ -1,9 +1,0 @@
-:where(progress) {
-  width: 100%;
-  height: 0.5rem;
-  vertical-align: middle;
-}
-
-@supports (accent-color: red) {
-  :where(progress) { accent-color: var(--{{project}}-accent); }
-}

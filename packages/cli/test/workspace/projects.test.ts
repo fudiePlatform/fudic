@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { FUDIC_VERSION } from '../../src/project.js';
 import { HEADERS_FILES, HEADERS_TEMPLATES } from '@fudic/config';
 import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
@@ -183,7 +184,8 @@ describe('fudic g lib (criterion 5)', () => {
     // The same for `@fudic/dom`: the chunk imports its template from there (SDD-85).
     expect(pkg['peerDependencies']).toMatchObject({ '@fudic/dom': expect.any(String) });
     expect(pkg['devDependencies']).toMatchObject({ '@fudic/dom': expect.any(String) });
-    expect(pkg['dependencies']).toBeUndefined();
+    // Its one dependency is the style guide, which is no runtime.
+    expect(pkg['dependencies']).toEqual({ '@fudic/guide': FUDIC_VERSION });
   });
 
   it('declares kind lib and carries no id: it has no caches', async () => {

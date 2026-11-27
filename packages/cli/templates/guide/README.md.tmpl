@@ -1,12 +1,14 @@
 # {{name}}
 
-The style guide of the workspace: design tokens with a dark mode, a self-hosted font (Inter, under
-the SIL Open Font License in `fonts/OFL.txt`), a favicon, and one stylesheet per element the
+The style guide of the workspace, a copy of `@fudic/guide` — the one fudic.dev uses — made yours
+to change: design tokens with a dark mode, a self-hosted font (Inter Tight, under the SIL Open
+Font License in `fonts/OFL-InterTight.txt`), a favicon, and one stylesheet per element the
 browser styles.
 
 **The page gets all of it.** Every page of a project that depends on this library links
 `guide.css` — tokens, the document's reset and every piece — pruned to what the page uses. No
-`<link>` to write: the dependency is enough.
+`<link>` to write: the dependency is enough. A project has one guide: `fudic add` makes it depend
+on this library instead of `@fudic/guide`.
 
 ```sh
 fudic add {{project}} --project <app or library>

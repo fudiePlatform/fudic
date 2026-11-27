@@ -37,13 +37,9 @@ function options(overrides: Partial<NewOptions> = {}): NewOptions {
   };
 }
 
-/**
- * Every generated file, path → contents, as one object a snapshot can hold. The style guide
- * (SDD-79) is left out: it is the template copied as it is, checked file by file in
- * `generate/guide.test.ts`, and a snapshot of it would only repeat the template.
- */
+/** Every generated file, path → contents, as one object a snapshot can hold. */
 function tree(fs: MemoryFs): Record<string, string> {
-  return Object.fromEntries(fs.paths().filter((path) => !path.includes('/src/guide/')).map((path) => [path, fs.at(path)]));
+  return Object.fromEntries(fs.paths().map((path) => [path, fs.at(path)]));
 }
 
 describe('fudic new, without --workspace', () => {
@@ -81,10 +77,9 @@ describe('fudic new, without --workspace', () => {
       server: 'src/server',
       browser: 'src/browser',
       baseline: 'widely',
-      // SDD-79 §8.2.14: the guide lives inside the app, and its base.css is the app's.
-      globalStyles: { base: 'src/guide/base.css' },
-      guide: { sheet: 'src/guide/guide.css', icon: 'src/guide/logo.svg' },
     });
+    // The style guide is a dependency, @fudic/guide: no copy of it in the app.
+    expect(fs.paths().filter((path) => path.startsWith('demo/src/guide/'))).toEqual([]);
     expect(fs.paths()).not.toContain('demo/pnpm-workspace.yaml');
     expect(fs.paths()).not.toContain('demo/tsconfig.base.json');
   });
@@ -106,9 +101,7 @@ describe('the app of a workspace and a standalone app', () => {
     const workspace = new MemoryFs({}, CWD);
     await apply(await planWorkspace('ws', wsOpts, workspace), wsOpts, workspace, new RecordingRunner());
 
-    // The guide: a standalone app carries it in src/guide/, a workspace app gets it from libs/guide
-    // (SDD-79 §4.12), so it is no file the two share.
-    const standaloneFiles = standalone.paths().filter((path) => !path.startsWith('demo/src/guide/')).map((path) => path.slice('demo/'.length));
+    const standaloneFiles = standalone.paths().map((path) => path.slice('demo/'.length));
     const appFiles = workspace
       .paths()
       .filter((path) => path.startsWith('ws/apps/demo/'))
@@ -119,13 +112,13 @@ describe('the app of a workspace and a standalone app', () => {
     expect(workspace.paths()).toContain('ws/.gitattributes');
     expect(appFiles.filter((file) => !standaloneFiles.includes(file))).toEqual([]);
 
-    // Of the files both have, four differ and no more: `tsconfig.json`, because §4.6 put
+    // Of the files both have, three differ and no more: `tsconfig.json`, because §4.6 put
     // the strict config and the globals at the root; and `package.json` with the `README.md`
-    // that quotes it, because a package inside a workspace is named under its scope; and
-    // `fudic.json`, because only the standalone app names a guide of its own (SDD-79 §8.2.14).
+    // that quotes it, because a package inside a workspace is named under its scope. Both depend
+    // on `@fudic/guide`, so `fudic.json` is the same.
     const differing = appFiles.filter(
       (file) => workspace.at(`ws/apps/demo/${file}`) !== standalone.at(`demo/${file}`),
     );
-    expect(differing).toEqual(['README.md', 'fudic.json', 'package.json', 'tsconfig.json']);
+    expect(differing).toEqual(['README.md', 'package.json', 'tsconfig.json']);
   });
 });

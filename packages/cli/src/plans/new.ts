@@ -20,7 +20,7 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
 
   const { changes, errors } = scaffoldChanges(
     opts,
-    appFiles({ dir: name, pkgName: name, up: null, uses: '' }, opts),
+    appFiles({ dir: name, pkgName: name, up: null, uses: '', guide: true }, opts),
     io,
   );
 

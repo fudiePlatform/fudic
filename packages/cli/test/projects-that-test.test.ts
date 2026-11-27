@@ -347,10 +347,14 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
       expect(paths, path).toContain(path);
     }
 
+    // The style guide's files are @fudic/guide's, copied byte for byte: its comments are that
+    // package's, not text the CLI writes. What the CLI writes beside them is still checked.
+    const copied = (path: string): boolean => path.startsWith('shop/libs/guia/') && !/\/(README\.md|package\.json|fudic\.json)$/u.test(path);
     const offenders: string[] = [];
     for (const path of paths) {
       const text = all.at(path);
       for (const word of ['SDD-', 'BUG-', 'emitter']) if (text.includes(word)) offenders.push(`${path}: "${word}"`);
+      if (copied(path)) continue;
       for (const comment of longComments(path, text)) offenders.push(`${path}:\n${comment}`);
     }
     expect(offenders).toEqual([]);

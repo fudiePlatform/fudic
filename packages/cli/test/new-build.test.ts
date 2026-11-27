@@ -11,7 +11,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { build } from 'vite';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +31,9 @@ const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.u
 // And since SDD-85 every client chunk imports its template from `@fudic/dom` (`template`), which the
 // generated `package.json` declares and this alias stands in for.
 const domDist = fileURLToPath(new URL('../../dom/dist/index.js', import.meta.url));
+// The style guide is a dependency the plugin finds by its `fudic.json`, in `node_modules`: linked
+// there as the install would link it.
+const guidePackage = fileURLToPath(new URL('../../guide/', import.meta.url));
 
 describe('fudic new → vite build (§6.1)', () => {
   let output: { fileName: string; code?: string; source?: string }[];
@@ -58,6 +61,8 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(runner.commands).toEqual([]); // --no-install --no-git: nothing spawned
 
     root = join(cwd, 'demo');
+    mkdirSync(join(root, 'node_modules', '@fudic'), { recursive: true });
+    symlinkSync(guidePackage, join(root, 'node_modules', '@fudic', 'guide'), 'junction');
 
     // A generated COMPONENT goes through the same build, wired into the generated route.
     // It has no `@code` at all, and this is what proves that costs nothing: the build emits a
@@ -111,15 +116,15 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(text).not.toContain('"/fudic-main.js"');
   });
 
-  it('links its own style guide, pruned, with its font and its favicon (SDD-79 criterion 25)', () => {
+  it('links @fudic/guide, pruned, with its font and its favicon (SDD-79 criterion 25)', () => {
     const text = String(output.find((file) => file.fileName === 'index.html')!.source);
     const guide = /<link rel="stylesheet" href="\/assets\/(guide-[\w-]+\.css)">/u.exec(text)?.[1];
     expect(guide, text).toBeDefined();
     const css = String(output.find((file) => file.fileName === `assets/${guide}`)!.source);
     expect(css).toContain('light-dark(');
     // The page writes text, so it names the font: the face comes, from the published copy.
-    expect(css).toMatch(/url\("?\/assets\/InterVariable-[\w-]+\.woff2"?\)/u);
-    expect(output.some((file) => /^assets\/InterVariable-[\w-]+\.woff2$/u.test(file.fileName))).toBe(true);
+    expect(css).toMatch(/url\("?\/assets\/inter-tight-wght-400-600-[\w-]+\.woff2"?\)/u);
+    expect(output.some((file) => /^assets\/inter-tight-wght-400-600-[\w-]+\.woff2$/u.test(file.fileName))).toBe(true);
     expect(text).toMatch(/<link rel="icon" href="\/assets\/logo-[\w-]+\.svg">/u);
   });
 

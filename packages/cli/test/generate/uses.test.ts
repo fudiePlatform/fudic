@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { FUDIC_VERSION } from '../../src/project.js';
 import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
 import { apply } from '../../src/apply.js';
@@ -114,6 +115,7 @@ describe('fudic g lib --uses', () => {
     await apply(plan, { cwd: ROOT, force: false }, fs, new RecordingRunner());
 
     expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toEqual({
+      '@fudic/guide': FUDIC_VERSION,
       '@mi-tienda/theme': 'workspace:*',
     });
   });
@@ -130,10 +132,10 @@ describe('fudic g lib --uses', () => {
     const pkg = JSON.parse(fs.at('libs/cards/package.json')) as Record<string, unknown>;
 
     expect(pkg['peerDependencies']).toMatchObject({ '@fudic/core': expect.any(String) });
-    expect(Object.keys(pkg['dependencies'] as object)).toEqual(['@mi-tienda/theme']);
+    expect(Object.keys(pkg['dependencies'] as object)).toEqual(['@fudic/guide', '@mi-tienda/theme']);
   });
 
-  it('has no dependencies key at all without it', async () => {
+  it('depends on @fudic/guide alone without it', async () => {
     const fs = workspace();
     await apply(
       await planLib('cards', libOptions(), fs),
@@ -142,7 +144,7 @@ describe('fudic g lib --uses', () => {
       new RecordingRunner(),
     );
 
-    expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toBeUndefined();
+    expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toEqual({ '@fudic/guide': FUDIC_VERSION });
   });
 
   it('rejects an app just as g app does', async () => {

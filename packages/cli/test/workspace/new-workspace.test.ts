@@ -39,8 +39,7 @@ describe('fudic new --workspace', () => {
     const plan = await planWorkspace('tienda', options(), new MemoryFs({}, CWD));
 
     expect(plan.errors).toEqual([]);
-    // libs/guide is always there (SDD-79 §4.12): its files are checked in generate/guide.test.ts.
-    expect(plan.changes.map((change) => change.path).filter((path) => !path.startsWith('tienda/libs/guide/'))).toEqual([
+    expect(plan.changes.map((change) => change.path)).toEqual([
       'tienda/package.json',
       'tienda/README.md',
       'tienda/pnpm-workspace.yaml',
@@ -51,6 +50,8 @@ describe('fudic new --workspace', () => {
       'tienda/.mcp.json',
       'tienda/AGENTS.md',
       'tienda/CLAUDE.md',
+      // No library yet, and no style guide among them: libs/ stays in git with a placeholder.
+      'tienda/libs/.gitkeep',
       'tienda/apps/tienda/package.json',
       'tienda/apps/tienda/vite.config.ts',
       'tienda/apps/tienda/vitest.config.ts',
@@ -146,11 +147,11 @@ describe('fudic new --workspace', () => {
     expect(plan.errors[0]?.code).toBe('FUD0443');
   });
 
-  it('the root is not a fudic project: findProjects sees the app and the guide, never the root (criterion 3)', async () => {
+  it('the root is not a fudic project: findProjects sees the app, never the root (criterion 3)', async () => {
     const fs = new MemoryFs({}, CWD);
     await apply(await planWorkspace('tienda', options(), fs), options(), fs, new RecordingRunner());
 
     expect(fs.paths()).not.toContain('tienda/fudic.json');
-    expect(findProjects(`${CWD}/tienda`, fs).map((project) => project.name)).toEqual(['tienda', 'guide']);
+    expect(findProjects(`${CWD}/tienda`, fs).map((project) => project.name)).toEqual(['tienda']);
   });
 });

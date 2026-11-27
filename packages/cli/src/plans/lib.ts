@@ -30,7 +30,7 @@
 import { CONFIG_FILE } from '@fudic/config';
 import { COMPONENTS_DIR } from '@fudic/conventions';
 import { LIBRARY_ERROR_FILE } from '@fudic/resolve';
-import { scaffoldChanges, testingFiles, tsconfigFor, type ScaffoldFile } from './scaffold.js';
+import { GUIDE_DEPENDENCY, scaffoldChanges, testingFiles, tsconfigFor, type ScaffoldFile } from './scaffold.js';
 import { absolute, dirname, joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
@@ -68,8 +68,9 @@ export function planLib(
   const keep = joinPosix(dirname(dir), KEEP);
   const deletions = io.exists(absolute(opts.cwd, keep)) ? { deletions: [keep] } : {};
 
-  // Every style guide of the workspace comes with it: a new library looks like the others.
-  const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: withGuides(opts.uses, projects) });
+  // Every style guide of the workspace comes with it — `@fudic/guide` when the workspace has no
+  // copy of its own: a new library looks like the others.
+  const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: withGuides(opts.uses, projects), guide: !hasOwnGuide(projects) });
 
   const built = scaffoldChanges(opts, files, io);
   return Promise.resolve({
@@ -115,10 +116,12 @@ export interface LibSite {
   readonly name: string;
   readonly prefix: string;
   readonly uses: readonly string[];
+  /** Whether it depends on `@fudic/guide`: not in a workspace with a copy of its own. */
+  readonly guide: boolean;
 }
 
 /** The files of a library: what `g lib` writes, and `new --workspace --uses` too. */
-export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): readonly ScaffoldFile[] {
+export function libFiles({ dir, up, scope, name, prefix, uses, guide }: LibSite): readonly ScaffoldFile[] {
   const pkgName = packageOf(scope, name);
   return [
     [
@@ -128,7 +131,7 @@ export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): reado
         version: FUDIC_VERSION,
         viteVersion: VITE_VERSION,
         vitestVersion: VITEST_VERSION,
-        uses: libUses(scope, uses),
+        uses: libUses(scope, uses, guide ? [GUIDE_DEPENDENCY] : []),
       }),
     ],
     [joinPosix(dir, 'README.md'), renderTemplate('lib/README.md.tmpl', { name: pkgName, project: name, prefix: prefix })],
@@ -140,10 +143,19 @@ export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): reado
       joinPosix(dir, CONFIG_FILE),
       renderTemplate('lib/fudic.json.tmpl', { prefix: prefixField(prefix) }),
     ],
-    [joinPosix(dir, 'tsconfig.json'), tsconfigFor({ dir, pkgName, up, uses: '' })],
+    [joinPosix(dir, 'tsconfig.json'), tsconfigFor({ up })],
     ...testingFiles(dir),
     [joinPosix(dir, COMPONENTS_DIR, KEEP), ''],
   ];
+}
+
+/**
+ * Whether a project of the workspace is a style guide of its own — a copy `fudic g guide` made,
+ * whose `fudic.json` has `guide`. A new project depends on it, and not on `@fudic/guide`: a
+ * project has one guide.
+ */
+export function hasOwnGuide(projects: readonly Project[]): boolean {
+  return projects.some((project) => project.config.guide !== undefined);
 }
 
 /**

@@ -6,8 +6,9 @@ share, in one repo.
 - `apps/`: what you serve. Each app has its pages and its own base URL: the first one is at `/`,
   the others at `/<name>/`.
 - `libs/`: components your apps use. A library is not served.
-- `libs/guide`: the style guide. Every app and library depends on it: every page links it, and a
-  component adopts its pieces by name (`shadowrootadoptedstylesheets="button"`).
+- The style guide is `@fudic/guide`, the one fudic.dev uses. Every app and library depends on it:
+  every page links it, and a component adopts its pieces by name
+  (`shadowrootadoptedstylesheets="button"`). `fudic g guide` makes a copy of your own in `libs/`.
 
 ```sh
 pnpm dev        # every app on one port, each under its base URL

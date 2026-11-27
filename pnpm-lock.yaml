@@ -325,6 +325,9 @@ importers:
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@fudic/guide':
+        specifier: workspace:*
+        version: link:../guide
       '@fudic/history':
         specifier: workspace:*
         version: link:../history

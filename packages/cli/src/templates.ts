@@ -43,11 +43,6 @@ export function templateTree(dir: string): readonly string[] {
     .sort();
 }
 
-/** A template that is not text — a font — as its bytes, to be copied as it is. */
-export function templateBytes(file: string): Uint8Array {
-  return new Uint8Array(readFileSync(templatePath(file)));
-}
-
 /** The document role a `.fud` template must structure as, once materialized. */
 export type TemplateRole = 'component-document' | 'route-document' | 'layout-document' | 'snippet-document';
 

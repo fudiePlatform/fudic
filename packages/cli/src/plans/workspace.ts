@@ -14,8 +14,7 @@
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { agentFiles, appFiles, scaffoldChanges, scaffoldRefusal, type ScaffoldFile } from './scaffold.js';
 import { libFiles } from './lib.js';
-import { guideFiles } from './guide-files.js';
-import { GUIDE_NAME } from '../dirs.js';
+import { GUIDE_PACKAGE } from './guide-files.js';
 import { setupCommands, setupReport } from './new.js';
 import { joinPosix } from '../paths.js';
 import { FUDIC_VERSION, TYPESCRIPT_VERSION } from '../project.js';
@@ -42,21 +41,20 @@ function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
     [joinPosix(name, '.gitattributes'), renderTemplate('gitattributes.tmpl', {})],
     ...agentFiles(name),
-    // `libs/` and `apps/` exist from the start, so the tree says where each goes. `libs/` always
-    // holds the style guide, which every app and library depends on, and what `--lib` and
-    // `--uses` asked for.
-    ...guideFiles(joinPosix(name, LIBS_DIR, GUIDE_NAME), GUIDE_NAME, `@${name}/${GUIDE_NAME}`),
+    // `libs/` and `apps/` exist from the start, so the tree says where each goes: what `--lib` and
+    // `--uses` asked for, or a placeholder that keeps the folder in git. The style guide is no
+    // library of the workspace: every app and library depends on `@fudic/guide`.
     ...libraries(opts).flatMap((lib) =>
-      libFiles({ dir: joinPosix(name, LIBS_DIR, lib), up: '../..', scope: `@${name}`, name: lib, prefix: prefixOf(lib), uses: [GUIDE_NAME] }),
+      libFiles({ dir: joinPosix(name, LIBS_DIR, lib), up: '../..', scope: `@${name}`, name: lib, prefix: prefixOf(lib), uses: [], guide: true }),
     ),
+    ...(libraries(opts).length === 0 ? ([[joinPosix(name, LIBS_DIR, '.gitkeep'), '']] as const) : []),
     ...(opts.app === undefined ? ([[joinPosix(name, APPS_DIR, '.gitkeep'), '']] as const) : []),
   ];
 }
 
 /** Every library the workspace starts with: those its app uses, then the others. */
 function libraries(opts: WorkspaceOptions): readonly string[] {
-  // The guide is written apart, once, whatever was named.
-  return [...new Set([...opts.uses, ...opts.libs])].filter((lib) => lib !== GUIDE_NAME);
+  return [...new Set([...opts.uses, ...opts.libs])];
 }
 
 export function planWorkspace(
@@ -81,7 +79,8 @@ export function planWorkspace(
               dir: joinPosix(name, APPS_DIR, app),
               pkgName: `@${name}/${app}`,
               up: '../..',
-              uses: appUses(`@${name}`, [...opts.uses.filter((lib) => lib !== GUIDE_NAME), GUIDE_NAME]),
+              uses: appUses(`@${name}`, opts.uses),
+              guide: true,
             },
             opts,
           )),
@@ -107,8 +106,10 @@ export function planWorkspace(
       app === undefined
         ? `    ${`${APPS_DIR}/`.padEnd(19)}empty — fudic g app <name>`
         : `    ${`${APPS_DIR}/${app}/`.padEnd(19)}app ${app}, served at /`,
-      `    ${`${LIBS_DIR}/${GUIDE_NAME}/`.padEnd(19)}the style guide, used by every app and library`,
+      ...(libraries(opts).length === 0 ? [`    ${`${LIBS_DIR}/`.padEnd(19)}empty — fudic g lib <name>`] : []),
       ...libraries(opts).map((lib) => `    ${`${LIBS_DIR}/${lib}/`.padEnd(19)}library ${lib}${opts.uses.includes(lib) ? `, used by ${app}` : ''}`),
+      '',
+      `  style guide: ${GUIDE_PACKAGE}, the one fudic.dev uses — fudic g guide makes a copy of your own`,
       ...setupReport(opts, message),
       '',
       'Next',

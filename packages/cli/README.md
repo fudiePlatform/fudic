@@ -28,11 +28,13 @@ fudic new shop --workspace --app web            # … with its first app, at /
 fudic new shop --workspace --app web --uses ui  # … and a library ui it already uses
 ```
 
-Every project starts with a style guide: tokens with a dark mode, a self-hosted font, a favicon
-and a stylesheet per element. An app keeps its own in `src/guide/`; a workspace has `libs/guide`,
-and every app and library it creates depends on it. Every page links the guide, pruned to what
-it uses; a component adopts the pieces it names (`shadowrootadoptedstylesheets="button"`), and
-the editor adds a piece when you write its element.
+Every project starts with a style guide: `@fudic/guide`, the one fudic.dev uses — tokens with a
+dark mode, a self-hosted font, a favicon and a stylesheet per element. Every app and library the
+CLI creates depends on it. Every page links the guide, pruned to what it uses; a component adopts
+the pieces it names (`shadowrootadoptedstylesheets="button"`), and the editor adds a piece when
+you write its element. To change it, `fudic g guide` writes a copy of your own — `src/guide/` in
+an app, a library in a workspace — and the project depends on that copy instead of
+`@fudic/guide`: a project has one guide.
 
 An app's pages render inside a layout of its own (`--layout <name>`, `_layout` by default) or a
 library's (`--layout @shop/ui/layouts/main.fud`): every page links one. `fudic g page` puts a
@@ -54,7 +56,7 @@ fudic g snippet ui productCard --project ui   # a snippet in src/snippets/ui.fud
 fudic g service cart                     # a service you inject(), and its test
 fudic g form person --binary             # a form with typed controls, and its test
 fudic g style theme                      # a global stylesheet of the project
-fudic g guide                            # the style guide: libs/guide, or src/guide/ in an app
+fudic g guide                            # a copy of @fudic/guide: libs/guide, or src/guide/ in an app
 fudic g spec button --project ui         # the .fudspec criteria of a component and their fixture
 fudic g spec /usuarios                   # those of a page: its fixture samples what load returns
 fudic g flow alta-de-usuario             # those of a flow between pages, in src/flows/

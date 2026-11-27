@@ -11,5 +11,5 @@ export const SNIPPETS_DIR = 'src/snippets';
 export const APPS_DIR = 'apps';
 export const LIBS_DIR = 'libs';
 
-/** The style guide a workspace is born with, and what `g guide` writes without a name. */
+/** What `g guide` names its copy of the style guide without a name. */
 export const GUIDE_NAME = 'guide';

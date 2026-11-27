@@ -266,10 +266,6 @@ describe('fudic new', () => {
 
 /** SDD-41 criterion 9: the project declares itself, and the prefix is optional. */
 describe('fudic new writes fudic.json', () => {
-  // The guide inside the app (SDD-79 §8.2.14): the app's fudic.json names it and its base.css.
-  const GUIDE = { sheet: 'src/guide/guide.css', icon: 'src/guide/logo.svg' };
-  const GUIDE_GLOBALS = { base: 'src/guide/base.css' };
-
   function written(overrides: Partial<NewOptions> = {}): Promise<string> {
     return planNew('tienda', options({ id: 'tienda', ...overrides }), new MemoryFs({}, CWD)).then(
       (plan) => contentsOf(plan.changes.find((change) => change.path === 'tienda/fudic.json')),
@@ -284,8 +280,6 @@ describe('fudic new writes fudic.json', () => {
       server: 'src/server',
       browser: 'src/browser',
       baseline: 'widely',
-      globalStyles: GUIDE_GLOBALS,
-      guide: GUIDE,
     });
   });
 
@@ -298,9 +292,9 @@ describe('fudic new writes fudic.json', () => {
       server: 'src/server',
       browser: 'src/browser',
       baseline: 'widely',
-      globalStyles: GUIDE_GLOBALS,
-      guide: GUIDE,
     });
+    // The style guide is a dependency, @fudic/guide: nothing names it here.
+    expect(contents).not.toContain('guide');
     expect(contents).not.toContain('prefix');
   });
 

@@ -17,7 +17,8 @@ import { FUDIC_VERSION } from '../project.js';
 import { configChange, readConfigObject } from '../workspace/config-edit.js';
 import { findProjects, workspaceRoot, type Project } from '../workspace/discover.js';
 import { librarySpecifier } from '../workspace/link.js';
-import { MODULES, dependOn, dependOnModule, installFor, projectName } from '../workspace/modules.js';
+import { MODULES, dependOn, dependOnModule, installFor, projectName, withoutDependency } from '../workspace/modules.js';
+import { GUIDE_PACKAGE } from './guide-files.js';
 import { resolveTarget, type Target } from '../workspace/target.js';
 import { nodeReadIo, walkFud, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type AddOptions, type FileChange, type Plan } from '../types.js';
@@ -76,15 +77,19 @@ function addLibrary(module: string, target: Target, opts: AddOptions, io: ReadIo
   const name = projectName(target);
   const dependency = dependOn(target, packageNameOf(library, io), 'workspace:*', io);
   if (dependency === undefined) return { ...EMPTY_PLAN, report: ['', `${name} already uses ${module}`] };
+  // A style guide of its own replaces `@fudic/guide`: a project has one guide, and two would claim
+  // the same pieces. Taken out of the text `dependOn` already edited.
+  const dropped = library.config.guide === undefined ? undefined : withoutDependency(dependency.contents, GUIDE_PACKAGE);
 
   const example = firstComponent(library, opts.cwd, io);
   return {
     ...EMPTY_PLAN,
-    changes: [dependency],
+    changes: [dropped === undefined ? dependency : { ...dependency, contents: dropped }],
     commands: [installFor(target, opts.cwd, io)],
     report: [
       '',
       `${name} now uses ${module}`,
+      ...(dropped === undefined ? [] : [`  and no longer ${GUIDE_PACKAGE}: a project has one guide`]),
       '  Installed dependencies (pnpm)',
       ...(example === undefined ? [] : [`  <link rel="component" href="${example}">`]),
     ],
