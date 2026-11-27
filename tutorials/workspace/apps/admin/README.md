@@ -15,7 +15,7 @@ pnpm --filter admin spec       # .fudspec criteria, in a browser
 
 - `src/routes/index.fud`: the page at `/`, and `index.test.ts` its unit test.
 - `src/layouts/_layout.fud`: the frame every page is written into, and `_layout.test.ts` its unit test.
-- The style guide is the workspace's `libs/guide`: every page links it; a component adopts its pieces by name, `shadowrootadoptedstylesheets="button"`.
+- The style guide is `@fudic/guide`, the one fudic.dev uses: every page links it; a component adopts its pieces by name, `shadowrootadoptedstylesheets="button"`. `fudic g guide` makes a copy of your own.
 - `fudic.json`: its id, and the tag prefix of its components (`admin-`).
 - `sw.json`: what the Service Worker caches; delete it for no Service Worker.
 - `page.headers`, `sw.headers` and `assets.headers`: the headers of its pages (the CSP among them), of its Service Worker and of its static files. What is in them is what is sent.
