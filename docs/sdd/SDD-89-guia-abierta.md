@@ -54,8 +54,7 @@
 - En un workspace, la marca es de todo el workspace, y una app puede tener la suya.
 - La guía se puede abrir **por piezas**: listar las piezas y extraer las que se quieran cambiar,
   incluidas `guide.css` y `tokens.css`. El resto sigue viniendo de `@fudic/guide`.
-- La guía va en línea si el layout lo pide: cada página tiene su hoja, y con el `304` de las páginas
-  estáticas (hallazgo 107) una página que no cambió tampoco vuelve a bajar su CSS.
+- La guía va en línea si el layout lo pide: cada página tiene su propia hoja.
 - El favicon sigue siendo un fichero: es el mismo en todas las páginas y se aprovecha de la caché.
 
 ### 1.3. El objetivo
