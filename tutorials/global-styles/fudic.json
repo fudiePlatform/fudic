@@ -6,14 +6,9 @@
   "browser": "src/browser",
   "baseline": "widely",
   "globalStyles": {
-    "base": "src/guide/base.css",
     "theme": "theme.css"
   },
   "styles": {
     "panel": "src/styles/panel.css"
-  },
-  "guide": {
-    "sheet": "src/guide/guide.css",
-    "icon": "src/guide/logo.svg"
   }
 }

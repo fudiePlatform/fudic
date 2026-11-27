@@ -1,9 +1,0 @@
-/* No element of its own: adopt it by name where a template uses popover. */
-:where([popover]) {
-  padding: var(--my-app-space-3);
-  color: var(--my-app-ink);
-  background: var(--my-app-raised);
-  border: 1px solid var(--my-app-line);
-  border-radius: var(--my-app-radius-md);
-  box-shadow: var(--my-app-shadow-md);
-}

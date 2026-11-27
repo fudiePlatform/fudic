@@ -4,7 +4,5 @@
   "prefix": "myapp",
   "server": "src/server",
   "browser": "src/browser",
-  "baseline": "widely",
-  "globalStyles": { "base": "src/guide/base.css" },
-  "guide": { "sheet": "src/guide/guide.css", "icon": "src/guide/logo.svg" }
+  "baseline": "widely"
 }

@@ -1,6 +1,0 @@
-:where(mark) {
-  padding: 0 0.15em;
-  color: inherit;
-  background: color-mix(in srgb, var(--my-app-warning) 25%, transparent);
-  border-radius: var(--my-app-radius-sm);
-}

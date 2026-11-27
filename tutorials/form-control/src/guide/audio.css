@@ -1,8 +1,0 @@
-:where(audio) {
-  display: block;
-  width: 100%;
-}
-
-:where(audio:not([controls])) {
-  display: none;
-}

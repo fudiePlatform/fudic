@@ -1,5 +1,0 @@
-:where(abbr[title]) {
-  text-decoration: underline dotted;
-  text-underline-offset: 0.2em;
-  cursor: help;
-}

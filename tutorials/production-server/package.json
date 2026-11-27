@@ -14,6 +14,7 @@
   "dependencies": {
     "@fudic/core": "0.0.1",
     "@fudic/dom": "0.0.1",
+    "@fudic/guide": "0.0.1",
     "@fudic/http": "0.0.1",
     "@fudic/server": "0.0.1",
     "@fudic/ssr": "0.0.1",

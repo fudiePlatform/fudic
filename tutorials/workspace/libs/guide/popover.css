@@ -1,9 +1,0 @@
-/* No element of its own: adopt it by name where a template uses popover. */
-:where([popover]) {
-  padding: var(--guide-space-3);
-  color: var(--guide-ink);
-  background: var(--guide-raised);
-  border: 1px solid var(--guide-line);
-  border-radius: var(--guide-radius-md);
-  box-shadow: var(--guide-shadow-md);
-}

@@ -1,6 +1,0 @@
-:where(h5) {
-  margin: var(--guide-space-4) 0 var(--guide-space-1);
-  font-size: var(--guide-text-base);
-  font-weight: var(--guide-weight-bold);
-  line-height: var(--guide-leading-tight);
-}

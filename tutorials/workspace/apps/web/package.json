@@ -11,12 +11,12 @@
     "spec": "fudic-workbench run --pass-with-no-specs"
   },
   "dependencies": {
-    "@shop/ui": "workspace:*",
     "@fudic/core": "0.0.1",
     "@fudic/dom": "0.0.1",
+    "@fudic/guide": "0.0.1",
     "@fudic/ssr": "0.0.1",
     "@fudic/transport": "0.0.1",
-    "@shop/guide": "workspace:*"
+    "@shop/ui": "workspace:*"
   },
   "devDependencies": {
     "@fudic/cli": "0.0.1",

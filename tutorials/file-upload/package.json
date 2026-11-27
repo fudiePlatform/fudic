@@ -11,10 +11,11 @@
     "spec": "fudic-workbench run --pass-with-no-specs"
   },
   "dependencies": {
-    "@fudic/forms": "0.0.1",
-    "@fudic/http": "0.0.1",
     "@fudic/core": "0.0.1",
     "@fudic/dom": "0.0.1",
+    "@fudic/forms": "0.0.1",
+    "@fudic/guide": "0.0.1",
+    "@fudic/http": "0.0.1",
     "@fudic/ssr": "0.0.1",
     "@fudic/transport": "0.0.1"
   },

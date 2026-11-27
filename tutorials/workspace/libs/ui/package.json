@@ -35,6 +35,6 @@
     "vitest": "4.1.9"
   },
   "dependencies": {
-    "@shop/guide": "workspace:*"
+    "@fudic/guide": "0.0.1"
   }
 }
