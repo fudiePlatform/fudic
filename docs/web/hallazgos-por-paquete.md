@@ -23,7 +23,7 @@ Tres cosas a tener en cuenta:
   20 (`transport`, `cli` y la guía del MCP), 40 (`api` y `dom`), 50 (`compiler` y `server`),
   54 (`compiler` y `testing`), 68 (`compiler` y `core`), 85 (`compiler` y `vite`), 86 (`testing`
   y `cli`), 87 (`core` y `compiler`), 88 (`testing` y `cli`), 95 (`cli`, `config` y `vite`),
-  96 (`config` y `vite`), 99 (`language-server` y `compiler`), 100 (`config` y `vite`), CLI-3
+  96 (`config` y `vite`), 108 (`compiler` y `vite`), 99 (`language-server` y `compiler`), 100 (`config` y `vite`), CLI-3
   (`cli` y `config`), CLI-26 (`cli` y `forms`) y CLI-30 (`cli` y `vite`).
 - **Decisiones pendientes de Pedro.** Hay que tomarlas antes de empezar el paquete (ver más abajo).
 - **Orden.** Primero un paquete pequeño, para fijar el ritmo (`api` o `transport`). Después `vite`,
@@ -53,7 +53,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 
 ## Clasificación
 
-### @fudic/compiler (24)
+### @fudic/compiler (25)
 
 | Nº | Hallazgo |
 |---|---|
@@ -81,6 +81,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 91 | Una página no puede usar un custom element que no sea un `.fud` (decisión) |
 | 94 | `FUD0907` sobre `window`: un mensaje propio para los globales del navegador (→ documentación: `FUD0907.md`) |
 | 97 | Un `<script src>` en el cuerpo sale sin nonce, y nadie avisa (decisión) |
+| 108 | Marcadores `fudic:guide` (con `?inline`) y `fudic:favicon` en el layout (→ `vite`) |
 
 ### @fudic/language-core: proyección y tipos (4)
 
@@ -358,7 +359,7 @@ Estimado a partir del texto de cada hallazgo, sin haber abierto el código de ca
   - La página de bienvenida de `fudic new`: CLI-33.
   - Otros: 4, 17, 30, 47, 48, 69, 70, 72, 87, 92, 97, 101, 104, CLI-23.
   - Hay que investigar antes de saber cuánto cuestan: 35, 52, 75, 105.
-- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91, 107, CLI-27.
+- **Difíciles** (tocan el diseño): 6, 10, 15, 50, 53, 55, 68, 81, 84, 91, 107, 108, CLI-27.
 
 ## Por qué los tests al 100 % no los cazaron
 

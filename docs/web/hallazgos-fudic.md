@@ -1715,3 +1715,21 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Dar un `ETag` a las páginas estáticas, calculado sin el nonce, y
   responder `304` cuando coincide, sin romper la CSP. Queda por comprobar qué hacen los ficheros
   estáticos que salen con `no-cache` en el servidor de Node.
+
+## 108. La guía y el favicon no tienen marcador en el layout, y la guía no puede ir en línea
+
+- **Qué pasó.** Lo propuso Pedro (2026-11-27), al pasar la guía a `@fudic/guide`. Hoy la guía se
+  enlaza sola por ser una dependencia, y el favicon solo puede venir de su campo `guide.icon`:
+  una app que use `@fudic/guide` lleva el logo de Fudic y no tiene dónde poner el suyo.
+- **La guía es una hoja por página.** El build recorta la guía a lo que usa cada página: el
+  `dist/assets` de `web/apps/site` tiene 19 `guide-*.css` distintos. Ninguna se comparte entre
+  páginas, así que enlazarla no aporta caché: solo una petición más en el camino crítico y el
+  riesgo de FOUC. Con el `304` de las páginas estáticas (nº 107), una página que no cambió
+  tampoco vuelve a bajar su CSS en línea, que es el mismo efecto que la caché.
+- **El favicon sí se comparte**: es el mismo en todas las páginas y debe seguir siendo un
+  fichero, con su caché.
+- **Qué debería hacer.** Marcadores en el layout, como `<script src="fudic:runtime">` (que ya
+  tiene `?inline`): `<link rel="stylesheet" href="fudic:guide">`, con `fudic:guide?inline`, y
+  `<link rel="icon" href="fudic:favicon">`, que la app pueda cambiar por el suyo. Y resolver un
+  `href` con nombre de paquete en cualquier `<link>` (nº 3), para apuntar a un favicon o una
+  fuente de una librería. Toca el compilador y el plugin de Vite: va con un SDD propio.
