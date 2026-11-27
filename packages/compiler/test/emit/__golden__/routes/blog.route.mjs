@@ -39,7 +39,7 @@ export async function* page(data, io, $ioc, $props) {
           if (io.runtime.boot !== '') {
             head += '<script type="module"' + $nonce + ' src="' + io.runtime.boot + '"></script>';
           }
-          head += io.runtime.pieces.map(function (u) { return '<link rel="modulepreload"' + $nonce + ' href="' + u + '">'; }).join('');
+          head += io.runtime.pieces.map(function (u) { return '<link rel="modulepreload" fetchpriority="low"' + $nonce + ' href="' + u + '">'; }).join('');
           head += '<script type="module"' + $nonce + ' src="' + io.runtime.main + '"></script>';
         }
       }

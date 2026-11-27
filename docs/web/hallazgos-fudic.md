@@ -44,6 +44,16 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
     negocia una vez y deja `Accept-Encoding: identity` para lo que va detrás: todo sale en brotli.
     Lo de menos de 1 KB sale sin comprimir, a propósito (Lighthouse no cuenta ahorros tan
     pequeños).
+  - **El 99 que quedaba no era el CSS.** Pedro lo atribuyó a `docs.css`. Medido aislando cada
+    factor en `/docs/getting-started` (cinco pasadas cada uno): con `docs.css` en línea, 99 y el
+    mismo FCP (1,37 s); con la guía también en línea, igual; sin la precarga de la fuente, peor
+    (1,61 s); **sin los 18 `modulepreload`, 100 (1,12 s)**. Los `modulepreload` del runtime y de
+    los componentes no pintan nada, pero con su prioridad por defecto se reparten las primeras
+    idas y vueltas con la fuente, que está en el camino del primer pintado. Ahora el emit los
+    escribe con `fetchpriority="low"` (`writeRuntimeTags`): se descubren igual de pronto y ceden
+    el paso. Con el build real, `/docs/getting-started`, la portada y
+    `/docs/template-syntax/expressions` dan **100** en las tres pasadas, con el FCP en 0,96–1,0 s
+    y la página interactiva en el mismo instante que antes (1,52–1,69 s).
 
 ## 2. ~~Un componente que se hidrata al cargar entra en la cadena crítica~~ (descartado)
 

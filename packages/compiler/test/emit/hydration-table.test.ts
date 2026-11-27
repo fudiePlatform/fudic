@@ -82,11 +82,13 @@ function rowOf(path: string): Row | undefined {
 /**
  * Every tracked `.fud` outside `experiments/` and the broken/fixed pairs of
  * `packages/diagnostics/fixtures/` (SDD-62 §4.2), broken on purpose, by its path from the root.
+ * The website (`web/`), its tutorials (`tutorials/`) and the pages under `docs/` came after
+ * SDD-60 and are not the framework's: the table is about what the framework already had.
  */
 function files(): readonly string[] {
   return execFileSync('git', ['ls-files', '*.fud'], { cwd: repo, encoding: 'utf8' })
     .split('\n')
-    .filter((f) => f !== '' && !f.startsWith('experiments/') && !f.startsWith('packages/diagnostics/fixtures/'))
+    .filter((f) => f !== '' && !['experiments/', 'packages/diagnostics/fixtures/', 'web/', 'tutorials/', 'docs/'].some((dir) => f.startsWith(dir)))
     .sort();
 }
 

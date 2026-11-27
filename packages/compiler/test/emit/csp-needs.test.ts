@@ -76,7 +76,7 @@ describe('the nonce on everything the parser meets (§4.7)', () => {
     expect(html).toContain('<script nonce="N0" type="importmap">{"imports":{}}</script>');
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('<script type="module" nonce="N0" src="/boot.js"></script>');
-    expect(html).toContain('<link rel="modulepreload" nonce="N0" href="/p1.js"><link rel="modulepreload" nonce="N0" href="/p2.js">');
+    expect(html).toContain('<link rel="modulepreload" fetchpriority="low" nonce="N0" href="/p1.js"><link rel="modulepreload" fetchpriority="low" nonce="N0" href="/p2.js">');
     expect(html).toContain('<script type="module" nonce="N0" src="/main.js"></script>');
     // The page's own inline things, as before.
     expect(html).toContain('<script nonce="N0">');

@@ -1,6 +1,6 @@
 /**
  * SDD-79 criteria 2–5: a style guide read (`readGuide`) and which piece styles which element
- * (`piecesForTag`). Over the guide `fudic new` writes (`packages/cli/templates/guide`), and over
+ * (`piecesForTag`). Over the guide `fudic new` writes (`@fudic/guide`, in `packages/guide`), and over
  * guides of a few files held in memory.
  *
  * The compiler opens no file: the host's reader is a map of path → text, and its keys are
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { piecesForTag, readGuide, type GuidePiece } from '../../src/css/guide.js';
 
-const TEMPLATE = fileURLToPath(new URL('../../../cli/templates/guide/', import.meta.url));
+const TEMPLATE = fileURLToPath(new URL('../../../guide/', import.meta.url));
 
 /** The template's CSS as `./<file>` → text, rendered for a project `shop`. */
 function templateFiles(): Record<string, string> {
