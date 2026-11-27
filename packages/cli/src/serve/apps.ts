@@ -1,10 +1,12 @@
 /**
  * Which apps `fudic dev` and `fudic preview` serve (BUG-50 §4.5): the one `--project` names;
- * otherwise every app of the workspace the command runs in; otherwise the app it runs in.
+ * otherwise, in a workspace, the app the command runs in, or every app under the folder it runs
+ * in (finding 8 of the CLI: from `web/apps` of a monorepo, its three apps, not every app of the
+ * repository); otherwise the app it runs in.
  */
 
 import { FUD0453, FUD0454 } from '@fudic/diagnostics';
-import { joinPosix } from '../paths.js';
+import { absolute, joinPosix, toPosix } from '../paths.js';
 import { servedApps, type ServedApp } from '../workspace/bases.js';
 import { findProjects, workspaceRoot } from '../workspace/discover.js';
 import { resolveTarget } from '../workspace/target.js';
@@ -28,10 +30,21 @@ export function appsToServe(kind: ServeKind, opts: TargetedOptions, io: ReadIo):
 
 function candidates(opts: TargetedOptions, io: ReadIo): AppsToServe {
   const root = workspaceRoot(opts.cwd, io);
-  if (opts.project === undefined && root !== null) return { apps: servedApps(findProjects(root, io), io), errors: [] };
+  if (opts.project === undefined && root !== null) {
+    // Resolved as the projects' paths are: absolute, with its drive on Windows, POSIX.
+    const here = toPosix(absolute(opts.cwd, '.'));
+    const all = servedApps(findProjects(root, io), io);
+    const inside = all.find((app) => within(here, app.path));
+    return { apps: inside === undefined ? all.filter((app) => within(app.path, here)) : [inside], errors: [] };
+  }
 
   const resolved = resolveTarget(opts, io);
   if (resolved.target === undefined) return { apps: [], errors: resolved.errors };
   const { path, config } = resolved.target;
   return { apps: servedApps([{ name: path.slice(path.lastIndexOf('/') + 1), path, config }], io), errors: [] };
+}
+
+/** Whether `path` is `dir` or under it; both absolute, POSIX. */
+function within(path: string, dir: string): boolean {
+  return path === dir || path.startsWith(`${dir}/`);
 }

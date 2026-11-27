@@ -69,12 +69,32 @@ describe('where each app is served', () => {
 });
 
 describe('which apps fudic dev serves', () => {
-  it('from the workspace, or anywhere inside it: every app', () => {
-    for (const cwd of [ROOT, `${ROOT}/apps/web/src`]) {
+  it('from the workspace, or a folder that holds apps: every app under it', () => {
+    for (const cwd of [ROOT, `${ROOT}/apps`, `${ROOT}/apps/`]) {
       const { apps, errors } = appsToServe('dev', { cwd, force: false }, shop());
       expect(errors).toEqual([]);
       expect(apps.map((a) => `${a.name} ${a.base}`)).toEqual(['admin /admin/', 'web /']);
     }
+  });
+
+  it('inside an app, anywhere in it: that app alone (finding 8 of the CLI)', () => {
+    for (const cwd of [`${ROOT}/apps/web`, `${ROOT}/apps/web/src/routes`]) {
+      expect(appsToServe('dev', { cwd, force: false }, shop()).apps.map((a) => a.name), cwd).toEqual(['web']);
+    }
+  });
+
+  it('in a monorepo, only the apps under the folder: not those of another part of the repository', () => {
+    const repo = shop({
+      'web/apps/site/fudic.json': JSON.stringify({ id: 'site', kind: 'app', prefix: 'site' }),
+      'web/apps/mcp/fudic.json': JSON.stringify({ id: 'mcp', kind: 'app', prefix: 'mcp' }),
+      'web/apps/mcp/vite.config.ts': "export default { base: '/mcp/' }",
+    });
+    const { apps } = appsToServe('dev', { cwd: `${ROOT}/web/apps`, force: false }, repo);
+    expect(apps.map((a) => `${a.name} ${a.base}`)).toEqual(['mcp /mcp/', 'site /']);
+  });
+
+  it('FUD0453 from a folder with no app under it', () => {
+    expect(appsToServe('dev', { cwd: `${ROOT}/libs`, force: false }, shop()).errors.map((e) => e.code)).toEqual(['FUD0453']);
   });
 
   it('with --project, that one alone', () => {

@@ -197,7 +197,7 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
 - **Vuelto a comprobar (portada), el 2026-11-24.** `fudic g layout home --project ui` crea el
   layout sin hoja; `web/libs/ui/src/styles/home.css` y su enlace se escribieron a mano.
 
-## 8. `fudic preview` en una app sirve todas las del monorepo
+## 8. `fudic preview` en una app sirve todas las del monorepo — Resuelto el 2026-11-27
 
 - **Qué pasó.** Su ayuda dice «In an app, that app alone». Desde `web/apps/site`, `fudic preview`
   intentó servir todas las apps del `pnpm-workspace.yaml` de la raíz y terminó con un
@@ -213,6 +213,12 @@ Versión de la CLI: la del repo, publicada en Verdaccio (`pnpm registry`) e inst
   en `examples/` para instalarlo con el workspace: `fudic dev` arrancó las 21 apps del repo. Para
   copiar en el tutorial la salida que ve un usuario («fudic dev — 1 app on one port»), se ejecutó
   fuera del repo, con su `node_modules` enlazado.
+- **Resuelto el 2026-11-27.** En un workspace, `fudic dev` y `fudic preview` sirven la app en la
+  que se ejecutan, o todas las que hay bajo la carpeta (`appsToServe`, en
+  `packages/cli/src/serve/apps.ts`). `web/package.json` tiene ahora `build`
+  (`pnpm --filter "./apps/*" build`), así que desde `web/` o `web/apps`, `pnpm build` construye
+  las tres apps (3 de 46 proyectos) y `pnpm preview` las sirve en un solo puerto: `site` en `/`,
+  `mcp` en `/mcp/` y `tutorials` en `/tutorials/`, comprobado con las tres respondiendo `200`.
 
 ## 9. `fudic new` escribe un `assets.headers` que deja sin caché lo que emite Fudic
 
