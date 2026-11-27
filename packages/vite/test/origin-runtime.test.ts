@@ -90,6 +90,8 @@ function publishPiece(dist: string): string {
   return '/_fudic/0.0.1-abc/core/hydrate.js';
 }
 
+const IMMUTABLE = 'public, max-age=31536000, immutable';
+
 describe.each([
   ['/admin/', 200],
   ['/', 200],
@@ -112,6 +114,13 @@ describe.each([
       join(root, 'src/routes/_layout.fud'),
       '<!DOCTYPE html>\n<html lang="es">\n<head>@RenderHead()</head>\n<body>@RenderBody()</body>\n</html>\n',
     );
+    // What the runtime is to be served with, by path without the base (finding 83).
+    writeFileSync(join(root, 'assets.headers'), `/**
+  Cache-Control: no-cache
+
+/_fudic/**
+  Cache-Control: ${IMMUTABLE}
+`);
     const config = { root, base, logLevel: 'silent' as const, resolve: { alias: { ...runtimeAlias } }, plugins: [fudic({ liveCheck: false })], preview: { port: 0 } };
     await build({ ...config, build: { minify: false } });
     piece = publishPiece(join(root, 'dist'));
@@ -127,5 +136,10 @@ describe.each([
     const res = await fetch(`${origin}${piece}`);
     expect(res.status).toBe(status);
     expect(res.headers.get('content-type')).toMatch(/javascript/u);
+  });
+
+  it('with the headers assets.headers gives /_fudic/**, as at the root (finding 83)', async () => {
+    const res = await fetch(`${origin}${piece}`);
+    expect(res.headers.get('cache-control')).toBe(IMMUTABLE);
   });
 });

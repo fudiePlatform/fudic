@@ -1280,7 +1280,7 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Mandar `fud-data` cuando el `@code` lee `data`, no solo cuando la lee la
   vista.
 
-## 83. En una app con `base`, la preview sirve el runtime sin las cabeceras de `assets.headers`
+## 83. En una app con `base`, la preview sirve el runtime sin las cabeceras de `assets.headers` — Resuelto el 2026-11-27
 
 - **Qué pasó.** Lo vio Pedro (2026-11-26) en `web/apps/tutorials` (`base: '/tutorials/'`): tras
   `pnpm build` y `pnpm preview`, los ficheros de `/_fudic/…` llegan sin `Cache-Control`, aunque
@@ -1319,6 +1319,13 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `/_fudic/…` (`core`, `dom`, `transport`) salen sin `Cache-Control`; las hojas, la fuente, el
   componente de `assets/h/` y `fudic-main-….js` salen con `immutable`. Pasa en toda app que no
   esté en `/`.
+- **Resuelto el 2026-11-27.** `originRuntime` iba antes que el servidor de la app y contestaba
+  el fichero sin pasar por él. Ahora va después: el servidor no contesta `/_fudic/…`, pero le
+  pone las cabeceras que `assets.headers` da a su ruta (`staticHeaders`, que ya sabía tratar una
+  ruta fuera del `base`), y `originRuntime` sirve el fichero con ellas. Con `pnpm preview` de
+  `web/apps/tutorials`, los 14 ficheros de `/_fudic/…` salen con `immutable`, como el resto.
+  Queda lo que pide el nº 5: que la plantilla de `fudic new` no tiene el bloque de `/_fudic/**`,
+  así que en una app nueva el runtime sale con el `no-cache` de `/**`, igual con `base` que sin él.
 
 ## 84. Un signal dentro de un servicio inyectado no repinta la plantilla
 

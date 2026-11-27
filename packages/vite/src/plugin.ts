@@ -1262,11 +1262,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
         });
       }
+      server.middlewares.use(mount(false));
       // The shared runtime belongs to the ORIGIN (SDD-45 §4.2): its URLs are `/_fudic/<version>/…`,
       // whatever the app's `base`. A host fuses every app's `_fudic/` at its root; preview serves
-      // one app, so under a `base` it answers them from this build's own copy (SDD-87).
+      // one app, so under a `base` it answers them from this build's own copy (SDD-87). After the
+      // app, which answers none of them but gives each the headers `assets.headers` has for it,
+      // as it does for every static file: before it, they went out with none (finding 83).
       if ((server.config?.base ?? '/') !== '/') server.middlewares.use(originRuntime(outDir));
-      server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.
       return () => {
