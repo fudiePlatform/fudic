@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FUD0051, FUD1027, FUD1380, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0051, FUD0363, FUD1027, FUD1380, type FudDiagnostic } from '@fudic/diagnostics';
 import { BuildReporter, type PluginLog, type ReportContext } from '../src/report.js';
 
 /** A workspace on disk: an app at `app/` and a library at `libs/ui/`. */
@@ -72,6 +72,19 @@ describe('the build reports under the policy and the comments', () => {
     const { warnings, failure } = reported(reporter, [loopAt(36), FUD0051({ span: { start: 0, end: 4 }, name: 'q' })], lib);
     expect(warnings).toEqual([]);
     expect(failure).toContain('FUD0051');
+  });
+
+  it("a library's missing asset is said in the app: its pages are the ones broken (finding 3)", () => {
+    const root = workspace({
+      'app/fudic.json': '{}',
+      'libs/ui/fudic.json': '{"kind":"lib"}',
+      'libs/ui/x-a.fud': COMPONENT,
+    });
+    const reporter = new BuildReporter(join(root, 'app'), { remember: false });
+    const lib = join(root, 'libs/ui/x-a.fud');
+    const { warnings } = reported(reporter, [loopAt(36), FUD0363({ file: lib, spec: '../nope.woff2' })], lib);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('FUD0363');
   });
 
   it('a file of another project that is an app, and a file of no project, are said', () => {

@@ -79,6 +79,38 @@ describe('asset linking inside <head> (linkAssets)', () => {
   });
 });
 
+// Finding 3: a head element is copied from the source, and `@@` is the one thing in it the source
+// does not say literally.
+describe('`@@` in an attribute of the <head>', () => {
+  const ESCAPED = `<link rel="layout" href="../layouts/_layout.fud">
+<head>
+  <link rel="preload" href="@@acme/ui/fonts/x.woff2" as="font" data-by="@@me">
+</head>
+<p>x</p>
+`;
+  const escaped = resolveDocument(
+    '/app/routes/index.fud',
+    memoryIo({ '/app/layouts/_layout.fud': BARE_LAYOUT, '/app/routes/index.fud': ESCAPED }),
+  ).value;
+
+  it('is written as the `@` it means, and the host is asked for the package path', () => {
+    const asked: string[] = [];
+    const src = unescaped(
+      emitRouteModule(escaped, { linkAssets: true, assetExists: (spec) => (asked.push(spec), false) }),
+    );
+    expect(asked).toEqual(['@acme/ui/fonts/x.woff2']);
+    expect(src).toContain('<link rel="preload" href="@acme/ui/fonts/x.woff2" as="font" data-by="@me">');
+    expect(src).not.toContain('@@');
+  });
+
+  it('after a linked URL too', () => {
+    const src = unescaped(
+      emitRouteModule(escaped, { linkAssets: true, assetExists: () => true, assetUrl: () => '/assets/x-1.woff2' }),
+    );
+    expect(src).toContain('<link rel="preload" href="" + "/assets/x-1.woff2" + "" as="font" data-by="@me">');
+  });
+});
+
 describe('componentSpecifier', () => {
   it('defaults to the sibling file convention', () => {
     expect(emitRouteModule(graph)).toContain("from './app-badge.mjs'");

@@ -13,7 +13,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { LinkedAssets, assetSheetFrom, assetUrlFrom } from '../src/linked-assets.js';
+import { LinkedAssets, assetFile, assetSheetFrom, assetUrlFrom } from '../src/linked-assets.js';
 import type { Diagnostic } from '@fudic/compiler';
 import type { FudCode } from '@fudic/diagnostics';
 
@@ -250,6 +250,40 @@ describe('assetUrlFrom', () => {
     const assets = new LinkedAssets('/');
     assetUrlFrom(assets, join(root, 'styles'))('./theme.css', 'head');
     expect(assets.shell()).toHaveLength(1);
+  });
+});
+
+/** Finding 3: a specifier that names a file of a package, as `@@acme/ui/fonts/x.woff2` does. */
+describe('assetFile', () => {
+  let app: string;
+  const pkg = (): string => join(app, 'node_modules', '@acme', 'ui');
+
+  beforeAll(() => {
+    app = mkdtempSync(join(tmpdir(), 'fudic-asset-file-'));
+    mkdirSync(join(app, 'src'), { recursive: true });
+    writeFileSync(join(app, 'src', 'logo.png'), BIG_PNG);
+    mkdirSync(join(pkg(), 'fonts'), { recursive: true });
+    mkdirSync(join(pkg(), 'secret'), { recursive: true });
+    writeFileSync(
+      join(pkg(), 'package.json'),
+      JSON.stringify({ name: '@acme/ui', exports: { './fonts/*': './fonts/*' } }),
+    );
+    writeFileSync(join(pkg(), 'fonts', 'x.woff2'), 'font');
+    writeFileSync(join(pkg(), 'secret', 'y.woff2'), 'font');
+  });
+
+  it('a file next to the `.fud` is the one it names', () => {
+    expect(assetFile(join(app, 'src'), 'logo.png')).toBe(join(app, 'src', 'logo.png'));
+  });
+
+  it('a package name goes through its `exports`, the query kept', () => {
+    expect(assetFile(join(app, 'src'), '@acme/ui/fonts/x.woff2')).toBe(join(pkg(), 'fonts', 'x.woff2'));
+    expect(assetFile(join(app, 'src'), '@acme/ui/fonts/x.woff2?url')).toBe(join(pkg(), 'fonts', 'x.woff2') + '?url');
+  });
+
+  it('what the package does not publish, or a `./` path, stays relative: FUD0363 reports it', () => {
+    expect(assetFile(join(app, 'src'), '@acme/ui/secret/y.woff2')).toBe(join(app, 'src', '@acme/ui/secret/y.woff2'));
+    expect(assetFile(join(app, 'src'), './nope.png')).toBe(join(app, 'src', 'nope.png'));
   });
 });
 

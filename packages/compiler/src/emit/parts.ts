@@ -7,7 +7,7 @@
  * Text only, like the rest of the emit: no runtime is imported and no filesystem is touched.
  */
 
-import type { ElementNode, HtmlContent } from '../html/index.js';
+import type { AttributeValuePart, ElementNode, HtmlContent } from '../html/index.js';
 import { isComponentLink, isLayoutLink, isServerLink, isSnippetLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { StyleNode } from '../css/index.js';
@@ -266,7 +266,7 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     return (
       openingText(source, el, first.span.start) +
       ` + ${binding} + ` +
-      JSON.stringify(source.slice(last.span.end, el.span.end))
+      JSON.stringify(headSlice(source, el, last.span.end, el.span.end))
     );
   }
   // The element ALONE: no indent, no newline around it (BUG-07 §4.2). Whitespace between
@@ -281,10 +281,34 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
  * whatever its URL, and an inline import map is refused by any policy without `'unsafe-inline'`.
  */
 function openingText(source: string, el: ElementNode, end: number): string {
-  const text = source.slice(el.span.start, end);
+  const text = headSlice(source, el, el.span.start, end);
   if (headScriptNeeds(el) === null) return JSON.stringify(text);
   const tag = 1 + el.name.length;
   return `${JSON.stringify(text.slice(0, tag))} + $nonce + ${JSON.stringify(text.slice(tag))}`;
+}
+
+/**
+ * The source of `el` between `start` and `end`, with each `@@` of its attributes written as the
+ * `@` it means (decision 1). A head element is copied from the source, and the escape is the one
+ * thing in it that the source does not say literally (finding 3): `href="@@acme/ui/x.woff2"`
+ * reached the browser with both characters.
+ */
+function headSlice(source: string, el: ElementNode, start: number, end: number): string {
+  let out = '';
+  let at = start;
+  for (const attr of el.attributes) {
+    for (const part of attr.value) {
+      if (part.span.start < start || part.span.end > end || !isAtEscape(source, part)) continue;
+      out += source.slice(at, part.span.start) + '@';
+      at = part.span.end;
+    }
+  }
+  return out + source.slice(at, end);
+}
+
+/** Whether a value part is a `@@`: the parser turns it into a run of its own holding one `@`. */
+function isAtEscape(source: string, part: AttributeValuePart): boolean {
+  return part.type === 'attribute-text' && part.value === '@' && source.slice(part.span.start, part.span.end) === '@@';
 }
 
 /** The `type` of a script the browser runs: none, `module`, or a JavaScript MIME type. */

@@ -19,6 +19,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative as relativePath, resolve as resolvePath } from 'node:path';
 import {
@@ -344,11 +345,28 @@ export function assetUrlFrom(assets: LinkedAssets, fudDir: string): AssetUrl {
   return (spec, origin) =>
     spec.startsWith('/')
       ? assets.publicUrl(spec, origin)
-      : assets.url(resolvePath(fudDir, spec), origin);
+      : assets.url(assetFile(fudDir, spec), origin);
 }
 
 /** The same, for the pruned copy of a sheet (SDD-49 §3.6): only relative sheets are pruned. */
 export function assetSheetFrom(assets: LinkedAssets, fudDir: string): AssetSheet {
   return (spec, css, origin) =>
-    assets.sheet(resolvePath(fudDir, AssetLinker.filePath(spec)), css, origin);
+    assets.sheet(assetFile(fudDir, AssetLinker.filePath(spec)), css, origin);
+}
+
+/**
+ * The file a non-root specifier names, `?query` kept: next to the `.fud` that wrote it, or else
+ * in a package (finding 3). `@acme/ui/fonts/x.woff2` goes through the package's `exports`, as an
+ * `import` would, so a file it does not publish is not reachable either. When neither has it the
+ * answer is the relative path, and the missing file is reported as it always was (`FUD0363`).
+ */
+export function assetFile(fudDir: string, spec: string): string {
+  const relative = resolvePath(fudDir, spec);
+  const file = AssetLinker.filePath(spec);
+  if (existsSync(resolvePath(fudDir, file)) || spec.startsWith('.')) return relative;
+  try {
+    return createRequire(resolvePath(fudDir, 'index.js')).resolve(file) + spec.slice(file.length);
+  } catch {
+    return relative;
+  }
 }

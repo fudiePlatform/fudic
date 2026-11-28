@@ -88,6 +88,9 @@ estilos. Mismo formato: qué pasó, cómo se resolvió en la web y qué debería
   `../../../../../packages/guide/fonts/…`, que cruza del monorepo a otro paquete por disco. **Qué
   debería hacer, además:** avisar de un `href` relativo de un `<link>` que no apunta a ningún
   fichero, en vez de copiarlo tal cual.
+- **Resuelto el 2026-11-28.** `@@` en un atributo del `<head>` sale como `@`; un `href` que no
+  está junto al `.fud` se resuelve como paquete, por sus `exports` (`@@fudic/guide/fonts/…` en el
+  layout de la documentación); y `FUD0363` se dice aunque el fichero sea de una librería.
 
 ## 4. La guía no puede pedir que se precargue su fuente
 

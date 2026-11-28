@@ -18,7 +18,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { CspNeed } from '@fudic/config';
 import { dirname, relative, resolve } from 'node:path';
-import { assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets.js';
+import { assetFile, assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
   allComponents,
@@ -309,7 +309,7 @@ function emitOptionsFor(
     assetExists: (spec: string): boolean =>
       spec.startsWith('/')
         ? assets === undefined || assets.publicFile(spec) !== undefined
-        : existsSync(resolve(baseDir, spec)),
+        : existsSync(assetFile(baseDir, spec)),
     // And its URL is the host's to decide, once for the whole build (BUG-40). Absent only
     // for a caller that has no registry — then the emit falls back to an import, which is
     // the pre-BUG-40 behaviour and what the standalone emit does.
@@ -329,7 +329,7 @@ function emitOptionsFor(
     // and a project's assets are not something to load into memory on the chance one of them
     // is asked for. A file that cannot be read stays a URL, exactly as a missing one does.
     assetText: (spec: string): string | null => {
-      const file = spec.startsWith('/') ? assets?.publicFile(spec) : resolve(baseDir, spec);
+      const file = spec.startsWith('/') ? assets?.publicFile(spec) : assetFile(baseDir, spec);
       if (file === undefined) return null;
       try {
         return readFileSync(file, 'utf8');

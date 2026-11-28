@@ -14,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  FUD0363,
   format,
   render,
   type FudCode,
@@ -167,7 +168,7 @@ export class BuildReporter {
       }
       const project = policies.projectOf(file);
       if (project !== null && project.root !== app?.root && project.config?.kind === 'lib') {
-        out.push(...group.filter((d) => d.severity === 'error'));
+        out.push(...group.filter((d) => d.severity === 'error' || BREAKS_THE_APP.has(d.code)));
         continue;
       }
       // Each one located at the file's whole path: a diagnostic of a file read relative to the
@@ -178,6 +179,14 @@ export class BuildReporter {
     return out;
   }
 }
+
+/**
+ * The warnings of a library that are still said to the app: what they point at is broken in the
+ * app's own pages. A missing asset in a library's layout is a 404 on every page that wears it, and
+ * a library of layouts is never built on its own, so whoever develops it never hears of it
+ * (finding 3).
+ */
+const BREAKS_THE_APP: ReadonlySet<FudCode> = new Set([FUD0363({ file: '', spec: '' }).code]);
 
 /** The error a `.fud` that does not compile throws: its text as always, and every error as data. */
 export interface FudicCompileError extends Error {

@@ -17,7 +17,7 @@ aparece.
 
 | Paquete | Total | ✅ | ◐ | Quedan |
 |---|---|---|---|---|
-| @fudic/compiler | 24 | 1 | 1 | 22 |
+| @fudic/compiler | 24 | 2 | 1 | 21 |
 | @fudic/language-core: proyección y tipos | 4 |  |  | 4 |
 | @fudic/typecheck | 1 |  |  | 1 |
 | @fudic/vite | 21 | 2 |  | 19 |
@@ -38,7 +38,7 @@ aparece.
 | @fudic/vscode | 1 |  |  | 1 |
 | examples/basic | 2 |  |  | 2 |
 | Documentación | 12 |  |  | 12 |
-| **Total** | **150** | **4** | **1** | **145** |
+| **Total** | **150** | **5** | **1** | **144** |
 
 ## Cómo se arreglan
 
@@ -94,7 +94,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 
 | Nº | Hallazgo |
 |---|---|
-| 3 | `<link href>` con nombre de paquete; `@@` en un atributo del head |
+| ✅ 3 | `<link href>` con nombre de paquete; `@@` en un atributo del head |
 | 6 | `style:prop` se acepta y no se emite (→ documentación: los mensajes de FUD0915 y FUD0132) |
 | 7 | Handler delegado que llama a una prop función: el chunk sale roto |
 | 8 | Una ruta no puede pasar una prop función |
