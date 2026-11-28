@@ -9,6 +9,37 @@ Para distinguirlos, aquí llevan delante «CLI-»: «CLI-6» es el nº 6 de `hal
 número solo, como «6», es el de `hallazgos-fudic.md`.
 Es un borrador: se rehará cuando cambien los hallazgos.
 
+## Avance
+
+Se actualiza con cada arreglo. En las tablas de la clasificación, ✅ es resuelto y ◐ resuelto
+en su paquete, a falta de la parte de otro. Un hallazgo repartido cuenta en cada paquete donde
+aparece.
+
+| Paquete | Total | ✅ | ◐ | Quedan |
+|---|---|---|---|---|
+| @fudic/compiler | 24 | 1 | 1 | 22 |
+| @fudic/language-core: proyección y tipos | 4 |  |  | 4 |
+| @fudic/typecheck | 1 |  |  | 1 |
+| @fudic/vite | 21 | 2 |  | 19 |
+| @fudic/config | 5 |  |  | 5 |
+| @fudic/server | 4 |  |  | 4 |
+| @fudic/transport | 5 |  |  | 5 |
+| @fudic/core | 3 |  |  | 3 |
+| @fudic/dom | 2 |  |  | 2 |
+| @fudic/api | 5 |  |  | 5 |
+| @fudic/forms | 4 |  |  | 4 |
+| @fudic/http | 3 |  |  | 3 |
+| @fudic/di | 1 |  |  | 1 |
+| @fudic/testing | 7 |  |  | 7 |
+| @fudic/spec y @fudic/workbench | 4 |  |  | 4 |
+| @fudic/cli | 35 | 1 |  | 34 |
+| @fudic/mcp | 4 |  |  | 4 |
+| @fudic/language-server | 3 |  |  | 3 |
+| @fudic/vscode | 1 |  |  | 1 |
+| examples/basic | 2 |  |  | 2 |
+| Documentación | 12 |  |  | 12 |
+| **Total** | **150** | **4** | **1** | **145** |
+
 ## Cómo se arreglan
 
 Sin SDD ni BUG-NN. Se coge un paquete y se arreglan todos los suyos, uno a uno:
@@ -71,7 +102,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 10 | `@evento` en el tag de un hijo recibe el `CustomEvent`, pieza 1 (→ `language-core`) |
 | 11 | `@import` en el `<head>`: error de Oxc y sin escape |
 | 50 | Script en línea con nonce para el tema (→ `server`: CSP) |
-| 51 | `@@` en una propiedad cuenta como concatenación (resuelto) |
+| ✅ 51 | `@@` en una propiedad cuenta como concatenación |
 | 54 | FUD1440 en los snippets (→ `testing`: `renderSnippet`) |
 | 59 | Encabezado dentro de un componente: sin aviso, y la bombilla lo afianza |
 | 60 | Propiedad del DOM en una página estática: no se asigna nunca (la página se hidrata para asignarla) |
@@ -79,7 +110,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 65 | FUD1440 pide la hoja de la otra lista para un `<li>` |
 | 66 | `bus:` que nadie anuncia: sin aviso |
 | 68 | Un componente que solo lee un store no se hidrata (→ `core`) |
-| 73 | `summary` en una ruta: `summaryEntriesOf` sin importar (resuelto; → `vite`: el error del render, con el 78) |
+| ◐ 73 | `summary` en una ruta: `summaryEntriesOf` sin importar (→ `vite`: el error del render, con el 78) |
 | 82 | `fud-data` no sale si solo el `@code` lee `data` |
 | 84 | Un signal dentro de un servicio inyectado no repinta la plantilla |
 | 85 | `FUD0680` y `FUD0684` no salen en el editor; el span de `FUD0680` cae en la página (→ `vite`: la pila) |
@@ -107,7 +138,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 
 | Nº | Hallazgo |
 |---|---|
-| 1 | La preview no comprime |
+| ✅ 1 | La preview no comprime |
 | 4 | Precargar las fuentes de la guía (→ `config`) |
 | 5 | Falso positivo de FUD1552 en `isHashedName`; que `/_fudic/` sea de Fudic (→ `config`) |
 | 13 | Los diagnósticos de `sw.json` se pierden |
@@ -125,7 +156,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 75 | Quitar un `required` corta la página sin decir nada |
 | 78 | La excepción de un handler o de un `load` no sale en la terminal (con la parte del 73) |
 | 80 | «Cannot GET» de Connect sin `Accept: text/html` |
-| 83 | `originRuntime` no aplica `assets.headers` en una app con `base` |
+| ✅ 83 | `originRuntime` no aplica `assets.headers` en una app con `base` |
 | 89 | No ve un catálogo que no existía cuando compiló la página |
 | 92 | El id del build no cambia con la línea `load` ni con `sw.headers` |
 
@@ -242,7 +273,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | CLI-5 | `--project` escoge un proyecto de otro workspace; valida proyectos que el comando no toca |
 | CLI-6 | `g page --layout @web/ui/…` revienta con `ENOENT`; la ruta relativa escribe un `href` frágil; títulos como «Getting-started» |
 | CLI-7 | No hay generador para la hoja de un layout |
-| CLI-8 | `fudic preview` y `fudic dev` en una app sirven todas las del monorepo |
+| ✅ CLI-8 | `fudic preview` y `fudic dev` en una app sirven todas las del monorepo |
 | CLI-10 | No hay generador para una hoja de `styles` |
 | CLI-11 | No hay `fudic build` |
 | CLI-12 | No hay generador para un middleware ni para una regla |
