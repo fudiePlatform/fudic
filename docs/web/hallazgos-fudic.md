@@ -793,6 +793,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Cómo se resolvió.** `.command=@("npx @fudic/cli new mi-app")`.
 - **Qué debería hacer.** Tratar `@@` en un valor de propiedad como texto, igual que en el contenido
   y en un atributo: un valor con solo texto y escapes es un único valor.
+- **Resuelto el 2026-11-28.** Un valor de propiedad con solo texto y `@@` se junta en un único
+  texto; solo una expresión lo convierte en concatenación.
 
 ## 52. El build revienta con `window is not defined` si se lanza vite por su ruta
 

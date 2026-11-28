@@ -71,7 +71,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 10 | `@evento` en el tag de un hijo recibe el `CustomEvent`, pieza 1 (→ `language-core`) |
 | 11 | `@import` en el `<head>`: error de Oxc y sin escape |
 | 50 | Script en línea con nonce para el tema (→ `server`: CSP) |
-| 51 | `@@` en una propiedad cuenta como concatenación |
+| 51 | `@@` en una propiedad cuenta como concatenación (resuelto) |
 | 54 | FUD1440 en los snippets (→ `testing`: `renderSnippet`) |
 | 59 | Encabezado dentro de un componente: sin aviso, y la bombilla lo afianza |
 | 60 | Propiedad del DOM en una página estática: no se asigna nunca (la página se hidrata para asignarla) |

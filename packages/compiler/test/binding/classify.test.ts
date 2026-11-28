@@ -149,6 +149,28 @@ describe('classifyAttribute — property bindings (decisions 24, 25; 23 retired 
     expect(binding.type).toBe('property');
   });
 
+  // Finding 51: `@@` is cut into its own `'@'` run, but text alone is still one value.
+  it('text with `@@` escapes is one value, joined over the whole span', () => {
+    const { binding, diagnostics, source } = classifyOne('<x .command="npx @@fudic/cli new @@a"></x>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('property');
+    if (binding.type !== 'property') return;
+    expect(binding.value).toHaveLength(1);
+    expect(binding.value[0]).toMatchObject({ type: 'attribute-text', value: 'npx @fudic/cli new @a' });
+    expect(text(source, binding.value[0]!)).toBe('npx @@fudic/cli new @@a');
+  });
+
+  it('a lone `@@` is one value too', () => {
+    const { binding, diagnostics } = classifyOne('<x .value="@@"></x>');
+    expect(diagnostics).toEqual([]);
+    if (binding.type !== 'property') return;
+    expect(binding.value).toMatchObject([{ type: 'attribute-text', value: '@' }]);
+  });
+
+  it('FUD0091: an escape does not excuse an expression beside it', () => {
+    expect(codes(classifyOne('<x .value="@@@b"></x>').diagnostics)).toEqual(['FUD0091']);
+  });
+
   it('FUD0091: two expressions are a concatenation too, and stay a property', () => {
     const { binding, diagnostics } = classifyOne('<x .value="@a @b"></x>');
     expect(codes(diagnostics)).toEqual(['FUD0091']);

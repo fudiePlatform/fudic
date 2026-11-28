@@ -235,7 +235,8 @@ function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Bi
     );
   }
 
-  if (attr.value.length > 1) {
+  const value = joinedText(attr.value);
+  if (value.length > 1) {
     // Decision 24: a property carries a VALUE, not a string built by concatenation. The
     // binding survives it — degrading to a plain attribute named `.prop` would hide the
     // prop from the editor over a mistake in its value.
@@ -243,9 +244,21 @@ function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Bi
   }
 
   return withDiagnostics(
-    { type: 'property', span: attr.span, name: propertyName, value: attr.value },
+    { type: 'property', span: attr.span, name: propertyName, value },
     diagnostics,
   );
+}
+
+/**
+ * A value of text alone is ONE value, whatever runs the parser cut it into: `@@` arrives as its
+ * own `'@'` run between the text around it (finding 51). Only an expression makes it a
+ * concatenation, so a value without one is joined into a single run spanning them all.
+ */
+function joinedText(parts: readonly AttributeValuePart[]): readonly AttributeValuePart[] {
+  const texts = parts.filter((p) => p.type === 'attribute-text');
+  if (parts.length < 2 || texts.length < parts.length) return parts;
+  const text = texts.map((p) => p.value).join('');
+  return [{ type: 'attribute-text', span: span(texts[0]!.span.start, texts.at(-1)!.span.end), value: text }];
 }
 
 function classifyClass(attr: Attribute, className: string): ParseResult<Binding> {
