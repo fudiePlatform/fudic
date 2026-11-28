@@ -448,6 +448,9 @@ function buildRouteModule(
   // component does, and both ends of the file need the binding.
   writeEntryImports(w, code);
   for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
+  // A summary painted by the page itself, in its body or in a section — the same import a
+  // component module adds (BUG-42 §4.6).
+  if (em.summaries || sectionEm.summaries) w.line("import { summaryEntriesOf } from '@fudic/forms';");
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph, moduled).join(', ')}];`);
   if (projectStylesLine !== null) w.line(projectStylesLine);

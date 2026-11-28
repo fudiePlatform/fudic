@@ -1150,6 +1150,9 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   `on alias`, y el `summary` se cita con un enlace a la Documentación.
 - **Qué debería hacer.** Importar `summaryEntriesOf` también en una ruta. Y que un error del
   render en `fudic dev` salga en la terminal y en la página, no como un HTML cortado.
+- **Resuelto en el compilador el 2026-11-28.** El módulo de una ruta importa `summaryEntriesOf`
+  cuando la página pinta un `summary`, en el cuerpo o en una sección. Queda la parte de `vite`: que
+  el error del render salga en la terminal y en la página (va con el 78).
 
 ## 74. Un texto de `messages` con `{min}` y `{max}` pinta el nombre del tipo
 

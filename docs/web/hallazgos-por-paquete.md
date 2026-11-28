@@ -27,7 +27,7 @@ Tres cosas a tener en cuenta:
   principal, y la otra parte se marca con →. No se da por resuelto hasta cerrar todas sus partes:
   5 (`config` y `vite`), 9 (`compiler` y `dom`), 10 (`compiler` y `language-core`),
   20 (`transport`, `cli` y la guía del MCP), 40 (`api` y `dom`), 50 (`compiler` y `server`),
-  54 (`compiler` y `testing`), 68 (`compiler` y `core`), 85 (`compiler` y `vite`), 86 (`testing`
+  54 (`compiler` y `testing`), 68 (`compiler` y `core`), 73 (`compiler` y `vite`), 85 (`compiler` y `vite`), 86 (`testing`
   y `cli`), 87 (`core` y `compiler`), 88 (`testing` y `cli`), 95 (`cli`, `config` y `vite`),
   96 (`config` y `vite`), 108 (`compiler` y `vite`), 99 (`language-server` y `compiler`), 100 (`config` y `vite`), CLI-3
   (`cli` y `config`), CLI-26 (`cli` y `forms`) y CLI-30 (`cli` y `vite`).
@@ -79,7 +79,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 65 | FUD1440 pide la hoja de la otra lista para un `<li>` |
 | 66 | `bus:` que nadie anuncia: sin aviso |
 | 68 | Un componente que solo lee un store no se hidrata (→ `core`) |
-| 73 | `summary` en una ruta: `summaryEntriesOf` sin importar |
+| 73 | `summary` en una ruta: `summaryEntriesOf` sin importar (resuelto; → `vite`: el error del render, con el 78) |
 | 82 | `fud-data` no sale si solo el `@code` lee `data` |
 | 84 | Un signal dentro de un servicio inyectado no repinta la plantilla |
 | 85 | `FUD0680` y `FUD0684` no salen en el editor; el span de `FUD0680` cae en la página (→ `vite`: la pila) |
@@ -123,7 +123,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 71 | Las hojas de `fudic.json` y de la guía no se recargan |
 | 72 | FUD0744 y FUD0890 solo salen al pedir la página, con la pila de Vite |
 | 75 | Quitar un `required` corta la página sin decir nada |
-| 78 | La excepción de un handler o de un `load` no sale en la terminal |
+| 78 | La excepción de un handler o de un `load` no sale en la terminal (con la parte del 73) |
 | 80 | «Cannot GET» de Connect sin `Accept: text/html` |
 | 83 | `originRuntime` no aplica `assets.headers` en una app con `base` |
 | 89 | No ve un catálogo que no existía cuando compiló la página |
