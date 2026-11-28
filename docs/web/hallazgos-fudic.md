@@ -518,7 +518,7 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Volver a leer el fichero tras el último evento del watcher, o esperar a que
   deje de cambiar antes de ejecutar.
 
-## 32. La regla de `img` de la guía hace que Chrome avise de cada imagen con `loading="lazy"`
+## 32. ~~La regla de `img` de la guía hace que Chrome avise de cada imagen con `loading="lazy"`~~ (descartado)
 
 - **Qué pasó.** Al poner la captura del workbench (capítulo Pruebas), Chrome 157 da en DevTools
   `LazyLoadImageIssue` («specifies loading="lazy" without explicit width and height dimensions or
@@ -536,6 +536,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** Decidir. O el compilador escribe esa `aspect-ratio` en un `<img>` con
   `loading="lazy"` y `width`/`height` literales, o se documenta que Chrome avisa y no hay salto.
   Cuando `attr()` con tipo entre en Baseline, la guía puede ponerlo en `img.css`.
+- **Descartado el 2026-11-28.** No es un bug: cómo trata las imágenes una app es cosa de quien
+  la escribe, y el compilador no lo decide.
 
 ## 33. El snippet `load` del `.fudapi` ofrece un modo que no existe
 
@@ -942,6 +944,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** O bien un aviso cuando una propiedad de un nativo nunca se va a asignar
   (página o componente de nivel 1, valor constante), o bien que esa sola propiedad haga
   hidratable la página, con un script mínimo que la asigne.
+- **Decidido el 2026-11-28.** La segunda: si quien escribe la página enlaza una propiedad, es que
+  la quiere asignada, así que la página se hidrata con lo justo para asignarla.
 
 ## 61. El spread de un objeto en una página llega vacío al componente, sin diagnóstico
 
@@ -1479,6 +1483,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
   con las de su Custom Elements Manifest, si lo trae), sin pintarlo en el servidor y cargando su
   módulo en el navegador. Es el argumento más fuerte ante quien ya usa componentes web, y el
   estándar se lo promete: un custom element funciona en cualquier página.
+- **Decidido el 2026-11-28.** Se hace: usar un componente web ajeno es decisión de quien escribe
+  la página. La forma de declararlo se fija al implementarlo.
 
 ## 92. El id del build no cambia con la línea `load` ni con `sw.headers`, y el navegador se queda con el service worker viejo
 
@@ -1612,6 +1618,8 @@ Es el nº 9. La comprobación con un criterio del workbench está allí, en «Vu
 - **Qué debería hacer.** El build «sabe qué mete en la página» y ya avisa de lo que la política
   bloquea (`FUD1545`): que avise también de un `<script src>` fuera del `<head>`, que no llevará
   nonce, con una acción que lo mueva al `<head>`. O que le ponga el nonce, como al del `<head>`.
+- **Decidido el 2026-11-28.** Lleva el nonce siempre, esté donde esté: es una válvula de escape y
+  cubre muchos casos.
 
 ## 98. `FUD1547` no ofrece quitar lo que debilita la política
 

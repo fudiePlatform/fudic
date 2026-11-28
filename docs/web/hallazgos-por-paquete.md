@@ -11,8 +11,14 @@ Es un borrador: se rehará cuando cambien los hallazgos.
 
 ## Cómo se arreglan
 
-Sin un BUG-NN por hallazgo. Se coge un paquete y se arreglan todos los suyos de una vez. Al
-terminar, cada hallazgo se marca en su fichero (`hallazgos-fudic.md` o `hallazgos-cli.md`) con
+Sin SDD ni BUG-NN. Se coge un paquete y se arreglan todos los suyos, uno a uno:
+
+1. Se arregla.
+2. Pedro lo valida con un ejemplo.
+3. Con su ok, se escriben los tests y se comprueba que la cobertura de ese fichero no baja.
+4. Al terminar el paquete (o los paquetes), se pasa su regresión entera.
+
+Cada hallazgo se marca en su fichero (`hallazgos-fudic.md` o `hallazgos-cli.md`) con
 «Resuelto el <fecha>», como el nº 37 o el CLI-14.
 
 Tres cosas a tener en cuenta:
@@ -29,7 +35,7 @@ Tres cosas a tener en cuenta:
 - **Orden.** Primero un paquete pequeño, para fijar el ritmo (`api` o `transport`). Después `vite`,
   que es lo que más se nota en los tutoriales.
 
-No cuentan: el 2 (descartado), el 28 y el 29 (duplicados del 5 y del 9), el 37 (resuelto) y el
+No cuentan: el 2 y el 32 (descartados), el 28 y el 29 (duplicados del 5 y del 9), el 37 (resuelto) y el
 CLI-14 (resuelto). Del CLI-20 solo queda la parte que no se resolvió.
 
 ## Prioridad para el lanzamiento
@@ -53,7 +59,7 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 
 ## Clasificación
 
-### @fudic/compiler (25)
+### @fudic/compiler (24)
 
 | Nº | Hallazgo |
 |---|---|
@@ -64,12 +70,11 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 9 | Booleano en `aria-*` (→ `dom` en el cliente) |
 | 10 | `@evento` en el tag de un hijo recibe el `CustomEvent`, pieza 1 (→ `language-core`) |
 | 11 | `@import` en el `<head>`: error de Oxc y sin escape |
-| 32 | `img` con `loading="lazy"`: `aspect-ratio` o documentarlo (→ `cli`: `img.css`) |
 | 50 | Script en línea con nonce para el tema (→ `server`: CSP) |
 | 51 | `@@` en una propiedad cuenta como concatenación |
 | 54 | FUD1440 en los snippets (→ `testing`: `renderSnippet`) |
 | 59 | Encabezado dentro de un componente: sin aviso, y la bombilla lo afianza |
-| 60 | Propiedad del DOM en una página estática: no se asigna nunca |
+| 60 | Propiedad del DOM en una página estática: no se asigna nunca (la página se hidrata para asignarla) |
 | 61 | Spread en una ruta: llega vacío |
 | 65 | FUD1440 pide la hoja de la otra lista para un `<li>` |
 | 66 | `bus:` que nadie anuncia: sin aviso |
@@ -78,9 +83,9 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 82 | `fud-data` no sale si solo el `@code` lee `data` |
 | 84 | Un signal dentro de un servicio inyectado no repinta la plantilla |
 | 85 | `FUD0680` y `FUD0684` no salen en el editor; el span de `FUD0680` cae en la página (→ `vite`: la pila) |
-| 91 | Una página no puede usar un custom element que no sea un `.fud` (decisión) |
+| 91 | Una página no puede usar un custom element que no sea un `.fud` (se hace; la forma, al implementarlo) |
 | 94 | `FUD0907` sobre `window`: un mensaje propio para los globales del navegador (→ documentación: `FUD0907.md`) |
-| 97 | Un `<script src>` en el cuerpo sale sin nonce, y nadie avisa (decisión) |
+| 97 | Un `<script src>` en el cuerpo sale sin nonce (lleva el nonce siempre) |
 | 108 | Marcadores `fudic:guide` (con `?inline`) y `fudic:favicon` en el layout (→ `vite`) |
 
 ### @fudic/language-core: proyección y tipos (4)
@@ -222,13 +227,12 @@ Para él es el 75 % del trabajo que queda; el resto de hallazgos va después.
 | 46 | Guardar `bench.js` no vuelve a ejecutar; `pass: false` en un `given` o un `when` no para el criterio |
 | 105 | El primer `fudic spec` de un proyecto nuevo acaba en error (Vite optimiza a mitad de la ejecución) |
 
-### @fudic/cli (36)
+### @fudic/cli (35)
 
 | Nº | Hallazgo |
 |---|---|
 | 20 | `fudic g app` escribe `"/assets/**"` sin el `base` |
 | 30 | `fudic spec` y `fudic test` no escriben en el `.fudlog` (→ `history`) |
-| 32 | `img.css` de la plantilla de la guía |
 | 90 | `fudic translate` no avisa de un `t()` con una variable, y borra su traducción |
 | 95 | La plantilla de `page.headers` y `assets.headers` sin `X-Content-Type-Options: nosniff` (→ `config`: la línea en `KNOWN`; → `vite`: la pila de `FUD1543` en el build) |
 | CLI-1 | `fudic new` dentro de un repo git hace su propio `git init` |
@@ -318,16 +322,12 @@ Son textos que no cambian lo que hace el código:
 |---|---|---|
 | 20 | `transport` | ¿Los patrones de `sw.json` van con `base` o sin él? |
 | 26 | `forms` | ¿`form:=` tiene respaldo sin JavaScript? |
-| 32 | `compiler` | ¿El compilador escribe `aspect-ratio`, o se documenta el aviso? |
 | 40 | `api` y `dom` | ¿Un campo `html` llega marcado como de confianza? |
 | 45 | `spec` | ¿Se ejecuta `selfTest` o se deja de exigir? |
 | 46 | `workbench` | ¿Un `pass: false` para el criterio? |
-| 60 | `compiler` | ¿Un aviso, o que la propiedad haga hidratable la página? |
 | 76 | `http` | ¿El cliente sigue la redirección solo, o hace falta `error-pages`? |
 | 88 | `testing` | ¿`visit('/')` con varios idiomas responde como una redirección, o acepta el idioma como opción? |
-| 91 | `compiler` | ¿Se pueden declarar custom elements ajenos? ¿Cómo: un `<link rel="component">` a un módulo JS o a un paquete, o una lista en `fudic.json`? |
 | 95 | `server` | ¿Avisar cuando llegan cabeceras de un proxy y `trustProxy` está apagado? |
-| 97 | `compiler` | ¿El `<script src>` del cuerpo recibe el nonce, o se avisa y se ofrece moverlo al `<head>`? |
 | 100 | `config` | ¿`"2024"` entre comillas vale como año, o lo dice `FUD0725`? |
 | 104 | `forms` | ¿`$validate({ server: true })` en un test pregunta al servidor en memoria, o la regla remota avisa de que no se ejecuta? |
 | CLI-11 | `cli` | ¿Hay un `fudic build`, o el build sigue siendo el script de Vite? |
